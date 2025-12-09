@@ -70,15 +70,15 @@ export function CalendarPage() {
   const daysInMonth = 30;
   const startDay = 5;
   const calendarDays = [];
-  
+
   for (let i = startDay - 1; i >= 0; i--) {
     calendarDays.push({ day: 31 - i, isCurrentMonth: false, date: `2025-10-${31 - i}` });
   }
-  
+
   for (let i = 1; i <= daysInMonth; i++) {
     calendarDays.push({ day: i, isCurrentMonth: true, date: `2025-11-${i.toString().padStart(2, '0')}` });
   }
-  
+
   const remainingDays = 42 - calendarDays.length;
   for (let i = 1; i <= remainingDays; i++) {
     calendarDays.push({ day: i, isCurrentMonth: false, date: `2025-12-${i}` });
@@ -119,7 +119,7 @@ export function CalendarPage() {
         <button className="w-9 h-9 rounded-[8px] border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors">
           <ChevronRight className="w-4 h-4 text-[#666666]" />
         </button>
-        <button className="px-4 py-2 text-[13px] font-['Inter:Medium',sans-serif] text-[#666666] hover:text-[#111111] transition-colors">
+        <button className="px-4 py-2 text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666] hover:text-[#111111] transition-colors">
           Today
         </button>
       </div>
@@ -144,34 +144,32 @@ export function CalendarPage() {
               {calendarDays.map((dayObj, index) => {
                 const events = getEventsForDate(dayObj.date);
                 const isToday = dayObj.date === '2025-11-20';
-                
+
                 return (
                   <div
                     key={index}
-                    className={`min-h-[90px] p-2 rounded-[8px] border transition-all cursor-pointer ${
-                      dayObj.isCurrentMonth
+                    className={`min-h-[90px] p-2 rounded-[8px] border transition-all cursor-pointer ${dayObj.isCurrentMonth
                         ? 'bg-white border-[#EEEEEE] hover:border-[#ff3b3b] hover:bg-[#FFF5F5]'
                         : 'bg-[#F7F7F7] border-transparent'
-                    } ${isToday ? 'border-[#ff3b3b] bg-[#FFF5F5]' : ''}`}
+                      } ${isToday ? 'border-[#ff3b3b] bg-[#FFF5F5]' : ''}`}
                     onClick={() => setSelectedDate(dayObj.date)}
                   >
-                    <div className={`font-['Inter:SemiBold',sans-serif] text-[13px] mb-1 ${
-                      dayObj.isCurrentMonth ? 'text-[#111111]' : 'text-[#999999]'
-                    } ${isToday ? 'text-[#ff3b3b]' : ''}`}>
+                    <div className={`font-['Manrope:SemiBold',sans-serif] text-[13px] mb-1 ${dayObj.isCurrentMonth ? 'text-[#111111]' : 'text-[#999999]'
+                      } ${isToday ? 'text-[#ff3b3b]' : ''}`}>
                       {dayObj.day}
                     </div>
                     <div className="space-y-1">
                       {events.slice(0, 2).map((event) => (
                         <div
                           key={event.id}
-                          className="px-2 py-1 rounded-[4px] text-[10px] font-['Inter:Medium',sans-serif] text-white truncate"
+                          className="px-2 py-1 rounded-[4px] text-[10px] font-['Manrope:Medium',sans-serif] text-white truncate"
                           style={{ backgroundColor: event.color }}
                         >
                           {event.title}
                         </div>
                       ))}
                       {events.length > 2 && (
-                        <div className="text-[10px] font-['Inter:Medium',sans-serif] text-[#666666] px-2">
+                        <div className="text-[10px] font-['Manrope:Medium',sans-serif] text-[#666666] px-2">
                           +{events.length - 2} more
                         </div>
                       )}
@@ -195,20 +193,20 @@ export function CalendarPage() {
                 todayEvents.map((event) => (
                   <div key={event.id} className="bg-white rounded-[12px] p-4 border border-[#EEEEEE]">
                     <div className="flex items-start gap-3">
-                      <div 
+                      <div
                         className="w-1 h-full rounded-full mt-1"
                         style={{ backgroundColor: event.color }}
                       />
                       <div className="flex-1">
-                        <div className="font-['Inter:SemiBold',sans-serif] text-[13px] text-[#111111] mb-1">
+                        <div className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] mb-1">
                           {event.title}
                         </div>
-                        <div className="flex items-center gap-1 text-[11px] font-['Inter:Regular',sans-serif] text-[#666666] mb-2">
+                        <div className="flex items-center gap-1 text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666] mb-2">
                           <Clock className="w-3 h-3" />
                           {event.time}
                         </div>
                         {event.location && (
-                          <div className="flex items-center gap-1 text-[11px] font-['Inter:Regular',sans-serif] text-[#666666]">
+                          <div className="flex items-center gap-1 text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                             <MapPin className="w-3 h-3" />
                             {event.location}
                           </div>
@@ -218,7 +216,7 @@ export function CalendarPage() {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-6 text-[13px] font-['Inter:Regular',sans-serif] text-[#999999]">
+                <div className="text-center py-6 text-[13px] font-['Manrope:Regular',sans-serif] text-[#999999]">
                   No events today
                 </div>
               )}
@@ -234,15 +232,15 @@ export function CalendarPage() {
               {upcomingEvents.map((event) => (
                 <div key={event.id} className="bg-white rounded-[12px] p-4 border border-[#EEEEEE]">
                   <div className="flex items-start gap-3">
-                    <div 
+                    <div
                       className="w-1 h-full rounded-full mt-1"
                       style={{ backgroundColor: event.color }}
                     />
                     <div className="flex-1">
-                      <div className="font-['Inter:SemiBold',sans-serif] text-[13px] text-[#111111] mb-1">
+                      <div className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] mb-1">
                         {event.title}
                       </div>
-                      <div className="flex items-center gap-1 text-[11px] font-['Inter:Regular',sans-serif] text-[#666666]">
+                      <div className="flex items-center gap-1 text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                         <CalendarIcon className="w-3 h-3" />
                         {new Date(event.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {event.time}
                       </div>
@@ -261,19 +259,19 @@ export function CalendarPage() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-[#3B82F6]" />
-                <span className="text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">Meetings</span>
+                <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">Meetings</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-[#ff3b3b]" />
-                <span className="text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">Deadlines</span>
+                <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">Deadlines</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-[#8b5cf6]" />
-                <span className="text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">Events</span>
+                <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">Events</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-[#f59e0b]" />
-                <span className="text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">Leaves</span>
+                <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">Leaves</span>
               </div>
             </div>
           </div>
