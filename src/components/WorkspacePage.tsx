@@ -49,7 +49,7 @@ export function WorkspacePage() {
       inProgressCount: w.total_task_in_progress || 0,
       delayedCount: w.total_task_delayed || 0,
       completedCount: w.total_task_completed || 0,
-      status: w.status === 'Active' || w.status === 'IN_PROGRESS' ? 'active' : 'inactive',
+      status: ['active', 'in_progress', 'assigned'].includes((w.status || '').toLowerCase()) ? 'active' : 'inactive',
       description: w.description || '',
     }));
   }, [workspacesData]);
