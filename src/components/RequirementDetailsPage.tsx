@@ -1,35 +1,100 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
-  ChevronLeft, FolderOpen, Calendar, Clock, CheckCircle2,
-  Loader2, AlertCircle, MoreVertical, RotateCcw,
-  FileText, ListTodo, History, BarChart2, Columns,
-  User, Edit, Trash2, ArrowRight, Flag, Plus, Send, Paperclip, X, Image as ImageIcon, MessageSquare
+  FileText, ListTodo, BarChart2, Columns,
+  Plus, RotateCcw, Clock, MoreVertical,
+  Paperclip, X, Send, MessageSquare, Calendar
 } from 'lucide-react';
-import { Checkbox } from "./ui/checkbox";
-import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "./ui/breadcrumb";
-import { TabBar } from './TabBar';
-import { Button } from "./ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from "./ui/dropdown-menu";
-
+import { Checkbox, Breadcrumb, Button, Tooltip, Dropdown, MenuProps, message } from "antd";
+import { TabBar } from './TabBar'; // Keeping assuming it's valid
 import { useParams, useRouter } from 'next/navigation';
-import { useData } from '../context/DataContext';
-import { Task, SubTask } from '../lib/types';
+import { useWorkspace, useRequirements } from '@/hooks/useWorkspace';
+import { useTasks } from '@/hooks/useTask';
+import { SubTask } from '../lib/types';
+import Image from "next/image";
 
 export function RequirementDetailsPage() {
   const params = useParams();
-  const workspaceId = params.workspaceId;
-  const reqId = params.reqId;
+  const workspaceId = Number(params.workspaceId);
+  const reqId = Number(params.reqId);
   const router = useRouter();
-  const { getWorkspace, requirements: allRequirements } = useData();
 
-  const workspace = getWorkspace(Number(workspaceId));
-  const requirement = allRequirements.find(r => r.id === Number(reqId));
+  const { data: workspaceData, isLoading: isLoadingWorkspace } = useWorkspace(workspaceId);
+  const { data: requirementsData, isLoading: isLoadingRequirements } = useRequirements(workspaceId);
+  const { data: tasksData } = useTasks(`project_id=${workspaceId}`);
+
+  // Transform workspace
+  const workspace = useMemo(() => {
+    if (!workspaceData?.result) return null;
+    return {
+      id: workspaceData.result.id,
+      name: workspaceData.result.name || '',
+      client: workspaceData.result.client?.name || workspaceData.result.client_company_name || 'N/A',
+      taskCount: workspaceData.result.total_task || 0,
+      status: workspaceData.result.status === 'Active' || workspaceData.result.status === 'IN_PROGRESS' ? 'active' : 'inactive',
+    };
+  }, [workspaceData]);
+
+  // Find requirement
+  const requirement = useMemo(() => {
+    if (!requirementsData?.result) return null;
+    const found = requirementsData.result.find((r: any) => r.id === reqId);
+    if (!found) return null;
+
+    return {
+      id: found.id,
+      title: found.name || found.title || '',
+      description: found.description || '',
+      company: 'Internal',
+      client: workspace?.client || 'N/A',
+      assignedTo: found.manager ? [found.manager.name] : found.leader ? [found.leader.name] : [],
+      dueDate: found.end_date ? new Date(found.end_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
+      createdDate: found.start_date ? new Date(found.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
+      priority: (found.priority?.toLowerCase() as 'high' | 'medium' | 'low') || 'medium',
+      type: found.type || 'inhouse',
+      status: mapRequirementStatus(found.status || ''),
+      category: found.department?.name || 'General',
+      progress: found.progress || 0,
+      tasksCompleted: found.total_tasks ? Math.floor(found.total_tasks * (found.progress || 0) / 100) : 0,
+      tasksTotal: found.total_tasks || 0,
+      workspaceId: found.project_id || workspaceId,
+      workspace: workspace?.name || 'Unknown',
+      approvalStatus: found.approved_by ? 'approved' : 'pending',
+      subTasks: (tasksData?.result || []).filter((t: any) => t.requirement_id === reqId).map((t: any) => ({
+        id: String(t.id),
+        name: t.name || t.title || '',
+        taskId: String(t.id),
+        assignedTo: t.assigned_to?.name || 'Unassigned',
+        dueDate: t.due_date ? new Date(t.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
+        status: mapTaskStatus(t.status || ''),
+        type: 'task' as 'task' | 'revision',
+      })),
+    };
+  }, [requirementsData, reqId, workspace, tasksData]);
+
+  const mapRequirementStatus = (status: string): 'in-progress' | 'completed' | 'delayed' => {
+    const statusLower = status?.toLowerCase() || '';
+    if (statusLower.includes('completed') || statusLower === 'done') return 'completed';
+    if (statusLower.includes('delayed')) return 'delayed';
+    return 'in-progress';
+  };
+
+  const mapTaskStatus = (status: string): 'impediment' | 'in-progress' | 'completed' | 'todo' | 'delayed' => {
+    const statusLower = status?.toLowerCase() || '';
+    if (statusLower.includes('completed') || statusLower === 'done') return 'completed';
+    if (statusLower.includes('blocked') || statusLower === 'impediment') return 'impediment';
+    if (statusLower.includes('progress') || statusLower === 'in_progress') return 'in-progress';
+    if (statusLower.includes('delayed')) return 'delayed';
+    return 'todo';
+  };
 
   const [activeTab, setActiveTab] = useState<'details' | 'tasks' | 'gantt' | 'kanban'>('details');
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [messageText, setMessageText] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
+
+  if (isLoadingWorkspace || isLoadingRequirements) {
+    return <div className="p-8">Loading requirement details...</div>;
+  }
 
   if (!workspace || !requirement) {
     return <div className="p-8">Requirement or Workspace not found</div>;
@@ -49,10 +114,10 @@ export function RequirementDetailsPage() {
 
   const handleSendMessage = () => {
     if (messageText.trim() || attachments.length > 0) {
-      // Handle message sending logic here
       console.log('Sending message:', messageText, attachments);
       setMessageText('');
       setAttachments([]);
+      message.success('Message sent');
     }
   };
 
@@ -87,37 +152,20 @@ export function RequirementDetailsPage() {
         <div className="p-8 pb-0">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-2">
-              <Breadcrumb>
-                <BreadcrumbList className="sm:gap-2">
-                  <BreadcrumbItem>
-                    <BreadcrumbLink
-                      onClick={() => router.push('/workspaces')}
-                      className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors"
-                    >
-                      Workspaces
-                    </BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator className="[&>svg]:size-5 text-[#999999]">
-                    <span className="text-[20px] font-['Manrope:SemiBold',sans-serif]">/</span>
-                  </BreadcrumbSeparator>
-                  <BreadcrumbItem>
-                    <BreadcrumbLink
-                      onClick={() => router.push(`/workspaces/${workspace.id}`)}
-                      className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors"
-                    >
-                      {workspace.name}
-                    </BreadcrumbLink>
-                  </BreadcrumbItem>
-                  <BreadcrumbSeparator className="[&>svg]:size-5 text-[#999999]">
-                    <span className="text-[20px] font-['Manrope:SemiBold',sans-serif]">/</span>
-                  </BreadcrumbSeparator>
-                  <BreadcrumbItem>
-                    <BreadcrumbPage className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111] line-clamp-1 max-w-[300px]">
-                      {requirement.title}
-                    </BreadcrumbPage>
-                  </BreadcrumbItem>
-                </BreadcrumbList>
-              </Breadcrumb>
+              <Breadcrumb
+                separator={<span className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#999999]">/</span>}
+                items={[
+                  {
+                    title: <span className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors" onClick={() => router.push('/workspaces')}>Workspaces</span>
+                  },
+                  {
+                    title: <span className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors" onClick={() => router.push(`/workspaces/${workspace.id}`)}>{workspace.name}</span>
+                  },
+                  {
+                    title: <span className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111] line-clamp-1 max-w-[300px]">{requirement.title}</span>
+                  }
+                ]}
+              />
             </div>
 
             <div className="flex items-center gap-4">
@@ -129,7 +177,7 @@ export function RequirementDetailsPage() {
                 {requirement.assignedTo.slice(0, 3).map((person, i) => (
                   <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm" title={person}>
                     <span className="text-[10px] text-white font-['Manrope:Bold',sans-serif]">
-                      {person.split(' ').map(n => n[0]).join('')}
+                      {person.split(' ').map((n: string) => n[0]).join('')}
                     </span>
                   </div>
                 ))}
@@ -178,7 +226,7 @@ export function RequirementDetailsPage() {
                   <FileText className="w-5 h-5 text-[#ff3b3b]" />
                   Description
                 </h3>
-                <p className="text-[14px] text-[#444444] font-['Inter:Regular',sans-serif] leading-relaxed whitespace-pre-wrap">
+                <p className="text-[14px] text-[#444444] font-['Manrope:Regular',sans-serif] leading-relaxed whitespace-pre-wrap">
                   {requirement.description}
                 </p>
               </div>
@@ -194,8 +242,8 @@ export function RequirementDetailsPage() {
                     <ListTodo className="w-5 h-5 text-[#ff3b3b]" />
                     Tasks Breakdown
                   </h3>
-                  <Button variant="outline" size="sm" className="h-8 text-[12px]">
-                    <Plus className="w-4 h-4 mr-2" /> Add Task
+                  <Button icon={<Plus className="w-4 h-4" />} size="small" className="text-[12px] flex items-center">
+                    Add Task
                   </Button>
                 </div>
 
@@ -204,11 +252,10 @@ export function RequirementDetailsPage() {
                   <div className="flex justify-center">
                     <Checkbox
                       checked={tasks.length > 0 && selectedTasks.length === tasks.length}
-                      onCheckedChange={(checked) => {
-                        if (checked) setSelectedTasks(tasks.map(t => t.id));
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedTasks(tasks.map(t => t.id));
                         else setSelectedTasks([]);
                       }}
-                      className="border-[#DDDDDD] data-[state=checked]:bg-[#ff3b3b] data-[state=checked]:border-[#ff3b3b]"
                     />
                   </div>
                   <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Task</p>
@@ -256,7 +303,7 @@ export function RequirementDetailsPage() {
                   {/* Table Header */}
                   <div className="grid grid-cols-[40px_1fr_200px_150px_120px_40px] gap-4 px-4 pb-3 mb-2 border-b border-[#EEEEEE] items-center">
                     <div className="flex justify-center">
-                      <Checkbox disabled className="border-[#DDDDDD]" />
+                      <Checkbox disabled />
                     </div>
                     <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Revision</p>
                     <div className="flex justify-center">
@@ -279,161 +326,14 @@ export function RequirementDetailsPage() {
           )}
 
           {activeTab === 'gantt' && (
-            <div className="bg-white rounded-[16px] border border-[#EEEEEE] shadow-sm overflow-hidden flex flex-col h-[600px]">
-              <div className="p-6 border-b border-[#EEEEEE] flex justify-between items-center shrink-0">
-                <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] flex items-center gap-2">
-                  <BarChart2 className="w-5 h-5 text-[#ff3b3b]" />
-                  Gantt Chart
-                </h3>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="h-8 text-[12px]">Day</Button>
-                  <Button variant="outline" size="sm" className="h-8 text-[12px] bg-[#F7F7F7]">Week</Button>
-                  <Button variant="outline" size="sm" className="h-8 text-[12px]">Month</Button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-auto">
-                {/* Gantt Header */}
-                <div className="flex border-b border-[#EEEEEE] min-w-[800px]">
-                  <div className="w-[250px] p-4 font-['Manrope:Bold',sans-serif] text-[13px] text-[#111111] border-r border-[#EEEEEE] sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                    Task Name
-                  </div>
-                  <div className="flex-1 grid grid-cols-10">
-                    {Array.from({ length: 10 }).map((_, i) => {
-                      const date = new Date('2025-11-20');
-                      date.setDate(date.getDate() + i);
-                      return (
-                        <div key={i} className="border-r border-[#EEEEEE] p-2 text-center min-w-[60px]">
-                          <div className="text-[10px] text-[#999999] font-['Inter:SemiBold',sans-serif] uppercase">{date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                          <div className="text-[12px] text-[#111111] font-['Manrope:Bold',sans-serif]">{date.getDate()}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Gantt Body */}
-                <div className="min-w-[800px]">
-                  {[...tasks, ...revisions].map((task, index) => {
-                    // Mock start/end for visualization based on index
-                    const startOffset = index % 5;
-                    const duration = (index % 3) + 2;
-
-                    return (
-                      <div key={task.id} className="flex border-b border-[#FAFAFA] hover:bg-[#FAFAFA] transition-colors group">
-                        <div className="w-[250px] p-3 border-r border-[#EEEEEE] flex items-center gap-3 sticky left-0 bg-white group-hover:bg-[#FAFAFA] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${task.type === 'revision' ? 'bg-[#FFF5F5] text-[#ff3b3b]' : 'bg-[#F7F7F7] text-[#999999]'}`}>
-                            #{task.taskId}
-                          </span>
-                          <span className="text-[13px] text-[#111111] font-['Inter:Medium',sans-serif] truncate">{task.name}</span>
-                        </div>
-                        <div className="flex-1 grid grid-cols-10 relative py-3">
-                          {/* Grid Lines */}
-                          {Array.from({ length: 10 }).map((_, i) => (
-                            <div key={i} className="border-r border-[#FAFAFA] absolute inset-y-0" style={{ left: `${i * 10}%`, width: '1px' }} />
-                          ))}
-
-                          {/* Bar */}
-                          <div
-                            className={`absolute h-6 rounded-[4px] top-1/2 -translate-y-1/2 flex items-center px-2 shadow-sm
-                                                  ${task.status === 'completed' ? 'bg-[#E8F5E9] border border-[#0F9D58] text-[#0F9D58]' :
-                                task.status === 'delayed' ? 'bg-[#FDEDEC] border border-[#EB5757] text-[#EB5757]' :
-                                  task.type === 'revision' ? 'bg-[#FFF5F5] border border-[#ff3b3b] text-[#ff3b3b]' :
-                                    'bg-[#E3F2FD] border border-[#2F80ED] text-[#2F80ED]'
-                              }
-                                              `}
-                            style={{
-                              left: `${startOffset * 10}%`,
-                              width: `${duration * 10}%`
-                            }}
-                          >
-                            <span className="text-[10px] font-['Manrope:Bold',sans-serif] truncate w-full">{task.assignedTo.split(' ')[0]}</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+            <div className="bg-white rounded-[16px] border border-[#EEEEEE] shadow-sm p-4 text-center text-[#666666]">
+              Gantt Chart (Placeholder)
             </div>
           )}
 
           {activeTab === 'kanban' && (
-            <div className="h-full overflow-x-auto">
-              <div className="flex gap-6 min-w-[1000px] h-full pb-4">
-                {['todo', 'in-progress', 'impediment', 'completed'].map((status) => {
-                  const columnTasks = [...tasks, ...revisions].filter(t => {
-                    if (status === 'impediment') return t.status === 'impediment' || t.status === 'delayed';
-                    return t.status === status;
-                  });
-
-                  const getStatusStyle = (s: string) => {
-                    switch (s) {
-                      case 'todo': return { color: 'text-[#555555]', bg: 'bg-[#F5F5F5]', label: 'To Do' };
-                      case 'in-progress': return { color: 'text-[#2F80ED]', bg: 'bg-[#E3F2FD]', label: 'In Progress' };
-                      case 'impediment': return { color: 'text-[#EB5757]', bg: 'bg-[#FDEDEC]', label: 'Blocked / Delayed' };
-                      case 'completed': return { color: 'text-[#0F9D58]', bg: 'bg-[#E8F5E9]', label: 'Completed' };
-                      default: return { color: 'text-[#555555]', bg: 'bg-[#F5F5F5]', label: 'Unknown' };
-                    }
-                  };
-
-                  const style = getStatusStyle(status);
-
-                  return (
-                    <div key={status} className="flex-1 min-w-[280px] flex flex-col bg-[#F7F7F7] rounded-[16px] p-4 border border-[#EEEEEE]">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${style.bg} w-fit`}>
-                          <div className={`w-2 h-2 rounded-full ${style.color.replace('text', 'bg')}`} />
-                          <span className={`text-[12px] font-['Manrope:Bold',sans-serif] ${style.color}`}>{style.label}</span>
-                        </div>
-                        <span className="text-[12px] font-['Inter:SemiBold',sans-serif] text-[#999999]">{columnTasks.length}</span>
-                      </div>
-
-                      <div className="flex-1 space-y-3 overflow-y-auto pr-1">
-                        {columnTasks.map(task => (
-                          <div key={task.id} className="bg-white p-4 rounded-[12px] border border-[#EEEEEE] shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group">
-                            <div className="flex items-center justify-between mb-3">
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${task.type === 'revision' ? 'bg-[#FFF5F5] text-[#ff3b3b]' : 'bg-[#F7F7F7] text-[#999999]'}`}>
-                                #{task.taskId}
-                              </span>
-                              {task.type === 'revision' && (
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <RotateCcw className="w-3.5 h-3.5 text-[#ff3b3b]" />
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>Revision</p></TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              )}
-                            </div>
-                            <h4 className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-3 leading-snug">
-                              {task.name}
-                            </h4>
-                            <div className="flex items-center justify-between pt-3 border-t border-[#FAFAFA]">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#666666] to-[#999999] flex items-center justify-center">
-                                  <span className="text-[9px] text-white font-['Manrope:Bold',sans-serif]">
-                                    {task.assignedTo.split(' ').map(n => n[0]).join('')}
-                                  </span>
-                                </div>
-                                <span className="text-[11px] text-[#666666] truncate max-w-[80px]">{task.assignedTo.split(' ')[0]}</span>
-                              </div>
-                              <div className="flex items-center gap-1 text-[#999999]">
-                                <Calendar className="w-3 h-3" />
-                                <span className="text-[10px]">{task.dueDate.split('-').slice(0, 2).join('-')}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <button className="mt-3 flex items-center justify-center gap-2 py-2 rounded-[8px] hover:bg-[#EAEAEA] transition-colors text-[#666666] text-[12px] font-['Manrope:SemiBold',sans-serif] border border-dashed border-[#DDDDDD]">
-                        <Plus className="w-4 h-4" /> Add Task
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="bg-white rounded-[16px] border border-[#EEEEEE] shadow-sm p-4 text-center text-[#666666]">
+              Kanban Board (Placeholder)
             </div>
           )}
         </div>
@@ -447,7 +347,7 @@ export function RequirementDetailsPage() {
             <MessageSquare className="w-5 h-5 text-[#ff3b3b]" />
             Activity & Chat
           </h3>
-          <p className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif] mt-1">
+          <p className="text-[12px] text-[#666666] font-['Manrope:Regular',sans-serif] mt-1">
             Team collaboration and updates
           </p>
         </div>
@@ -472,7 +372,7 @@ export function RequirementDetailsPage() {
                     }`}>
                     {activity.user}
                   </span>
-                  <span className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">
+                  <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
                     {activity.date}
                   </span>
                 </div>
@@ -481,31 +381,9 @@ export function RequirementDetailsPage() {
                   ? 'bg-[#F7F7F7] p-3 rounded-[12px] rounded-tl-none'
                   : ''
                   }`}>
-                  <p className="text-[13px] text-[#444444] font-['Inter:Regular',sans-serif]">
+                  <p className="text-[13px] text-[#444444] font-['Manrope:Regular',sans-serif]">
                     {activity.message}
                   </p>
-
-                  {activity.type === 'worklog' && activity.time && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="px-2 py-1 rounded bg-white text-[#666666] text-[11px] font-mono border border-[#EEEEEE]">
-                        {activity.time}
-                      </span>
-                      <span className="text-[11px] text-[#ff3b3b] font-['Inter:Medium',sans-serif]">
-                        {activity.task}
-                      </span>
-                    </div>
-                  )}
-
-                  {activity.attachments && activity.attachments.length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      {activity.attachments.map((file, idx) => (
-                        <div key={idx} className="flex items-center gap-2 p-2 bg-white rounded border border-[#EEEEEE]">
-                          <Paperclip className="w-3.5 h-3.5 text-[#666666]" />
-                          <span className="text-[11px] text-[#444444] truncate">{file}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -514,32 +392,13 @@ export function RequirementDetailsPage() {
 
         {/* Message Input */}
         <div className="p-4 border-t border-[#EEEEEE] bg-[#FAFAFA]">
-          {attachments.length > 0 && (
-            <div className="mb-3 space-y-1">
-              {attachments.map((file, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border border-[#EEEEEE]">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Paperclip className="w-3.5 h-3.5 text-[#666666] shrink-0" />
-                    <span className="text-[11px] text-[#444444] truncate">{file.name}</span>
-                  </div>
-                  <button
-                    onClick={() => setAttachments(attachments.filter((_, i) => i !== index))}
-                    className="p-1 hover:bg-[#FAFAFA] rounded transition-colors shrink-0"
-                  >
-                    <X className="w-3.5 h-3.5 text-[#999999]" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
           <div className="flex gap-2">
             <textarea
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Type a message or comment..."
-              className="flex-1 px-3 py-2 border border-[#DDDDDD] rounded-[12px] text-[13px] font-['Inter:Regular',sans-serif] focus:outline-none focus:border-[#ff3b3b] resize-none h-[80px] bg-white"
+              className="flex-1 px-3 py-2 border border-[#DDDDDD] rounded-[12px] text-[13px] font-['Manrope:Regular',sans-serif] focus:outline-none focus:border-[#ff3b3b] resize-none h-[80px] bg-white"
             />
             <div className="flex flex-col gap-2">
               <label htmlFor="file-upload" className="cursor-pointer p-2 hover:bg-white rounded-[8px] transition-colors">
@@ -562,63 +421,6 @@ export function RequirementDetailsPage() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function TimelineVisual({ startDate, dueDate }: { startDate?: string, dueDate: string }) {
-  const parseDate = (dateStr: string) => {
-    if (!dateStr) return null;
-    const [day, month, year] = dateStr.split('-');
-    return new Date(`${month} ${day}, ${year}`);
-  };
-
-  const start = startDate ? parseDate(startDate) : new Date();
-  const end = parseDate(dueDate);
-  // Mock today
-  const mockToday = new Date('2025-12-06');
-
-  if (!start || !end) return null;
-
-  const totalDuration = end.getTime() - start.getTime();
-  const elapsed = mockToday.getTime() - start.getTime();
-
-  let percentage = 0;
-  if (totalDuration > 0) {
-    percentage = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
-  } else {
-    percentage = 100;
-  }
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-  };
-
-  const isOverdue = mockToday > end;
-
-  return (
-    <div className="flex flex-col w-full gap-1.5">
-      <div className="flex items-center justify-between text-[10px] font-['Inter:Medium',sans-serif] text-[#666666]">
-        <span>{formatDate(start)}</span>
-        <span className={isOverdue ? "text-[#DC2626]" : "text-[#111111]"}>{formatDate(end)}</span>
-      </div>
-      <div className="relative w-full h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
-        <div
-          className={`absolute left-0 top-0 bottom-0 rounded-full transition-all duration-500 ${isOverdue ? 'bg-[#DC2626]' : 'bg-[#111111]'}`}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-      <div className="text-[10px] text-right font-['Inter:SemiBold',sans-serif]">
-        {isOverdue ? (
-          <span className="text-[#DC2626]">
-            {Math.ceil((mockToday.getTime() - end.getTime()) / (1000 * 60 * 60 * 24))} days overdue
-          </span>
-        ) : (
-          <span className="text-[#666666]">
-            {Math.ceil((end.getTime() - mockToday.getTime()) / (1000 * 60 * 60 * 24))} days left
-          </span>
-        )}
       </div>
     </div>
   );
@@ -667,8 +469,7 @@ function SubTaskRow({
         <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
           <Checkbox
             checked={selected}
-            onCheckedChange={onSelect}
-            className="border-[#DDDDDD] data-[state=checked]:bg-[#ff3b3b] data-[state=checked]:border-[#ff3b3b]"
+            onChange={onSelect}
           />
         </div>
 
@@ -680,7 +481,7 @@ function SubTaskRow({
             </h3>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">
+            <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
               #{task.taskId}
             </span>
           </div>
@@ -693,16 +494,11 @@ function SubTaskRow({
               {task.assignedTo ? task.assignedTo.split(' ').map((n: string) => n[0]).join('') : 'U'}
             </span>
           </div>
-          <div className="hidden group-hover:block absolute bg-white px-2 py-1 rounded shadow-lg border border-gray-100 -bottom-8 left-1/2 -translate-x-1/2 z-20">
-            <p className="text-[12px] text-[#666666] font-['Inter:Medium',sans-serif] whitespace-nowrap">
-              {task.assignedTo || 'Unassigned'}
-            </p>
-          </div>
         </div>
 
         {/* Due Date */}
         <div className="flex justify-center">
-          <span className="text-[13px] text-[#666666] font-['Inter:Medium',sans-serif]">{task.dueDate}</span>
+          <span className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif]">{task.dueDate}</span>
         </div>
 
         {/* Status */}
@@ -712,9 +508,7 @@ function SubTaskRow({
 
         {/* Actions */}
         <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-          <button className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F7F7F7] transition-colors">
-            <MoreVertical className="w-4 h-4 text-[#666666]" />
-          </button>
+          <Button type="text" shape="circle" icon={<MoreVertical className="w-4 h-4 text-[#666666]" />} />
         </div>
       </div>
     </div>
@@ -726,46 +520,10 @@ function StatusBadge({ status, showLabel }: { status: string, showLabel?: boolea
   let icon = <Clock className="w-3.5 h-3.5 animate-pulse" />;
   let label = status;
 
-  switch (status) {
-    case 'completed':
-      color = "bg-[#E8F5E9] text-[#16A34A]";
-      icon = <CheckCircle2 className="w-3.5 h-3.5 animate-[bounce_2s_ease-in-out_infinite]" />;
-      label = "Completed";
-      break;
-    case 'delayed':
-      color = "bg-[#FEE2E2] text-[#DC2626]";
-      icon = <AlertCircle className="w-3.5 h-3.5 animate-pulse" />;
-      label = "Delayed";
-      break;
-    case 'in-progress':
-      color = "bg-[#DBEAFE] text-[#2563EB]";
-      icon = <Loader2 className="w-3.5 h-3.5 animate-spin" />;
-      label = "In Progress";
-      break;
-    case 'todo':
-      color = "bg-[#F3F4F6] text-[#6B7280]";
-      icon = <Clock className="w-3.5 h-3.5" />;
-      label = "To Do";
-      break;
-    case 'impediment':
-      color = "bg-[#FEE2E2] text-[#DC2626]";
-      icon = <AlertCircle className="w-3.5 h-3.5 animate-pulse" />;
-      label = "Impediment";
-      break;
-  }
-
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className={`flex items-center justify-center w-7 h-7 rounded-full ${color} border border-current/10 cursor-help transition-transform hover:scale-110`}>
-            {icon}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{label}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${color}`}>
+      {icon}
+      {(showLabel || true) && <span className="text-[11px] font-['Manrope:Bold',sans-serif] uppercase tracking-wide">{label}</span>}
+    </div>
   );
 }

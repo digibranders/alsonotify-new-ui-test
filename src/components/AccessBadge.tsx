@@ -1,48 +1,61 @@
-import { Badge } from "./ui/badge";
-import { ShieldCheck, Briefcase, Users, User, Eye } from "lucide-react";
+import { Tag } from "antd";
 
 interface AccessBadgeProps {
-  role: string;
-  className?: string;
+  role: string | "Admin" | "Manager" | "Leader" | "Employee";
+  className?: string; // Support className for custom styling overrides
 }
 
 export function AccessBadge({ role, className }: AccessBadgeProps) {
-  // Normalize role for comparison
-  const roleLower = role.toLowerCase();
-  
-  let styles = "border-gray-200 bg-gray-50 text-gray-700";
-  let Icon = User;
+  let color = "default";
+  let textColor = "#666666";
+  let bgColor = "#F7F7F7";
+  let borderColor = "#DDDDDD";
 
-  switch (roleLower) {
-    case 'admin':
-      styles = "border-purple-200 bg-purple-50 text-purple-700";
-      Icon = ShieldCheck;
+  switch (role) {
+    case "Admin":
+      color = "error";
+      textColor = "#ff3b3b";
+      bgColor = "#FFF5F5";
+      borderColor = "#ff3b3b";
       break;
-    case 'manager':
-      styles = "border-blue-200 bg-blue-50 text-blue-700";
-      Icon = Briefcase;
+    case "Manager":
+      color = "processing";
+      textColor = "#2F80ED";
+      bgColor = "#F0F7FF";
+      borderColor = "#2F80ED";
       break;
-    case 'leader':
-      styles = "border-indigo-200 bg-indigo-50 text-indigo-700";
-      Icon = Users;
+    case "Leader":
+      color = "warning";
+      textColor = "#F2994A";
+      bgColor = "#FFFAF5";
+      borderColor = "#F2994A";
       break;
-    case 'employee':
-      styles = "border-emerald-200 bg-emerald-50 text-emerald-700";
-      Icon = User;
-      break;
+    case "Employee":
     default:
-        // Default styling
+      color = "default";
+      textColor = "#666666";
+      bgColor = "#F7F7F7";
+      borderColor = "#DDDDDD";
       break;
   }
 
+  // Using custom styling with Tag for exact visual match
   return (
-    <Badge variant="outline" className={`
-        border rounded-md px-2 py-0.5 text-[11px] font-medium flex items-center gap-1 w-fit
-        ${styles}
-        ${className || ''}
-    `}>
-        <Icon className="w-3 h-3" />
-        {role}
-    </Badge>
+    <Tag
+      className={className}
+      style={{
+        color: textColor,
+        backgroundColor: bgColor,
+        borderColor: borderColor,
+        borderRadius: "100px",
+        padding: "0 10px",
+        fontSize: "11px",
+        fontFamily: "'Manrope:SemiBold', sans-serif",
+        textTransform: "uppercase",
+        borderWidth: "1px",
+      }}
+    >
+      {role}
+    </Tag>
   );
 }

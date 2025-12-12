@@ -83,9 +83,9 @@ export function FilterBar({
           >
             <button
               onClick={() => setOpenDropdown(openDropdown === filter.id ? null : filter.id)}
-              className={`flex items-center gap-2 px-4 py-2 border border-[#EEEEEE] rounded text-[14px] font-['Inter:Regular',sans-serif] transition-colors min-w-[140px] justify-between ${hasSelection
-                  ? 'bg-[#F7F7F7] text-[#111111]'
-                  : 'bg-white text-[#999999] hover:bg-[#F7F7F7]'
+              className={`flex items-center gap-2 px-4 py-2 border border-[#EEEEEE] rounded text-[14px] font-['Manrope:Regular',sans-serif] transition-colors min-w-[140px] justify-between ${hasSelection
+                ? 'bg-[#F7F7F7] text-[#111111]'
+                : 'bg-white text-[#999999] hover:bg-[#F7F7F7]'
                 }`}
             >
               <span className="truncate">
@@ -104,9 +104,9 @@ export function FilterBar({
                       onFilterChange?.(filter.id, option);
                       setOpenDropdown(null);
                     }}
-                    className={`w-full text-left px-4 py-2.5 font-['Inter:Regular',sans-serif] text-[14px] hover:bg-[#F7F7F7] transition-colors ${selectedValue === option
-                        ? 'text-[#ff3b3b] bg-[#FEF3F2]'
-                        : 'text-[#666666]'
+                    className={`w-full text-left px-4 py-2.5 font-['Manrope:Regular',sans-serif] text-[14px] hover:bg-[#F7F7F7] transition-colors ${selectedValue === option
+                      ? 'text-[#ff3b3b] bg-[#FEF3F2]'
+                      : 'text-[#666666]'
                       }`}
                   >
                     {option}
@@ -127,7 +127,7 @@ export function FilterBar({
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={searchPlaceholder}
-            className="pl-10 pr-4 py-2 bg-white border border-[#EEEEEE] rounded-full text-[14px] font-['Inter:Medium',sans-serif] text-[#111111] placeholder:text-[#999999] focus:outline-none focus:border-[#ff3b3b] w-[240px]"
+            className="pl-10 pr-4 py-2 bg-white border border-[#EEEEEE] rounded-full text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111] placeholder:text-[#999999] focus:outline-none focus:border-[#ff3b3b] w-[240px]"
           />
         </div>
       )}

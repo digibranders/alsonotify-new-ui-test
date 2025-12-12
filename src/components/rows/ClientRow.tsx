@@ -1,7 +1,7 @@
-import { Checkbox } from "../ui/checkbox";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { Building, Calendar, Edit, Globe, Mail, MoreVertical, Phone, Trash2 } from "lucide-react";
+import { Checkbox, Dropdown, MenuProps } from "antd";
+import { Edit, MoreVertical, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { MouseEvent } from "react";
 
 export interface Client {
   id: number;
@@ -28,6 +28,23 @@ export function ClientRow({
   onSelect,
   onEdit
 }: ClientRowProps) {
+
+  const items: MenuProps['items'] = [
+    {
+      key: 'edit',
+      label: <span className="text-[13px] font-['Manrope:Medium',sans-serif]">Edit Details</span>,
+      icon: <Edit className="w-3.5 h-3.5" />,
+      onClick: (e) => { e.domEvent.stopPropagation(); onEdit(); }
+    },
+    {
+      key: 'delete',
+      label: <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#ff3b3b]">Deactivate</span>,
+      icon: <Trash2 className="w-3.5 h-3.5 text-[#ff3b3b]" />,
+      danger: true,
+      onClick: (e) => { e.domEvent.stopPropagation(); }
+    },
+  ];
+
   return (
     <div
       onClick={onSelect}
@@ -41,11 +58,10 @@ export function ClientRow({
     >
       <div className="grid grid-cols-[40px_1.5fr_1.2fr_1.5fr_1fr_1fr_0.8fr_0.3fr] gap-4 items-center">
         {/* Checkbox */}
-        <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-center" onClick={(e: MouseEvent) => e.stopPropagation()}>
           <Checkbox
             checked={selected}
-            onCheckedChange={onSelect}
-            className="border-[#DDDDDD] data-[state=checked]:bg-[#ff3b3b] data-[state=checked]:border-[#ff3b3b]"
+            onChange={onSelect}
           />
         </div>
 
@@ -74,7 +90,7 @@ export function ClientRow({
         {/* Email */}
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[13px] text-[#666666] font-['Inter:Regular',sans-serif] truncate">
+            <span className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] truncate">
               {client.email}
             </span>
           </div>
@@ -83,7 +99,7 @@ export function ClientRow({
         {/* Contact (Phone) */}
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[13px] text-[#111111] font-['Inter:Medium',sans-serif]">
+            <span className="text-[13px] text-[#111111] font-['Manrope:Medium',sans-serif]">
               {client.phone}
             </span>
           </div>
@@ -92,7 +108,7 @@ export function ClientRow({
         {/* Onboarding */}
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[13px] text-[#111111] font-['Inter:Medium',sans-serif]">
+            <span className="text-[13px] text-[#111111] font-['Manrope:Medium',sans-serif]">
               {client.onboarding}
             </span>
           </div>
@@ -101,31 +117,19 @@ export function ClientRow({
         {/* Country */}
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[13px] text-[#111111] font-['Inter:Medium',sans-serif]">
+            <span className="text-[13px] text-[#111111] font-['Manrope:Medium',sans-serif]">
               {client.country}
             </span>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F7F7F7] transition-colors">
-                <MoreVertical className="w-4 h-4 text-[#666666]" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[160px] p-1">
-              <DropdownMenuItem onClick={onEdit} className="text-[13px] font-['Inter:Medium',sans-serif]">
-                <Edit className="w-3.5 h-3.5 mr-2" />
-                Edit Details
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-[13px] font-['Inter:Medium',sans-serif] text-[#ff3b3b] focus:text-[#ff3b3b] focus:bg-[#FFF5F5]">
-                <Trash2 className="w-3.5 h-3.5 mr-2" />
-                Deactivate
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="flex justify-end" onClick={(e: MouseEvent) => e.stopPropagation()}>
+          <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
+            <button className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F7F7F7] transition-colors">
+              <MoreVertical className="w-4 h-4 text-[#666666]" />
+            </button>
+          </Dropdown>
         </div>
       </div>
     </div>

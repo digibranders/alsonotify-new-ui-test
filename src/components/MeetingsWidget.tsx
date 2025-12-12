@@ -1,11 +1,11 @@
 import svgPaths from "../constants/iconPaths";
-import { Plus, Clock, Users, Video } from 'lucide-react';
+import { Plus, Clock } from 'lucide-react';
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { Input } from './ui/input';
-import { Button } from './ui/button';
-import { Textarea } from './ui/textarea';
+import { Modal, Input, Button, Select } from 'antd';
 import Image from "next/image";
+
+const { TextArea } = Input;
+const { Option } = Select;
 
 export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const [showDialog, setShowDialog] = useState(false);
@@ -67,49 +67,54 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
         </div>
       </div>
 
-      {/* Add Meeting Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="font-['Manrope:Bold',sans-serif] text-[24px]">Schedule Meeting</DialogTitle>
-            <DialogDescription className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mt-2">Add a new meeting to your schedule.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
+      {/* Add Meeting Modal */}
+      <Modal
+        title={
+          <div className="font-['Manrope:Bold',sans-serif] text-[24px]">Schedule Meeting</div>
+        }
+        open={showDialog}
+        onCancel={() => setShowDialog(false)}
+        footer={null}
+        width={500}
+        centered
+        className="rounded-[16px] overflow-hidden"
+      >
+        <div className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-4">Add a new meeting to your schedule.</div>
+        <div className="space-y-4">
+          <div>
+            <label className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Meeting Title</label>
+            <Input placeholder="Enter meeting title" className="rounded-lg h-9" />
+          </div>
+          <div>
+            <label className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Description</label>
+            <TextArea placeholder="Meeting agenda and details" className="rounded-lg" rows={3} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2 block">Meeting Title</label>
-              <Input placeholder="Enter meeting title" className="rounded-lg" />
+              <label className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Time</label>
+              <Input type="time" className="rounded-lg h-9" />
             </div>
             <div>
-              <label className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2 block">Description</label>
-              <Textarea placeholder="Meeting agenda and details" className="rounded-lg" rows={2} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2 block">Time</label>
-                <Input type="time" className="rounded-lg" />
-              </div>
-              <div>
-                <label className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2 block">Duration</label>
-                <select className="w-full p-2 rounded-lg border border-[#EEEEEE] text-[14px]">
-                  <option>30 mins</option>
-                  <option>45 mins</option>
-                  <option>1 hour</option>
-                  <option>1.5 hours</option>
-                  <option>2 hours</option>
-                </select>
-              </div>
-            </div>
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setShowDialog(false)} className="flex-1 rounded-full">
-                Cancel
-              </Button>
-              <Button onClick={() => setShowDialog(false)} className="flex-1 rounded-full bg-[#ff3b3b] hover:bg-[#cc2f2f]">
-                Schedule
-              </Button>
+              <label className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Duration</label>
+              <Select className="w-full h-9" placeholder="Select duration" defaultValue="30 mins">
+                <Option value="30 mins">30 mins</Option>
+                <Option value="45 mins">45 mins</Option>
+                <Option value="1 hour">1 hour</Option>
+                <Option value="1.5 hours">1.5 hours</Option>
+                <Option value="2 hours">2 hours</Option>
+              </Select>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+          <div className="flex gap-3 pt-4">
+            <Button onClick={() => setShowDialog(false)} className="flex-1 rounded-full h-10 font-['Manrope:SemiBold',sans-serif]">
+              Cancel
+            </Button>
+            <Button type="primary" onClick={() => setShowDialog(false)} className="flex-1 rounded-full bg-[#ff3b3b] hover:bg-[#cc2f2f] h-10 font-['Manrope:SemiBold',sans-serif] border-none text-white">
+              Schedule
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }
@@ -121,8 +126,8 @@ function MeetingItem({ title, time, duration, attendees, totalAttendees, status,
         {/* Time Badge */}
         <div className="flex-shrink-0">
           <div className="w-14 h-14 bg-gradient-to-br from-[#ff3b3b] to-[#cc2f2f] rounded-xl flex flex-col items-center justify-center text-white">
-            <span className="text-[10px] font-['Inter:Medium',sans-serif] opacity-90">NOV</span>
-            <span className="text-[18px] font-['Inter:Bold',sans-serif]">18</span>
+            <span className="text-[10px] font-['Manrope:Medium',sans-serif] opacity-90">NOV</span>
+            <span className="text-[18px] font-['Manrope:Bold',sans-serif]">18</span>
           </div>
         </div>
 
@@ -130,10 +135,10 @@ function MeetingItem({ title, time, duration, attendees, totalAttendees, status,
         <div className="flex-1 min-w-0">
           {/* Title & Status */}
           <div className="flex items-start justify-between gap-2 mb-2">
-            <h4 className="font-['Inter:SemiBold',sans-serif] text-[13px] text-[#111111] line-clamp-1 flex-1">
+            <h4 className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] line-clamp-1 flex-1">
               {title}
             </h4>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-['Inter:Medium',sans-serif] flex-shrink-0 ${status === 'in-progress'
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-['Manrope:Medium',sans-serif] flex-shrink-0 ${status === 'in-progress'
               ? 'bg-[#E8F5E9] text-[#2E7D32]'
               : 'bg-[#E3F2FD] text-[#1565C0]'
               }`}>
@@ -143,12 +148,12 @@ function MeetingItem({ title, time, duration, attendees, totalAttendees, status,
 
           {/* Time & Duration */}
           <div className="flex items-center gap-3 mb-2">
-            <div className="flex items-center gap-1 text-[#666666] text-[11px] font-['Inter:Regular',sans-serif]">
+            <div className="flex items-center gap-1 text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">
               <Clock className="size-3.5" strokeWidth={2} />
               <span>{time}</span>
             </div>
             <div className="w-1 h-1 rounded-full bg-[#CCCCCC]" />
-            <span className="text-[#666666] text-[11px] font-['Inter:Regular',sans-serif]">{duration}</span>
+            <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">{duration}</span>
           </div>
 
           {/* Attendees & Platform */}
@@ -172,7 +177,7 @@ function MeetingItem({ title, time, duration, attendees, totalAttendees, status,
                 ))}
                 {totalAttendees > attendees.length && (
                   <div className="w-6 h-6 rounded-full border-2 border-white bg-[#ff3b3b] flex items-center justify-center">
-                    <span className="text-[9px] font-['Inter:SemiBold',sans-serif] text-white">
+                    <span className="text-[9px] font-['Manrope:SemiBold',sans-serif] text-white">
                       +{totalAttendees - attendees.length}
                     </span>
                   </div>
@@ -182,8 +187,8 @@ function MeetingItem({ title, time, duration, attendees, totalAttendees, status,
 
             {/* Organizer Badge */}
             <div className="flex items-center gap-1 px-2 py-1 bg-[#F7F7F7] rounded-md">
-              <span className="text-[10px] font-['Inter:Regular',sans-serif] text-[#999999]">by</span>
-              <span className="text-[10px] font-['Inter:Medium',sans-serif] text-[#666666]">{organizer}</span>
+              <span className="text-[10px] font-['Manrope:Regular',sans-serif] text-[#999999]">by</span>
+              <span className="text-[10px] font-['Manrope:Medium',sans-serif] text-[#666666]">{organizer}</span>
             </div>
           </div>
         </div>

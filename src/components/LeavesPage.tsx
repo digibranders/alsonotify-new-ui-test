@@ -207,11 +207,10 @@ export function LeavesPage() {
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
-                className={`px-4 py-2 rounded-[8px] font-['Manrope:SemiBold',sans-serif] text-[13px] transition-all ${
-                  statusFilter === status
+                className={`px-4 py-2 rounded-[8px] font-['Manrope:SemiBold',sans-serif] text-[13px] transition-all ${statusFilter === status
                     ? 'bg-[#ff3b3b] text-white'
                     : 'bg-[#F7F7F7] text-[#666666] hover:bg-[#EEEEEE]'
-                }`}
+                  }`}
               >
                 {status.charAt(0).toUpperCase() + status.slice(1)}
               </button>
@@ -241,15 +240,15 @@ export function LeavesPage() {
                       <div className="flex items-center gap-3 mb-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center">
                           <span className="text-[14px] text-white font-['Manrope:Bold',sans-serif]">
-                            {request.employeeName.split(' ').map(n => n[0]).join('')}
+                            {request.employeeName.split(' ').map((n: string) => n[0]).join('')}
                           </span>
                         </div>
                         <div>
-                          <h4 className="font-['Inter:SemiBold',sans-serif] text-[15px] text-[#111111] mb-1">
+                          <h4 className="font-['Manrope:SemiBold',sans-serif] text-[15px] text-[#111111] mb-1">
                             {request.employeeName}
                           </h4>
                           <span
-                            className={`inline-block px-3 py-1 rounded-full text-[11px] font-['Inter:SemiBold',sans-serif] ${getLeaveTypeColor(
+                            className={`inline-block px-3 py-1 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] ${getLeaveTypeColor(
                               request.leaveType
                             )}`}
                           >
@@ -260,44 +259,44 @@ export function LeavesPage() {
 
                       <div className="grid grid-cols-3 gap-4 mb-3">
                         <div>
-                          <p className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999] mb-1">
+                          <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
                             Duration
                           </p>
                           <div className="flex items-center gap-1">
                             <Calendar className="w-3 h-3 text-[#666666]" />
-                            <p className="text-[13px] font-['Inter:Medium',sans-serif] text-[#111111]">
+                            <p className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111]">
                               {request.startDate} - {request.endDate}
                             </p>
                           </div>
                         </div>
 
                         <div>
-                          <p className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999] mb-1">
+                          <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
                             Days
                           </p>
                           <div className="flex items-center gap-1">
                             <Clock className="w-3 h-3 text-[#666666]" />
-                            <p className="text-[13px] font-['Inter:SemiBold',sans-serif] text-[#111111]">
+                            <p className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
                               {request.days} {request.days === 1 ? 'day' : 'days'}
                             </p>
                           </div>
                         </div>
 
                         <div>
-                          <p className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999] mb-1">
+                          <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
                             Applied On
                           </p>
-                          <p className="text-[13px] font-['Inter:Medium',sans-serif] text-[#666666]">
+                          <p className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666]">
                             {request.appliedOn}
                           </p>
                         </div>
                       </div>
 
                       <div className="bg-white rounded-[12px] p-3">
-                        <p className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999] mb-1">
+                        <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
                           Reason
                         </p>
-                        <p className="text-[13px] font-['Inter:Regular',sans-serif] text-[#666666]">
+                        <p className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                           {request.reason}
                         </p>
                       </div>
@@ -305,23 +304,21 @@ export function LeavesPage() {
 
                     <div className="flex flex-col items-end gap-3">
                       <div
-                        className={`flex items-center gap-2 px-4 py-2 rounded-[8px] ${
-                          request.status === 'approved'
+                        className={`flex items-center gap-2 px-4 py-2 rounded-[8px] ${request.status === 'approved'
                             ? 'bg-[#E8F5E9]'
                             : request.status === 'rejected'
-                            ? 'bg-[#FFEBEE]'
-                            : 'bg-[#FFF3E0]'
-                        }`}
+                              ? 'bg-[#FFEBEE]'
+                              : 'bg-[#FFF3E0]'
+                          }`}
                       >
                         {getStatusIcon(request.status)}
                         <span
-                          className={`font-['Inter:SemiBold',sans-serif] text-[13px] ${
-                            request.status === 'approved'
+                          className={`font-['Manrope:SemiBold',sans-serif] text-[13px] ${request.status === 'approved'
                               ? 'text-[#4CAF50]'
                               : request.status === 'rejected'
-                              ? 'text-[#ff3b3b]'
-                              : 'text-[#FF9800]'
-                          }`}
+                                ? 'text-[#ff3b3b]'
+                                : 'text-[#FF9800]'
+                            }`}
                         >
                           {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                         </span>
@@ -360,10 +357,10 @@ export function LeavesPage() {
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center">
                     <span className="text-[14px] text-white font-['Manrope:Bold',sans-serif]">
-                      {balance.employeeName.split(' ').map(n => n[0]).join('')}
+                      {balance.employeeName.split(' ').map((n: string) => n[0]).join('')}
                     </span>
                   </div>
-                  <h4 className="font-['Inter:SemiBold',sans-serif] text-[15px] text-[#111111]">
+                  <h4 className="font-['Manrope:SemiBold',sans-serif] text-[15px] text-[#111111]">
                     {balance.employeeName}
                   </h4>
                 </div>
@@ -371,14 +368,14 @@ export function LeavesPage() {
                 <div className="grid grid-cols-3 gap-4">
                   {/* Sick Leave */}
                   <div className="bg-white rounded-[12px] p-4">
-                    <p className="text-[12px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2">
+                    <p className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2">
                       Sick Leave
                     </p>
                     <div className="flex items-baseline gap-1 mb-2">
                       <span className="font-['Manrope:Bold',sans-serif] text-[20px] text-[#ff3b3b]">
                         {balance.sick.total - balance.sick.used}
                       </span>
-                      <span className="text-[13px] font-['Inter:Regular',sans-serif] text-[#999999]">
+                      <span className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#999999]">
                         / {balance.sick.total}
                       </span>
                     </div>
@@ -392,14 +389,14 @@ export function LeavesPage() {
 
                   {/* Casual Leave */}
                   <div className="bg-white rounded-[12px] p-4">
-                    <p className="text-[12px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2">
+                    <p className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2">
                       Casual Leave
                     </p>
                     <div className="flex items-baseline gap-1 mb-2">
                       <span className="font-['Manrope:Bold',sans-serif] text-[20px] text-[#FF9800]">
                         {balance.casual.total - balance.casual.used}
                       </span>
-                      <span className="text-[13px] font-['Inter:Regular',sans-serif] text-[#999999]">
+                      <span className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#999999]">
                         / {balance.casual.total}
                       </span>
                     </div>
@@ -413,14 +410,14 @@ export function LeavesPage() {
 
                   {/* Vacation Leave */}
                   <div className="bg-white rounded-[12px] p-4">
-                    <p className="text-[12px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2">
+                    <p className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2">
                       Vacation Leave
                     </p>
                     <div className="flex items-baseline gap-1 mb-2">
                       <span className="font-['Manrope:Bold',sans-serif] text-[20px] text-[#2196F3]">
                         {balance.vacation.total - balance.vacation.used}
                       </span>
-                      <span className="text-[13px] font-['Inter:Regular',sans-serif] text-[#999999]">
+                      <span className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#999999]">
                         / {balance.vacation.total}
                       </span>
                     </div>

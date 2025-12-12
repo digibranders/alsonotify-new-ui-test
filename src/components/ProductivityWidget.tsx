@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useMutation } from "@tanstack/react-query";
 import {
   Play24Filled,
   Pause24Filled,
@@ -14,6 +15,8 @@ import {
   Document24Filled,
   Person24Filled
 } from "@fluentui/react-icons";
+import { generateAgentResponse } from "@/services/assistant";
+import { message as antdMessage } from "antd";
 
 interface Message {
   id: number;
@@ -36,6 +39,11 @@ export function ProductivityWidget() {
   const [isAnimating, setIsAnimating] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const conversationRef = useRef<HTMLDivElement>(null);
+
+  const { mutateAsync, isPending } = useMutation({
+    mutationFn: (data: { prompt: string; history: { role: "user" | "assistant"; content: string }[] }) =>
+      generateAgentResponse(data.prompt, data.history),
+  });
 
   // Timer effect
   useEffect(() => {
@@ -89,136 +97,104 @@ export function ProductivityWidget() {
     setTime(0);
   };
 
-  const handleSend = () => {
-    if (!message.trim()) return;
+  const handleSend = async () => {
+    if (!message.trim() || isPending) return;
+
+    const query = message.trim();
 
     // Add user message to conversation
     const userMessage: Message = {
       id: Date.now(),
       type: 'user',
-      content: message,
+      content: query,
       timestamp: new Date()
     };
 
     setConversations(prev => [...prev, userMessage]);
-
-    const query = message.toLowerCase();
-    let response: any = null;
-
-    // Task Creation & New Work
-    if (query.includes("new work") || query.includes("new task") || query.includes("create task")) {
-      response = {
-        type: "task_creation",
-        message: "Found 2 new client requests: Website redesign (Acme Corp) and Mobile app prototype (TechStart Inc)",
-        actions: ["Create Tasks", "View Details"]
-      };
-    }
-    // Timer Controls
-    else if (query.includes("start timer") || query.includes("start tracking")) {
-      response = {
-        type: "timer_action",
-        message: `Timer started for ${selectedTask}`,
-        task: selectedTask
-      };
-      setIsRunning(true);
-    }
-    else if (query.includes("stop timer") || query.includes("pause timer")) {
-      response = {
-        type: "info",
-        message: `Timer paused at ${formatTime(time)} for ${selectedTask}`
-      };
-      setIsRunning(false);
-    }
-    else if (query.includes("reset timer")) {
-      response = {
-        type: "info",
-        message: "Timer has been reset"
-      };
-      handleReset();
-    }
-    // Team Status
-    else if (query.includes("team status") || query.includes("team update") || query.includes("who's working")) {
-      response = {
-        type: "team_status",
-        message: "4 team members active: Satyam (Design System), Priya (Client Review), Rahul (Development), Anjali (User Research)",
-        actions: ["View Team", "Send Message"]
-      };
-    }
-    // Workspace/Project Info
-    else if (query.includes("workspace") || query.includes("project status") || query.includes("project update")) {
-      response = {
-        type: "workspace_info",
-        message: "Acme Corp workspace: 12 active tasks, 67% complete. Next deadline: Website Redesign (Nov 25)",
-        actions: ["View Workspace", "Update Progress"]
-      };
-    }
-    // Meetings
-    else if (query.includes("meeting") || query.includes("schedule") || query.includes("calendar")) {
-      response = {
-        type: "meeting_info",
-        message: "You have 2 meetings today: Client Review (10:00 AM) and Design Sprint Planning (2:30 PM)",
-        actions: ["View Calendar", "Join Meeting"]
-      };
-    }
-    // Time Tracking Summary
-    else if (query.includes("time today") || query.includes("hours today") || query.includes("my time")) {
-      response = {
-        type: "time_summary",
-        message: "Today: 4h 23m tracked across 3 tasks. Top task: Design System Planning (2h 15m)",
-        actions: ["View Report", "Export"]
-      };
-    }
-    // Leave Requests
-    else if (query.includes("leave") || query.includes("time off") || query.includes("vacation")) {
-      response = {
-        type: "leave_info",
-        message: "You have 12 leave days remaining. 1 pending request: Dec 24-26 (Awaiting approval)",
-        actions: ["Apply Leave", "View Calendar"]
-      };
-    }
-    // Deadlines & Due Tasks
-    else if (query.includes("deadline") || query.includes("due") || query.includes("overdue")) {
-      response = {
-        type: "deadline_alert",
-        message: "3 tasks due this week: Website Redesign (Nov 25), Client Presentation (Nov 22), Prototype Review (Nov 24)",
-        actions: ["View Tasks", "Prioritize"]
-      };
-    }
-    // Notes
-    else if (query.includes("note") || query.includes("reminder")) {
-      response = {
-        type: "note_info",
-        message: "Latest note: 'Design feedback from client call' - 2 hours ago",
-        actions: ["View Notes", "Add Note"]
-      };
-    }
-    // Productivity Stats
-    else if (query.includes("productivity") || query.includes("stats") || query.includes("performance")) {
-      response = {
-        type: "stats",
-        message: "This week: 87% task completion rate, 22h tracked, 15 tasks completed. Up 12% from last week! 🎉",
-        actions: ["View Dashboard", "Weekly Report"]
-      };
-    }
-    // Help & Commands
-    else if (query.includes("help") || query.includes("what can you do")) {
-      response = {
-        type: "help",
-        message: "I can help with: task management, time tracking, team status, meetings, workspace updates, and productivity insights. Try 'team status' or 'start timer'!"
-      };
-    }
-    // Default fallback
-    else {
-      response = {
-        type: "default",
-        message: "I'm here to help! Try asking about tasks, time tracking, team status, meetings, or workspace progress.",
-        actions: ["View Help", "Quick Actions"]
-      };
-    }
-
-    setConversations(prev => [...prev, { id: conversations.length + 1, type: 'ai', content: response.message, timestamp: new Date(), actions: response.actions, responseType: response.type }]);
     setMessage("");
     setIsFocused(false);
+
+    // Handle timer commands locally (these are UI actions, not AI queries)
+    const queryLower = query.toLowerCase();
+    if (queryLower.includes("start timer") || queryLower.includes("start tracking")) {
+      setIsRunning(true);
+      const timerMessage: Message = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: `Timer started for ${selectedTask}`,
+        timestamp: new Date(),
+        responseType: "timer_action"
+      };
+      setConversations(prev => [...prev, timerMessage]);
+      return;
+    }
+    if (queryLower.includes("stop timer") || queryLower.includes("pause timer")) {
+      setIsRunning(false);
+      const timerMessage: Message = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: `Timer paused at ${formatTime(time)} for ${selectedTask}`,
+        timestamp: new Date(),
+        responseType: "info"
+      };
+      setConversations(prev => [...prev, timerMessage]);
+      return;
+    }
+    if (queryLower.includes("reset timer")) {
+      handleReset();
+      const timerMessage: Message = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: "Timer has been reset",
+        timestamp: new Date(),
+        responseType: "info"
+      };
+      setConversations(prev => [...prev, timerMessage]);
+      return;
+    }
+
+    // Prepare History (Last 6 valid messages) excluding the current one we just added
+    const history = conversations
+      .filter((m) => m.type === "user" || m.type === "ai")
+      .slice(-6)
+      .map((m) => ({
+        role: (m.type === "user" ? "user" : "assistant") as "user" | "assistant",
+        content: m.content,
+      }));
+
+    try {
+      const result = await mutateAsync({ prompt: query, history });
+
+      if (result.error) {
+        const errorMessage: Message = {
+          id: Date.now() + 1,
+          type: 'ai',
+          content: result.error,
+          timestamp: new Date()
+        };
+        setConversations(prev => [...prev, errorMessage]);
+        antdMessage.error(result.error);
+        return;
+      }
+
+      const assistantMessage: Message = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: result.answer ?? "I couldn't generate a response for that request.",
+        timestamp: new Date()
+      };
+      setConversations(prev => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error("ProductivityWidget handleSend error", error);
+      const errorMessage: Message = {
+        id: Date.now() + 1,
+        type: 'ai',
+        content: "Unable to reach the assistant. Please try again.",
+        timestamp: new Date()
+      };
+      setConversations(prev => [...prev, errorMessage]);
+      antdMessage.error("Unable to reach the assistant. Please try again.");
+    }
   };
 
   const handleTaskSelect = (taskName: string) => {
@@ -235,23 +211,10 @@ export function ProductivityWidget() {
             <div className="w-8 h-8 bg-gradient-to-br from-[#ff3b3b] to-[#cc2f2f] rounded-full flex items-center justify-center flex-shrink-0 shadow-[2px_2px_4px_0px_inset_rgba(255,255,255,0.3)]">
               <Sparkle24Filled className="w-4 h-4 text-white fill-white" />
             </div>
-            <p className="flex-1 text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
+            <p className="flex-1 text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">
               {conversations[conversations.length - 1].content}
             </p>
 
-            {/* Action Buttons for responses with actions */}
-            {conversations[conversations.length - 1]?.actions && conversations[conversations.length - 1]?.actions!.length > 0 && (
-              <div className="flex gap-2">
-                <button className="px-5 py-2 bg-gradient-to-br from-[#ff3b3b] to-[#cc2f2f] text-white rounded-full text-[13px] font-['Manrope:SemiBold',sans-serif] hover:shadow-md transition-all active:scale-95 shadow-[2px_2px_4px_0px_inset_rgba(255,255,255,0.3)]">
-                  {conversations[conversations.length - 1]?.actions?.[0]}
-                </button>
-                {conversations[conversations.length - 1]?.actions?.[1] && (
-                  <button className="px-5 py-2 bg-[#F7F7F7] text-[#666666] rounded-full text-[13px] font-['Manrope:SemiBold',sans-serif] hover:bg-[#EEEEEE] transition-all active:scale-95">
-                    {conversations[conversations.length - 1]?.actions?.[1]}
-                  </button>
-                )}
-              </div>
-            )}
 
             {/* Success indicator for timer actions */}
             {conversations[conversations.length - 1].responseType === "timer_action" && (
@@ -317,7 +280,7 @@ export function ProductivityWidget() {
                   </div>
                   <div className="text-center">
                     <h4 className="font-['Manrope:Bold',sans-serif] text-[#111111] mb-2">How can I help you?</h4>
-                    <p className="text-[14px] text-[#999999] font-['Inter:Regular',sans-serif] max-w-md">
+                    <p className="text-[14px] text-[#999999] font-['Manrope:Regular',sans-serif] max-w-md">
                       Ask me about tasks, time tracking, team status, meetings, or workspace updates
                     </p>
                   </div>
@@ -366,24 +329,11 @@ export function ProductivityWidget() {
                         ? 'bg-gradient-to-br from-[#ff3b3b] to-[#cc2f2f] text-white shadow-sm'
                         : 'bg-[#F7F7F7] text-[#111111]'
                         }`}>
-                        <p className="text-[14px] font-['Inter:Medium',sans-serif]">
+                        <p className="text-[14px] font-['Manrope:Medium',sans-serif]">
                           {msg.content}
                         </p>
                       </div>
 
-                      {/* Action Buttons for AI messages */}
-                      {msg.type === 'ai' && msg.actions && msg.actions.length > 0 && (
-                        <div className="flex gap-2">
-                          <button className="px-4 py-2 bg-gradient-to-br from-[#ff3b3b] to-[#cc2f2f] text-white rounded-full text-[12px] font-['Manrope:SemiBold',sans-serif] hover:shadow-md transition-all active:scale-95 shadow-[2px_2px_4px_0px_inset_rgba(255,255,255,0.3)]">
-                            {msg.actions[0]}
-                          </button>
-                          {msg.actions[1] && (
-                            <button className="px-4 py-2 bg-[#F7F7F7] text-[#666666] rounded-full text-[12px] font-['Manrope:SemiBold',sans-serif] hover:bg-[#EEEEEE] transition-all active:scale-95">
-                              {msg.actions[1]}
-                            </button>
-                          )}
-                        </div>
-                      )}
 
                       {/* Status Badges */}
                       {msg.type === 'ai' && msg.responseType === 'timer_action' && (
@@ -399,7 +349,7 @@ export function ProductivityWidget() {
                         </div>
                       )}
 
-                      <span className="text-[10px] text-[#999999] font-['Inter:Regular',sans-serif] px-2">
+                      <span className="text-[10px] text-[#999999] font-['Manrope:Regular',sans-serif] px-2">
                         {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
@@ -424,7 +374,7 @@ export function ProductivityWidget() {
                 onFocus={() => setShowChatPopup(true)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 placeholder="Ask anything or give command..."
-                className="flex-1 bg-transparent text-[14px] font-['Inter:Regular',sans-serif] text-[#111111] placeholder:text-[#999999] focus:outline-none min-w-0"
+                className="flex-1 bg-transparent text-[14px] font-['Manrope:Regular',sans-serif] text-[#111111] placeholder:text-[#999999] focus:outline-none min-w-0"
               />
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button className="text-[#666666] hover:text-[#ff3b3b] flex items-center justify-center transition-all active:scale-90">
@@ -435,9 +385,14 @@ export function ProductivityWidget() {
                 </button>
                 <button
                   onClick={handleSend}
-                  className="text-[#ff3b3b] hover:text-[#cc2f2f] flex items-center justify-center transition-all active:scale-90"
+                  disabled={isPending || !message.trim()}
+                  className="text-[#ff3b3b] hover:text-[#cc2f2f] flex items-center justify-center transition-all active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Send24Filled className="w-[18px] h-[18px]" />
+                  {isPending ? (
+                    <div className="w-[18px] h-[18px] border-2 border-[#ff3b3b] border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Send24Filled className="w-[18px] h-[18px]" />
+                  )}
                 </button>
               </div>
             </div>
@@ -457,7 +412,7 @@ export function ProductivityWidget() {
                     onClick={() => setShowTaskSelector(!showTaskSelector)}
                     className="flex items-center gap-1.5 mt-1 group hover:bg-[#F7F7F7] rounded-full pr-2 -ml-1 transition-all"
                   >
-                    <p className="text-[11px] text-[#666666] font-['Inter:Medium',sans-serif] group-hover:text-[#111111] transition-colors pl-1">
+                    <p className="text-[11px] text-[#666666] font-['Manrope:Medium',sans-serif] group-hover:text-[#111111] transition-colors pl-1">
                       {selectedTask}
                     </p>
                     <ChevronDown24Filled className="w-3 h-3 text-[#666666] group-hover:text-[#111111] transition-colors" />
@@ -491,7 +446,7 @@ export function ProductivityWidget() {
           {showTaskSelector && (
             <div className="absolute bottom-full right-0 mb-2 bg-white rounded-[20px] shadow-lg border border-[#EEEEEE] p-3 animate-in slide-in-from-bottom-1 duration-200 z-10 w-[320px]">
               <div className="flex items-center gap-2 mb-2 px-2">
-                <span className="text-[10px] text-[#999999] font-['Inter:SemiBold',sans-serif] uppercase tracking-wide">
+                <span className="text-[10px] text-[#999999] font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide">
                   Select Task
                 </span>
                 <div className="flex-1 h-px bg-[#EEEEEE]" />
@@ -511,7 +466,7 @@ export function ProductivityWidget() {
                         }`}>
                         {task.name}
                       </p>
-                      <p className={`text-[10px] font-['Inter:Regular',sans-serif] mt-0.5 ${selectedTask === task.name ? 'text-white/80' : 'text-[#999999]'
+                      <p className={`text-[10px] font-['Manrope:Regular',sans-serif] mt-0.5 ${selectedTask === task.name ? 'text-white/80' : 'text-[#999999]'
                         }`}>
                         {task.project}
                       </p>

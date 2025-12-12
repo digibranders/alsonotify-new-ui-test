@@ -2,11 +2,8 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useData } from '../context/DataContext';
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { CheckSquare, Calendar, User, ArrowLeft, Clock, AlertCircle, CheckCircle2, Loader2, Flag } from 'lucide-react';
-import { Progress } from "./ui/progress";
+import { Tag, Button, Card, Progress } from 'antd';
+import { CheckSquare, Calendar, User, ArrowLeft, Clock, AlertCircle, CheckCircle2, Loader2, Flag, Briefcase } from 'lucide-react';
 
 export function TaskDetailsPage() {
     const params = useParams();
@@ -50,7 +47,7 @@ export function TaskDetailsPage() {
         <div className="flex flex-col h-full bg-[#F7F7F7] overflow-y-auto">
             {/* Header */}
             <div className="bg-white border-b border-[#EEEEEE] px-6 py-4 flex items-center gap-4 shrink-0">
-                <Button variant="ghost" size="icon" onClick={() => router.push('/tasks')} className="h-8 w-8">
+                <Button type="text" shape="circle" onClick={() => router.push('/tasks')} className="h-8 w-8 flex items-center justify-center">
                     <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <div className="flex flex-col">
@@ -60,7 +57,7 @@ export function TaskDetailsPage() {
                     </div>
                 </div>
                 <div className="ml-auto flex gap-2">
-                    <Button variant="outline" className="text-red-500 hover:text-red-600 hover:bg-red-50">Delete Task</Button>
+                    <Button danger type="text" className="text-red-500 hover:text-red-600 hover:bg-red-50">Delete Task</Button>
                     <Button>Edit Task</Button>
                 </div>
             </div>
@@ -68,17 +65,17 @@ export function TaskDetailsPage() {
             <div className="p-6 max-w-4xl mx-auto w-full space-y-6">
 
                 {/* Title Card */}
-                <Card className="border-none shadow-sm rounded-[16px] p-6">
+                <Card className="border-none shadow-sm rounded-[16px]" styles={{ body: { padding: '24px' } }}>
                     <div className="flex flex-col gap-4">
                         <div className="flex items-start justify-between">
                             <h2 className="text-2xl font-bold text-gray-900">{task.name}</h2>
-                            <Badge variant="outline" className={`${getStatusColor(task.status)} capitalize px-3 py-1`}>
+                            <Tag className={`${getStatusColor(task.status)} capitalize px-3 py-1 border-0 rounded-full text-sm`}>
                                 {task.status.replace('-', ' ')}
-                            </Badge>
+                            </Tag>
                         </div>
                         <div className="flex items-center gap-6 text-sm text-gray-500">
                             <div className="flex items-center gap-2">
-                                <BriefcaseIcon className="w-4 h-4" />
+                                <Briefcase className="w-4 h-4" />
                                 <span>{task.client}</span>
                             </div>
                             <div className="flex items-center gap-2">
@@ -92,28 +89,20 @@ export function TaskDetailsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {/* Main Content */}
                     <div className="md:col-span-2 space-y-6">
-                        <Card className="border-none shadow-sm rounded-[16px]">
-                            <CardHeader>
-                                <CardTitle className="text-lg">Description</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-gray-600 leading-relaxed">
-                                    No description provided for this task.
-                                </p>
-                            </CardContent>
+                        <Card className="border-none shadow-sm rounded-[16px]" title={<span className="text-lg">Description</span>}>
+                            <p className="text-gray-600 leading-relaxed">
+                                No description provided for this task.
+                            </p>
                         </Card>
 
-                        <Card className="border-none shadow-sm rounded-[16px]">
-                            <CardHeader>
-                                <CardTitle className="text-lg">Progress</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-6">
+                        <Card className="border-none shadow-sm rounded-[16px]" title={<span className="text-lg">Progress</span>}>
+                            <div className="space-y-6">
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-sm">
                                         <span className="font-medium text-gray-700">Time Tracking</span>
                                         <span className="text-gray-500">{task.timeSpent}h / {task.estTime}h</span>
                                     </div>
-                                    <Progress value={progress} className="h-2" />
+                                    <Progress percent={progress} size="small" showInfo={false} strokeColor="#3b82f6" />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
@@ -132,17 +121,14 @@ export function TaskDetailsPage() {
                                         </div>
                                     </div>
                                 </div>
-                            </CardContent>
+                            </div>
                         </Card>
                     </div>
 
                     {/* Sidebar */}
                     <div className="space-y-6">
-                        <Card className="border-none shadow-sm rounded-[16px]">
-                            <CardHeader>
-                                <CardTitle className="text-sm uppercase text-gray-500">Details</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
+                        <Card className="border-none shadow-sm rounded-[16px]" title={<span className="text-sm uppercase text-gray-500">Details</span>}>
+                            <div className="space-y-4">
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm text-gray-600">Assigned To</span>
                                     <div className="flex items-center gap-2">
@@ -158,18 +144,15 @@ export function TaskDetailsPage() {
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-sm text-gray-600">Priority</span>
-                                    <Badge variant="secondary" className={`${getPriorityColor(task.priority)} capitalize`}>
+                                    <Tag className={`${getPriorityColor(task.priority)} capitalize border-0 rounded-full px-2.5`}>
                                         {task.priority}
-                                    </Badge>
+                                    </Tag>
                                 </div>
-                            </CardContent>
+                            </div>
                         </Card>
 
-                        <Card className="border-none shadow-sm rounded-[16px]">
-                            <CardHeader>
-                                <CardTitle className="text-sm uppercase text-gray-500">Dates</CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
+                        <Card className="border-none shadow-sm rounded-[16px]" title={<span className="text-sm uppercase text-gray-500">Dates</span>}>
+                            <div className="space-y-4">
                                 <div className="flex items-start gap-3">
                                     <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
                                     <div>
@@ -184,31 +167,11 @@ export function TaskDetailsPage() {
                                         <p className="text-sm font-medium">{task.dueDate}</p>
                                     </div>
                                 </div>
-                            </CardContent>
+                            </div>
                         </Card>
                     </div>
                 </div>
             </div>
         </div>
     );
-}
-
-function BriefcaseIcon(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
-            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-        </svg>
-    )
 }

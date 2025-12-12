@@ -1,5 +1,4 @@
-import { Checkbox } from "../ui/checkbox";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
+import { Checkbox, Tooltip } from "antd";
 import { AlertCircle, CheckCircle2, Clock, Loader2, MoreVertical } from "lucide-react";
 import Link from "next/link";
 
@@ -31,7 +30,7 @@ export function TaskRow({
   selected,
   onSelect
 }: TaskRowProps) {
-  const progress = (task.timeSpent / task.estTime) * 100;
+  const progress = task.estTime > 0 ? (task.timeSpent / task.estTime) * 100 : 0;
 
   return (
     <div
@@ -49,8 +48,11 @@ export function TaskRow({
         <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
           <Checkbox
             checked={selected}
-            onCheckedChange={onSelect}
-            className="border-[#DDDDDD] data-[state=checked]:bg-[#ff3b3b] data-[state=checked]:border-[#ff3b3b]"
+            onChange={(e) => {
+              e.stopPropagation();
+              onSelect();
+            }}
+            className="data-[state=checked]:bg-[#ff3b3b] data-[state=checked]:border-[#ff3b3b]"
           />
         </div>
 
@@ -66,13 +68,13 @@ export function TaskRow({
             </Link>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">
+            <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
               #{task.taskId}
             </span>
             <Link
               href="/clients"
               onClick={(e) => e.stopPropagation()}
-              className="text-[11px] text-[#666666] font-['Inter:Medium',sans-serif] hover:text-[#ff3b3b] hover:underline"
+              className="text-[11px] text-[#666666] font-['Manrope:Medium',sans-serif] hover:text-[#ff3b3b] hover:underline"
             >
               • {task.client}
             </Link>
@@ -84,7 +86,7 @@ export function TaskRow({
           <Link
             href="/workspaces"
             onClick={(e) => e.stopPropagation()}
-            className="text-[13px] text-[#111111] font-['Inter:Medium',sans-serif] truncate hover:text-[#ff3b3b] hover:underline"
+            className="text-[13px] text-[#111111] font-['Manrope:Medium',sans-serif] truncate hover:text-[#ff3b3b] hover:underline"
           >
             {task.project}
           </Link>
@@ -94,11 +96,11 @@ export function TaskRow({
         <div className="flex items-center justify-center gap-2">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center">
             <span className="text-[11px] text-white font-['Manrope:Bold',sans-serif]">
-              {task.assignedTo.split(' ').map(n => n[0]).join('')}
+              {task.assignedTo.split(' ').map((n: string) => n[0]).join('')}
             </span>
           </div>
           <div className="hidden group-hover:block absolute bg-white px-2 py-1 rounded shadow-lg border border-gray-100 -bottom-8 left-1/2 -translate-x-1/2 z-20">
-            <p className="text-[12px] text-[#666666] font-['Inter:Medium',sans-serif] whitespace-nowrap">
+            <p className="text-[12px] text-[#666666] font-['Manrope:Medium',sans-serif] whitespace-nowrap">
               {task.assignedTo.split(' ')[0]}
             </p>
           </div>
@@ -122,20 +124,20 @@ export function TaskRow({
         {/* Progress */}
         <div>
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] text-[#666666] font-['Inter:Medium',sans-serif]">
+            <span className="text-[11px] text-[#666666] font-['Manrope:Medium',sans-serif]">
               {task.timeSpent}h / {task.estTime}h
             </span>
-            <span className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">
+            <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
               {Math.round(progress)}%
             </span>
           </div>
           <div className="w-full h-1.5 bg-[#F7F7F7] rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${progress >= 100
-                  ? 'bg-[#2E7D32]'
-                  : progress >= 75
-                    ? 'bg-[#FF9800]'
-                    : 'bg-[#3B82F6]'
+                ? 'bg-[#2E7D32]'
+                : progress >= 75
+                  ? 'bg-[#FF9800]'
+                  : 'bg-[#3B82F6]'
                 }`}
               style={{ width: `${Math.min(progress, 100)}%` }}
             />
@@ -191,17 +193,10 @@ function StatusBadge({ status }: { status: string }) {
   const Icon = style.icon;
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="cursor-help p-1">
-            <Icon className={`w-5 h-5 ${style.color} ${status === 'in-progress' ? 'animate-spin' : ''}`} />
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="text-[12px] font-['Manrope:Medium',sans-serif]">{style.label}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip title={style.label}>
+      <div className="cursor-help p-1">
+        <Icon className={`w-5 h-5 ${style.color} ${status === 'in-progress' ? 'animate-spin' : ''}`} />
+      </div>
+    </Tooltip>
   );
 }

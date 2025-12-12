@@ -1,249 +1,431 @@
-import { useState, useMemo } from 'react';
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Briefcase, List, LayoutGrid, Search, MoreVertical, Plus, Trash2, Edit, Phone, Mail, Globe, MapPin, Building, FolderOpen } from 'lucide-react';
 import { PageLayout } from './PageLayout';
 import { FilterBar, FilterOption } from './FilterBar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
-import { User, Mail, Archive, Trash2 } from 'lucide-react';
-import { Checkbox } from "./ui/checkbox";
-import { ClientForm, ClientFormData } from './forms/ClientForm';
-import { ClientRow } from './rows/ClientRow';
-import { useData } from '../context/DataContext';
-import { Client } from '../lib/types';
+import { Modal, Button, Input, Select, Checkbox, Dropdown, MenuProps, message } from 'antd';
+import { useClients, useCreateClient } from '@/hooks/useUser';
+
+const { TextArea } = Input;
+const { Option } = Select;
 
 export function ClientsPage() {
-  const { clients, addClient, updateClient } = useData();
-  const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
+  const router = useRouter();
+  const { data: clientsData, isLoading } = useClients();
+  const createClientMutation = useCreateClient();
+
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<Record<string, string>>({
-    country: 'All',
-    company: 'All'
+    status: 'All',
+    industry: 'All'
   });
-  const [selectedClients, setSelectedClients] = useState<number[]>([]);
 
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [newClient, setNewClient] = useState({
+    company: '',
+    name: '',
+    email: '',
+    phone: '',
+    industry: '',
+    description: '',
+    website: '',
+    address: ''
+  });
 
-  const filteredClients = useMemo(() => {
-    return clients.filter(client => {
-      const matchesTab = client.status === activeTab;
-      const matchesSearch = searchQuery === '' ||
-        client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        client.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        client.email.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCountry = filters.country === 'All' || client.country === filters.country;
-      const matchesCompany = filters.company === 'All' || client.company === filters.company;
-      return matchesTab && matchesSearch && matchesCountry && matchesCompany;
-    });
-  }, [clients, activeTab, searchQuery, filters]);
+  const clients = clientsData?.result || [];
+  const itemsPerPage = 8;
 
-  // Get unique filters
-  const countries = useMemo(() => ['All', ...Array.from(new Set(clients.map(c => c.country)))], [clients]);
-  const companies = useMemo(() => ['All', ...Array.from(new Set(clients.map(c => c.company)))], [clients]);
+  // Filter Options
+  const industries = ['All', ...Array.from(new Set(clients.map((c: any) => c.business_category).filter(Boolean)))];
 
   const filterOptions: FilterOption[] = [
     {
-      id: 'country',
-      label: 'Country',
-      options: countries,
-      placeholder: 'Country',
+      id: 'industry',
+      label: 'Industry',
+      options: industries as string[],
+      placeholder: 'Industry',
       defaultValue: 'All'
     },
     {
-      id: 'company',
-      label: 'Company',
-      options: companies,
-      placeholder: 'Company',
+      id: 'status',
+      label: 'Status',
+      options: ['All', 'Active', 'Inactive'],
+      placeholder: 'Status',
       defaultValue: 'All'
     }
   ];
 
+  const handleCreateClient = () => {
+    if (!newClient.company || !newClient.name) {
+      message.error("Company and Contact Name are required");
+      return;
+    }
+
+    createClientMutation.mutate(
+      {
+        company: newClient.company,
+        name: newClient.name,
+        email: newClient.email,
+        mobile: newClient.phone,
+        business_category: newClient.industry,
+        description: newClient.description,
+        website: newClient.website,
+        address: newClient.address,
+        password: 'password123' // Default password as per original logic if needed, or backend handles it
+      } as any,
+      {
+        onSuccess: () => {
+          message.success("Client added successfully!");
+          setIsDialogOpen(false);
+          setNewClient({
+            company: '',
+            name: '',
+            email: '',
+            phone: '',
+            industry: '',
+            description: '',
+            website: '',
+            address: ''
+          });
+        },
+        onError: (error: any) => {
+          const errorMessage = error?.response?.data?.message || "Failed to add client";
+          message.error(errorMessage);
+        }
+      }
+    );
+  };
+
   const handleFilterChange = (filterId: string, value: string) => {
     setFilters(prev => ({ ...prev, [filterId]: value }));
+    setCurrentPage(1);
   };
 
   const clearFilters = () => {
-    setFilters({ country: 'All', company: 'All' });
+    setFilters({ status: 'All', industry: 'All' });
     setSearchQuery('');
+    setCurrentPage(1);
   };
 
-  const handleOpenDialog = (client?: Client) => {
-    setEditingClient(client || null);
-    setIsDialogOpen(true);
-  };
+  const filteredClients = clients.filter((client: any) => {
+    const matchesSearch = searchQuery === '' ||
+      client.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      client.name?.toLowerCase().includes(searchQuery.toLowerCase());
 
-  const handleSaveClient = (data: ClientFormData) => {
-    // Validation: If editing, check name. If adding, check email.
-    if (editingClient) {
-      if (!data.name) return;
-    } else {
-      if (!data.email) return;
-    }
+    // Status filter is dummy for now as no status in returned data usually, but keeping structure
+    const matchesStatus = filters.status === 'All' || (filters.status === 'Active');
+    const matchesIndustry = filters.industry === 'All' || client.business_category === filters.industry;
 
-    const clientData: Client = {
-      id: editingClient ? editingClient.id : Math.max(...clients.map(c => c.id), 0) + 1,
-      name: data.name || "Pending Invite",
-      company: data.company || "Pending",
-      email: data.email,
-      phone: data.phone || "-",
-      country: data.country || "Pending",
-      status: editingClient ? editingClient.status : 'active',
-      requirements: parseInt(data.requirements) || 0,
-      onboarding: data.onboarding || new Date().toLocaleDateString()
-    };
+    return matchesSearch && matchesStatus && matchesIndustry;
+  });
 
-    if (editingClient) {
-      updateClient(editingClient.id, clientData);
-    } else {
-      addClient(clientData);
-    }
-
-    setIsDialogOpen(false);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedClients.length === filteredClients.length) {
-      setSelectedClients([]);
-    } else {
-      setSelectedClients(filteredClients.map(c => c.id));
-    }
-  };
-
-  const toggleSelect = (id: number) => {
-    if (selectedClients.includes(id)) {
-      setSelectedClients(selectedClients.filter(clientId => clientId !== id));
-    } else {
-      setSelectedClients([...selectedClients, id]);
-    }
-  };
+  const totalPages = Math.ceil(filteredClients.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentClients = filteredClients.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <PageLayout
       title="Clients"
-      tabs={[
-        { id: 'active', label: 'Active' },
-        { id: 'inactive', label: 'Deactivated' }
-      ]}
-      activeTab={activeTab}
-      onTabChange={(tabId) => setActiveTab(tabId as 'active' | 'inactive')}
-      titleAction={{
-        onClick: () => handleOpenDialog()
-      }}
+      action={
+        <Button
+          onClick={() => setIsDialogOpen(true)}
+          className="bg-[#111111] hover:bg-[#000000]/90 text-white border-0 h-10 px-4 rounded-lg flex items-center gap-2 font-['Manrope:SemiBold',sans-serif]"
+          icon={<Plus className="w-4 h-4" />}
+        >
+          Add Client
+        </Button>
+      }
     >
-      {/* Filters Bar */}
-      <div className="mb-6">
-        <FilterBar
-          filters={filterOptions}
-          selectedFilters={filters}
-          onFilterChange={handleFilterChange}
-          onClearFilters={clearFilters}
-          searchPlaceholder="Search clients..."
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-        />
-      </div>
+      <div className="flex flex-col h-full bg-white rounded-[24px] border border-[#EEEEEE] overflow-hidden">
 
-      <div className="flex-1 overflow-y-auto pb-24 relative">
-        {/* Table Header */}
-        <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_1.5fr_1.2fr_1.5fr_1fr_1fr_0.8fr_0.3fr] gap-4 px-4 py-3 mb-2 items-center">
-          <div className="flex justify-center">
-            <Checkbox
-              checked={filteredClients.length > 0 && selectedClients.length === filteredClients.length}
-              onCheckedChange={toggleSelectAll}
-              className="border-[#DDDDDD] data-[state=checked]:bg-[#ff3b3b] data-[state=checked]:border-[#ff3b3b]"
+        {/* Toolbar */}
+        <div className="p-6 border-b border-[#EEEEEE] flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <FilterBar
+              filters={filterOptions}
+              selectedFilters={filters}
+              onFilterChange={handleFilterChange}
+              onClearFilters={clearFilters}
+              searchPlaceholder="Search clients..."
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
             />
+
+            <div className="flex items-center bg-[#F7F7F7] p-1 rounded-lg border border-[#EEEEEE] ml-4">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-[#ff3b3b] shadow-sm' : 'text-[#999999] hover:text-[#111111]'}`}
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-[#ff3b3b] shadow-sm' : 'text-[#999999] hover:text-[#111111]'}`}
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Company Name</p>
-          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Contact Person</p>
-          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Email</p>
-          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Contact</p>
-          <div className="flex items-center gap-1">
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Onboarding</p>
-          </div>
-          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Country</p>
-          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide"></p>
         </div>
 
-        <div className="space-y-3">
-          {filteredClients.map((client) => (
-            <ClientRow
-              key={client.id}
-              client={client}
-              selected={selectedClients.includes(client.id)}
-              onSelect={() => toggleSelect(client.id)}
-              onEdit={() => handleOpenDialog(client)}
-            />
-          ))}
-        </div>
-
-        {filteredClients.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-[#999999] font-['Inter:Regular',sans-serif]">
-              No clients found
-            </p>
-          </div>
-        )}
-
-        {/* Bulk Action Bar */}
-        {selectedClients.length > 0 && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#111111] text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-6 z-20 animate-in slide-in-from-bottom-4 duration-200">
-            <div className="flex items-center gap-2 border-r border-white/20 pr-6">
-              <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
-                {selectedClients.length}
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-40">
+              <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">Loading clients...</p>
+            </div>
+          ) : filteredClients.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-60 text-center">
+              <div className="w-16 h-16 rounded-full bg-[#F7F7F7] flex items-center justify-center mb-4">
+                <Briefcase className="w-8 h-8 text-[#DDDDDD]" />
               </div>
-              <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
+              <h3 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-1">No clients found</h3>
+              <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif]">
+                Try adjusting your filters or add a new client.
+              </p>
+            </div>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {currentClients.map((client: any) => (
+                <ClientCard key={client.id} client={client} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {currentClients.map((client: any) => (
+                <ClientListItem key={client.id} client={client} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Create Client Modal */}
+        <Modal
+          title={
+            <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+              <div className="p-2 rounded-full bg-[#F7F7F7]">
+                <Building className="w-5 h-5 text-[#666666]" />
+              </div>
+              Add New Client
+            </div>
+          }
+          open={isDialogOpen}
+          onCancel={() => setIsDialogOpen(false)}
+          footer={null}
+          width={600}
+          centered
+          className="rounded-[16px] overflow-hidden"
+        >
+          <div className="mt-6 space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Company Name <span className="text-[#ff3b3b]">*</span></label>
+                <Input
+                  placeholder="e.g. Acme Corp"
+                  className="h-10 font-['Manrope:Regular',sans-serif]"
+                  value={newClient.company}
+                  onChange={(e) => setNewClient({ ...newClient, company: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Industry</label>
+                <Input
+                  placeholder="e.g. Technology"
+                  className="h-10 font-['Manrope:Regular',sans-serif]"
+                  value={newClient.industry}
+                  onChange={(e) => setNewClient({ ...newClient, industry: e.target.value })}
+                />
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Send Email">
-                <Mail className="w-4 h-4" />
-              </button>
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Deactivate">
-                <Archive className="w-4 h-4" />
-              </button>
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]" title="Delete">
-                <Trash2 className="w-4 h-4" />
-              </button>
+            <div className="space-y-2">
+              <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Contact Person <span className="text-[#ff3b3b]">*</span></label>
+              <Input
+                placeholder="Full Name"
+                className="h-10 font-['Manrope:Regular',sans-serif]"
+                value={newClient.name}
+                onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+              />
             </div>
 
-            <button onClick={() => setSelectedClients([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
-              Cancel
-            </button>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Email Address</label>
+                <Input
+                  placeholder="email@company.com"
+                  className="h-10 font-['Manrope:Regular',sans-serif]"
+                  value={newClient.email}
+                  onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Phone Number</label>
+                <Input
+                  placeholder="+1 (555) 000-0000"
+                  className="h-10 font-['Manrope:Regular',sans-serif]"
+                  value={newClient.phone}
+                  onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Website</label>
+              <Input
+                placeholder="https://example.com"
+                className="h-10 font-['Manrope:Regular',sans-serif]"
+                prefix={<Globe className="w-4 h-4 text-[#999999] mr-1" />}
+                value={newClient.website}
+                onChange={(e) => setNewClient({ ...newClient, website: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Address</label>
+              <Input
+                placeholder="123 Business St, City, Country"
+                className="h-10 font-['Manrope:Regular',sans-serif]"
+                prefix={<MapPin className="w-4 h-4 text-[#999999] mr-1" />}
+                value={newClient.address}
+                onChange={(e) => setNewClient({ ...newClient, address: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</label>
+              <TextArea
+                placeholder="Add client details..."
+                className="min-h-[100px] font-['Manrope:Regular',sans-serif] py-2"
+                value={newClient.description}
+                onChange={(e) => setNewClient({ ...newClient, description: e.target.value })}
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-6 border-t border-[#EEEEEE]">
+              <Button
+                onClick={() => setIsDialogOpen(false)}
+                className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666] border-none hover:bg-[#F7F7F7]"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="primary"
+                onClick={handleCreateClient}
+                loading={createClientMutation.isPending}
+                className="h-10 px-6 bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] border-none rounded-lg"
+              >
+                Add Client
+              </Button>
+            </div>
           </div>
-        )}
+        </Modal>
+
       </div>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] bg-white rounded-[16px] border border-[#EEEEEE] p-0 overflow-hidden gap-0">
-          <div className="p-6 border-b border-[#EEEEEE]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                <div className="p-2 rounded-full bg-[#F7F7F7]">
-                  <User className="w-5 h-5 text-[#666666]" />
-                </div>
-                {editingClient ? 'Edit Client' : 'Invite Client'}
-              </DialogTitle>
-              <DialogDescription className="text-[13px] text-[#666666] font-['Inter:Regular',sans-serif] ml-11">
-                {editingClient ? 'Update client details' : 'Send an invitation to a new client to join the workspace.'}
-              </DialogDescription>
-            </DialogHeader>
-          </div>
-
-          <ClientForm
-            initialData={editingClient ? {
-              name: editingClient.name,
-              company: editingClient.company,
-              email: editingClient.email,
-              phone: editingClient.phone,
-              country: editingClient.country,
-              requirements: editingClient.requirements.toString(),
-              onboarding: editingClient.onboarding
-            } : undefined}
-            onSubmit={handleSaveClient}
-            onCancel={() => setIsDialogOpen(false)}
-            isEditing={!!editingClient}
-          />
-        </DialogContent>
-      </Dialog>
     </PageLayout>
   );
+}
+
+function ClientCard({ client }: { client: any }) {
+  const items: MenuProps['items'] = [
+    { key: 'edit', label: 'Edit Details', icon: <Edit className="w-4 h-4" /> },
+    { key: 'archive', label: 'Archive Client', icon: <Trash2 className="w-4 h-4" />, danger: true },
+  ];
+
+  return (
+    <div className="group relative bg-white border border-[#EEEEEE] rounded-[16px] p-6 hover:border-[#ff3b3b] hover:shadow-lg hover:shadow-[#ff3b3b]/10 transition-all cursor-pointer">
+      <div className="absolute top-4 right-4 z-10">
+        <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
+          <button className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
+            <MoreVertical className="w-5 h-5 text-[#666666]" />
+          </button>
+        </Dropdown>
+      </div>
+
+      <div className="flex flex-col items-center text-center mb-6">
+        <div className="w-16 h-16 rounded-full bg-[#FEF3F2] border border-[#ff3b3b]/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+          <Briefcase className="w-8 h-8 text-[#ff3b3b]" />
+        </div>
+        <h3 className="font-['Manrope:Bold',sans-serif] text-[16px] text-[#111111] mb-1 line-clamp-1">{client.company}</h3>
+        <p className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif]">{client.business_category || 'General'}</p>
+      </div>
+
+      <div className="space-y-3 mb-6">
+        <div className="flex items-center gap-3 text-[13px] text-[#666666]">
+          <div className="w-8 h-8 rounded-full bg-[#F7F7F7] flex items-center justify-center shrink-0">
+            <Mail className="w-4 h-4 text-[#999999]" />
+          </div>
+          <span className="truncate">{client.email || 'No email'}</span>
+        </div>
+        <div className="flex items-center gap-3 text-[13px] text-[#666666]">
+          <div className="w-8 h-8 rounded-full bg-[#F7F7F7] flex items-center justify-center shrink-0">
+            <Phone className="w-4 h-4 text-[#999999]" />
+          </div>
+          <span>{client.mobile || 'No phone'}</span>
+        </div>
+        <div className="flex items-center gap-3 text-[13px] text-[#666666]">
+          <div className="w-8 h-8 rounded-full bg-[#F7F7F7] flex items-center justify-center shrink-0">
+            <FolderOpen className="w-4 h-4 text-[#999999]" />
+          </div>
+          <span>{client.projects?.length || 0} Active Projects</span>
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-[#EEEEEE] flex items-center justify-between">
+        <span className="px-2.5 py-1 rounded-full bg-[#F0FDF4] border border-[#BBF7D0] text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#16A34A]">
+          Active
+        </span>
+        <span className="text-[12px] font-['Manrope:SemiBold',sans-serif] text-[#666666]">
+          View Profile
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ClientListItem({ client }: { client: any }) {
+  const items: MenuProps['items'] = [
+    { key: 'edit', label: 'Edit Details', icon: <Edit className="w-4 h-4" /> },
+    { key: 'archive', label: 'Archive Client', icon: <Trash2 className="w-4 h-4" />, danger: true },
+  ];
+
+  return (
+    <div className="group flex items-center justify-between bg-white border border-[#EEEEEE] rounded-[12px] p-4 hover:border-[#ff3b3b] hover:shadow-md hover:shadow-[#ff3b3b]/5 transition-all cursor-pointer">
+      <div className="flex items-center gap-4 flex-1">
+        <div className="w-10 h-10 rounded-full bg-[#FEF3F2] flex items-center justify-center shrink-0">
+          <Briefcase className="w-5 h-5 text-[#ff3b3b]" />
+        </div>
+        <div>
+          <h3 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111]">{client.company}</h3>
+          <p className="text-[12px] text-[#666666] font-['Manrope:Regular',sans-serif]">{client.business_category}</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-8 mr-8">
+        <div className="flex items-center gap-2 w-48">
+          <Mail className="w-4 h-4 text-[#999999]" />
+          <span className="text-[13px] text-[#666666] truncate">{client.email}</span>
+        </div>
+        <div className="flex items-center gap-2 w-32">
+          <Phone className="w-4 h-4 text-[#999999]" />
+          <span className="text-[13px] text-[#666666]">{client.mobile}</span>
+        </div>
+        <div className="w-24">
+          <span className="px-2.5 py-1 rounded-full bg-[#F0FDF4] border border-[#BBF7D0] text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#16A34A]">
+            Active
+          </span>
+        </div>
+      </div>
+
+      <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
+        <button className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
+          <MoreVertical className="w-5 h-5 text-[#666666]" />
+        </button>
+      </Dropdown>
+    </div>
+  )
 }

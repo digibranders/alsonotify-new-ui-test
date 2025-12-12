@@ -1,23 +1,28 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useData } from '../../context/DataContext';
+import { useEmployee } from '@/hooks/useUser';
 import { PageLayout } from '../PageLayout';
 import { AccessBadge } from '../AccessBadge';
-import { Button } from '../ui/button';
+import { Button, Tag, Divider } from 'antd';
 import { Mail, Phone, Calendar, Briefcase, DollarSign, ArrowLeft } from 'lucide-react';
-import { Badge } from '../ui/badge';
-import { Separator } from '../ui/separator';
 
 export function EmployeeDetailsPage() {
   const params = useParams();
   const employeeId = params.employeeId as string;
   const router = useRouter();
-  const { getEmployee } = useData();
+  const { data: employeeData, isLoading } = useEmployee(parseInt(employeeId || '0'));
 
-  const employee = getEmployee(Number(employeeId));
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <p className="text-[#999999]">Loading employee...</p>
+      </div>
+    );
+  }
 
-  if (!employee) {
+  const backendEmp = employeeData?.result;
+  if (!backendEmp) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
         <h2 className="text-xl font-semibold mb-2">Employee not found</h2>
@@ -25,6 +30,26 @@ export function EmployeeDetailsPage() {
       </div>
     );
   }
+
+  // Transform backend data to UI format
+  const employee = {
+    id: backendEmp.user_id || backendEmp.id,
+    name: backendEmp.name || '',
+    role: backendEmp.designation || 'Unassigned',
+    email: backendEmp.email || '',
+    phone: backendEmp.phone || '',
+    hourlyRate: backendEmp.hourly_rates ? `$${backendEmp.hourly_rates}` : 'N/A',
+    dateOfJoining: backendEmp.date_of_joining ? new Date(backendEmp.date_of_joining).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A',
+    experience: backendEmp.experience || 0,
+    skillsets: backendEmp.skills?.join(', ') || 'None',
+    status: backendEmp.user_employee?.is_active !== false ? 'active' : 'inactive',
+    department: backendEmp.department?.name || 'Unassigned',
+    access: 'Employee' as 'Admin' | 'Manager' | 'Leader' | 'Employee',
+    salary: backendEmp.salary_yearly || backendEmp.salary || 0,
+    currency: 'USD',
+    workingHours: backendEmp.working_hours?.start_time && backendEmp.working_hours?.end_time ? 8 : 0,
+    leaves: backendEmp.no_of_leaves || 0,
+  };
 
   return (
     <PageLayout
@@ -42,19 +67,18 @@ export function EmployeeDetailsPage() {
             <h1 className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111] mb-2">{employee.name}</h1>
             <div className="flex items-center gap-2 text-[#666666]">
               <Briefcase className="w-4 h-4" />
-              <span className="text-sm font-['Inter:Medium',sans-serif]">{employee.role} • {employee.department}</span>
+              <span className="text-sm font-['Manrope:Medium',sans-serif]">{employee.role} • {employee.department}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <AccessBadge role={employee.access} className="px-3 py-1 text-sm" />
-            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border ${employee.status === 'active'
+            <AccessBadge role={employee.access} />
+            <Tag className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border ${employee.status === 'active'
               ? 'bg-green-50 text-green-700 border-green-200'
               : 'bg-red-50 text-red-700 border-red-200'
               }`}>
-              <div className={`w-2 h-2 rounded-full ${employee.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`} />
               {employee.status === 'active' ? 'Active' : 'Inactive'}
-            </div>
+            </Tag>
           </div>
         </div>
 
@@ -68,8 +92,8 @@ export function EmployeeDetailsPage() {
                   <Mail className="w-5 h-5 text-[#666666]" />
                 </div>
                 <div>
-                  <p className="text-xs text-[#999999]">Email Address</p>
-                  <p className="text-sm font-medium text-[#111111]">{employee.email}</p>
+                  <p className="text-xs text-[#999999] m-0">Email Address</p>
+                  <p className="text-sm font-medium text-[#111111] m-0">{employee.email}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -77,8 +101,8 @@ export function EmployeeDetailsPage() {
                   <Phone className="w-5 h-5 text-[#666666]" />
                 </div>
                 <div>
-                  <p className="text-xs text-[#999999]">Phone Number</p>
-                  <p className="text-sm font-medium text-[#111111]">{employee.phone}</p>
+                  <p className="text-xs text-[#999999] m-0">Phone Number</p>
+                  <p className="text-sm font-medium text-[#111111] m-0">{employee.phone}</p>
                 </div>
               </div>
             </div>
@@ -93,8 +117,8 @@ export function EmployeeDetailsPage() {
                   <Calendar className="w-5 h-5 text-[#666666]" />
                 </div>
                 <div>
-                  <p className="text-xs text-[#999999]">Date of Joining</p>
-                  <p className="text-sm font-medium text-[#111111]">{employee.dateOfJoining}</p>
+                  <p className="text-xs text-[#999999] m-0">Date of Joining</p>
+                  <p className="text-sm font-medium text-[#111111] m-0">{employee.dateOfJoining}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -102,15 +126,15 @@ export function EmployeeDetailsPage() {
                   <DollarSign className="w-5 h-5 text-[#666666]" />
                 </div>
                 <div>
-                  <p className="text-xs text-[#999999]">Hourly Rate</p>
-                  <p className="text-sm font-medium text-[#111111]">{employee.hourlyRate}</p>
+                  <p className="text-xs text-[#999999] m-0">Hourly Rate</p>
+                  <p className="text-sm font-medium text-[#111111] m-0">{employee.hourlyRate}</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <Separator className="my-8" />
+        <Divider className="my-8" />
 
         {/* Skills & Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -131,10 +155,10 @@ export function EmployeeDetailsPage() {
         <div className="mt-8">
           <h3 className="text-sm font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide mb-4">Skillsets</h3>
           <div className="flex flex-wrap gap-2">
-            {employee.skillsets.split(',').map((skill, index) => (
-              <Badge key={index} variant="secondary" className="bg-[#F7F7F7] text-[#111111] hover:bg-[#EEEEEE]">
+            {employee.skillsets.split(',').map((skill: string, index: number) => (
+              <Tag key={index} className="bg-[#F7F7F7] text-[#111111] hover:bg-[#EEEEEE] border-0 rounded-full px-3 py-1">
                 {skill.trim()}
-              </Badge>
+              </Tag>
             ))}
           </div>
         </div>

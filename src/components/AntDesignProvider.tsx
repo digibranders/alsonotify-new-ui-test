@@ -1,0 +1,24 @@
+"use client";
+
+import { AntdRegistry } from '@ant-design/nextjs-registry';
+import { ConfigProvider } from "antd";
+import { ReactNode } from "react";
+
+export function AntDesignProvider({ children }: { children: ReactNode }) {
+  return (
+    <AntdRegistry>
+      <ConfigProvider
+        theme={{
+          token: {
+            // Preserve Tailwind CSS color tokens
+            colorPrimary: "var(--primary)",
+            borderRadius: 8,
+          },
+        }}
+      >
+        {children}
+      </ConfigProvider>
+    </AntdRegistry>
+  );
+}
+

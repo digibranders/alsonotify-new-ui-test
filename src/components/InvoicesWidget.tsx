@@ -60,14 +60,14 @@ function InvoiceItem({ id, client, amount, status, date }: { id: string; client:
 
       {/* Invoice Details */}
       <div className="flex-1">
-        <p className="font-['Inter:SemiBold',sans-serif] text-[14px] text-[#111111] mb-1">{id}</p>
-        <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#666666]">{client}</p>
+        <p className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-1">{id}</p>
+        <p className="font-['Manrope:Regular',sans-serif] text-[12px] text-[#666666]">{client}</p>
       </div>
 
       {/* Amount & Status */}
       <div className="flex flex-col items-end gap-2">
-        <p className="font-['Inter:Bold',sans-serif] text-[14px] text-[#111111]">{amount}</p>
-        <span className={`text-[11px] font-['Inter:Medium',sans-serif] px-2 py-1 rounded ${getStatusColor()}`}>
+        <p className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111]">{amount}</p>
+        <span className={`text-[11px] font-['Manrope:Medium',sans-serif] px-2 py-1 rounded ${getStatusColor()}`}>
           {status}
         </span>
       </div>
