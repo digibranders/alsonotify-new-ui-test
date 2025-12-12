@@ -1,7 +1,7 @@
 'use client';
 
 import { AlsonotifyLayoutWrapper } from '../../AlsonotifyLayoutWrapper';
-import { EmployeeDetailsPage } from '../../../components/details/EmployeeDetailsPage';
+import { EmployeeDetailsPage } from '@/components/features/employees/EmployeeDetailsPage';
 
 export default function EmployeeDetailsPageRoute() {
   return (

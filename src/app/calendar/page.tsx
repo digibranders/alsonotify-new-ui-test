@@ -1,7 +1,7 @@
 'use client';
 
 import { AlsonotifyLayoutWrapper } from '../AlsonotifyLayoutWrapper';
-import { CalendarPage } from '../../components/CalendarPage';
+import { CalendarPage } from '../../components/features/calendar/CalendarPage';
 
 export default function CalendarPageRoute() {
   return (

@@ -2,11 +2,11 @@
 
 import { useRouter } from 'next/navigation';
 import { AlsonotifyLayoutWrapper } from '../AlsonotifyLayoutWrapper';
-import { ProgressWidget } from '../../components/ProgressWidget';
-import { MeetingsWidget } from '../../components/MeetingsWidget';
-import { TodoWidget } from '../../components/TodoWidget';
-import { LeavesWidget } from '../../components/LeavesWidget';
-import { ProductivityWidget } from '../../components/ProductivityWidget';
+import { ProgressWidget } from '../../components/dashboard/ProgressWidget';
+import { MeetingsWidget } from '../../components/dashboard/MeetingsWidget';
+import { TodoWidget } from '../../components/dashboard/TodoWidget';
+import { LeavesWidget } from '../../components/dashboard/LeavesWidget';
+import { ProductivityWidget } from '../../components/dashboard/ProductivityWidget';
 
 export default function DashboardPage() {
   const router = useRouter();

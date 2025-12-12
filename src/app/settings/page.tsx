@@ -1,7 +1,7 @@
 'use client';
 
 import { AlsonotifyLayoutWrapper } from '../AlsonotifyLayoutWrapper';
-import { SettingsPage } from '@/components/SettingsPage';
+import { SettingsPage } from '@/components/features/settings/SettingsPage';
 
 export default function SettingsPageRoute() {
     return (

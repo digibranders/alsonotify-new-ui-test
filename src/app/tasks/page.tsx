@@ -1,7 +1,7 @@
 'use client';
 
 import { AlsonotifyLayoutWrapper } from '../AlsonotifyLayoutWrapper';
-import { TasksPage } from '../../components/TasksPage';
+import { TasksPage } from '../../components/features/tasks/TasksPage';
 
 export default function TasksPageRoute() {
   return (
