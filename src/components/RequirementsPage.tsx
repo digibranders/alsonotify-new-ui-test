@@ -281,45 +281,47 @@ export function RequirementsPage() {
         onClick: () => setIsDialogOpen(true)
       }}
     >
-      <div className="mb-6 -mt-2">
-        <TabBar
-          tabs={[
-            { id: 'all', label: 'All', count: statusCounts.all },
-            { id: 'in-progress', label: 'In Progress', count: statusCounts.inProgress },
-            { id: 'completed', label: 'Completed', count: statusCounts.completed },
-            { id: 'delayed', label: 'Delayed', count: statusCounts.delayed }
-          ]}
-          activeTab={subTab}
-          onTabChange={(tab) => setSubTab(tab as 'all' | 'in-progress' | 'completed' | 'delayed')}
-        />
-      </div>
-
-      <div className="mb-6">
-        <FilterBar
-          filters={filterOptions}
-          selectedFilters={filters}
-          onFilterChange={handleFilterChange}
-          onClearFilters={clearFilters}
-          searchPlaceholder="Search requirements..."
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-        />
-      </div>
-
-      <div className="flex-1 overflow-y-auto">
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-          {filteredRequirements.map((requirement) => (
-            <RequirementCard key={requirement.id} requirement={requirement} />
-          ))}
+      <div className="flex flex-col h-full">
+        <div className="mb-6 -mt-2">
+          <TabBar
+            tabs={[
+              { id: 'all', label: 'All', count: statusCounts.all },
+              { id: 'in-progress', label: 'In Progress', count: statusCounts.inProgress },
+              { id: 'completed', label: 'Completed', count: statusCounts.completed },
+              { id: 'delayed', label: 'Delayed', count: statusCounts.delayed }
+            ]}
+            activeTab={subTab}
+            onTabChange={(tab) => setSubTab(tab as 'all' | 'in-progress' | 'completed' | 'delayed')}
+          />
         </div>
 
-        {filteredRequirements.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">
-              {isLoading ? "Loading requirements..." : "No requirements found"}
-            </p>
+        <div className="mb-6">
+          <FilterBar
+            filters={filterOptions}
+            selectedFilters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={clearFilters}
+            searchPlaceholder="Search requirements..."
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto pr-2">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 pb-6">
+            {filteredRequirements.map((requirement) => (
+              <RequirementCard key={requirement.id} requirement={requirement} />
+            ))}
           </div>
-        )}
+
+          {filteredRequirements.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">
+                {isLoading ? "Loading requirements..." : "No requirements found"}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       <Modal
