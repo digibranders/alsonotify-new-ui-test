@@ -112,17 +112,17 @@ export function ReportsPage() {
   };
 
   const filterOptions: FilterOption[] = [
-    { 
-      id: 'dateRange', 
-      label: 'Date Range', 
-      options: ['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'This Month', 'Last Month', 'Custom'], 
+    {
+      id: 'dateRange',
+      label: 'Date Range',
+      options: ['Last 7 Days', 'Last 30 Days', 'Last 90 Days', 'This Month', 'Last Month', 'Custom'],
       placeholder: 'Date Range',
       defaultValue: 'Last 30 Days'
     },
-    { 
-      id: 'company', 
-      label: 'Company', 
-      options: ['All Companies', 'Triem Security', 'Eventus Security', 'In-House'], 
+    {
+      id: 'company',
+      label: 'Company',
+      options: ['All Companies', 'Triem Security', 'Eventus Security', 'In-House'],
       placeholder: 'Company',
       defaultValue: 'All Companies'
     }
@@ -179,20 +179,20 @@ export function ReportsPage() {
               <h4 className="font-['Manrope:SemiBold',sans-serif] text-[15px] text-[#111111] mb-2">
                 {template.name}
               </h4>
-              <p className="text-[13px] font-['Inter:Regular',sans-serif] text-[#666666] mb-4">
+              <p className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666] mb-4">
                 {template.description}
               </p>
 
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999] mb-1">
+                  <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
                     Available Formats
                   </p>
                   <div className="flex items-center gap-2">
                     {template.formats.map((format) => (
                       <span
                         key={format}
-                        className="px-2 py-1 bg-white rounded-[6px] text-[11px] font-['Inter:SemiBold',sans-serif] text-[#666666] border border-[#EEEEEE]"
+                        className="px-2 py-1 bg-white rounded-[6px] text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#666666] border border-[#EEEEEE]"
                       >
                         {format}
                       </span>
@@ -209,7 +209,7 @@ export function ReportsPage() {
               </div>
 
               <div className="mt-4 pt-4 border-t border-[#DDDDDD]">
-                <div className="flex items-center gap-1 text-[11px] font-['Inter:Regular',sans-serif] text-[#999999]">
+                <div className="flex items-center gap-1 text-[11px] font-['Manrope:Regular',sans-serif] text-[#999999]">
                   <Calendar className="w-3 h-3" />
                   Last generated: {template.lastGenerated}
                 </div>

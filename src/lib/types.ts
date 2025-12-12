@@ -15,6 +15,7 @@ export interface Employee {
   currency: string;
   workingHours: number;
   leaves: number;
+  roleId?: number;
 }
 
 export interface Client {

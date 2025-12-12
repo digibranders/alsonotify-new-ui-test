@@ -1,51 +1,81 @@
-import { useState } from 'react';
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Separator } from "./ui/separator";
-// import profilePhoto from "figma:asset/1781e2061b1ba25df9b78787904bec3e7b4e9a89.png"; // Removed
+import { useState, useMemo, useEffect } from 'react';
+import { Button, Input, Select, Divider, message } from "antd";
 import { Camera, Pencil } from 'lucide-react';
-import { toast } from "sonner";
 import Image from "next/image";
+import { useUserDetails } from '@/hooks/useUser';
+
+const { Option } = Select;
 
 export function ProfilePage() {
    const [isEditing, setIsEditing] = useState(false);
+   const { data: userDetailsData } = useUserDetails();
 
-   const [profile, setProfile] = useState({
-      firstName: 'Satyam',
-      middleName: '',
-      lastName: 'Yadav',
-      email: 'satyam.yadav@alsonotify.com',
-      phone: '+91 98765 43210',
-      designation: 'Senior Product Designer',
-      dob: '1995-08-15',
-      gender: 'Male',
-      employeeId: 'AN-0042',
-      addressLine1: 'B-402, Green Valley Apartments',
-      addressLine2: 'Tech Park Road, Whitefield',
-      city: 'Bangalore',
-      state: 'Karnataka',
-      zipCode: '560066',
-      country: 'India',
-      emergencyContactName: 'Ravi Yadav',
-      emergencyRelationship: 'Brother',
-      emergencyContactNumber: '+91 98765 00000',
-      newPassword: '',
-      confirmPassword: ''
-   });
+   // Get user data from localStorage or backend
+   const user = useMemo(() => {
+      // First try localStorage (most up-to-date after login)
+      try {
+         if (typeof window !== 'undefined') {
+            const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+            if (localUser && Object.keys(localUser).length > 0) {
+               return localUser;
+            }
+         }
+      } catch (error) {
+         console.error("Error reading user from localStorage:", error);
+      }
+      // Fallback to API data - backend returns { result: { user: {...user_profile nested inside...}, access: {...}, token: "..." } }
+      const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
+      return apiUser;
+   }, [userDetailsData]);
+
+   // Initialize profile state with real data or fallback to mock data
+   const initialProfile = useMemo(() => {
+      const userProfile = user?.user_profile || {};
+      const fullName = user?.name || '';
+      const nameParts = fullName.split(' ');
+
+      return {
+         firstName: userProfile?.first_name || nameParts[0] || 'Satyam', // Mock fallback
+         middleName: userProfile?.middle_name || nameParts[1] || '',
+         lastName: userProfile?.last_name || nameParts.slice(2).join(' ') || nameParts[1] || 'Yadav', // Mock fallback
+         email: user?.email || 'satyam.yadav@alsonotify.com', // Mock fallback
+         phone: userProfile?.mobile_number || user?.phone || '+91 98765 43210', // Mock fallback
+         designation: userProfile?.designation || user?.designation || 'Senior Product Designer', // Mock fallback
+         dob: userProfile?.date_of_birth ? new Date(userProfile.date_of_birth).toISOString().split('T')[0] : '1995-08-15', // Mock fallback
+         gender: userProfile?.gender || 'Male', // Mock fallback
+         employeeId: user?.employee_id || userProfile?.employee_id || 'AN-0042', // Mock fallback
+         addressLine1: userProfile?.address?.split(',')[0] || userProfile?.address || 'B-402, Green Valley Apartments', // Mock fallback
+         addressLine2: userProfile?.address?.split(',').slice(1).join(',') || 'Tech Park Road, Whitefield', // Mock fallback
+         city: userProfile?.city || 'Bangalore', // Mock fallback
+         state: userProfile?.state || 'Karnataka', // Mock fallback
+         zipCode: userProfile?.zipcode || '560066', // Mock fallback
+         country: userProfile?.country || 'India', // Mock fallback
+         emergencyContactName: (userProfile?.emergency_contact as any)?.name || 'Ravi Yadav', // Mock fallback
+         emergencyRelationship: (userProfile?.emergency_contact as any)?.relationship || 'Brother', // Mock fallback
+         emergencyContactNumber: (userProfile?.emergency_contact as any)?.phone || '+91 98765 00000', // Mock fallback
+         newPassword: '',
+         confirmPassword: ''
+      };
+   }, [user]);
+
+   const [profile, setProfile] = useState(initialProfile);
+
+   // Update profile when user data changes
+   useEffect(() => {
+      setProfile(initialProfile);
+   }, [initialProfile]);
 
    const renderField = (label: string, value: string, field: keyof typeof profile, type: string = "text", placeholder: string = "-") => {
       return (
          <div className="space-y-2">
-            <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">{label}</Label>
+            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">{label}</div>
             <Input
                value={profile[field]}
                onChange={(e) => setProfile({ ...profile, [field]: e.target.value })}
                placeholder={placeholder}
                type={type}
                disabled={!isEditing}
-               className={`h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif] text-[13px] ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}
+               className={`h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Manrope:Medium',sans-serif] text-[13px] ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}
             />
          </div>
       );
@@ -54,20 +84,16 @@ export function ProfilePage() {
    const renderSelect = (label: string, value: string, field: keyof typeof profile, options: string[]) => {
       return (
          <div className="space-y-2">
-            <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">{label}</Label>
+            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">{label}</div>
             <Select
                value={profile[field]}
-               onValueChange={(v) => setProfile({ ...profile, [field]: v })}
+               onChange={(v) => setProfile({ ...profile, [field]: String(v) })}
                disabled={!isEditing}
+               className={`w-full h-11 ${!isEditing ? 'bg-[#FAFAFA]' : ''}`}
             >
-               <SelectTrigger className={`h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif] text-[13px] ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}>
-                  <SelectValue placeholder="-" />
-               </SelectTrigger>
-               <SelectContent>
-                  {options.map(opt => (
-                     <SelectItem key={opt} value={opt} className="text-[13px] font-['Inter:Medium',sans-serif]">{opt}</SelectItem>
-                  ))}
-               </SelectContent>
+               {options.map(opt => (
+                  <Option key={opt} value={opt}>{opt}</Option>
+               ))}
             </Select>
          </div>
       );
@@ -75,7 +101,7 @@ export function ProfilePage() {
 
    const handleSaveChanges = () => {
       setIsEditing(false);
-      toast.success('Profile updated successfully!');
+      message.success('Profile updated successfully!');
    };
 
    const handleCancelEdit = () => {
@@ -96,7 +122,7 @@ export function ProfilePage() {
                {!isEditing ? (
                   <Button
                      onClick={handleEdit}
-                     className="bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px] flex items-center gap-2"
+                     className="bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px] flex items-center gap-2 border-none"
                   >
                      <Pencil className="w-4 h-4" />
                      Edit
@@ -105,21 +131,21 @@ export function ProfilePage() {
                   <div className="flex items-center gap-3">
                      <Button
                         onClick={handleCancelEdit}
-                        variant="ghost"
+                        type="text"
                         className="text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px]"
                      >
                         Cancel
                      </Button>
                      <Button
                         onClick={handleSaveChanges}
-                        className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-8 h-10 rounded-full shadow-lg shadow-[#ff3b3b]/20 text-[13px]"
+                        className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-8 h-10 rounded-full shadow-lg shadow-[#ff3b3b]/20 text-[13px] border-none"
                      >
                         Save Changes
                      </Button>
                   </div>
                )}
             </div>
-            <p className="text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">Manage your account settings and preferences</p>
+            <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif]">Manage your account settings and preferences</p>
          </div>
 
          <div className="flex-1 overflow-y-auto pr-2 pb-10">
@@ -136,7 +162,7 @@ export function ProfilePage() {
                      <div className="relative group cursor-pointer">
                         <div className="w-32 h-32 rounded-full overflow-hidden border border-[#EEEEEE] shadow-sm">
                            <Image
-                              src="https://github.com/shadcn.png"
+                              src={user?.user_profile?.profile_pic || user?.profile_pic || "https://github.com/shadcn.png"}
                               alt="Profile"
                               width={128}
                               height={128}
@@ -174,7 +200,7 @@ export function ProfilePage() {
                </div>
             </section>
 
-            <Separator className="my-8 bg-[#EEEEEE]" />
+            <Divider className="my-8 bg-[#EEEEEE]" />
 
             {/* Address Information */}
             <section className="mb-10">
@@ -191,7 +217,7 @@ export function ProfilePage() {
                </div>
             </section>
 
-            <Separator className="my-8 bg-[#EEEEEE]" />
+            <Divider className="my-8 bg-[#EEEEEE]" />
 
             {/* Emergency Contact Information */}
             <section className="mb-10">
@@ -205,7 +231,7 @@ export function ProfilePage() {
                </div>
             </section>
 
-            <Separator className="my-8 bg-[#EEEEEE]" />
+            <Divider className="my-8 bg-[#EEEEEE]" />
 
             {/* Password */}
             <section className="mb-6">

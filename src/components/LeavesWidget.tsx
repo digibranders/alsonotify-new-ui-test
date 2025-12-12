@@ -1,10 +1,10 @@
 import svgPaths from "../constants/iconPaths";
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { Input } from './ui/input';
-import { Button } from './ui/button';
+import { Modal, Input, Button, Select } from 'antd';
 import Image from "next/image";
+
+const { Option } = Select;
 
 export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const [showDialog, setShowDialog] = useState(false);
@@ -42,48 +42,55 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
         </div>
       </div>
 
-      {/* Add Leave Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="font-['Manrope:Bold',sans-serif] text-[24px]">Request Leave</DialogTitle>
-            <DialogDescription className="font-['Inter:Regular',sans-serif] text-[14px] text-[#666666]">Please fill out the form below to request a leave.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
+      {/* Add Leave Modal */}
+      <Modal
+        open={showDialog}
+        onCancel={() => setShowDialog(false)}
+        footer={null}
+        width={500}
+        centered
+        className="rounded-[16px] overflow-hidden"
+      >
+        <div className="p-0">
+          <div className="mb-6">
+            <h2 className="font-['Manrope:Bold',sans-serif] text-[24px] text-[#111111] mb-1">Request Leave</h2>
+            <p className="font-['Manrope:Regular',sans-serif] text-[14px] text-[#666666]">Please fill out the form below to request a leave.</p>
+          </div>
+          <div className="space-y-4">
             <div>
-              <label className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2 block">Employee Name</label>
-              <Input placeholder="Enter name" className="rounded-lg" />
+              <label className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Employee Name</label>
+              <Input placeholder="Enter name" className="rounded-lg h-10 font-['Manrope:Medium',sans-serif]" />
             </div>
             <div>
-              <label className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2 block">Leave Type</label>
-              <select className="w-full p-2 rounded-lg border border-[#EEEEEE] text-[14px]">
-                <option>Sick Leave</option>
-                <option>Vacation</option>
-                <option>Personal</option>
-                <option>Casual</option>
-              </select>
+              <label className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Leave Type</label>
+              <Select className="w-full h-10 font-['Manrope:Medium',sans-serif]" placeholder="Select type">
+                <Option value="Sick Leave">Sick Leave</Option>
+                <Option value="Vacation">Vacation</Option>
+                <Option value="Personal">Personal</Option>
+                <Option value="Casual">Casual</Option>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2 block">From Date</label>
-                <Input type="date" className="rounded-lg" />
+                <label className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">From Date</label>
+                <Input type="date" className="rounded-lg h-10 font-['Manrope:Medium',sans-serif]" />
               </div>
               <div>
-                <label className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2 block">To Date</label>
-                <Input type="date" className="rounded-lg" />
+                <label className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">To Date</label>
+                <Input type="date" className="rounded-lg h-10 font-['Manrope:Medium',sans-serif]" />
               </div>
             </div>
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setShowDialog(false)} className="flex-1 rounded-full">
+              <Button type="default" onClick={() => setShowDialog(false)} className="flex-1 rounded-full h-10 font-['Manrope:SemiBold',sans-serif]">
                 Cancel
               </Button>
-              <Button onClick={() => setShowDialog(false)} className="flex-1 rounded-full bg-[#ff3b3b] hover:bg-[#cc2f2f]">
+              <Button type="primary" onClick={() => setShowDialog(false)} className="flex-1 rounded-full bg-[#ff3b3b] hover:bg-[#cc2f2f] h-10 border-none font-['Manrope:SemiBold',sans-serif]">
                 Submit Request
               </Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </Modal>
     </>
   );
 }
@@ -98,12 +105,12 @@ function LeaveItem({ name, type, dates, avatar }: { name: string; type: string; 
 
       {/* Leave Details */}
       <div className="flex-1">
-        <p className="font-['Inter:Medium',sans-serif] text-[14px] text-[#111111] mb-1">{name}</p>
-        <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#666666]">{type}</p>
+        <p className="font-['Manrope:Medium',sans-serif] text-[14px] text-[#111111] mb-1">{name}</p>
+        <p className="font-['Manrope:Regular',sans-serif] text-[12px] text-[#666666]">{type}</p>
       </div>
 
       {/* Dates */}
-      <div className="flex items-center gap-1 text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">
+      <div className="flex items-center gap-1 text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
         <svg className="size-[14px]" fill="none" viewBox="0 0 17 17">
           <path d={svgPaths.pe10e980} stroke="#666666" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
           <path d="M11.334 2.125V4.95833" stroke="#666666" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />

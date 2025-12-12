@@ -5,7 +5,7 @@
 
 # Testing
 /coverage
-
+guidelines/
 # Next.js
 /.next/
 /out/

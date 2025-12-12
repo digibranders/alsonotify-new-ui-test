@@ -1,0 +1,54 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { doLogin, doSignup } from "../services/auth";
+import { setToken, deleteToken, getToken } from "../services/cookies";
+import axiosApi from "../config/axios";
+import { getUserDetails } from "../services/user";
+
+export const useLogin = () => {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (credentials: { email: string; password: string }) => doLogin(credentials),
+    onSuccess: (data) => {
+      if (data.success && data.result.token) {
+        setToken(data.result.token);
+        axiosApi.defaults.headers.common["authorization"] = data.result.token;
+        queryClient.setQueryData(["user"], data.result.user);
+        router.push("/dashboard");
+      }
+    },
+  });
+};
+
+export const useRegister = () => {
+  return useMutation({
+    mutationFn: (params: { name: string; email: string; password: string; token: string | null }) =>
+      doSignup(params.name, params.email, params.password, params.token),
+  });
+};
+
+export const useLogout = () => {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  return () => {
+    deleteToken();
+    delete axiosApi.defaults.headers.common["authorization"];
+    queryClient.clear();
+    router.push("/login");
+  };
+};
+
+export const useUser = () => {
+  const token = getToken();
+  
+  return useQuery({
+    queryKey: ["user"],
+    queryFn: getUserDetails,
+    enabled: !!token,
+    retry: false,
+  });
+};
+

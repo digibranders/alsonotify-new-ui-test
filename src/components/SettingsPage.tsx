@@ -1,13 +1,10 @@
 import { useState } from 'react';
-import { Plus, Edit, Trash2, Clock, Calendar as CalendarIcon, Save, X, Check, Pencil } from 'lucide-react';
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Textarea } from "./ui/textarea";
-import { Switch } from "./ui/switch";
-import { Separator } from "./ui/separator";
-import { toast } from "sonner";
+import { Plus, Edit, Trash2, X, Pencil } from 'lucide-react';
+import { Button, Input, Select, Switch, Divider } from "antd";
+import { message } from "antd";
+
+const { TextArea } = Input;
+const { Option } = Select;
 
 interface Department {
   id: string;
@@ -92,7 +89,7 @@ export function SettingsPage() {
 
   const handleSaveChanges = () => {
     setIsEditing(false);
-    toast.success('Settings saved successfully!');
+    message.success('Settings saved successfully!');
   };
 
   const handleCancelEdit = () => {
@@ -113,7 +110,7 @@ export function SettingsPage() {
           {!isEditing ? (
             <Button
               onClick={handleEdit}
-              className="bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px] flex items-center gap-2"
+              className="bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px] flex items-center gap-2 border-none"
             >
               <Pencil className="w-4 h-4" />
               Edit
@@ -122,14 +119,14 @@ export function SettingsPage() {
             <div className="flex items-center gap-3">
               <Button
                 onClick={handleCancelEdit}
-                variant="ghost"
+                type="text"
                 className="text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px]"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSaveChanges}
-                className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-8 h-10 rounded-full shadow-lg shadow-[#ff3b3b]/20 text-[13px]"
+                className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-8 h-10 rounded-full shadow-lg shadow-[#ff3b3b]/20 text-[13px] border-none"
               >
                 Save Changes
               </Button>
@@ -185,64 +182,64 @@ export function SettingsPage() {
 
               <div className="grid grid-cols-2 gap-6 mb-6">
                 <div className="space-y-2">
-                  <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Company Name</Label>
+                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Company Name</span>
                   <Input
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     disabled={!isEditing}
-                    className={`h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif] text-[13px] ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}
+                    className={`h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px] ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Tax ID</Label>
+                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Tax ID</span>
                   <Input
                     value={taxId}
                     onChange={(e) => setTaxId(e.target.value)}
                     placeholder="Enter Tax ID"
                     disabled={!isEditing}
-                    className={`h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif] text-[13px] ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}
+                    className={`h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px] ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-6 mb-6">
                 <div className="space-y-2">
-                  <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Time Zone</Label>
-                  <Select value={timeZone} onValueChange={setTimeZone} disabled={!isEditing}>
-                    <SelectTrigger className={`h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif] text-[13px] ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}>
-                      <SelectValue placeholder="Select time zone" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Asia/Kolkata" className="text-[13px]">Asia/Kolkata</SelectItem>
-                      <SelectItem value="America/New_York" className="text-[13px]">America/New_York</SelectItem>
-                      <SelectItem value="Europe/London" className="text-[13px]">Europe/London</SelectItem>
-                    </SelectContent>
+                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Time Zone</span>
+                  <Select
+                    value={timeZone}
+                    onChange={(v) => setTimeZone(String(v))}
+                    disabled={!isEditing}
+                    className="w-full h-11"
+                  >
+                    <Option value="Asia/Kolkata">Asia/Kolkata</Option>
+                    <Option value="America/New_York">America/New_York</Option>
+                    <Option value="Europe/London">Europe/London</Option>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Currency</Label>
-                  <Select value={currency} onValueChange={setCurrency} disabled={!isEditing}>
-                    <SelectTrigger className={`h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif] text-[13px] ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}>
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD" className="text-[13px]">USD</SelectItem>
-                      <SelectItem value="EUR" className="text-[13px]">EUR</SelectItem>
-                      <SelectItem value="INR" className="text-[13px]">INR</SelectItem>
-                    </SelectContent>
+                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Currency</span>
+                  <Select
+                    value={currency}
+                    onChange={(v) => setCurrency(String(v))}
+                    disabled={!isEditing}
+                    className="w-full h-11"
+                  >
+                    <Option value="USD">USD</Option>
+                    <Option value="EUR">EUR</Option>
+                    <Option value="INR">INR</Option>
                   </Select>
                 </div>
               </div>
 
               <div className="mb-6 relative">
                 <div className="space-y-2">
-                  <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Address</Label>
-                  <Textarea
+                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Address</span>
+                  <TextArea
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="Enter company address"
                     disabled={!isEditing}
-                    className={`min-h-[100px] rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Regular',sans-serif] text-[13px] resize-none p-3 pr-10 ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}
+                    className={`min-h-[100px] rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Regular',sans-serif] text-[13px] resize-none p-3 pr-10 ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}
                   />
                 </div>
                 {isEditing && (
@@ -255,7 +252,7 @@ export function SettingsPage() {
               </div>
             </section>
 
-            <Separator className="my-8 bg-[#EEEEEE]" />
+            <Divider className="my-8 bg-[#EEEEEE]" />
 
             <section>
               <div className="flex items-center gap-2 mb-6">
@@ -274,11 +271,11 @@ export function SettingsPage() {
                 {departments.map((dept) => (
                   <div key={dept.id} className="flex items-end gap-6 group">
                     <div className="space-y-2 flex-1">
-                      <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Department Name</Label>
+                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Department Name</span>
                       <Input
                         value={dept.name}
                         readOnly
-                        className="h-11 rounded-lg border-[#EEEEEE] bg-[#FAFAFA] text-[#666666] font-['Inter:Medium',sans-serif] text-[13px]"
+                        className="h-11 rounded-lg border-[#EEEEEE] bg-[#FAFAFA] text-[#666666] font-['Manrope:Medium',sans-serif] text-[13px]"
                       />
                     </div>
                     <div className="flex items-center gap-4 pb-3 h-11">
@@ -286,8 +283,11 @@ export function SettingsPage() {
                         <span className="text-[11px] text-[#666666] font-['Manrope:Bold',sans-serif]">Active</span>
                         <Switch
                           checked={dept.active}
-                          onCheckedChange={() => toggleDepartmentStatus(dept.id)}
-                          className="data-[state=checked]:bg-[#ff3b3b]"
+                          onChange={() => toggleDepartmentStatus(dept.id)}
+                          className="bg-gray-200 hover:bg-gray-300"
+                          style={{
+                            backgroundColor: dept.active ? "#ff3b3b" : undefined
+                          }}
                         />
                       </div>
                       <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
@@ -306,25 +306,25 @@ export function SettingsPage() {
                 {isAddingDept && (
                   <div className="flex items-end gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="space-y-2 flex-1">
-                      <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">New Department Name</Label>
+                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">New Department Name</span>
                       <Input
                         value={newDeptName}
                         onChange={(e) => setNewDeptName(e.target.value)}
                         placeholder="e.g. Marketing"
                         autoFocus
-                        className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif] text-[13px]"
+                        className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
                         onKeyDown={(e) => e.key === 'Enter' && handleAddDepartment()}
                       />
                     </div>
                     <div className="flex items-center gap-2 pb-1 h-11">
                       <Button
                         onClick={handleAddDepartment}
-                        className="h-9 px-4 bg-[#111111] hover:bg-[#000000]/90 text-white text-[12px] font-['Manrope:SemiBold',sans-serif] rounded-full"
+                        className="h-9 px-4 bg-[#111111] hover:bg-[#000000]/90 text-white text-[12px] font-['Manrope:SemiBold',sans-serif] rounded-full border-none"
                       >
                         Add
                       </Button>
                       <Button
-                        variant="ghost"
+                        type="text"
                         onClick={() => setIsAddingDept(false)}
                         className="h-9 px-4 text-[#666666] hover:text-[#111111] text-[12px] font-['Manrope:SemiBold',sans-serif] hover:bg-[#F7F7F7] rounded-full"
                       >
@@ -349,12 +349,12 @@ export function SettingsPage() {
 
               {leaves.map((leave) => (
                 <div key={leave.id} className="space-y-2">
-                  <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">{leave.name}</Label>
+                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">{leave.name}</span>
                   <div className="flex items-center gap-3">
                     <Input
                       value={leave.count}
                       onChange={(e) => handleUpdateLeaveCount(leave.id, e.target.value)}
-                      className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif] text-[13px]"
+                      className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
                     />
                     <button className="p-2 text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] rounded-full transition-colors">
                       <Edit className="w-4 h-4" />
@@ -365,8 +365,8 @@ export function SettingsPage() {
 
               <div className="pt-6">
                 <div className="space-y-2">
-                  <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#666666]">Total Leaves</Label>
-                  <div className="h-11 px-3 flex items-center rounded-lg border border-[#EEEEEE] bg-[#F7F7F7] text-[#666666] font-['Inter:Medium',sans-serif] text-[13px]">
+                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#666666]">Total Leaves</span>
+                  <div className="h-11 px-3 flex items-center rounded-lg border border-[#EEEEEE] bg-[#F7F7F7] text-[#666666] font-['Manrope:Medium',sans-serif] text-[13px]">
                     {leaves.reduce((acc, curr) => acc + curr.count, 0)} days
                   </div>
                 </div>
@@ -387,7 +387,7 @@ export function SettingsPage() {
                   <div key={holiday.id} className="p-4 border border-[#EEEEEE] rounded-[12px] flex items-center justify-between bg-white hover:shadow-sm transition-shadow">
                     <div>
                       <p className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">{holiday.name}</p>
-                      <p className="text-[12px] text-[#666666] font-['Inter:Medium',sans-serif]">{new Date(holiday.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+                      <p className="text-[12px] text-[#666666] font-['Manrope:Medium',sans-serif]">{new Date(holiday.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button className="p-2 text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] rounded-full transition-colors">
@@ -425,10 +425,10 @@ export function SettingsPage() {
             <div className="space-y-8">
               {/* Working Days */}
               <div className="space-y-3">
-                <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Days</Label>
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Days</span>
                 <div className="min-h-[48px] p-2 rounded-lg border border-[#EEEEEE] flex flex-wrap gap-2">
                   {workingDays.map(day => (
-                    <div key={day} className="h-8 px-3 bg-[#F0F0F0] rounded-md flex items-center gap-2 text-[13px] font-['Inter:Medium',sans-serif] text-[#111111]">
+                    <div key={day} className="h-8 px-3 bg-[#F0F0F0] rounded-md flex items-center gap-2 text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111]">
                       {day}
                       <button onClick={() => toggleWorkingDay(day)} className="hover:text-[#ff3b3b]">
                         <X className="w-3 h-3" />
@@ -459,23 +459,23 @@ export function SettingsPage() {
 
               {/* Working Hours */}
               <div className="space-y-3">
-                <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours</Label>
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours</span>
                 <div className="flex items-center gap-4">
                   <div className="relative flex-1">
                     <Input
                       type="time"
                       value={workStartTime}
                       onChange={(e) => setWorkStartTime(e.target.value)}
-                      className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif] text-[13px]"
+                      className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
                     />
                   </div>
-                  <span className="text-[13px] text-[#666666] font-['Inter:Medium',sans-serif]">to</span>
+                  <span className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif]">to</span>
                   <div className="relative flex-1">
                     <Input
                       type="time"
                       value={workEndTime}
                       onChange={(e) => setWorkEndTime(e.target.value)}
-                      className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif] text-[13px]"
+                      className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
                     />
                   </div>
                 </div>
@@ -483,12 +483,12 @@ export function SettingsPage() {
 
               {/* Break Time */}
               <div className="space-y-3">
-                <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Break Time (in minutes)</Label>
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Break Time (in minutes)</span>
                 <Input
                   type="number"
                   value={breakTime}
                   onChange={(e) => setBreakTime(e.target.value)}
-                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif] text-[13px]"
+                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
                 />
               </div>
             </div>
@@ -507,7 +507,7 @@ export function SettingsPage() {
                 <Plus className="w-5 h-5 text-[#ff3b3b]" />
               </button>
             </div>
-            <p className="text-[13px] text-[#666666] font-['Inter:Regular',sans-serif] max-w-sm">
+            <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] max-w-sm">
               Connect your favorite tools and services to streamline your workflow.
             </p>
           </div>

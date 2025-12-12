@@ -1,25 +1,106 @@
 import { ArrowRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Label, Tooltip } from 'recharts';
+import { useMemo } from 'react';
+import { useQueries } from '@tanstack/react-query';
+import { useTasks } from '@/hooks/useTask';
+import { useWorkspaces } from '@/hooks/useWorkspace';
+import { getRequirementsByWorkspaceId } from '@/services/workspace';
 
 export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => void }) {
-  // Requirements data
-  const requirementsData = {
-    completed: 18,
-    total: 32,
-    percentage: 56,
-    inProgress: 10,
-    delayed: 4
-  };
-  
-  // Task data
-  const taskData = {
-    completed: 24,
-    total: 41,
-    percentage: 59,
-    inProgress: 12,
-    delayed: 5
-  };
-  
+  // Fetch all tasks (no filters to get all tasks)
+  const { data: tasksData, isLoading: isLoadingTasks } = useTasks("limit=1000&skip=0");
+
+  // Fetch all workspaces to get requirements
+  const { data: workspacesData, isLoading: isLoadingWorkspaces } = useWorkspaces("");
+
+  // Calculate task statistics
+  const taskData = useMemo(() => {
+    if (!tasksData?.result || isLoadingTasks) {
+      return { completed: 0, total: 0, percentage: 0, inProgress: 0, delayed: 0 };
+    }
+
+    const tasks = tasksData.result;
+    let completed = 0;
+    let inProgress = 0;
+    let delayed = 0;
+
+    tasks.forEach((task: any) => {
+      const status = task.status?.toLowerCase() || '';
+      // Task statuses: Assigned, In_Progress, Completed, Delayed, Impediment, Review, Stuck, New Task
+      if (status.includes('completed') || status === 'done') {
+        completed++;
+      } else if (status.includes('delayed') || status.includes('stuck') || status.includes('impediment') || status.includes('blocked')) {
+        delayed++;
+      } else {
+        // Default everything else (In Progress, Assigned, New Task, etc.) to In Progress
+        inProgress++;
+      }
+    });
+
+    const total = tasks.length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return { completed, total, percentage, inProgress, delayed };
+  }, [tasksData, isLoadingTasks]);
+
+  // Get all workspace IDs
+  const workspaceIds = useMemo(() => {
+    return workspacesData?.result?.projects?.map((w: any) => w.id) || [];
+  }, [workspacesData]);
+
+  // Fetch requirements for all workspaces in parallel
+  const requirementQueries = useQueries({
+    queries: workspaceIds.map((id: number) => ({
+      queryKey: ['requirements', id],
+      queryFn: () => getRequirementsByWorkspaceId(id),
+      enabled: !!id && workspaceIds.length > 0 && !isLoadingWorkspaces,
+    })),
+  });
+
+  const isLoadingRequirements = requirementQueries.some(q => q.isLoading);
+
+  // Combine all requirements from all workspaces
+  const allRequirements = useMemo(() => {
+    const combined: any[] = [];
+    requirementQueries.forEach((query) => {
+      if (query.data?.result && Array.isArray(query.data.result)) {
+        combined.push(...query.data.result);
+      }
+    });
+    return combined;
+  }, [requirementQueries, workspaceIds.length]);
+
+  // Calculate requirements statistics
+  const requirementsData = useMemo(() => {
+    if (isLoadingRequirements || isLoadingWorkspaces) {
+      return { completed: 0, total: 0, percentage: 0, inProgress: 0, delayed: 0 };
+    }
+
+    let completed = 0;
+    let inProgress = 0;
+    let delayed = 0;
+
+    allRequirements.forEach((req: any) => {
+      const status = req.status?.toLowerCase() || '';
+      // Requirement statuses: Assigned, In_Progress, On_Hold, Submitted, Completed, Waiting, Rejected, Review, Revision, Impediment, Stuck
+      if (status.includes('completed')) {
+        completed++;
+      } else if (status.includes('stuck') || status.includes('impediment')) {
+        delayed++;
+      } else {
+        // Default everything else (In Progress, Assigned, etc.) to In Progress
+        inProgress++;
+      }
+    });
+
+    const total = allRequirements.length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return { completed, total, percentage, inProgress, delayed };
+  }, [allRequirements, isLoadingRequirements, isLoadingWorkspaces]);
+
+  const isLoading = isLoadingTasks || isLoadingWorkspaces || isLoadingRequirements;
+
   return (
     <div className="bg-white rounded-[24px] p-6 w-full h-full flex flex-col">
       {/* Header */}
@@ -32,12 +113,14 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
         <ProgressCard
           title="Requirements"
           data={requirementsData}
+          isLoading={isLoading}
           onClick={() => onNavigate && onNavigate('requirements')}
         />
-        
+
         <ProgressCard
           title="Tasks"
           data={taskData}
+          isLoading={isLoading}
           onClick={() => onNavigate && onNavigate('tasks')}
         />
       </div>
@@ -54,22 +137,36 @@ interface ProgressCardProps {
     inProgress: number;
     delayed: number;
   };
+  isLoading?: boolean;
   onClick?: () => void;
 }
 
-function ProgressCard({ title, data, onClick }: ProgressCardProps) {
+function ProgressCard({ title, data, isLoading = false, onClick }: ProgressCardProps) {
   const chartData = [
-    { name: 'Completed', value: data.completed, color: '#ff3b3b' },   // Primary Red
-    { name: 'In Progress', value: data.inProgress, color: '#ff8080' }, // Lighter Red
-    { name: 'Delayed', value: data.delayed, color: '#ffcccc' },       // Very Light Red
+    { name: 'Completed', value: data.completed, color: '#ff3b3b' },
+    { name: 'In Progress', value: data.inProgress, color: '#ff8080' },
+    { name: 'Delayed', value: data.delayed, color: '#ffcccc' },
   ];
 
   // Filter out zero values for the chart only
   const activeData = chartData.filter(d => d.value > 0);
 
+  if (isLoading) {
+    return (
+      <div className="group relative flex flex-col bg-white rounded-[20px] border border-gray-100 p-5 h-full overflow-hidden">
+        <div className="flex items-center justify-between mb-4 z-10 shrink-0">
+          <h4 className="font-['Manrope',sans-serif] font-semibold text-[16px] text-[#111111]">{title}</h4>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-[13px] text-[#666666] font-['Manrope',sans-serif]">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div 
-      className="group relative flex flex-col bg-white rounded-[20px] border border-gray-100 p-5 hover:shadow-lg hover:border-[#ff3b3b]/10 transition-all duration-300 cursor-pointer h-full overflow-hidden"
+    <div
+      className="group relative flex flex-col bg-white rounded-[20px] border border-gray-100 p-5 hover:shadow-lg hover:border-[#ff3b3b]/10 transition-all duration-300 cursor-pointer h-full"
       onClick={onClick}
     >
       {/* Card Header */}
@@ -121,7 +218,7 @@ function ProgressCard({ title, data, onClick }: ProgressCardProps) {
                           <tspan
                             x={viewBox.cx}
                             y={(viewBox.cy || 0) + 20}
-                            className="fill-[#999999] text-[11px] font-semibold font-['Inter',sans-serif] uppercase tracking-wider"
+                            className="fill-[#999999] text-[11px] font-semibold font-['Manrope',sans-serif] uppercase tracking-wider"
                           >
                             Total
                           </tspan>
@@ -139,13 +236,13 @@ function ProgressCard({ title, data, onClick }: ProgressCardProps) {
         {/* Legend / Stats Section */}
         <div className="flex-1 flex flex-col justify-center">
           {chartData.map((item) => (
-            <div 
-              key={item.name} 
+            <div
+              key={item.name}
               className="flex items-center justify-between w-full py-3 border-b border-gray-50 last:border-0 group/item transition-colors hover:bg-gray-50/50 rounded-lg px-2 -mx-2"
             >
               <div className="flex items-center gap-3">
                 <div className={`w-2 h-2 rounded-full shrink-0 ring-2 ring-white shadow-sm`} style={{ backgroundColor: item.color }} />
-                <span className="text-[13px] text-[#666666] font-medium font-['Inter',sans-serif] whitespace-nowrap group-hover/item:text-[#111111] transition-colors">
+                <span className="text-[13px] text-[#666666] font-medium font-['Manrope',sans-serif] whitespace-nowrap group-hover/item:text-[#111111] transition-colors">
                   {item.name === 'In Progress' ? 'In Progress' : item.name}
                 </span>
               </div>

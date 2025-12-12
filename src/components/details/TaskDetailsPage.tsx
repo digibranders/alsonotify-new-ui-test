@@ -1,21 +1,35 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useData } from '../../context/DataContext';
-import { Button } from '../ui/button';
+import { useTask } from '@/hooks/useTask';
+import { Button, Tag, Divider } from 'antd';
 import { CheckCircle2, Loader2, AlertCircle, Clock, Calendar, User, Briefcase, FileText } from 'lucide-react';
-import { Badge } from '../ui/badge';
-import { Separator } from '../ui/separator';
+
+const mapBackendStatusToUI = (status: string): 'impediment' | 'in-progress' | 'completed' | 'todo' | 'delayed' => {
+    const statusLower = status?.toLowerCase() || '';
+    if (statusLower.includes('completed') || statusLower === 'done') return 'completed';
+    if (statusLower.includes('blocked') || statusLower === 'impediment') return 'impediment';
+    if (statusLower.includes('progress') || statusLower === 'in_progress') return 'in-progress';
+    if (statusLower.includes('delayed')) return 'delayed';
+    return 'todo';
+};
 
 export function TaskDetailsPage() {
     const params = useParams();
     const taskId = params.taskId as string;
     const router = useRouter();
-    const { getTask } = useData();
+    const { data: taskData, isLoading } = useTask(parseInt(taskId || '0'));
 
-    const task = getTask(taskId || '');
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full">
+                <p className="text-[#999999]">Loading task...</p>
+            </div>
+        );
+    }
 
-    if (!task) {
+    const backendTask = taskData?.result;
+    if (!backendTask) {
         return (
             <div className="flex flex-col items-center justify-center h-full">
                 <h2 className="text-xl font-semibold mb-2">Task not found</h2>
@@ -23,6 +37,26 @@ export function TaskDetailsPage() {
             </div>
         );
     }
+
+    // Transform backend data to UI format
+    const assignedToName = (backendTask.assigned_to as any)?.name || (backendTask.assigned_to_user as any)?.name || 'Unassigned';
+
+    const task = {
+        id: String(backendTask.id),
+        name: backendTask.name || backendTask.title || '',
+        taskId: String(backendTask.id),
+        client: backendTask.client?.name || backendTask.client_company_name || 'In-House',
+        project: backendTask.requirement?.name || backendTask.requirement_id ? `Requirement ${backendTask.requirement_id}` : 'General',
+        leader: backendTask.leader?.name || 'Unassigned',
+        assignedTo: assignedToName,
+        startDate: backendTask.start_date ? new Date(backendTask.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
+        dueDate: backendTask.due_date ? new Date(backendTask.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
+        estTime: backendTask.estimated_time || 0,
+        timeSpent: backendTask.time_spent || 0,
+        activities: backendTask.worklogs?.length || 0,
+        status: mapBackendStatusToUI(backendTask.status || ''),
+        priority: (typeof backendTask.priority === 'string' ? backendTask.priority.toLowerCase() : 'medium') as 'high' | 'medium' | 'low',
+    };
 
     const getStatusConfig = (status: string) => {
         switch (status) {
@@ -41,7 +75,7 @@ export function TaskDetailsPage() {
         <div className="w-full h-full flex flex-col p-6 overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
-                <Button variant="ghost" onClick={() => router.push('/tasks')} className="pl-0 hover:bg-transparent hover:text-[#ff3b3b]">
+                <Button type="text" onClick={() => router.push('/tasks')} className="pl-0 hover:bg-transparent hover:text-[#ff3b3b]">
                     ← Back to Tasks
                 </Button>
 
@@ -56,27 +90,27 @@ export function TaskDetailsPage() {
                     <div>
                         <div className="flex items-center gap-3 mb-2">
                             <span className="text-sm font-mono text-[#999999]">#{task.taskId}</span>
-                            <Badge variant="outline" className={`
+                            <Tag className={`
                             ${task.priority === 'high' ? 'text-red-600 border-red-200 bg-red-50' :
                                     task.priority === 'medium' ? 'text-orange-600 border-orange-200 bg-orange-50' :
                                         'text-blue-600 border-blue-200 bg-blue-50'}
                         `}>
                                 {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
-                            </Badge>
+                            </Tag>
                         </div>
                         <h1 className="text-3xl font-['Manrope:Bold',sans-serif] text-[#111111] mb-2 leading-tight">
                             {task.name}
                         </h1>
                         <div className="flex items-center gap-2 text-[#666666]">
                             <Briefcase className="w-4 h-4" />
-                            <span className="text-sm font-['Inter:Medium',sans-serif]">
+                            <span className="text-sm font-['Manrope:Medium',sans-serif]">
                                 {task.client} • {task.project}
                             </span>
                         </div>
                     </div>
                 </div>
 
-                <Separator className="my-8" />
+                <Divider className="my-8" />
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {/* Main Content */}
@@ -84,7 +118,7 @@ export function TaskDetailsPage() {
                         <div>
                             <h3 className="text-sm font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide mb-4">Description</h3>
                             <p className="text-[#111111] leading-relaxed">
-                                No description provided for this task yet.
+                                {backendTask.description || 'No description provided for this task yet.'}
                             </p>
                         </div>
 
@@ -112,33 +146,33 @@ export function TaskDetailsPage() {
                             <div className="flex items-start gap-3">
                                 <User className="w-5 h-5 text-[#999999] mt-0.5" />
                                 <div>
-                                    <p className="text-xs text-[#999999] mb-1">Assigned To</p>
+                                    <p className="text-xs text-[#999999] mb-1 m-0">Assigned To</p>
                                     <div className="flex items-center gap-2">
                                         <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center text-white text-[10px] font-bold">
                                             {task.assignedTo.charAt(0)}
                                         </div>
-                                        <p className="text-sm font-medium text-[#111111]">{task.assignedTo}</p>
+                                        <p className="text-sm font-medium text-[#111111] m-0">{task.assignedTo}</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <Separator />
+                            <Divider className="my-2" />
 
                             <div className="flex items-start gap-3">
                                 <Calendar className="w-5 h-5 text-[#999999] mt-0.5" />
                                 <div>
-                                    <p className="text-xs text-[#999999] mb-1">Due Date</p>
-                                    <p className="text-sm font-medium text-[#111111]">{task.dueDate}</p>
+                                    <p className="text-xs text-[#999999] mb-1 m-0">Due Date</p>
+                                    <p className="text-sm font-medium text-[#111111] m-0">{task.dueDate}</p>
                                 </div>
                             </div>
 
-                            <Separator />
+                            <Divider className="my-2" />
 
                             <div className="flex items-start gap-3">
                                 <FileText className="w-5 h-5 text-[#999999] mt-0.5" />
                                 <div>
-                                    <p className="text-xs text-[#999999] mb-1">Project</p>
-                                    <p className="text-sm font-medium text-[#111111]">{task.project}</p>
+                                    <p className="text-xs text-[#999999] mb-1 m-0">Project</p>
+                                    <p className="text-sm font-medium text-[#111111] m-0">{task.project}</p>
                                 </div>
                             </div>
                         </div>

@@ -1,14 +1,7 @@
 import { useState, useEffect } from "react";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
+import { Button, Input, Select, message } from "antd";
+
+const { Option } = Select;
 
 export interface ClientFormData {
   name: string;
@@ -65,21 +58,19 @@ export function ClientForm({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-6 space-y-6 flex-1 overflow-y-auto max-h-[70vh]">
+      <div className="p-6 flex-1 overflow-y-auto">
         {!isEditing ? (
           // Simplified Add Flow: Only Email
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"
+              <label
+                className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
               >
                 Client Email Address
-              </Label>
+              </label>
               <Input
-                id="email"
                 placeholder="email@company.com"
-                className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]"
+                className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Manrope:Medium',sans-serif]"
                 value={formData.email}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
@@ -94,18 +85,16 @@ export function ClientForm({
           // Full Edit Flow
           <>
             {/* Row 1 */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-6 mb-6">
               <div className="space-y-2">
-                <Label
-                  htmlFor="name"
-                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"
+                <label
+                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
                 >
                   Contact Person
-                </Label>
+                </label>
                 <Input
-                  id="name"
                   placeholder="Enter contact person name"
-                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]"
+                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Manrope:Medium',sans-serif]"
                   value={formData.name}
                   onChange={(e) =>
                     setFormData({ ...formData, name: e.target.value })
@@ -113,44 +102,36 @@ export function ClientForm({
                 />
               </div>
               <div className="space-y-2">
-                <Label
-                  htmlFor="company"
-                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"
+                <label
+                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
                 >
                   Business Name
-                </Label>
+                </label>
                 <Select
                   value={formData.company}
-                  onValueChange={(v) => setFormData({ ...formData, company: v })}
+                  onChange={(v) => setFormData({ ...formData, company: String(v) })}
+                  className="w-full h-11"
+                  placeholder="Select company"
                 >
-                  <SelectTrigger className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]">
-                    <SelectValue placeholder="Select company" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Triem Security">Triem Security</SelectItem>
-                    <SelectItem value="Eventus Security">
-                      Eventus Security
-                    </SelectItem>
-                    <SelectItem value="TechCorp Inc.">TechCorp Inc.</SelectItem>
-                    <SelectItem value="Digibranders">Digibranders</SelectItem>
-                  </SelectContent>
+                  <Option value="Triem Security">Triem Security</Option>
+                  <Option value="Eventus Security">Eventus Security</Option>
+                  <Option value="TechCorp Inc.">TechCorp Inc.</Option>
+                  <Option value="Digibranders">Digibranders</Option>
                 </Select>
               </div>
             </div>
 
             {/* Row 2 */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-6 mb-6">
               <div className="space-y-2">
-                <Label
-                  htmlFor="email"
-                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"
+                <label
+                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
                 >
                   Email
-                </Label>
+                </label>
                 <Input
-                  id="email"
                   placeholder="email@company.com"
-                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]"
+                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Manrope:Medium',sans-serif]"
                   value={formData.email}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
@@ -158,16 +139,14 @@ export function ClientForm({
                 />
               </div>
               <div className="space-y-2">
-                <Label
-                  htmlFor="phone"
-                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"
+                <label
+                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
                 >
                   Contact (Phone)
-                </Label>
+                </label>
                 <Input
-                  id="phone"
                   placeholder="+1 234 567 890"
-                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]"
+                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Manrope:Medium',sans-serif]"
                   value={formData.phone}
                   onChange={(e) =>
                     setFormData({ ...formData, phone: e.target.value })
@@ -177,40 +156,34 @@ export function ClientForm({
             </div>
 
             {/* Row 3 */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-6 mb-6">
               <div className="space-y-2">
-                <Label
-                  htmlFor="country"
-                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"
+                <label
+                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
                 >
                   Country
-                </Label>
+                </label>
                 <Select
                   value={formData.country}
-                  onValueChange={(v) => setFormData({ ...formData, country: v })}
+                  onChange={(v) => setFormData({ ...formData, country: String(v) })}
+                  className="w-full h-11"
+                  placeholder="Select country"
                 >
-                  <SelectTrigger className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]">
-                    <SelectValue placeholder="Select country" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USA">USA</SelectItem>
-                    <SelectItem value="India">India</SelectItem>
-                    <SelectItem value="UK">UK</SelectItem>
-                    <SelectItem value="UAE">UAE</SelectItem>
-                  </SelectContent>
+                  <Option value="USA">USA</Option>
+                  <Option value="India">India</Option>
+                  <Option value="UK">UK</Option>
+                  <Option value="UAE">UAE</Option>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label
-                  htmlFor="onboarding"
-                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"
+                <label
+                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
                 >
                   Onboarding Date
-                </Label>
+                </label>
                 <Input
-                  id="onboarding"
                   placeholder="DD-MMM-YYYY"
-                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]"
+                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Manrope:Medium',sans-serif]"
                   value={formData.onboarding}
                   onChange={(e) =>
                     setFormData({ ...formData, onboarding: e.target.value })
@@ -220,18 +193,16 @@ export function ClientForm({
             </div>
 
             {/* Row 4 */}
-            <div className="space-y-2">
-              <Label
-                htmlFor="requirements"
-                className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"
+            <div className="space-y-2 mb-6">
+              <label
+                className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
               >
                 Requirements (Count)
-              </Label>
+              </label>
               <Input
-                id="requirements"
                 type="number"
                 placeholder="Number of requirements"
-                className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]"
+                className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Manrope:Medium',sans-serif]"
                 value={formData.requirements}
                 onChange={(e) =>
                   setFormData({ ...formData, requirements: e.target.value })
@@ -242,22 +213,21 @@ export function ClientForm({
         )}
       </div>
 
-      <div className="p-6 border-t border-[#EEEEEE] flex items-center justify-end bg-white">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            onClick={onCancel}
-            className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:bg-[#F7F7F7]"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            className="h-10 px-6 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif]"
-          >
-            {isEditing ? "Update Client" : "Send Invitation"}
-          </Button>
-        </div>
+      <div className="p-6 border-t border-[#EEEEEE] flex items-center justify-end bg-white gap-3">
+        <Button
+          type="text"
+          onClick={onCancel}
+          className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:bg-transparent hover:text-[#111111]"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="primary"
+          onClick={handleSubmit}
+          className="h-10 px-6 rounded-lg bg-[#111111] hover:bg-[#000000] text-white font-['Manrope:SemiBold',sans-serif] border-none"
+        >
+          {isEditing ? "Update Client" : "Send Invitation"}
+        </Button>
       </div>
     </div>
   );

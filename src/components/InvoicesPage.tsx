@@ -180,14 +180,14 @@ export function InvoicesPage() {
         <div className="border border-[#EEEEEE] rounded-[16px] p-5">
           <div className="flex items-center justify-between mb-2">
             <DollarSign className="w-5 h-5 text-[#4CAF50]" />
-            <span className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999]">
+            <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
               Total Revenue
             </span>
           </div>
           <p className="font-['Manrope:Bold',sans-serif] text-[24px] text-[#111111]">
             ${totalRevenue.toLocaleString()}
           </p>
-          <p className="text-[11px] font-['Inter:Regular',sans-serif] text-[#666666] mt-1">
+          <p className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666] mt-1">
             From {stats.paid} paid invoices
           </p>
         </div>
@@ -195,14 +195,14 @@ export function InvoicesPage() {
         <div className="border border-[#EEEEEE] rounded-[16px] p-5">
           <div className="flex items-center justify-between mb-2">
             <DollarSign className="w-5 h-5 text-[#FF9800]" />
-            <span className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999]">
+            <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
               Pending Amount
             </span>
           </div>
           <p className="font-['Manrope:Bold',sans-serif] text-[24px] text-[#111111]">
             ${pendingAmount.toLocaleString()}
           </p>
-          <p className="text-[11px] font-['Inter:Regular',sans-serif] text-[#666666] mt-1">
+          <p className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666] mt-1">
             {stats.pending + stats.overdue} invoices unpaid
           </p>
         </div>
@@ -210,14 +210,14 @@ export function InvoicesPage() {
         <div className="border border-[#EEEEEE] rounded-[16px] p-5">
           <div className="flex items-center justify-between mb-2">
             <Calendar className="w-5 h-5 text-[#ff3b3b]" />
-            <span className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999]">
+            <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
               Overdue
             </span>
           </div>
           <p className="font-['Manrope:Bold',sans-serif] text-[24px] text-[#ff3b3b]">
             {stats.overdue}
           </p>
-          <p className="text-[11px] font-['Inter:Regular',sans-serif] text-[#666666] mt-1">
+          <p className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666] mt-1">
             Requires immediate action
           </p>
         </div>
@@ -245,27 +245,27 @@ export function InvoicesPage() {
                 <div className="flex-1 grid grid-cols-5 gap-4 items-center">
                   {/* Invoice Number & Client */}
                   <div>
-                    <h4 className="font-['Inter:SemiBold',sans-serif] text-[14px] text-[#111111] mb-1">
+                    <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-1">
                       {invoice.invoiceNumber}
                     </h4>
-                    <p className="text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">
+                    <p className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                       {invoice.client}
                     </p>
                   </div>
 
                   {/* Project */}
                   <div>
-                    <p className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999] mb-1">
+                    <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
                       Project
                     </p>
-                    <p className="text-[13px] font-['Inter:Medium',sans-serif] text-[#111111] truncate">
+                    <p className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111] truncate">
                       {invoice.project}
                     </p>
                   </div>
 
                   {/* Amount */}
                   <div>
-                    <p className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999] mb-1">
+                    <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
                       Amount
                     </p>
                     <p className="font-['Manrope:Bold',sans-serif] text-[16px] text-[#111111]">
@@ -277,16 +277,16 @@ export function InvoicesPage() {
                   <div>
                     {invoice.status !== 'draft' ? (
                       <>
-                        <p className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999] mb-1">
+                        <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
                           Issue / Due Date
                         </p>
-                        <div className="flex items-center gap-1 text-[12px] font-['Inter:Medium',sans-serif] text-[#666666]">
+                        <div className="flex items-center gap-1 text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666]">
                           <Calendar className="w-3 h-3" />
                           {new Date(invoice.issueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(invoice.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </div>
                       </>
                     ) : (
-                      <p className="text-[12px] font-['Inter:Regular',sans-serif] text-[#999999] italic">
+                      <p className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#999999] italic">
                         Draft - Not sent
                       </p>
                     )}
@@ -295,7 +295,7 @@ export function InvoicesPage() {
                   {/* Status */}
                   <div>
                     <span
-                      className={`inline-block px-3 py-1.5 rounded-full text-[12px] font-['Inter:SemiBold',sans-serif] ${getStatusColor(
+                      className={`inline-block px-3 py-1.5 rounded-full text-[12px] font-['Manrope:SemiBold',sans-serif] ${getStatusColor(
                         invoice.status
                       )}`}
                     >
@@ -327,7 +327,7 @@ export function InvoicesPage() {
 
           {filteredInvoices.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-[#999999] font-['Inter:Regular',sans-serif]">
+              <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">
                 No invoices found
               </p>
             </div>

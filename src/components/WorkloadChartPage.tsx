@@ -1,14 +1,11 @@
+'use client';
+
 import { useState } from 'react';
-import { Users, TrendingUp, Clock, AlertCircle, X } from 'lucide-react';
+import { Users, TrendingUp, Clock, AlertCircle } from 'lucide-react';
 import { PageLayout } from './PageLayout';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
 import { FilterBar, FilterOption } from './FilterBar';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
+import { Modal } from 'antd';
 
 interface EmployeeWorkload {
   id: string;
@@ -84,6 +81,7 @@ const employeeWorkloadData: EmployeeWorkload[] = [
     week3: 38.5,
     week4: 37
   },
+
   {
     id: '4',
     name: 'Sharifudeen',
@@ -315,7 +313,7 @@ export function WorkloadChartPage() {
   const totalWeeklyHours = employeeWorkloadData.reduce((sum, emp) => sum + emp.total, 0);
   const averageUtilization = (totalWeeklyHours / (employeeWorkloadData.length * 40)) * 100;
   const overloadedEmployees = employeeWorkloadData.filter(emp => emp.total > emp.capacity).length;
-  const underutilizedEmployees = employeeWorkloadData.filter(emp => emp.total < emp.capacity * 0.8).length;
+  // const underutilizedEmployees = employeeWorkloadData.filter(emp => emp.total < emp.capacity * 0.8).length; // Unused
 
   const getBarColor = (hours: number, capacity: number) => {
     const utilization = (hours / capacity) * 100;
@@ -330,14 +328,14 @@ export function WorkloadChartPage() {
       emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       emp.role.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesRole = filters.role === 'All' || emp.role === filters.role;
-    
+
     const empUtilization = (emp.total / emp.capacity) * 100;
     let matchesUtilization = true;
     if (filters.utilization === 'Overloaded') matchesUtilization = empUtilization > 100;
     else if (filters.utilization === 'High') matchesUtilization = empUtilization >= 90 && empUtilization <= 100;
     else if (filters.utilization === 'Normal') matchesUtilization = empUtilization >= 70 && empUtilization < 90;
     else if (filters.utilization === 'Low') matchesUtilization = empUtilization < 70;
-    
+
     return matchesSearch && matchesRole && matchesUtilization;
   });
 
@@ -374,7 +372,7 @@ export function WorkloadChartPage() {
   const getDailyChartData = () => {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const dayKeys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const;
-    
+
     return days.map((day, index) => {
       const totalHours = employeeWorkloadData.reduce((sum, emp) => sum + (emp[dayKeys[index]] as number), 0);
       return {
@@ -419,17 +417,17 @@ export function WorkloadChartPage() {
             <AreaChart data={dailyData}>
               <defs>
                 <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ff3b3b" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#ff3b3b" stopOpacity={0}/>
+                  <stop offset="5%" stopColor="#ff3b3b" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#ff3b3b" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#EEEEEE" />
               <XAxis
                 dataKey="day"
-                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Inter' }}
+                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Manrope' }}
               />
               <YAxis
-                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Inter' }}
+                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Manrope' }}
                 label={{ value: 'Total Hours', angle: -90, position: 'insideLeft', style: { fill: '#666666', fontSize: 12 } }}
               />
               <Tooltip
@@ -440,19 +438,19 @@ export function WorkloadChartPage() {
                   fontSize: '12px'
                 }}
               />
-              <Area 
-                type="monotone" 
-                dataKey="hours" 
-                stroke="#ff3b3b" 
+              <Area
+                type="monotone"
+                dataKey="hours"
+                stroke="#ff3b3b"
                 strokeWidth={2}
-                fillOpacity={1} 
-                fill="url(#colorHours)" 
+                fillOpacity={1}
+                fill="url(#colorHours)"
                 name="Total Hours"
               />
-              <Line 
-                type="monotone" 
-                dataKey="average" 
-                stroke="#666666" 
+              <Line
+                type="monotone"
+                dataKey="average"
+                stroke="#666666"
                 strokeDasharray="5 5"
                 strokeWidth={1.5}
                 dot={false}
@@ -474,10 +472,10 @@ export function WorkloadChartPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#EEEEEE" />
               <XAxis
                 dataKey="name"
-                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Inter' }}
+                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Manrope' }}
               />
               <YAxis
-                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Inter' }}
+                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Manrope' }}
                 label={{ value: 'Hours', angle: -90, position: 'insideLeft', style: { fill: '#666666', fontSize: 12 } }}
               />
               <Tooltip
@@ -489,7 +487,7 @@ export function WorkloadChartPage() {
                 }}
               />
               <Legend
-                wrapperStyle={{ fontSize: '12px', fontFamily: 'Inter' }}
+                wrapperStyle={{ fontSize: '12px', fontFamily: 'Manrope' }}
               />
               <Bar dataKey="hours" name="Actual Hours" radius={[8, 8, 0, 0]}>
                 {weeklyData.map((entry, index) => (
@@ -504,25 +502,25 @@ export function WorkloadChartPage() {
           <div className="flex items-center justify-center gap-6 mt-6">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-[#2196F3]" />
-              <span className="text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">
+              <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                 Under 70%
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-[#4CAF50]" />
-              <span className="text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">
+              <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                 70-90%
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-[#FF9800]" />
-              <span className="text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">
+              <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                 90-100%
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-[#ff3b3b]" />
-              <span className="text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">
+              <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                 Over 100%
               </span>
             </div>
@@ -541,10 +539,10 @@ export function WorkloadChartPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#EEEEEE" />
               <XAxis
                 dataKey="week"
-                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Inter' }}
+                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Manrope' }}
               />
               <YAxis
-                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Inter' }}
+                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Manrope' }}
                 label={{ value: 'Total Hours', angle: -90, position: 'insideLeft', style: { fill: '#666666', fontSize: 12 } }}
               />
               <Tooltip
@@ -556,20 +554,20 @@ export function WorkloadChartPage() {
                 }}
               />
               <Legend
-                wrapperStyle={{ fontSize: '12px', fontFamily: 'Inter' }}
+                wrapperStyle={{ fontSize: '12px', fontFamily: 'Manrope' }}
               />
-              <Line 
-                type="monotone" 
-                dataKey="hours" 
-                stroke="#ff3b3b" 
+              <Line
+                type="monotone"
+                dataKey="hours"
+                stroke="#ff3b3b"
                 strokeWidth={3}
                 dot={{ fill: '#ff3b3b', r: 5 }}
                 name="Total Hours"
               />
-              <Line 
-                type="monotone" 
-                dataKey="capacity" 
-                stroke="#DDDDDD" 
+              <Line
+                type="monotone"
+                dataKey="capacity"
+                stroke="#DDDDDD"
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={{ fill: '#DDDDDD', r: 4 }}
@@ -592,10 +590,10 @@ export function WorkloadChartPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="#EEEEEE" />
               <XAxis
                 dataKey="name"
-                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Inter' }}
+                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Manrope' }}
               />
               <YAxis
-                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Inter' }}
+                tick={{ fill: '#666666', fontSize: 12, fontFamily: 'Manrope' }}
                 label={{ value: 'Hours', angle: -90, position: 'insideLeft', style: { fill: '#666666', fontSize: 12 } }}
               />
               <Tooltip
@@ -607,7 +605,7 @@ export function WorkloadChartPage() {
                 }}
               />
               <Legend
-                wrapperStyle={{ fontSize: '12px', fontFamily: 'Inter' }}
+                wrapperStyle={{ fontSize: '12px', fontFamily: 'Manrope' }}
               />
               <Bar dataKey="hours" name="Actual Hours" radius={[8, 8, 0, 0]}>
                 {weeklyData.map((entry, index) => (
@@ -622,25 +620,25 @@ export function WorkloadChartPage() {
           <div className="flex items-center justify-center gap-6 mt-6">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-[#2196F3]" />
-              <span className="text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">
+              <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                 Under 70%
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-[#4CAF50]" />
-              <span className="text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">
+              <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                 70-90%
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-[#FF9800]" />
-              <span className="text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">
+              <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                 90-100%
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-[#ff3b3b]" />
-              <span className="text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">
+              <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                 Over 100%
               </span>
             </div>
@@ -680,7 +678,7 @@ export function WorkloadChartPage() {
         <div className="border border-[#EEEEEE] rounded-[16px] p-5">
           <div className="flex items-center justify-between mb-2">
             <Users className="w-5 h-5 text-[#666666]" />
-            <span className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999]">
+            <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
               Total Employees
             </span>
           </div>
@@ -692,7 +690,7 @@ export function WorkloadChartPage() {
         <div className="border border-[#EEEEEE] rounded-[16px] p-5">
           <div className="flex items-center justify-between mb-2">
             <Clock className="w-5 h-5 text-[#4CAF50]" />
-            <span className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999]">
+            <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
               Total Hours
             </span>
           </div>
@@ -704,7 +702,7 @@ export function WorkloadChartPage() {
         <div className="border border-[#EEEEEE] rounded-[16px] p-5">
           <div className="flex items-center justify-between mb-2">
             <TrendingUp className="w-5 h-5 text-[#2196F3]" />
-            <span className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999]">
+            <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
               Avg Utilization
             </span>
           </div>
@@ -716,7 +714,7 @@ export function WorkloadChartPage() {
         <div className="border border-[#EEEEEE] rounded-[16px] p-5">
           <div className="flex items-center justify-between mb-2">
             <AlertCircle className="w-5 h-5 text-[#ff3b3b]" />
-            <span className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999]">
+            <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
               Overloaded
             </span>
           </div>
@@ -741,10 +739,10 @@ export function WorkloadChartPage() {
               utilization > 100
                 ? '#ff3b3b'
                 : utilization >= 90
-                ? '#FF9800'
-                : utilization >= 70
-                ? '#4CAF50'
-                : '#2196F3';
+                  ? '#FF9800'
+                  : utilization >= 70
+                    ? '#4CAF50'
+                    : '#2196F3';
 
             return (
               <div
@@ -754,10 +752,10 @@ export function WorkloadChartPage() {
               >
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h4 className="font-['Inter:SemiBold',sans-serif] text-[14px] text-[#111111] mb-1">
+                    <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-1">
                       {employee.name}
                     </h4>
-                    <p className="text-[12px] font-['Inter:Regular',sans-serif] text-[#666666]">
+                    <p className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                       {employee.role}
                     </p>
                   </div>
@@ -765,7 +763,7 @@ export function WorkloadChartPage() {
                     <p className="font-['Manrope:Bold',sans-serif] text-[18px] text-[#111111]">
                       {employee.total}h
                     </p>
-                    <p className="text-[11px] font-['Inter:Regular',sans-serif] text-[#666666]">
+                    <p className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                       of {employee.capacity}h
                     </p>
                   </div>
@@ -774,11 +772,11 @@ export function WorkloadChartPage() {
                 {/* Utilization Bar */}
                 <div className="mb-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-['Inter:Medium',sans-serif] text-[#666666]">
+                    <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#666666]">
                       Utilization
                     </span>
                     <span
-                      className="text-[11px] font-['Inter:SemiBold',sans-serif]"
+                      className="text-[11px] font-['Manrope:SemiBold',sans-serif]"
                       style={{ color: utilizationColor }}
                     >
                       {utilization.toFixed(1)}%
@@ -794,183 +792,50 @@ export function WorkloadChartPage() {
                     />
                   </div>
                 </div>
-
-                {/* Daily Breakdown */}
-                <div className="grid grid-cols-7 gap-2">
-                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
-                    const dayKey = [
-                      'monday',
-                      'tuesday',
-                      'wednesday',
-                      'thursday',
-                      'friday',
-                      'saturday',
-                      'sunday'
-                    ][index] as keyof EmployeeWorkload;
-                    const hours = employee[dayKey] as number;
-
-                    return (
-                      <div key={day} className="text-center">
-                        <p className="text-[10px] font-['Inter:Medium',sans-serif] text-[#999999] mb-1">
-                          {day}
-                        </p>
-                        <div
-                          className={`px-2 py-1 rounded-[6px] ${
-                            hours > 8
-                              ? 'bg-[#FFEBEE] text-[#ff3b3b]'
-                              : hours > 0
-                              ? 'bg-white text-[#111111]'
-                              : 'bg-white text-[#CCCCCC]'
-                          }`}
-                        >
-                          <p className="text-[11px] font-['Inter:SemiBold',sans-serif]">
-                            {hours}h
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Employee Detail Dialog */}
-      <Dialog open={!!selectedEmployee} onOpenChange={() => setSelectedEmployee(null)}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle className="font-['Manrope:Bold',sans-serif] text-[24px]">
-              {selectedEmployee?.name}
-            </DialogTitle>
-            <p className="text-[14px] font-['Inter:Regular',sans-serif] text-[#666666]">
-              {selectedEmployee?.role}
-            </p>
-          </DialogHeader>
-          
-          {selectedEmployee && (
-            <div className="space-y-6 mt-4">
-              {/* Summary Stats */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-[#F7F7F7] rounded-[12px] p-4">
-                  <p className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999] mb-1">
-                    Total Hours
-                  </p>
-                  <p className="font-['Manrope:Bold',sans-serif] text-[20px] text-[#111111]">
-                    {selectedEmployee.total}h
-                  </p>
-                </div>
-                <div className="bg-[#F7F7F7] rounded-[12px] p-4">
-                  <p className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999] mb-1">
-                    Capacity
-                  </p>
-                  <p className="font-['Manrope:Bold',sans-serif] text-[20px] text-[#111111]">
-                    {selectedEmployee.capacity}h
-                  </p>
-                </div>
-                <div className="bg-[#F7F7F7] rounded-[12px] p-4">
-                  <p className="text-[11px] font-['Inter:Medium',sans-serif] text-[#999999] mb-1">
-                    Utilization
-                  </p>
-                  <p 
-                    className="font-['Manrope:Bold',sans-serif] text-[20px]"
-                    style={{ color: getBarColor(selectedEmployee.total, selectedEmployee.capacity) }}
-                  >
-                    {((selectedEmployee.total / selectedEmployee.capacity) * 100).toFixed(1)}%
-                  </p>
-                </div>
-              </div>
-
-              {/* Weekly Breakdown */}
+      {/* Employee Details Modal */}
+      <Modal
+        open={!!selectedEmployee}
+        onCancel={() => setSelectedEmployee(null)}
+        width={500}
+        centered
+        className="rounded-[16px] overflow-hidden"
+      >
+        {selectedEmployee && (
+          <div className="p-0">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-3">
-                  Daily Breakdown
-                </h4>
-                <div className="space-y-2">
-                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day, index) => {
-                    const dayKey = [
-                      'monday',
-                      'tuesday',
-                      'wednesday',
-                      'thursday',
-                      'friday',
-                      'saturday',
-                      'sunday'
-                    ][index] as keyof EmployeeWorkload;
-                    const hours = selectedEmployee[dayKey] as number;
-
-                    return (
-                      <div key={day} className="flex items-center justify-between">
-                        <span className="text-[13px] font-['Inter:Medium',sans-serif] text-[#666666]">
-                          {day}
-                        </span>
-                        <div className="flex items-center gap-3">
-                          <div className="w-32 h-2 bg-[#F7F7F7] rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${(hours / 10) * 100}%`,
-                                backgroundColor: hours > 8 ? '#ff3b3b' : '#4CAF50'
-                              }}
-                            />
-                          </div>
-                          <span className={`text-[13px] font-['Inter:SemiBold',sans-serif] w-12 text-right ${
-                            hours > 8 ? 'text-[#ff3b3b]' : 'text-[#111111]'
-                          }`}>
-                            {hours}h
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                <h2 className="text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">{selectedEmployee.name}</h2>
+                <p className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif]">{selectedEmployee.role}</p>
               </div>
-
-              {/* Monthly Trend */}
-              <div>
-                <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-3">
-                  Monthly Trend
-                </h4>
-                <ResponsiveContainer width="100%" height={200} minHeight={200}>
-                  <LineChart
-                    data={[
-                      { week: 'W1', hours: selectedEmployee.week1 },
-                      { week: 'W2', hours: selectedEmployee.week2 },
-                      { week: 'W3', hours: selectedEmployee.week3 },
-                      { week: 'W4', hours: selectedEmployee.week4 }
-                    ]}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#EEEEEE" />
-                    <XAxis
-                      dataKey="week"
-                      tick={{ fill: '#666666', fontSize: 11, fontFamily: 'Inter' }}
-                    />
-                    <YAxis
-                      tick={{ fill: '#666666', fontSize: 11, fontFamily: 'Inter' }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #EEEEEE',
-                        borderRadius: '8px',
-                        fontSize: '12px'
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="hours"
-                      stroke="#ff3b3b"
-                      strokeWidth={2}
-                      dot={{ fill: '#ff3b3b', r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+              <div className="text-right">
+                <p className="text-[24px] font-['Manrope:Bold',sans-serif] text-[#111111]">{selectedEmployee.total}h</p>
+                <p className="text-[12px] text-[#666666] font-['Manrope:Regular',sans-serif]">Total Hours</p>
               </div>
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+
+            <h3 className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-3">Daily Breakdown</h3>
+            <div className="space-y-2">
+              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => {
+                const key = day.toLowerCase() as keyof EmployeeWorkload;
+                const hours = selectedEmployee[key] as number;
+                return (
+                  <div key={day} className="flex items-center justify-between p-3 bg-[#F7F7F7] rounded-lg">
+                    <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666]">{day}</span>
+                    <span className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">{hours > 0 ? `${hours}h` : '-'}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </Modal>
+
     </PageLayout>
   );
 }

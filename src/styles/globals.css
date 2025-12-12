@@ -79,3 +79,157 @@
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
 }
+
+/* Custom Checkbox Styling - Single border, rounded corners */
+.custom-checkbox-wrapper .ant-checkbox {
+  border: 1px solid #dddddd !important;
+  border-radius: 4px !important;
+  background-color: #f5f5f5 !important;
+  width: 16px !important;
+  height: 16px !important;
+  transition: all 0.2s !important;
+  box-shadow: none !important;
+}
+
+.custom-checkbox-wrapper .ant-checkbox::after {
+  display: none !important;
+}
+
+.custom-checkbox-wrapper .ant-checkbox-inner {
+  border: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  background-color: transparent !important;
+  border-radius: 4px !important;
+}
+
+/* Checked state - dark background with white checkmark */
+.custom-checkbox-wrapper .ant-checkbox-checked {
+  background-color: #030213 !important;
+  border-color: #030213 !important;
+}
+
+.custom-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #030213 !important;
+  border: none !important;
+}
+
+.custom-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner::after {
+  border-color: #ffffff !important;
+  border-width: 2px 2px 0 0 !important;
+  width: 5px !important;
+  height: 8px !important;
+  top: 2px !important;
+  left: 4px !important;
+  transform: rotate(45deg) !important;
+}
+
+/* Hover state */
+.custom-checkbox-wrapper .ant-checkbox:hover:not(.ant-checkbox-disabled) {
+  border-color: #bbbbbb !important;
+}
+
+.custom-checkbox-wrapper .ant-checkbox-checked:hover:not(.ant-checkbox-disabled) {
+  border-color: #030213 !important;
+  background-color: #030213 !important;
+}
+
+/* Focus state */
+.custom-checkbox-wrapper .ant-checkbox:focus-visible {
+  border-color: #030213 !important;
+  box-shadow: 0 0 0 2px rgba(3, 2, 19, 0.1) !important;
+  outline: none !important;
+}
+
+/* Disabled state */
+.custom-checkbox-wrapper .ant-checkbox:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.5 !important;
+  background-color: #f5f5f5 !important;
+}
+
+.custom-checkbox-wrapper .ant-checkbox-checked:disabled {
+  background-color: #030213 !important;
+  border-color: #030213 !important;
+}
+
+/* Dark mode */
+.dark .custom-checkbox-wrapper .ant-checkbox {
+  background-color: #2a2a2a !important;
+  border-color: #444444 !important;
+}
+
+.dark .custom-checkbox-wrapper .ant-checkbox-checked {
+  background-color: #030213 !important;
+  border-color: #030213 !important;
+}
+
+.dark .custom-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #030213 !important;
+}
+
+/* Custom Select/Dropdown Styling - Match design from screenshot */
+.ant-select-dropdown {
+  background: #ffffff !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid #EEEEEE !important;
+  padding: 4px !important;
+}
+
+.ant-select-item {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
+  font-size: 14px !important;
+  color: #111111 !important;
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  margin: 2px 0 !important;
+  transition: background-color 0.2s !important;
+}
+
+.ant-select-item:hover:not(.ant-select-item-disabled) {
+  background-color: #F5F5F5 !important;
+}
+
+.ant-select-item-option-selected {
+  background-color: transparent !important;
+  font-weight: 500 !important;
+}
+
+.ant-select-item-option-selected::after {
+  content: '✓' !important;
+  float: right !important;
+  color: #666666 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+.ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background-color: #F5F5F5 !important;
+}
+
+.ant-select-selector {
+  border: 1px solid #EEEEEE !important;
+  border-radius: 8px !important;
+  height: 44px !important;
+  padding: 0 12px !important;
+  font-family: 'Manrope', sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+}
+
+.ant-select-focused .ant-select-selector {
+  border-color: #ff3b3b !important;
+  box-shadow: 0 0 0 2px rgba(255, 59, 59, 0.1) !important;
+}
+
+.ant-select-selection-placeholder {
+  color: #999999 !important;
+  font-weight: 400 !important;
+}
+
+.ant-select-selection-item {
+  color: #111111 !important;
+  font-weight: 500 !important;
+  line-height: 42px !important;
+}

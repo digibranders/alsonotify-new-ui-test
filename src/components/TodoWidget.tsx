@@ -1,17 +1,9 @@
 import svgPaths from "../constants/iconPaths";
-import { Plus, Bold, Italic, List, CheckSquare, MoreVertical, X, Archive, Trash2 } from 'lucide-react';
+import { Plus, Bold, Italic, List, CheckSquare, MoreVertical, Archive, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { Input } from './ui/input';
-import { Button } from './ui/button';
-import { Textarea } from './ui/textarea';
-import { Checkbox } from './ui/checkbox';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
+import { Modal, Input, Button, Checkbox, Dropdown, MenuProps } from 'antd';
+
+const { TextArea } = Input;
 
 interface Note {
   id: number;
@@ -107,61 +99,64 @@ export function TodoWidget({ onNavigate }: { onNavigate?: (page: string) => void
         </div>
       </div>
 
-      {/* Add Note Dialog */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="font-['Manrope:Bold',sans-serif] text-[24px]">Add Note</DialogTitle>
-            <DialogDescription className="font-['Inter:Regular',sans-serif] text-[14px] text-[#666666]">Create a new sticky note for quick reminders and tasks.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 mt-4">
-            <div>
-              <label className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2 block">Title</label>
-              <Input placeholder="Note title" className="rounded-lg" />
-            </div>
-            <div>
-              <label className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2 flex items-center justify-between">
-                <span>Content</span>
-                <div className="flex gap-1">
-                  <button className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Bold">
-                    <Bold className="size-4 text-[#666666]" />
-                  </button>
-                  <button className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Italic">
-                    <Italic className="size-4 text-[#666666]" />
-                  </button>
-                  <button className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="List">
-                    <List className="size-4 text-[#666666]" />
-                  </button>
-                  <button className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Checklist">
-                    <CheckSquare className="size-4 text-[#666666]" />
-                  </button>
-                </div>
-              </label>
-              <Textarea placeholder="Note content..." className="rounded-lg min-h-[120px]" />
-            </div>
-            <div>
-              <label className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2 block">Color</label>
-              <div className="flex gap-2">
-                {['#ff3b3b', '#3b8eff', '#9b59b6', '#FFA500', '#2ecc71', '#e74c3c'].map((color) => (
-                  <button
-                    key={color}
-                    className="w-10 h-10 rounded-lg border-2 border-transparent hover:border-[#ff3b3b] transition-colors"
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
+      {/* Add Note Modal */}
+      <Modal
+        title={<div className="font-['Manrope:Bold',sans-serif] text-[24px]">Add Note</div>}
+        open={showDialog}
+        onCancel={() => setShowDialog(false)}
+        footer={null}
+        width={500}
+        centered
+        className="rounded-[16px] overflow-hidden"
+      >
+        <div className="font-['Manrope:Regular',sans-serif] text-[14px] text-[#666666] mb-4">Create a new sticky note for quick reminders and tasks.</div>
+        <div className="space-y-4">
+          <div>
+            <label className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Title</label>
+            <Input placeholder="Note title" className="rounded-lg h-9" />
+          </div>
+          <div>
+            <label className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 flex items-center justify-between">
+              <span>Content</span>
+              <div className="flex gap-1">
+                <button className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Bold">
+                  <Bold className="size-4 text-[#666666]" />
+                </button>
+                <button className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Italic">
+                  <Italic className="size-4 text-[#666666]" />
+                </button>
+                <button className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="List">
+                  <List className="size-4 text-[#666666]" />
+                </button>
+                <button className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Checklist">
+                  <CheckSquare className="size-4 text-[#666666]" />
+                </button>
               </div>
-            </div>
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" onClick={() => setShowDialog(false)} className="flex-1 rounded-full">
-                Cancel
-              </Button>
-              <Button onClick={() => setShowDialog(false)} className="flex-1 rounded-full bg-[#ff3b3b] hover:bg-[#cc2f2f]">
-                Add Note
-              </Button>
+            </label>
+            <TextArea placeholder="Note content..." className="rounded-lg min-h-[120px]" />
+          </div>
+          <div>
+            <label className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Color</label>
+            <div className="flex gap-2">
+              {['#ff3b3b', '#3b8eff', '#9b59b6', '#FFA500', '#2ecc71', '#e74c3c'].map((color) => (
+                <button
+                  key={color}
+                  className="w-10 h-10 rounded-lg border-2 border-transparent hover:border-[#ff3b3b] transition-colors"
+                  style={{ backgroundColor: color }}
+                />
+              ))}
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+          <div className="flex gap-3 pt-4">
+            <Button onClick={() => setShowDialog(false)} className="flex-1 rounded-full h-10 font-['Manrope:SemiBold',sans-serif]">
+              Cancel
+            </Button>
+            <Button type="primary" onClick={() => setShowDialog(false)} className="flex-1 rounded-full bg-[#ff3b3b] hover:bg-[#cc2f2f] h-10 font-['Manrope:SemiBold',sans-serif] border-none text-white">
+              Add Note
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }
@@ -178,6 +173,20 @@ function NoteCard({ note, onToggleItem }: {
   };
   onToggleItem: (noteId: number, itemIndex: number) => void;
 }) {
+  const items: MenuProps['items'] = [
+    {
+      key: 'archive',
+      label: <span className="text-[13px] font-['Manrope:Medium',sans-serif]">Archive</span>,
+      icon: <Archive className="size-3.5" />,
+    },
+    {
+      key: 'delete',
+      label: <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#ff3b3b]">Delete</span>,
+      icon: <Trash2 className="size-3.5 text-[#ff3b3b]" />,
+      danger: true,
+    },
+  ];
+
   return (
     <div className="relative group h-full">
       {/* Card with white background */}
@@ -190,31 +199,19 @@ function NoteCard({ note, onToggleItem }: {
           </h4>
 
           {/* Three-dot menu - appears on hover */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-[#F7F7F7] rounded-md flex-shrink-0"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <MoreVertical className="size-3.5 text-[#666666]" strokeWidth={2} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem className="text-[13px] font-['Inter:Medium',sans-serif] cursor-pointer">
-                <Archive className="size-3.5 mr-2" />
-                Archive
-              </DropdownMenuItem>
-              <DropdownMenuItem className="text-[13px] font-['Inter:Medium',sans-serif] cursor-pointer text-[#ff3b3b] focus:text-[#ff3b3b]">
-                <Trash2 className="size-3.5 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Dropdown menu={{ items }} placement="bottomRight" trigger={['click']}>
+            <button
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-[#F7F7F7] rounded-md flex-shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreVertical className="size-3.5 text-[#666666]" strokeWidth={2} />
+            </button>
+          </Dropdown>
         </div>
 
         {/* Content */}
         {note.type === 'text' && note.content && (
-          <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#666666] line-clamp-4 whitespace-pre-line">
+          <p className="font-['Manrope:Regular',sans-serif] text-[12px] text-[#666666] line-clamp-4 whitespace-pre-line">
             {note.content}
           </p>
         )}
@@ -225,16 +222,16 @@ function NoteCard({ note, onToggleItem }: {
               <div key={index} className="flex items-start gap-2">
                 <Checkbox
                   checked={item.checked}
-                  onCheckedChange={() => onToggleItem(note.id, index)}
-                  className="size-4 mt-0.5"
+                  onChange={() => onToggleItem(note.id, index)}
+                  className="mt-0.5"
                 />
-                <span className={`font-['Inter:Regular',sans-serif] text-[11px] flex-1 ${item.checked ? 'line-through text-[#999999]' : 'text-[#666666]'}`}>
+                <span className={`font-['Manrope:Regular',sans-serif] text-[11px] flex-1 ${item.checked ? 'line-through text-[#999999]' : 'text-[#666666]'}`}>
                   {item.text}
                 </span>
               </div>
             ))}
             {note.items.length > 3 && (
-              <span className="font-['Inter:Regular',sans-serif] text-[10px] text-[#999999]">
+              <span className="font-['Manrope:Regular',sans-serif] text-[10px] text-[#999999]">
                 +{note.items.length - 3} more
               </span>
             )}

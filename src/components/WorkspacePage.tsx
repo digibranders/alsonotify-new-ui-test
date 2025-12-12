@@ -1,21 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, FolderOpen, ChevronLeft, ChevronRight, Plus, UploadCloud, LayoutGrid, List, MoreVertical, Edit, Trash2, Archive, Users, RotateCcw, Eye } from 'lucide-react';
+import { FolderOpen, ChevronLeft, ChevronRight, Plus, UploadCloud, LayoutGrid, List, MoreVertical, Edit, Trash2, Archive, Users, RotateCcw } from 'lucide-react';
 import { FilterBar, FilterOption } from './FilterBar';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "./ui/dialog";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Label } from "./ui/label";
-import { Textarea } from "./ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu";
-import { useData } from '../context/DataContext';
-import { Workspace } from '../lib/types';
+import { Modal, Button, Input, Select, Dropdown, MenuProps } from "antd";
+import { useWorkspaces, useCreateWorkspace, useClients } from '@/hooks/useWorkspace';
+import { useClients as useGetClients, useEmployees } from '@/hooks/useUser';
+import { message } from 'antd';
+
+const { TextArea } = Input;
+const { Option } = Select;
 
 export function WorkspacePage() {
-  const { workspaces, addWorkspace } = useData();
+  const { data: workspacesData, isLoading } = useWorkspaces();
+  const { data: clientsData } = useGetClients();
+  const { data: employeesData } = useEmployees(); // Fetch employees for project lead dropdown
+  const createWorkspaceMutation = useCreateWorkspace();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
@@ -37,8 +38,27 @@ export function WorkspacePage() {
 
   const itemsPerPage = 12;
 
+  // Transform backend data to frontend format
+  const workspaces = useMemo(() => {
+    if (!workspacesData?.result?.projects) return [];
+    return workspacesData.result.projects.map((w: any) => ({
+      id: w.id,
+      name: w.name,
+      client: w.client?.name || w.client_company_name || 'N/A',
+      taskCount: w.total_task || 0,
+      inProgressCount: w.total_task_in_progress || 0,
+      delayedCount: w.total_task_delayed || 0,
+      completedCount: w.total_task_completed || 0,
+      status: w.status === 'Active' || w.status === 'IN_PROGRESS' ? 'active' : 'inactive',
+      description: w.description || '',
+    }));
+  }, [workspacesData]);
+
   // Extract unique companies from workspace data
-  const companies = ['All', ...Array.from(new Set(workspaces.map(w => w.client).filter(c => c !== 'N/A')))];
+  const companies = useMemo(() => {
+    const clientNames = workspaces.map(w => w.client).filter(c => c !== 'N/A');
+    return ['All', ...Array.from(new Set(clientNames))];
+  }, [workspaces]);
 
   const handleFilterChange = (filterId: string, value: string) => {
     setFilters(prev => ({ ...prev, [filterId]: value }));
@@ -61,25 +81,50 @@ export function WorkspacePage() {
     }
   ];
 
-  const handleCreateWorkspace = () => {
-    if (!newWorkspace.name) return;
+  const handleCreateWorkspace = async () => {
+    if (!newWorkspace.name) {
+      message.error("Workspace name is required");
+      return;
+    }
 
-    const workspace: Workspace = {
-      id: Math.max(0, ...workspaces.map(w => w.id)) + 1,
-      name: newWorkspace.name,
-      client: newWorkspace.client || 'N/A',
-      taskCount: 0,
-      status: 'active'
-    };
+    // Find client ID from client name
+    const selectedClient = clientsData?.result?.find((c: any) => c.name === newWorkspace.client);
 
-    addWorkspace(workspace);
-    setIsDialogOpen(false);
-    setNewWorkspace({
-      name: '',
-      client: '',
-      description: '',
-      lead: ''
-    });
+    // Find selected employee/lead ID
+    const selectedLead = employeesData?.result?.find((emp: any) =>
+      String(emp.user_id || emp.id) === newWorkspace.lead
+    );
+
+    createWorkspaceMutation.mutate(
+      {
+        name: newWorkspace.name,
+        description: newWorkspace.description || '',
+        client_id: selectedClient?.id || null,
+        manager_id: selectedLead?.user_id || selectedLead?.id || null,
+        leader_id: selectedLead?.user_id || selectedLead?.id || null,
+        start_date: new Date().toISOString(),
+        end_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days from now
+        document_link: '',
+        high_priority: false,
+        in_house: true,
+      } as any,
+      {
+        onSuccess: () => {
+          message.success("Workspace created successfully!");
+          setIsDialogOpen(false);
+          setNewWorkspace({
+            name: '',
+            client: '',
+            description: '',
+            lead: '',
+          });
+        },
+        onError: (error: any) => {
+          const errorMessage = error?.response?.data?.message || "Failed to create workspace";
+          message.error(errorMessage);
+        },
+      }
+    );
   };
 
   const filteredWorkspaces = workspaces.filter(workspace => {
@@ -97,7 +142,7 @@ export function WorkspacePage() {
   const endIndex = startIndex + itemsPerPage;
   const currentWorkspaces = filteredWorkspaces.slice(startIndex, endIndex);
 
-  const handleSelectWorkspace = (workspace: Workspace) => {
+  const handleSelectWorkspace = (workspace: { id: number; name: string; client: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; status: string }) => {
     router.push(`/workspaces/${workspace.id}`);
   };
 
@@ -108,121 +153,122 @@ export function WorkspacePage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <h2 className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">Workspace</h2>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <button className="hover:scale-110 active:scale-95 transition-transform">
-                  <Plus className="size-5 text-[#ff3b3b]" strokeWidth={2} />
-                </button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] bg-white rounded-[16px] border border-[#EEEEEE] p-0 overflow-hidden gap-0">
-                {/* Dialog Content */}
-                <div className="p-6 border-b border-[#EEEEEE]">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                      <div className="p-2 rounded-full bg-[#F7F7F7]">
-                        <FolderOpen className="w-5 h-5 text-[#666666]" />
-                      </div>
-                      Create Workspace
-                    </DialogTitle>
-                    <DialogDescription className="text-[13px] text-[#666666] font-['Inter:Regular',sans-serif] ml-11">
-                      Create a new workspace to organize tasks and requirements.
-                    </DialogDescription>
-                  </DialogHeader>
+            <button onClick={() => setIsDialogOpen(true)} className="hover:scale-110 active:scale-95 transition-transform">
+              <Plus className="size-5 text-[#ff3b3b]" strokeWidth={2} />
+            </button>
+            <Modal
+              title={
+                <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                  <div className="p-2 rounded-full bg-[#F7F7F7]">
+                    <FolderOpen className="w-5 h-5 text-[#666666]" />
+                  </div>
+                  Create Workspace
                 </div>
+              }
+              open={isDialogOpen}
+              onCancel={() => setIsDialogOpen(false)}
+              footer={null}
+              width={600}
+              centered
+              className="rounded-[16px] overflow-hidden"
+            >
+              <div className="p-0">
+                <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11 mb-6">
+                  Create a new workspace to organize tasks and requirements.
+                </p>
 
-                <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                <div className="space-y-6 max-h-[60vh] overflow-y-auto mb-6">
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label htmlFor="name" className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Workspace Name <span className="text-[#ff3b3b]">*</span></Label>
+                      <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Workspace Name <span className="text-[#ff3b3b]">*</span></label>
                       <Input
-                        id="name"
                         placeholder="e.g. Website Redesign"
-                        className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]"
+                        className="h-11 rounded-lg font-['Manrope:Medium',sans-serif]"
                         value={newWorkspace.name}
                         onChange={(e) => setNewWorkspace({ ...newWorkspace, name: e.target.value })}
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="client" className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Client <span className="text-[#ff3b3b]">*</span></Label>
+                      <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Client <span className="text-[#ff3b3b]">*</span></label>
                       <Select
-                        value={newWorkspace.client}
-                        onValueChange={(val) => setNewWorkspace({ ...newWorkspace, client: val })}
+                        className="w-full h-11"
+                        placeholder="Select client"
+                        value={newWorkspace.client || undefined}
+                        onChange={(val) => setNewWorkspace({ ...newWorkspace, client: String(val) })}
                       >
-                        <SelectTrigger className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]">
-                          <SelectValue placeholder="Select client" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Eventus Security">Eventus Security</SelectItem>
-                          <SelectItem value="Triam Security">Triam Security</SelectItem>
-                          <SelectItem value="DIST">DIST</SelectItem>
-                          <SelectItem value="Digibranders Priv.">Digibranders Priv.</SelectItem>
-                        </SelectContent>
+                        {clientsData?.result?.map((client: any) => (
+                          <Option key={client.id || client.association_id} value={client.name || client.company}>
+                            {client.name || client.company}
+                          </Option>
+                        )) || (
+                            <Option value="none" disabled>No clients available</Option>
+                          )}
                       </Select>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <Label htmlFor="lead" className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Project Lead</Label>
+                      <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Project Lead</label>
                       <Select
-                        value={newWorkspace.lead}
-                        onValueChange={(val) => setNewWorkspace({ ...newWorkspace, lead: val })}
+                        className="w-full h-11"
+                        placeholder="Select lead"
+                        value={newWorkspace.lead || undefined}
+                        onChange={(val) => setNewWorkspace({ ...newWorkspace, lead: String(val) })}
                       >
-                        <SelectTrigger className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]">
-                          <SelectValue placeholder="Select lead" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="me">Me (Current User)</SelectItem>
-                          <SelectItem value="sarah">Sarah Wilson</SelectItem>
-                          <SelectItem value="mike">Mike Johnson</SelectItem>
-                        </SelectContent>
+                        {employeesData?.result?.map((emp: any) => (
+                          <Option key={emp.user_id || emp.id} value={String(emp.user_id || emp.id)}>
+                            {emp.name}
+                          </Option>
+                        )) || (
+                            <Option value="none" disabled>No employees available</Option>
+                          )}
                       </Select>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Upload Documents</Label>
+                    <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Upload Documents</label>
                     <div className="border-2 border-dashed border-[#EEEEEE] rounded-xl p-8 flex flex-col items-center justify-center text-center hover:border-[#ff3b3b]/30 hover:bg-[#FFFAFA] transition-colors cursor-pointer">
                       <div className="w-12 h-12 rounded-full bg-[#F7F7F7] flex items-center justify-center mb-3">
                         <UploadCloud className="w-6 h-6 text-[#999999]" />
                       </div>
                       <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-1">Choose a file or drag & drop it here</p>
-                      <p className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">txt, docx, pdf, jpeg, xlsx - Up to 50MB</p>
-                      <Button variant="outline" className="mt-4 h-8 text-[12px] font-['Manrope:SemiBold',sans-serif]">Browse files</Button>
+                      <p className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">txt, docx, pdf, jpeg, xlsx - Up to 50MB</p>
+                      <Button className="mt-4 h-8 text-[12px] font-['Manrope:SemiBold',sans-serif]">Browse files</Button>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description" className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</Label>
-                    <Textarea
-                      id="description"
+                    <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</label>
+                    <TextArea
                       placeholder="Describe your workspace..."
-                      className="min-h-[100px] rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Regular',sans-serif] resize-none p-3"
+                      className="min-h-[100px] rounded-lg font-['Manrope:Regular',sans-serif] resize-none p-3"
                       value={newWorkspace.description}
                       onChange={(e) => setNewWorkspace({ ...newWorkspace, description: e.target.value })}
                     />
                   </div>
                 </div>
 
-                <div className="p-6 border-t border-[#EEEEEE] flex items-center justify-end bg-white">
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setNewWorkspace({ name: '', client: '', description: '', lead: '' })}
-                      className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:bg-[#F7F7F7]"
-                    >
-                      Reset Data
-                    </Button>
-                    <Button
-                      onClick={handleCreateWorkspace}
-                      className="h-10 px-6 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif]"
-                    >
-                      Create Workspace
-                    </Button>
-                  </div>
+                <div className="flex items-center justify-end gap-3 pt-6 border-t border-[#EEEEEE]">
+                  <Button
+                    type="text"
+                    onClick={() => setNewWorkspace({ name: '', client: '', description: '', lead: '' })}
+                    className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:bg-[#F7F7F7] rounded-lg"
+                  >
+                    Reset Data
+                  </Button>
+                  <Button
+                    type="primary"
+                    onClick={handleCreateWorkspace}
+                    disabled={createWorkspaceMutation.isPending}
+                    className="h-10 px-6 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] border-none"
+                  >
+                    {createWorkspaceMutation.isPending ? "Creating..." : "Create Workspace"}
+                  </Button>
                 </div>
-              </DialogContent>
-            </Dialog>
+              </div>
+            </Modal>
           </div>
 
           {/* View Toggle */}
@@ -247,8 +293,8 @@ export function WorkspacePage() {
           <button
             onClick={() => setActiveTab('active')}
             className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === 'active'
-                ? 'text-[#ff3b3b]'
-                : 'text-[#666666] hover:text-[#111111]'
+              ? 'text-[#ff3b3b]'
+              : 'text-[#666666] hover:text-[#111111]'
               }`}
           >
             Active
@@ -259,8 +305,8 @@ export function WorkspacePage() {
           <button
             onClick={() => setActiveTab('inactive')}
             className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === 'inactive'
-                ? 'text-[#ff3b3b]'
-                : 'text-[#666666] hover:text-[#111111]'
+              ? 'text-[#ff3b3b]'
+              : 'text-[#666666] hover:text-[#111111]'
               }`}
           >
             Deactivated
@@ -308,20 +354,24 @@ export function WorkspacePage() {
           </div>
         )}
 
-        {filteredWorkspaces.length === 0 && (
+        {isLoading ? (
+          <div className="text-center py-12">
+            <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">Loading workspaces...</p>
+          </div>
+        ) : filteredWorkspaces.length === 0 ? (
           <div className="text-center py-12">
             <FolderOpen className="w-12 h-12 text-[#DDDDDD] mx-auto mb-3" />
-            <p className="text-[#999999] font-['Inter:Regular',sans-serif]">
+            <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">
               No workspaces found
             </p>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-6 pt-6 border-t border-[#EEEEEE]">
-          <p className="text-[14px] font-['Inter:Regular',sans-serif] text-[#666666]">
+          <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">
             {startIndex + 1}-{Math.min(endIndex, filteredWorkspaces.length)} of {filteredWorkspaces.length} workspaces
           </p>
 
@@ -339,8 +389,8 @@ export function WorkspacePage() {
                 key={page}
                 onClick={() => setCurrentPage(page)}
                 className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all font-['Manrope:SemiBold',sans-serif] text-[13px] ${currentPage === page
-                    ? 'bg-[#ff3b3b] text-white'
-                    : 'border border-[#EEEEEE] text-[#666666] hover:bg-[#F7F7F7]'
+                  ? 'bg-[#ff3b3b] text-white'
+                  : 'border border-[#EEEEEE] text-[#666666] hover:bg-[#F7F7F7]'
                   }`}
               >
                 {page}
@@ -361,13 +411,23 @@ export function WorkspacePage() {
   );
 }
 
-function WorkspaceProgress({ taskCount }: { taskCount: number }) {
+function WorkspaceProgress({
+  taskCount,
+  inProgressCount,
+  delayedCount,
+  completedCount
+}: {
+  taskCount: number;
+  inProgressCount?: number;
+  delayedCount?: number;
+  completedCount?: number;
+}) {
   if (taskCount === 0) {
     return (
       <div className="px-2.5 py-1 rounded-full bg-[#F7F7F7] border border-[#EEEEEE] flex items-center gap-1.5 self-start">
         <div className="w-1.5 h-1.5 rounded-full bg-[#999999]" />
         <span className="text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#999999]">
-          No requirements
+          No tasks
         </span>
       </div>
     );
@@ -375,26 +435,57 @@ function WorkspaceProgress({ taskCount }: { taskCount: number }) {
 
   return (
     <div className="flex flex-wrap gap-2">
-      {/* In Progress - Dummy Data Calculation */}
-      <div className="px-2.5 py-1 rounded-full bg-[#F0F9FF] border border-[#B9E6FE] flex items-center gap-1.5">
-        <div className="w-1.5 h-1.5 rounded-full bg-[#0284C7]" />
-        <span className="text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#0284C7]">
-          {Math.ceil(taskCount * 0.7)} In Progress
-        </span>
-      </div>
+      {/* In Progress - Real Data from Backend */}
+      {inProgressCount !== undefined && inProgressCount > 0 && (
+        <div className="px-2.5 py-1 rounded-full bg-[#F0F9FF] border border-[#B9E6FE] flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#0284C7]" />
+          <span className="text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#0284C7]">
+            {inProgressCount} In Progress
+          </span>
+        </div>
+      )}
 
-      {/* Delayed - Dummy Data Calculation */}
-      <div className="px-2.5 py-1 rounded-full bg-[#FEF3F2] border border-[#FECACA] flex items-center gap-1.5">
-        <div className="w-1.5 h-1.5 rounded-full bg-[#ff3b3b]" />
-        <span className="text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#ff3b3b]">
-          {Math.floor(taskCount * 0.3)} Delayed
-        </span>
-      </div>
+      {/* Delayed - Real Data from Backend */}
+      {delayedCount !== undefined && delayedCount > 0 && (
+        <div className="px-2.5 py-1 rounded-full bg-[#FEF3F2] border border-[#FECACA] flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#ff3b3b]" />
+          <span className="text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#ff3b3b]">
+            {delayedCount} Delayed
+          </span>
+        </div>
+      )}
+
+      {/* Completed - Real Data from Backend */}
+      {completedCount !== undefined && completedCount > 0 && (
+        <div className="px-2.5 py-1 rounded-full bg-[#F0FDF4] border border-[#BBF7D0] flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />
+          <span className="text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#16A34A]">
+            {completedCount} Completed
+          </span>
+        </div>
+      )}
     </div>
   );
 }
 
-function WorkspaceCard({ workspace, onClick }: { workspace: Workspace; onClick?: () => void }) {
+function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: string; client: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; status: string }; onClick?: () => void }) {
+  const items: MenuProps['items'] = [
+    {
+      key: 'manage',
+      label: 'Manage Workspace',
+      type: 'group',
+      children: [
+        { key: 'edit', label: 'Edit Details', icon: <Edit className="w-4 h-4" /> },
+        { key: 'members', label: 'Manage Members', icon: <Users className="w-4 h-4" /> },
+        workspace.status === 'active'
+          ? { key: 'deactivate', label: 'Deactivate', icon: <Archive className="w-4 h-4" /> }
+          : { key: 'reactivate', label: 'Reactivate', icon: <RotateCcw className="w-4 h-4" /> }
+      ]
+    },
+    { type: 'divider' },
+    { key: 'delete', label: 'Delete Workspace', icon: <Trash2 className="w-4 h-4" />, danger: true }
+  ];
+
   return (
     <div
       onClick={onClick}
@@ -405,46 +496,11 @@ function WorkspaceCard({ workspace, onClick }: { workspace: Workspace; onClick?:
 
       {/* Action Menu - Absolute Positioned */}
       <div className="absolute top-4 right-4 z-20" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
-              <MoreVertical className="w-5 h-5 text-[#666666]" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 bg-white border border-[#EEEEEE] shadow-lg rounded-xl p-1.5">
-            <DropdownMenuLabel className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] px-2 py-1.5 uppercase tracking-wider">
-              Manage Workspace
-            </DropdownMenuLabel>
-            <DropdownMenuItem className="flex items-center gap-2 px-2 py-2 cursor-pointer rounded-lg hover:bg-[#F7F7F7] text-[13px] font-['Inter:Medium',sans-serif] text-[#111111]">
-              <Edit className="w-4 h-4 text-[#666666]" />
-              Edit Details
-            </DropdownMenuItem>
-
-            <DropdownMenuItem className="flex items-center gap-2 px-2 py-2 cursor-pointer rounded-lg hover:bg-[#F7F7F7] text-[13px] font-['Inter:Medium',sans-serif] text-[#111111]">
-              <Users className="w-4 h-4 text-[#666666]" />
-              Manage Members
-            </DropdownMenuItem>
-
-            {workspace.status === 'active' ? (
-              <DropdownMenuItem className="flex items-center gap-2 px-2 py-2 cursor-pointer rounded-lg hover:bg-[#F7F7F7] text-[13px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                <Archive className="w-4 h-4 text-[#666666]" />
-                Deactivate
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem className="flex items-center gap-2 px-2 py-2 cursor-pointer rounded-lg hover:bg-[#F7F7F7] text-[13px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                <RotateCcw className="w-4 h-4 text-[#666666]" />
-                Reactivate
-              </DropdownMenuItem>
-            )}
-
-            <DropdownMenuSeparator className="bg-[#EEEEEE] my-1.5" />
-
-            <DropdownMenuItem className="flex items-center gap-2 px-2 py-2 cursor-pointer rounded-lg hover:bg-[#FEF2F2] text-[13px] font-['Inter:Medium',sans-serif] text-[#DC2626]">
-              <Trash2 className="w-4 h-4" />
-              Delete Workspace
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
+          <button className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
+            <MoreVertical className="w-5 h-5 text-[#666666]" />
+          </button>
+        </Dropdown>
       </div>
 
       <div className="flex flex-col h-full">
@@ -462,19 +518,24 @@ function WorkspaceCard({ workspace, onClick }: { workspace: Workspace; onClick?:
 
         {/* Task Count / Progress */}
         <div className="mb-4 min-h-[26px]">
-          <WorkspaceProgress taskCount={workspace.taskCount} />
+          <WorkspaceProgress
+            taskCount={workspace.taskCount}
+            inProgressCount={workspace.inProgressCount}
+            delayedCount={workspace.delayedCount}
+            completedCount={workspace.completedCount}
+          />
         </div>
 
         {/* Footer: Client + Total */}
         <div className="pt-3 border-t border-[#EEEEEE] flex items-center justify-between">
           <div className="flex flex-col">
-            <p className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif] mb-0.5">Client</p>
-            <p className="text-[13px] text-[#666666] font-['Inter:Medium',sans-serif] truncate max-w-[120px]">
+            <p className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif] mb-0.5">Client</p>
+            <p className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif] truncate max-w-[120px]">
               {workspace.client}
             </p>
           </div>
           <div className="flex flex-col items-end">
-            <p className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif] mb-0.5">Total</p>
+            <p className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif] mb-0.5">Total</p>
             <p className="text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">
               {workspace.taskCount}
             </p>
@@ -485,7 +546,24 @@ function WorkspaceCard({ workspace, onClick }: { workspace: Workspace; onClick?:
   );
 }
 
-function WorkspaceListItem({ workspace, onClick }: { workspace: Workspace; onClick?: () => void }) {
+function WorkspaceListItem({ workspace, onClick }: { workspace: { id: number; name: string; client: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; status: string }; onClick?: () => void }) {
+  const items: MenuProps['items'] = [
+    {
+      key: 'manage',
+      label: 'Manage Workspace',
+      type: 'group',
+      children: [
+        { key: 'edit', label: 'Edit Details', icon: <Edit className="w-4 h-4" /> },
+        { key: 'members', label: 'Manage Members', icon: <Users className="w-4 h-4" /> },
+        workspace.status === 'active'
+          ? { key: 'deactivate', label: 'Deactivate', icon: <Archive className="w-4 h-4" /> }
+          : { key: 'reactivate', label: 'Reactivate', icon: <RotateCcw className="w-4 h-4" /> }
+      ]
+    },
+    { type: 'divider' },
+    { key: 'delete', label: 'Delete Workspace', icon: <Trash2 className="w-4 h-4" />, danger: true }
+  ];
+
   return (
     <div
       onClick={onClick}
@@ -502,7 +580,7 @@ function WorkspaceListItem({ workspace, onClick }: { workspace: Workspace; onCli
           <h3 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] line-clamp-1">
             {workspace.name}
           </h3>
-          <p className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif]">
+          <p className="text-[12px] text-[#666666] font-['Manrope:Regular',sans-serif]">
             {workspace.client}
           </p>
         </div>
@@ -510,57 +588,27 @@ function WorkspaceListItem({ workspace, onClick }: { workspace: Workspace; onCli
 
       {/* Stats */}
       <div className="flex items-center gap-4 mr-8">
-        <WorkspaceProgress taskCount={workspace.taskCount} />
+        <WorkspaceProgress
+          taskCount={workspace.taskCount}
+          inProgressCount={workspace.inProgressCount}
+          delayedCount={workspace.delayedCount}
+          completedCount={workspace.completedCount}
+        />
       </div>
 
       {/* Total - Right */}
       <div className="flex flex-col items-end mr-4 min-w-[40px]">
-        <span className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">Total</span>
+        <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">Total</span>
         <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">{workspace.taskCount}</span>
       </div>
 
       {/* Action */}
       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
-              <MoreVertical className="w-5 h-5 text-[#666666]" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 bg-white border border-[#EEEEEE] shadow-lg rounded-xl p-1.5">
-            <DropdownMenuLabel className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] px-2 py-1.5 uppercase tracking-wider">
-              Manage Workspace
-            </DropdownMenuLabel>
-            <DropdownMenuItem className="flex items-center gap-2 px-2 py-2 cursor-pointer rounded-lg hover:bg-[#F7F7F7] text-[13px] font-['Inter:Medium',sans-serif] text-[#111111]">
-              <Edit className="w-4 h-4 text-[#666666]" />
-              Edit Details
-            </DropdownMenuItem>
-
-            <DropdownMenuItem className="flex items-center gap-2 px-2 py-2 cursor-pointer rounded-lg hover:bg-[#F7F7F7] text-[13px] font-['Inter:Medium',sans-serif] text-[#111111]">
-              <Users className="w-4 h-4 text-[#666666]" />
-              Manage Members
-            </DropdownMenuItem>
-
-            {workspace.status === 'active' ? (
-              <DropdownMenuItem className="flex items-center gap-2 px-2 py-2 cursor-pointer rounded-lg hover:bg-[#F7F7F7] text-[13px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                <Archive className="w-4 h-4 text-[#666666]" />
-                Deactivate
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem className="flex items-center gap-2 px-2 py-2 cursor-pointer rounded-lg hover:bg-[#F7F7F7] text-[13px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                <RotateCcw className="w-4 h-4 text-[#666666]" />
-                Reactivate
-              </DropdownMenuItem>
-            )}
-
-            <DropdownMenuSeparator className="bg-[#EEEEEE] my-1.5" />
-
-            <DropdownMenuItem className="flex items-center gap-2 px-2 py-2 cursor-pointer rounded-lg hover:bg-[#FEF2F2] text-[13px] font-['Inter:Medium',sans-serif] text-[#DC2626]">
-              <Trash2 className="w-4 h-4" />
-              Delete Workspace
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
+          <button className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
+            <MoreVertical className="w-5 h-5 text-[#666666]" />
+          </button>
+        </Dropdown>
       </div>
     </div>
   );

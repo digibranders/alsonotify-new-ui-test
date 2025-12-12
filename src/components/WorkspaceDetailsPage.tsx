@@ -1,757 +1,545 @@
-import { useState } from 'react';
-import {
-  ChevronLeft, FolderOpen, Calendar as CalendarIcon, Clock, CheckCircle2,
-  Loader2, AlertCircle, MoreVertical, RotateCcw,
-  FileText, ListTodo, History, BarChart2, Columns,
-  User, Edit, Trash2, ArrowRight, Flag, Plus, UploadCloud, CheckSquare, Users as UsersIcon
-} from 'lucide-react';
+'use client';
+
+import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle, Plus, Filter, MoreHorizontal, MessageSquare, Paperclip, ChevronRight, LayoutGrid, List, UserPlus, FileText, ChevronDown, Check, FolderOpen, ArrowLeft, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { PageLayout } from './PageLayout';
 import { FilterBar, FilterOption } from './FilterBar';
-import { TabBar } from './TabBar';
-import { Checkbox } from "./ui/checkbox";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "./ui/dropdown-menu";
-import { Button } from "./ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose, DialogDescription } from "./ui/dialog";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Label } from "./ui/label";
-import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "./ui/breadcrumb";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { Calendar } from "./ui/calendar";
+import { Modal, Button, Input, Select, Checkbox, Dropdown, MenuProps, Breadcrumb, DatePicker, Avatar, Tooltip, Progress, Tabs, message } from 'antd';
+import { useWorkspaces, useWorkspaceTasks } from '@/hooks/useWorkspace';
+import { useCreateTask, useDeleteTask } from '@/hooks/useTask';
+import { useEmployees } from '@/hooks/useUser';
+import { format } from 'date-fns';
 
-import { useParams, useRouter } from 'next/navigation';
-import { useData } from '../context/DataContext';
-import { Requirement, Workspace } from '../lib/types';
-import { format } from "date-fns";
+import dayjs from 'dayjs';
 
-export function WorkspaceDetailsPage() {
-  const params = useParams();
-  const workspaceId = params.workspaceId;
+const { TextArea } = Input;
+const { Option } = Select;
+
+interface Task {
+  id: string;
+  title: string;
+  assignee: {
+    name: string;
+    avatar?: string;
+  };
+  dueDate: string;
+  status: 'In Progress' | 'Completed' | 'Review' | 'Todo';
+  priority: 'High' | 'Medium' | 'Low';
+  comments: number;
+  attachments: number;
+  description?: string;
+}
+
+export function WorkspaceDetailsPage({ id }: { id: string }) {
   const router = useRouter();
-  const { getWorkspace, requirements: allRequirements, addRequirement, updateRequirement } = useData();
+  const { data: workspacesData } = useWorkspaces();
+  const { data: tasksData, isLoading: tasksLoading } = useWorkspaceTasks(Number(id));
+  const { data: employeesData } = useEmployees();
+  const createTaskMutation = useCreateTask();
+  const deleteTaskMutation = useDeleteTask();
 
-  const workspace = getWorkspace(Number(workspaceId));
-  const requirements = allRequirements.filter(r => r.workspaceId === Number(workspaceId));
-
-  const [activeTab, setActiveTab] = useState<'all' | 'in-progress' | 'completed' | 'delayed'>('all');
+  const [activeTab, setActiveTab] = useState('tasks');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedReqId, setExpandedReqId] = useState<number | null>(null);
   const [filters, setFilters] = useState<Record<string, string>>({
-    priority: 'All'
+    status: 'All',
+    priority: 'All',
+    assignee: 'All'
   });
 
-  // Modal State
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newReq, setNewReq] = useState({
-    title: '',
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [newTask, setNewTask] = useState({
+    name: '',
     description: '',
-    priority: 'medium' as 'high' | 'medium' | 'low',
-    startDate: '',
-    dueDate: '',
-    assignedTo: ''
+    assigneeId: '',
+    status: 'Todo',
+    priority: 'Medium',
+    dueDate: null as any
   });
 
-  // Sorting State
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({
-    key: '',
-    direction: null
-  });
+  const workspace = useMemo(() => {
+    return workspacesData?.result?.projects?.find((p: any) => String(p.id) === id);
+  }, [workspacesData, id]);
 
-  const [selectedReqs, setSelectedReqs] = useState<number[]>([]);
+  const tasks = useMemo(() => {
+    if (!tasksData?.result) return [];
+    return tasksData.result.map((t: any) => ({
+      id: String(t.id),
+      title: t.name,
+      assignee: {
+        name: t.assigned_users?.[0]?.name || 'Unassigned',
+        avatar: t.assigned_users?.[0]?.image_url
+      },
+      dueDate: t.end_date,
+      status: t.status,
+      priority: t.high_priority ? 'High' : 'Medium', // Simplify for demo
+      comments: 0,
+      attachments: 0,
+      description: t.description
+    }));
+  }, [tasksData]);
+
+  // Filter Options
+  const assignees = ['All', ...Array.from(new Set(tasks.map((t: any) => t.assignee.name)))];
 
   const filterOptions: FilterOption[] = [
-    { id: 'priority', label: 'Priority', options: ['All', 'High', 'Medium', 'Low'], placeholder: 'Priority' }
+    {
+      id: 'status',
+      label: 'Status',
+      options: ['All', 'Todo', 'In Progress', 'Review', 'Completed'],
+      placeholder: 'Status',
+      defaultValue: 'All'
+    },
+    {
+      id: 'priority',
+      label: 'Priority',
+      options: ['All', 'High', 'Medium', 'Low'],
+      placeholder: 'Priority',
+      defaultValue: 'All'
+    },
+    {
+      id: 'assignee',
+      label: 'Assignee',
+      options: assignees as string[],
+      placeholder: 'Assignee',
+      defaultValue: 'All'
+    }
   ];
 
-  if (!workspace) {
-    return <div className="p-8">Workspace not found</div>;
-  }
-
-  const handleFilterChange = (filterId: string, value: string) => {
-    setFilters(prev => ({ ...prev, [filterId]: value }));
-  };
-
-  const clearFilters = () => {
-    setFilters({ priority: 'All' });
-    setSearchQuery('');
-    setSortConfig({ key: '', direction: null });
-  };
-
-  const handleSort = (key: string) => {
-    let direction: 'asc' | 'desc' | null = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    } else if (sortConfig.key === key && sortConfig.direction === 'desc') {
-      direction = null;
+  const handleCreateTask = () => {
+    if (!newTask.name) {
+      message.error('Task name is required');
+      return;
     }
-    setSortConfig({ key, direction });
-  };
 
-  const toggleSelectAll = () => {
-    if (selectedReqs.length === sortedRequirements.length) {
-      setSelectedReqs([]);
-    } else {
-      setSelectedReqs(sortedRequirements.map(r => r.id));
-    }
-  };
-
-  const toggleSelect = (id: number) => {
-    if (selectedReqs.includes(id)) {
-      setSelectedReqs(selectedReqs.filter(reqId => reqId !== id));
-    } else {
-      setSelectedReqs([...selectedReqs, id]);
-    }
-  };
-
-  // Apply local filters
-  const filteredRequirements = requirements.filter(req => {
-    const matchesTab = activeTab === 'all' || req.status === activeTab;
-    const matchesSearch = searchQuery === '' ||
-      req.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesPriority = filters.priority === 'All' || req.priority.toLowerCase() === filters.priority.toLowerCase();
-
-    return matchesTab && matchesSearch && matchesPriority;
-  });
-
-  // Apply sorting
-  const sortedRequirements = [...filteredRequirements].sort((a, b) => {
-    if (!sortConfig.key || !sortConfig.direction) return 0;
-
-    const direction = sortConfig.direction === 'asc' ? 1 : -1;
-
-    switch (sortConfig.key) {
-      case 'priority':
-        const priorityWeight = { high: 3, medium: 2, low: 1 };
-        return (priorityWeight[a.priority] - priorityWeight[b.priority]) * direction;
-
-      case 'startDate':
-        const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
-        const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
-        return (dateA - dateB) * direction;
-
-      case 'dueDate':
-        return (new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()) * direction;
-
-      case 'progress':
-        return (a.progress - b.progress) * direction;
-
-      case 'status':
-        return a.status.localeCompare(b.status) * direction;
-
-      case 'title':
-        return a.title.localeCompare(b.title) * direction;
-
-      default:
-        return 0;
-    }
-  });
-
-  const statusCounts = {
-    all: requirements.length,
-    inProgress: requirements.filter(r => r.status === 'in-progress').length,
-    completed: requirements.filter(r => r.status === 'completed').length,
-    delayed: requirements.filter(r => r.status === 'delayed').length
-  };
-
-  const handleCreateRequirement = () => {
-    if (!newReq.title) return;
-
-    const newRequirement: Requirement = {
-      id: Date.now(), // Simple ID generation
-      title: newReq.title,
-      description: newReq.description,
-      client: workspace.client,
-      assignedTo: newReq.assignedTo ? newReq.assignedTo.split(',').map(s => s.trim()) : ['Unassigned'],
-      startDate: newReq.startDate ? new Date(newReq.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
-      dueDate: newReq.dueDate ? new Date(newReq.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
-      priority: newReq.priority,
-      status: 'in-progress',
-      progress: 0,
-      tasksCompleted: 0,
-      tasksTotal: 0,
-      workspaceId: workspace.id,
-      subTasks: []
-    };
-
-    addRequirement(newRequirement);
-    setIsDialogOpen(false);
-    setNewReq({
-      title: '',
-      description: '',
-      priority: 'medium',
-      startDate: '',
-      dueDate: '',
-      assignedTo: ''
+    createTaskMutation.mutate({
+      title: newTask.name,
+      description: newTask.description,
+      project_id: Number(id),
+      assigned_to: newTask.assigneeId ? Number(newTask.assigneeId) : undefined,
+      start_date: new Date().toISOString(),
+      end_date: newTask.dueDate ? newTask.dueDate.toISOString() : new Date().toISOString(),
+      status: newTask.status,
+      high_priority: newTask.priority === 'High',
+    } as any, {
+      onSuccess: () => {
+        message.success('Task created successfully');
+        setIsTaskModalOpen(false);
+        setNewTask({
+          name: '',
+          description: '',
+          assigneeId: '',
+          status: 'Todo',
+          priority: 'Medium',
+          dueDate: null
+        });
+      },
+      onError: (error: any) => {
+        message.error(error?.response?.data?.message || 'Failed to create task');
+      }
     });
   };
 
-  const handleNavigateToRequirement = (req: Requirement) => {
-    router.push(`/workspaces/${workspace.id}/requirements/${req.id}`);
+  const handleDeleteTask = (taskId: string) => {
+    Modal.confirm({
+      title: 'Delete Task',
+      content: 'Are you sure you want to delete this task?',
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: () => {
+        deleteTaskMutation.mutate(Number(taskId), {
+          onSuccess: () => message.success('Task deleted successfully'),
+          onError: () => message.error('Failed to delete task')
+        });
+      }
+    });
   };
 
-  return (
-    <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] p-8 flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Breadcrumb>
-              <BreadcrumbList className="sm:gap-2">
-                <BreadcrumbItem>
-                  <BreadcrumbLink
-                    onClick={() => router.push('/workspaces')}
-                    className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors"
-                  >
-                    Workspaces
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="[&>svg]:size-5 text-[#999999]">
-                  <span className="text-[20px] font-['Manrope:SemiBold',sans-serif]">/</span>
-                </BreadcrumbSeparator>
-                <BreadcrumbItem>
-                  <BreadcrumbPage className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">
-                    {workspace.name}
-                  </BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <button
-                  className="hover:scale-110 active:scale-95 transition-transform"
-                >
-                  <Plus className="size-5 text-[#ff3b3b]" strokeWidth={2} />
-                </button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] bg-white rounded-[16px] border border-[#EEEEEE] p-0 overflow-hidden gap-0">
-                <div className="p-6 border-b border-[#EEEEEE]">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                      <div className="p-2 rounded-full bg-[#F7F7F7]">
-                        <FileText className="w-5 h-5 text-[#666666]" />
-                      </div>
-                      New Requirement
-                    </DialogTitle>
-                    <DialogDescription className="text-[13px] text-[#666666] font-['Inter:Regular',sans-serif] ml-11">
-                      Define a new requirement for the team
-                    </DialogDescription>
-                  </DialogHeader>
-                </div>
+  const filteredTasks = tasks.filter((task: any) => {
+    const matchesSearch = searchQuery === '' || task.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = filters.status === 'All' || task.status === filters.status;
+    const matchesPriority = filters.priority === 'All' || task.priority === filters.priority;
+    const matchesAssignee = filters.assignee === 'All' || task.assignee.name === filters.assignee;
+    return matchesSearch && matchesStatus && matchesPriority && matchesAssignee;
+  });
 
-                <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-                  {/* Row 1 */}
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="title" className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Title</Label>
-                      <Input
-                        id="title"
-                        placeholder="Requirement title"
-                        className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]"
-                        value={newReq.title}
-                        onChange={(e) => setNewReq({ ...newReq, title: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="priority" className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Priority</Label>
-                      <Select
-                        value={newReq.priority}
-                        onValueChange={(v: any) => setNewReq({ ...newReq, priority: v })}
-                      >
-                        <SelectTrigger className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]">
-                          <SelectValue placeholder="Select priority" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="low">Low</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Row 2 */}
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="assignedTo" className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Assigned Team</Label>
-                      <Input
-                        id="assignedTo"
-                        placeholder="e.g. John Doe"
-                        className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]"
-                        value={newReq.assignedTo}
-                        onChange={(e) => setNewReq({ ...newReq, assignedTo: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="dueDate" className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Timeline</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input
-                          id="startDate"
-                          type="date"
-                          placeholder="Start Date"
-                          className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]"
-                          value={newReq.startDate}
-                          onChange={(e) => setNewReq({ ...newReq, startDate: e.target.value })}
-                        />
-                        <Input
-                          id="dueDate"
-                          type="date"
-                          placeholder="End Date"
-                          className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Medium',sans-serif]"
-                          value={newReq.dueDate}
-                          onChange={(e) => setNewReq({ ...newReq, dueDate: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Upload */}
-                  <div className="space-y-2">
-                    <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Upload Documents</Label>
-                    <div className="border-2 border-dashed border-[#EEEEEE] rounded-xl p-8 flex flex-col items-center justify-center text-center hover:border-[#ff3b3b]/30 hover:bg-[#FFFAFA] transition-colors cursor-pointer">
-                      <div className="w-12 h-12 rounded-full bg-[#F7F7F7] flex items-center justify-center mb-3">
-                        <UploadCloud className="w-6 h-6 text-[#999999]" />
-                      </div>
-                      <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-1">Choose a file or drag & drop it here</p>
-                      <p className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">txt, docx, pdf, jpeg, xlsx - Up to 50MB</p>
-                      <Button variant="outline" className="mt-4 h-8 text-[12px] font-['Manrope:SemiBold',sans-serif]">Browse files</Button>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <div className="space-y-2">
-                    <Label htmlFor="description" className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</Label>
-                    <Textarea
-                      id="description"
-                      placeholder="Requirement details..."
-                      className="min-h-[100px] rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Inter:Regular',sans-serif] resize-none p-3"
-                      value={newReq.description}
-                      onChange={(e) => setNewReq({ ...newReq, description: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <DialogFooter className="p-6 border-t border-[#EEEEEE] flex items-center justify-end bg-white">
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setNewReq({ title: '', description: '', priority: 'medium', startDate: '', dueDate: '', assignedTo: '' })}
-                      className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:bg-[#F7F7F7]"
-                    >
-                      Reset Data
-                    </Button>
-                    <Button
-                      onClick={handleCreateRequirement}
-                      className="h-10 px-6 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif]"
-                    >
-                      Save Requirement
-                    </Button>
-                  </div>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
-          <span className="px-3 py-1 rounded-full bg-[#F7F7F7] text-[#666666] text-[12px] font-['Inter:Medium',sans-serif]">
-            {workspace.client}
-          </span>
-        </div>
-
-        {/* Tabs */}
-        <div className="-mt-2">
-          <TabBar
-            tabs={[
-              { id: 'all', label: 'All Requirements', count: statusCounts.all },
-              { id: 'in-progress', label: 'In Progress', count: statusCounts.inProgress },
-              { id: 'completed', label: 'Completed', count: statusCounts.completed },
-              { id: 'delayed', label: 'Delayed', count: statusCounts.delayed }
-            ]}
-            activeTab={activeTab}
-            onTabChange={(tab) => setActiveTab(tab as any)}
-          />
-        </div>
-      </div>
-
-      {/* Filters Bar */}
-      <div className="mb-6">
-        <FilterBar
-          filters={filterOptions}
-          selectedFilters={filters}
-          onFilterChange={handleFilterChange}
-          onClearFilters={clearFilters}
-          searchPlaceholder="Search requirements..."
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-        />
-      </div>
-
-      {/* Table Header */}
-      <div className="grid grid-cols-[40px_3fr_1fr_0.8fr_0.8fr_1.4fr_0.6fr_0.3fr] gap-6 px-4 pb-3 mb-2 border-b border-[#EEEEEE] items-center">
-        <div className="flex justify-center">
-          <Checkbox
-            checked={sortedRequirements.length > 0 && selectedReqs.length === sortedRequirements.length}
-            onCheckedChange={toggleSelectAll}
-            className="border-[#DDDDDD] data-[state=checked]:bg-[#ff3b3b] data-[state=checked]:border-[#ff3b3b]"
-          />
-        </div>
-        <SortableHeader label="Requirement" sortKey="title" currentSort={sortConfig} onSort={handleSort} />
-        <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Assigned Team</p>
-        <SortableHeader label="Start Date" sortKey="startDate" currentSort={sortConfig} onSort={handleSort} />
-        <SortableHeader label="End Date" sortKey="dueDate" currentSort={sortConfig} onSort={handleSort} />
-        <SortableHeader label="Progress" sortKey="progress" currentSort={sortConfig} onSort={handleSort} />
-        <SortableHeader label="Status" sortKey="status" currentSort={sortConfig} onSort={handleSort} />
-        <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide"></p>
-      </div>
-
-      {/* List Content */}
-      <div className="flex-1 overflow-y-auto relative">
-        {sortedRequirements.length > 0 ? (
-          <div className="space-y-3 pb-24">
-            {sortedRequirements.map((req) => (
-              <RequirementRow
-                key={req.id}
-                requirement={req}
-                selected={selectedReqs.includes(req.id)}
-                onSelect={() => toggleSelect(req.id)}
-                onClick={() => handleNavigateToRequirement(req)}
-                onUpdate={(updates) => updateRequirement(req.id, updates)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <FolderOpen className="w-12 h-12 text-[#DDDDDD] mx-auto mb-3" />
-            <p className="text-[#999999] font-['Inter:Regular',sans-serif]">
-              No requirements found
-            </p>
-          </div>
-        )}
-
-        {/* Bulk Action Bar */}
-        {selectedReqs.length > 0 && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#111111] text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-6 z-20 animate-in slide-in-from-bottom-4 duration-200">
-            <div className="flex items-center gap-2 border-r border-white/20 pr-6">
-              <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
-                {selectedReqs.length}
-              </div>
-              <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors tooltip-trigger" title="Mark as Completed">
-                <CheckSquare className="w-4 h-4" />
-              </button>
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Assign To">
-                <UsersIcon className="w-4 h-4" />
-              </button>
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]" title="Delete">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-
-            <button onClick={() => setSelectedReqs([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
-              Cancel
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function RequirementRow({
-  requirement,
-  selected,
-  onSelect,
-  onClick,
-  onUpdate
-}: {
-  requirement: Requirement;
-  selected: boolean;
-  onSelect: () => void;
-  onClick: () => void;
-  onUpdate: (updates: Partial<Requirement>) => void;
-}) {
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Completed': return 'bg-[#F0FDF4] text-[#16A34A] border-[#BBF7D0]';
+      case 'In Progress': return 'bg-[#F0F9FF] text-[#0284C7] border-[#B9E6FE]';
+      case 'Review': return 'bg-[#FFFBEB] text-[#D97706] border-[#FDE68A]';
+      default: return 'bg-[#F7F7F7] text-[#666666] border-[#EEEEEE]';
+    }
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'bg-[#FEE2E2] text-[#DC2626]';
-      case 'medium': return 'bg-[#FEF3C7] text-[#D97706]';
-      case 'low': return 'bg-[#DBEAFE] text-[#2563EB]';
-      default: return 'bg-[#F3F4F6] text-[#6B7280]';
+      case 'High': return 'text-[#ff3b3b] bg-[#FEF3F2] border-[#FECACA]';
+      case 'Medium': return 'text-[#F59E0B] bg-[#FFFBEB] border-[#FDE68A]';
+      case 'Low': return 'text-[#10B981] bg-[#ECFDF5] border-[#A7F3D0]';
+      default: return 'text-[#666666] bg-[#F7F7F7] border-[#EEEEEE]';
     }
   };
 
+  if (!workspace) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">Workspace not found</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="group relative transition-all duration-300">
-      <div
-        onClick={onClick}
-        className={`
-          grid grid-cols-[40px_3fr_1fr_0.8fr_0.8fr_1.4fr_0.6fr_0.3fr] gap-6 items-center p-4 
-          bg-white border rounded-[16px] transition-all cursor-pointer relative z-10
-          ${selected
-            ? 'border-[#ff3b3b] shadow-[0_0_0_1px_#ff3b3b] bg-[#FFF5F5]'
-            : 'border-[#EEEEEE] hover:border-[#ff3b3b]/20 hover:shadow-lg'
-          }
-        `}
-      >
-        {/* Checkbox */}
-        <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
-          <Checkbox
-            checked={selected}
-            onCheckedChange={onSelect}
-            className="border-[#DDDDDD] data-[state=checked]:bg-[#ff3b3b] data-[state=checked]:border-[#ff3b3b]"
+    <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="p-6 border-b border-[#EEEEEE]">
+        {/* Breadcrumb */}
+        <div className="mb-6">
+          <Breadcrumb
+            items={[
+              { title: <a onClick={() => router.push('/workspaces')} className="cursor-pointer font-['Manrope:Medium',sans-serif]">Workspaces</a> },
+              { title: <span className="font-['Manrope:Bold',sans-serif] text-[#111111]">{workspace.name}</span> }
+            ]}
+            separator={<ChevronRight className="w-4 h-4 text-[#999999]" />}
           />
         </div>
 
-        {/* Title & Info */}
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111] line-clamp-1 group-hover:text-[#ff3b3b] transition-colors">
-              {requirement.title}
-            </h3>
+        <div className="flex flex-col gap-6">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-4">
+              <div className="w-16 h-16 rounded-[16px] bg-[#FEF3F2] border border-[#ff3b3b]/20 flex items-center justify-center">
+                <FolderOpen className="w-8 h-8 text-[#ff3b3b]" />
+              </div>
+              <div>
+                <h1 className="text-[24px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-2">{workspace.name}</h1>
+                <div className="flex items-center gap-4 text-[13px] text-[#666666]">
+                  <span className="flex items-center gap-1.5 font-['Manrope:Medium',sans-serif]">
+                    <UserPlus className="w-4 h-4" />
+                    {workspace.client_company_name || 'No Client'}
+                  </span>
+                  <span className="w-1 h-1 rounded-full bg-[#DDDDDD]" />
+                  <span className="flex items-center gap-1.5 font-['Manrope:Medium',sans-serif]">
+                    <CalendarIcon className="w-4 h-4" />
+                    Due {workspace.end_date ? format(new Date(workspace.end_date), 'MMM d, yyyy') : 'No Date'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-2 mr-2">
+                {/* Assigned Users Avatars could go here */}
+                {workspace.assigned_users?.slice(0, 3).map((user: any, i: number) => (
+                  <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-[#F7F7F7] flex items-center justify-center text-[10px] font-['Manrope:Bold',sans-serif] text-[#666666]">
+                    {user.name?.[0]}
+                  </div>
+                ))}
+                {workspace.assigned_users?.length > 3 && (
+                  <div className="w-8 h-8 rounded-full border-2 border-white bg-[#F0F9FF] flex items-center justify-center text-[10px] font-['Manrope:Bold',sans-serif] text-[#0284C7]">
+                    +{workspace.assigned_users.length - 3}
+                  </div>
+                )}
+              </div>
+              <Button
+                onClick={() => setIsTaskModalOpen(true)}
+                className="bg-[#111111] hover:bg-[#000000]/90 text-white border-none h-10 px-4 rounded-lg flex items-center gap-2 font-['Manrope:SemiBold',sans-serif]"
+                icon={<Plus className="w-4 h-4" />}
+              >
+                New Task
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">
-              #{requirement.id}
-            </span>
-            <span className="text-[11px] text-[#666666] font-['Inter:Medium',sans-serif]">
-              • {requirement.client}
-            </span>
-            {requirement.departments?.map((dept, i) => (
-              <span key={i} className="px-2 py-0.5 rounded-md bg-[#F7F7F7] text-[10px] text-[#666666] font-['Inter:Medium',sans-serif]">
-                {dept}
+
+          {/* Progress Bar */}
+          <div className="w-full max-w-2xl">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Project Progress</span>
+              <span className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
+                {workspace.total_task > 0 ? Math.round((workspace.total_task_completed / workspace.total_task) * 100) : 0}%
               </span>
-            ))}
+            </div>
+            <Progress percent={workspace.total_task > 0 ? Math.round((workspace.total_task_completed / workspace.total_task) * 100) : 0} showInfo={false} strokeColor="#ff3b3b" trailColor="#F7F7F7" size="small" />
           </div>
         </div>
 
-        {/* Team */}
-        <div className="flex items-center">
-          <div className="flex -space-x-3">
-            {requirement.assignedTo.slice(0, 3).map((person, i) => (
-              <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm" title={person}>
-                <span className="text-[10px] text-white font-['Manrope:Bold',sans-serif]">
-                  {person.split(' ').map(n => n[0]).join('')}
-                </span>
+        {/* Tabs */}
+        <div className="mt-8">
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            items={[
+              { key: 'tasks', label: 'Tasks' },
+              { key: 'files', label: 'Files' },
+              { key: 'activity', label: 'Activity' },
+              { key: 'settings', label: 'Settings' }
+            ]}
+            className="custom-tabs"
+          />
+        </div>
+      </div>
+
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto p-6 bg-[#FAFAFA]">
+        {activeTab === 'tasks' && (
+          <>
+            {/* Filter & View Toolbar */}
+            <div className="flex items-center justify-between mb-6">
+              <FilterBar
+                filters={filterOptions}
+                selectedFilters={filters}
+                onFilterChange={(id, val) => setFilters(prev => ({ ...prev, [id]: val }))}
+                onClearFilters={() => setFilters({ status: 'All', priority: 'All', assignee: 'All' })}
+                searchPlaceholder="Search tasks..."
+                searchValue={searchQuery}
+                onSearchChange={setSearchQuery}
+              />
+              <div className="flex items-center bg-white p-1 rounded-lg border border-[#EEEEEE] ml-4">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-[#F7F7F7] text-[#ff3b3b]' : 'text-[#999999] hover:text-[#111111]'}`}
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-[#F7F7F7] text-[#ff3b3b]' : 'text-[#999999] hover:text-[#111111]'}`}
+                >
+                  <List className="w-4 h-4" />
+                </button>
               </div>
-            ))}
-            {requirement.assignedTo.length > 3 && (
-              <div className="w-8 h-8 rounded-full border-2 border-white bg-[#F7F7F7] flex items-center justify-center shadow-sm">
-                <span className="text-[10px] text-[#666666] font-['Manrope:Bold',sans-serif]">
-                  +{requirement.assignedTo.length - 3}
-                </span>
+            </div>
+
+            {tasksLoading ? (
+              <div className="text-center py-12">
+                <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">Loading tasks...</p>
+              </div>
+            ) : filteredTasks.length === 0 ? (
+              <div className="text-center py-12">
+                <CheckCircle2 className="w-12 h-12 text-[#DDDDDD] mx-auto mb-3" />
+                <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">No tasks found</p>
+              </div>
+            ) : viewMode === 'list' ? (
+              <div className="space-y-3">
+                {filteredTasks.map((task: any) => (
+                  <div key={task.id} className="group bg-white border border-[#EEEEEE] rounded-[12px] p-4 hover:border-[#ff3b3b] hover:shadow-sm transition-all flex items-center gap-4">
+                    <Checkbox className="custom-checkbox" />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-['Manrope:SemiBold',sans-serif] text-[#111111] text-[14px] truncate">{task.title}</h4>
+                      <div className="flex items-center gap-3 mt-1 text-[12px] text-[#666666]">
+                        <span className={`px-2 py-0.5 rounded-full border text-[10px] font-['Manrope:Bold',sans-serif] ${getStatusColor(task.status)}`}>
+                          {task.status}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-full border text-[10px] font-['Manrope:Bold',sans-serif] ${getPriorityColor(task.priority)}`}>
+                          {task.priority}
+                        </span>
+                        {task.dueDate && (
+                          <span className="flex items-center gap-1">
+                            <CalendarIcon className="w-3 h-3" />
+                            {format(new Date(task.dueDate), 'MMM d')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      {task.assignee && (
+                        <Tooltip title={task.assignee.name}>
+                          <div className="w-8 h-8 rounded-full bg-[#F7F7F7] flex items-center justify-center text-[10px] font-['Manrope:Bold',sans-serif] text-[#666666]">
+                            {task.assignee.name[0]}
+                          </div>
+                        </Tooltip>
+                      )}
+                      <Dropdown
+                        menu={{
+                          items: [
+                            { key: 'edit', label: 'Edit', icon: <Edit className="w-4 h-4" /> },
+                            { key: 'delete', label: 'Delete', icon: <Trash2 className="w-4 h-4" />, danger: true, onClick: () => handleDeleteTask(task.id) }
+                          ]
+                        }}
+                        trigger={['click']}
+                        placement="bottomRight"
+                      >
+                        <button className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors text-[#999999] opacity-0 group-hover:opacity-100">
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+                      </Dropdown>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-4">
+                {filteredTasks.map((task: any) => (
+                  <div key={task.id} className="group bg-white border border-[#EEEEEE] rounded-[16px] p-5 hover:border-[#ff3b3b] hover:shadow-sm transition-all flex flex-col h-full">
+                    <div className="flex items-start justify-between mb-3">
+                      <span className={`px-2 py-0.5 rounded-full border text-[10px] font-['Manrope:Bold',sans-serif] ${getPriorityColor(task.priority)}`}>
+                        {task.priority}
+                      </span>
+                      <Dropdown
+                        menu={{
+                          items: [
+                            { key: 'edit', label: 'Edit', icon: <Edit className="w-4 h-4" /> },
+                            { key: 'delete', label: 'Delete', icon: <Trash2 className="w-4 h-4" />, danger: true, onClick: () => handleDeleteTask(task.id) }
+                          ]
+                        }}
+                        trigger={['click']}
+                        placement="bottomRight"
+                      >
+                        <button className="w-6 h-6 rounded hover:bg-[#F7F7F7] flex items-center justify-center transition-colors text-[#999999] opacity-0 group-hover:opacity-100">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </button>
+                      </Dropdown>
+                    </div>
+                    <h4 className="font-['Manrope:SemiBold',sans-serif] text-[#111111] text-[15px] mb-2 line-clamp-2 flex-grow">{task.title}</h4>
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className={`px-2 py-0.5 rounded-full border text-[10px] font-['Manrope:Bold',sans-serif] ${getStatusColor(task.status)}`}>
+                        {task.status}
+                      </span>
+                    </div>
+                    <div className="pt-3 border-t border-[#EEEEEE] flex items-center justify-between mt-auto">
+                      {task.dueDate && (
+                        <span className="flex items-center gap-1.5 text-[12px] text-[#666666] font-['Manrope:Medium',sans-serif]">
+                          <Clock className="w-3.5 h-3.5" />
+                          {format(new Date(task.dueDate), 'MMM d')}
+                        </span>
+                      )}
+                      {task.assignee && (
+                        <Tooltip title={task.assignee.name}>
+                          <div className="w-6 h-6 rounded-full bg-[#F7F7F7] flex items-center justify-center text-[9px] font-['Manrope:Bold',sans-serif] text-[#666666]">
+                            {task.assignee.name[0]}
+                          </div>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
+          </>
+        )}
+
+        {/* Other Tabs Placeholders */}
+        {activeTab === 'files' && (
+          <div className="flex flex-col items-center justify-center h-64 text-center">
+            <Paperclip className="w-12 h-12 text-[#DDDDDD] mb-3" />
+            <h3 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">No files uploaded</h3>
+            <p className="text-[13px] text-[#666666]">Upload files to share with your team.</p>
+            <Button className="mt-4 font-['Manrope:SemiBold',sans-serif]" icon={<Plus className="w-4 h-4" />}>Upload File</Button>
           </div>
-        </div>
-
-        {/* Timeline - Start Date */}
-        <div className="pr-4" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-1.5">
-            <TimelineVisual
-              date={requirement.startDate}
-              onUpdate={(date) => onUpdate({ startDate: date ? format(date, 'dd-MMM-yyyy') : requirement.startDate })}
-            />
-          </div>
-        </div>
-
-        {/* Timeline - End Date */}
-        <div className="pr-4" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-1.5">
-            <TimelineVisual
-              date={requirement.dueDate}
-              onUpdate={(date) => onUpdate({ dueDate: date ? format(date, 'dd-MMM-yyyy') : requirement.dueDate })}
-              isDueDate
-            />
-          </div>
-        </div>
-
-        {/* Progress */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[11px] text-[#666666] font-['Inter:Medium',sans-serif]">
-              {requirement.tasksCompleted}/{requirement.tasksTotal} Tasks
-            </span>
-            <span className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">
-              {requirement.progress}%
-            </span>
-          </div>
-          <div className="w-full h-1.5 bg-[#F7F7F7] rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${requirement.progress >= 100 ? 'bg-[#2E7D32]' :
-                requirement.progress >= 75 ? 'bg-[#FF9800]' :
-                  'bg-[#3B82F6]'
-                }`}
-              style={{ width: `${requirement.progress}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Status - Inline Edit */}
-        <div onClick={(e) => e.stopPropagation()}>
-          <Select
-            value={requirement.status}
-            onValueChange={(val: any) => onUpdate({ status: val })}
-          >
-            <SelectTrigger className="w-auto h-auto border-0 bg-transparent p-0 hover:bg-transparent focus:ring-0 focus:ring-offset-0 [&>svg]:hidden">
-              <StatusBadge status={requirement.status} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="in-progress">In Progress</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="delayed">Delayed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Menu */}
-        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F7F7F7] text-[#999999] hover:text-[#111111] transition-colors outline-none">
-                <MoreVertical className="w-4 h-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onClick}>
-                <Edit className="w-4 h-4 mr-2" />
-                Edit Details
-              </DropdownMenuItem>
-
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <Flag className="w-4 h-4 mr-2" />
-                  Set Priority
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem onClick={() => onUpdate({ priority: 'high' })}>
-                    <div className="w-2 h-2 rounded-full bg-red-500 mr-2" />
-                    High
-                    {requirement.priority === 'high' && <CheckCircle2 className="w-3 h-3 ml-auto" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onUpdate({ priority: 'medium' })}>
-                    <div className="w-2 h-2 rounded-full bg-orange-500 mr-2" />
-                    Medium
-                    {requirement.priority === 'medium' && <CheckCircle2 className="w-3 h-3 ml-auto" />}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onUpdate({ priority: 'low' })}>
-                    <div className="w-2 h-2 rounded-full bg-blue-500 mr-2" />
-                    Low
-                    {requirement.priority === 'low' && <CheckCircle2 className="w-3 h-3 ml-auto" />}
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50">
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        )}
       </div>
-    </div>
-  );
-}
 
-function StatusBadge({ status }: { status: string }) {
-  const config = {
-    'completed': {
-      icon: CheckCircle2,
-      color: 'text-[#0F9D58]',
-      label: 'Completed'
-    },
-    'in-progress': {
-      icon: Loader2,
-      color: 'text-[#2F80ED]',
-      label: 'In Progress'
-    },
-    'delayed': {
-      icon: AlertCircle,
-      color: 'text-[#EB5757]',
-      label: 'Delayed'
-    },
-    // Fallback
-    'default': {
-      icon: Clock,
-      color: 'text-[#555555]',
-      label: 'Pending'
-    }
-  };
-
-  const style = config[status as keyof typeof config] || config['default'];
-  const Icon = style.icon;
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="cursor-help p-1">
-            <Icon className={`w-5 h-5 ${style.color} ${status === 'in-progress' ? 'animate-spin' : ''}`} />
+      {/* Create Task Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+            <div className="p-2 rounded-full bg-[#F7F7F7]">
+              <CheckCircle2 className="w-5 h-5 text-[#666666]" />
+            </div>
+            Create New Task
           </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="text-[12px] font-['Manrope:Medium',sans-serif]">{style.label}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
+        }
+        open={isTaskModalOpen}
+        onCancel={() => setIsTaskModalOpen(false)}
+        footer={null}
+        width={600}
+        centered
+        className="rounded-[16px] overflow-hidden"
+      >
+        <div className="mt-6 space-y-4">
+          <div className="space-y-2">
+            <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Task Title <span className="text-[#ff3b3b]">*</span></label>
+            <Input
+              placeholder="E.g. Design Homepage Mockups"
+              className="h-10 font-['Manrope:Regular',sans-serif]"
+              value={newTask.name}
+              onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
+            />
+          </div>
 
-function TimelineVisual({ date, onUpdate, isDueDate }: { date?: string, onUpdate: (date: Date | undefined) => void, isDueDate?: boolean }) {
-  const parseDate = (dateStr?: string) => {
-    if (!dateStr) return null;
-    const [day, month, year] = dateStr.split('-');
-    return new Date(`${month} ${day}, ${year}`);
-  };
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Assignee</label>
+              <Select
+                className="w-full h-10"
+                placeholder="Select assignee"
+                value={newTask.assigneeId || undefined}
+                onChange={(val) => setNewTask({ ...newTask, assigneeId: val })}
+              >
+                {employeesData?.result?.map((emp: any) => (
+                  <Option key={emp.id} value={String(emp.id)}>{emp.name}</Option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Due Date</label>
+              <DatePicker
+                className="w-full h-10 font-['Manrope:Regular',sans-serif]"
+                value={newTask.dueDate ? dayjs(newTask.dueDate) : null}
+                onChange={(date) => setNewTask({ ...newTask, dueDate: date ? date.toDate() : null })}
+              />
+            </div>
+          </div>
 
-  const dateObj = parseDate(date);
-  // Mock today
-  const mockToday = new Date('2025-12-06');
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Status</label>
+              <Select
+                className="w-full h-10"
+                value={newTask.status}
+                onChange={(val) => setNewTask({ ...newTask, status: val })}
+              >
+                <Option value="Todo">Todo</Option>
+                <Option value="In Progress">In Progress</Option>
+                <Option value="Review">Review</Option>
+                <Option value="Completed">Completed</Option>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Priority</label>
+              <Select
+                className="w-full h-10"
+                value={newTask.priority}
+                onChange={(val) => setNewTask({ ...newTask, priority: val as any })}
+              >
+                <Option value="Low">Low</Option>
+                <Option value="Medium">Medium</Option>
+                <Option value="High">High</Option>
+              </Select>
+            </div>
+          </div>
 
-  if (!dateObj && !isDueDate) return <span className="text-[13px] text-[#999999] font-['Manrope:Medium',sans-serif]">-</span>;
+          <div className="space-y-2">
+            <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</label>
+            <TextArea
+              placeholder="Add task details..."
+              className="min-h-[100px] font-['Manrope:Regular',sans-serif] py-2"
+              value={newTask.description}
+              onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+            />
+          </div>
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-  };
-
-  const isOverdue = isDueDate && dateObj && mockToday > dateObj;
-
-  return (
-    <div className="flex items-center">
-      <Popover>
-        <PopoverTrigger asChild>
-          <button className={`text-[13px] font-['Manrope:SemiBold',sans-serif] hover:underline transition-colors ${isOverdue ? 'text-[#DC2626]' : 'text-[#111111]'}`}>
-            {dateObj ? formatDate(dateObj) : 'Set Date'}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={dateObj || undefined}
-            onSelect={onUpdate}
-            initialFocus
-          />
-        </PopoverContent>
-      </Popover>
+          <div className="flex items-center justify-end gap-3 pt-6 border-t border-[#EEEEEE]">
+            <Button
+              onClick={() => setIsTaskModalOpen(false)}
+              className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666] border-none hover:bg-[#F7F7F7]"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              onClick={handleCreateTask}
+              loading={createTaskMutation.isPending}
+              className="h-10 px-6 bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] border-none rounded-lg"
+            >
+              Create Task
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
-  );
-}
-
-function SortableHeader({ label, sortKey, currentSort, onSort }: { label: string, sortKey: string, currentSort: { key: string, direction: 'asc' | 'desc' | null }, onSort: (key: string) => void }) {
-  return (
-    <button
-      onClick={() => onSort(sortKey)}
-      className="flex items-center gap-1 text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide hover:text-[#111111] transition-colors group"
-    >
-      {label}
-      <div className="flex flex-col">
-        <ArrowRight className={`w-3 h-3 -rotate-90 transition-colors ${currentSort.key === sortKey && currentSort.direction === 'asc' ? 'text-[#ff3b3b]' : 'text-[#DDDDDD] group-hover:text-[#999999]'}`} />
-      </div>
-    </button>
   );
 }

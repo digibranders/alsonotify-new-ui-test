@@ -1,46 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-// import profilePhoto from "figma:asset/1781e2061b1ba25df9b78787904bec3e7b4e9a89.png"; // Removed
 import { AccessBadge } from './AccessBadge';
 import Image from 'next/image';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { Label } from "./ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Button, Dropdown, Modal, Input, Select, Popover, Avatar, Badge, Typography, List, message } from 'antd';
+import type { MenuProps } from 'antd';
 import {
   Alert24Filled,
   Add24Filled,
   PeopleTeam24Filled,
   Apps24Filled,
   ClipboardTaskListLtr24Filled,
-  Person24Filled,
   People24Filled,
   Handshake24Filled,
   Receipt24Filled,
   Calendar24Filled,
   Notepad24Filled
 } from '@fluentui/react-icons';
-import { FolderOpen, CheckSquare, FileText, UploadCloud, UserCog, Settings } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel
-} from './ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter
-} from './ui/dialog';
+import { UserCog, Settings, LogOut, FolderOpen, CheckSquare, FileText } from 'lucide-react';
 import { TaskForm } from './forms/TaskForm';
+import { useUserDetails } from '@/hooks/useUser';
+import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/useNotification';
+import { useWorkspaces, useClients } from '@/hooks/useWorkspace';
+import { useEmployees } from '@/hooks/useUser';
+import { searchUsersByName } from '@/services/user';
+import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
+import { useCreateWorkspace } from '@/hooks/useWorkspace';
+import { useCreateTask } from '@/hooks/useTask';
+import { useCreateRequirement } from '@/hooks/useWorkspace';
+import { useLogout } from '@/hooks/useAuth';
+import { formatDistanceToNow } from 'date-fns';
+
+const { TextArea } = Input;
+const { Text } = Typography;
+const { Option } = Select;
 
 type UserRole = 'Admin' | 'Manager' | 'Leader' | 'Employee';
 
@@ -49,502 +43,762 @@ interface HeaderProps {
   setUserRole?: (role: UserRole) => void;
 }
 
+// Helper function to get greeting based on local time
+const getGreeting = (): string => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Morning';
+  if (hour < 17) return 'Afternoon';
+  return 'Evening';
+};
+
 export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
   const router = useRouter();
+  const handleLogout = useLogout();
+  const [messageApi, contextHolder] = message.useMessage();
+
+  // Fetch user details
+  const { data: userDetailsData } = useUserDetails();
+
+  // Fetch notifications
+  const { data: notificationsData, isLoading: isLoadingNotifications } = useNotifications();
+  const markAllReadMutation = useMarkAllNotificationsRead();
+  const markReadMutation = useMarkNotificationRead();
+
+  // Fetch data for dialogs
+  const { data: workspacesData } = useWorkspaces();
+  const { data: clientsData } = useClients();
+  const { data: employeesData } = useEmployees();
+  const [usersDropdown, setUsersDropdown] = useState<Array<{ id: number; name: string }>>([]);
+  const [requirementsDropdown, setRequirementsDropdown] = useState<Array<{ id: number; name: string }>>([]);
+
+  // Dialogs state
   const [showWorkspaceDialog, setShowWorkspaceDialog] = useState(false);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showRequirementDialog, setShowRequirementDialog] = useState(false);
+
+  // Mutations
+  const createWorkspaceMutation = useCreateWorkspace();
+  const createTaskMutation = useCreateTask();
+  const createRequirementMutation = useCreateRequirement();
 
   // Form States
   const [newWorkspace, setNewWorkspace] = useState({ name: '', client: '', description: '', lead: '' });
   const [newRequirement, setNewRequirement] = useState({ title: '', workspace: '', type: '', priority: '', category: '', dueDate: '', description: '' });
 
-  const [notifications, setNotifications] = useState([
-    { id: 1, type: 'requirement', title: 'New Requirement: Mobile App Design', message: 'Client has submitted a new requirement', time: '5 min ago', unread: true },
-    { id: 2, type: 'task', title: 'Task Completed: UI Mockups', message: 'Sarah completed the UI mockups task', time: '1 hour ago', unread: true },
-    { id: 3, type: 'delivery', title: 'Delivery Ready for Review', message: 'Brand Identity Package is ready for approval', time: '2 hours ago', unread: true },
-    { id: 4, type: 'workspace', title: 'Added to Workspace', message: 'You were added to E-commerce Platform workspace', time: '1 day ago', unread: false },
-    { id: 5, type: 'requirement', title: 'Requirement Approved', message: 'Website Redesign requirement was approved', time: '2 days ago', unread: false },
-  ]);
+  // Get user data from localStorage or backend
+  const user = useMemo(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+        if (localUser && localUser.name) {
+          return localUser;
+        }
+      }
+    } catch (error) {
+      console.error("Error reading user from localStorage:", error);
+    }
+    const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
+    return apiUser;
+  }, [userDetailsData]);
+
+  // Extract first name from user data
+  const firstName = useMemo(() => {
+    const userProfile = user?.user_profile || userDetailsData?.result?.user?.user_profile;
+    if (userProfile?.first_name) {
+      return userProfile.first_name;
+    }
+    if (user?.first_name) {
+      return user.first_name;
+    }
+    if (user?.name) {
+      return user.name.split(' ')[0] || user.name;
+    }
+    return 'User';
+  }, [user, userDetailsData]);
+
+  // Map role from backend to UI role
+  const mappedRole: UserRole = useMemo(() => {
+    const role = user?.role?.name || user?.user_employee?.role?.name || 'Employee';
+    if (role.toLowerCase().includes('admin')) return 'Admin';
+    if (role.toLowerCase().includes('manager')) return 'Manager';
+    if (role.toLowerCase().includes('leader')) return 'Leader';
+    return 'Employee';
+  }, [user]);
+
+  // Get greeting based on local time
+  const greeting = useMemo(() => getGreeting(), []);
+
+  // Fetch users and requirements for dropdowns
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await searchUsersByName();
+        if (response.success) {
+          const transformed = (response.result || []).map((item: any) => ({
+            id: item.value || item.id,
+            name: item.label || item.name,
+          }));
+          setUsersDropdown(transformed);
+        }
+      } catch (error) {
+        messageApi.error('Failed to fetch users');
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    const fetchRequirements = async () => {
+      try {
+        if (!workspacesData?.result?.projects) return;
+        const allRequirements: Array<{ id: number; name: string }> = [];
+
+        for (const workspace of workspacesData.result.projects) {
+          try {
+            const response = await getRequirementsDropdownByWorkspaceId(workspace.id);
+            if (response.success && response.result) {
+              allRequirements.push(...response.result);
+            }
+          } catch (error) {
+            console.error(`Failed to fetch requirements for workspace ${workspace.id}:`, error);
+          }
+        }
+        setRequirementsDropdown(allRequirements);
+      } catch (error) {
+        messageApi.error('Failed to fetch requirements');
+      }
+    };
+    fetchRequirements();
+  }, [workspacesData]);
+
+  // Transform notifications
+  const notifications = useMemo(() => {
+    if (!notificationsData?.result) return [];
+    return notificationsData.result.map((n: any) => ({
+      id: n.id,
+      title: n.title || n.message || 'Notification',
+      message: n.message || n.title || '',
+      time: n.created_at ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true }) : 'Just now',
+      unread: !n.is_read,
+      type: n.type || 'general',
+    }));
+  }, [notificationsData]);
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
-  const markAsRead = (id: number) => {
-    setNotifications(notifications.map(n =>
-      n.id === id ? { ...n, unread: false } : n
-    ));
+  const handleMarkAsRead = (id: number) => {
+    markReadMutation.mutate(id);
   };
 
-  const clearAllNotifications = () => {
-    setNotifications([]);
+  const handleClearAllNotifications = () => {
+    markAllReadMutation.mutate();
   };
+
+  // Handle workspace creation
+  const handleCreateWorkspace = async () => {
+    if (!newWorkspace.name) {
+      messageApi.error("Workspace name is required");
+      return;
+    }
+
+    const selectedClient = clientsData?.result?.find((c: any) => c.name === newWorkspace.client || c.company === newWorkspace.client);
+    const selectedLead = employeesData?.result?.find((emp: any) =>
+      String(emp.user_id || emp.id) === newWorkspace.lead
+    );
+
+    createWorkspaceMutation.mutate(
+      {
+        name: newWorkspace.name,
+        description: newWorkspace.description || '',
+        client_id: selectedClient?.id || selectedClient?.association_id || null,
+        manager_id: selectedLead?.user_id || selectedLead?.id || null,
+        leader_id: selectedLead?.user_id || selectedLead?.id || null,
+        start_date: new Date().toISOString(),
+        end_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+        document_link: '',
+        high_priority: false,
+        in_house: true,
+      } as any,
+      {
+        onSuccess: () => {
+          messageApi.success("Workspace created successfully!");
+          setShowWorkspaceDialog(false);
+          setNewWorkspace({ name: '', client: '', description: '', lead: '' });
+        },
+        onError: (error: any) => {
+          const errorMessage = error?.response?.data?.message || "Failed to create workspace";
+          messageApi.error(errorMessage);
+        },
+      }
+    );
+  };
+
+  // Handle requirement creation
+  const handleCreateRequirement = async () => {
+    if (!newRequirement.title) {
+      messageApi.error("Requirement title is required");
+      return;
+    }
+
+    const selectedWorkspace = workspacesData?.result?.projects?.find(
+      (w: any) => w.name === newRequirement.workspace || String(w.id) === newRequirement.workspace
+    );
+
+    if (!selectedWorkspace) {
+      messageApi.error("Please select a workspace");
+      return;
+    }
+
+    createRequirementMutation.mutate(
+      {
+        project_id: selectedWorkspace.id,
+        name: newRequirement.title,
+        description: newRequirement.description || '',
+        start_date: new Date().toISOString(),
+        end_date: newRequirement.dueDate ? new Date(newRequirement.dueDate).toISOString() : undefined,
+        status: 'Assigned',
+        priority: newRequirement.priority?.toUpperCase() || 'MEDIUM',
+        high_priority: newRequirement.priority === 'high',
+      } as any,
+      {
+        onSuccess: () => {
+          messageApi.success("Requirement created successfully!");
+          setShowRequirementDialog(false);
+          setNewRequirement({ title: '', workspace: '', type: '', priority: '', category: '', dueDate: '', description: '' });
+        },
+        onError: (error: any) => {
+          const errorMessage = error?.response?.data?.message || "Failed to create requirement";
+          messageApi.error(errorMessage);
+        },
+      }
+    );
+  };
+
+  // Dropdown Items Configuration
+  const addMenuItems: MenuProps['items'] = [
+    {
+      key: 'create-new',
+      type: 'group',
+      label: <span className="text-[11px] text-[#999999] uppercase tracking-wider font-['Manrope:Medium',sans-serif]">Create New</span>,
+      children: [
+        {
+          key: 'req',
+          label: 'Requirement',
+          icon: <PeopleTeam24Filled className="w-4 h-4" />,
+          onClick: () => setShowRequirementDialog(true),
+          className: "font-['Manrope:Medium',sans-serif]"
+        },
+        {
+          key: 'workspace',
+          label: 'Workspace',
+          icon: <Apps24Filled className="w-4 h-4" />,
+          onClick: () => setShowWorkspaceDialog(true),
+          className: "font-['Manrope:Medium',sans-serif]"
+        },
+        {
+          key: 'task',
+          label: 'Task',
+          icon: <ClipboardTaskListLtr24Filled className="w-4 h-4" />,
+          onClick: () => setShowTaskDialog(true),
+          className: "font-['Manrope:Medium',sans-serif]"
+        },
+      ],
+    },
+    { type: 'divider' },
+    {
+      key: 'people',
+      type: 'group',
+      label: <span className="text-[11px] text-[#999999] uppercase tracking-wider font-['Manrope:Medium',sans-serif]">People</span>,
+      children: [
+        {
+          key: 'employee',
+          label: 'Employee',
+          icon: <People24Filled className="w-4 h-4" />,
+          onClick: () => router.push('/employees'),
+          className: "font-['Manrope:Medium',sans-serif]"
+        },
+        {
+          key: 'client',
+          label: 'Client',
+          icon: <Handshake24Filled className="w-4 h-4" />,
+          onClick: () => router.push('/clients'),
+          className: "font-['Manrope:Medium',sans-serif]"
+        },
+      ],
+    },
+    { type: 'divider' },
+    {
+      key: 'finance',
+      type: 'group',
+      label: <span className="text-[11px] text-[#999999] uppercase tracking-wider font-['Manrope:Medium',sans-serif]">Finance</span>,
+      children: [
+        {
+          key: 'invoice',
+          label: 'Invoice',
+          icon: <Receipt24Filled className="w-4 h-4" />,
+          onClick: () => router.push('/invoices'),
+          className: "font-['Manrope:Medium',sans-serif]"
+        },
+      ],
+    },
+    { type: 'divider' },
+    {
+      key: 'quick',
+      type: 'group',
+      label: <span className="text-[11px] text-[#999999] uppercase tracking-wider font-['Manrope:Medium',sans-serif]">Quick Actions</span>,
+      children: [
+        {
+          key: 'calendar',
+          label: 'Schedule Meeting',
+          icon: <Calendar24Filled className="w-4 h-4" />,
+          onClick: () => router.push('/calendar'),
+          className: "font-['Manrope:Medium',sans-serif]"
+        },
+        {
+          key: 'notes',
+          label: 'Add Note',
+          icon: <Notepad24Filled className="w-4 h-4" />,
+          onClick: () => router.push('/notes'),
+          className: "font-['Manrope:Medium',sans-serif]"
+        },
+      ],
+    },
+  ];
+
+  const profileMenuItems: MenuProps['items'] = [
+    {
+      key: 'account',
+      type: 'group',
+      label: <span className="text-[#111111] font-bold font-['Manrope:Bold',sans-serif] text-[14px]">My Account</span>,
+      children: [
+        {
+          key: 'settings',
+          label: 'Settings',
+          icon: <Settings className="w-4 h-4" />,
+          onClick: () => router.push('/settings'),
+        },
+        {
+          key: 'profile',
+          label: 'Profile',
+          icon: <UserCog className="w-4 h-4" />,
+          onClick: () => router.push('/profile'),
+        },
+      ],
+    },
+    { type: 'divider' },
+    {
+      key: 'switch',
+      type: 'group',
+      label: 'Switch View (Demo)',
+      children: [
+        {
+          key: 'admin',
+          label: <div className="flex justify-between w-full"><span>Admin</span>{(mappedRole || userRole) === 'Admin' && <span className="text-[#ff3b3b]">✓</span>}</div>,
+          onClick: () => setUserRole?.('Admin'),
+        },
+        {
+          key: 'manager',
+          label: <div className="flex justify-between w-full"><span>Manager</span>{(mappedRole || userRole) === 'Manager' && <span className="text-[#ff3b3b]">✓</span>}</div>,
+          onClick: () => setUserRole?.('Manager'),
+        },
+        {
+          key: 'leader',
+          label: <div className="flex justify-between w-full"><span>Leader</span>{(mappedRole || userRole) === 'Leader' && <span className="text-[#ff3b3b]">✓</span>}</div>,
+          onClick: () => setUserRole?.('Leader'),
+        },
+        {
+          key: 'employee',
+          label: <div className="flex justify-between w-full"><span>Employee</span>{(mappedRole || userRole) === 'Employee' && <span className="text-[#ff3b3b]">✓</span>}</div>,
+          onClick: () => setUserRole?.('Employee'),
+        },
+      ],
+    },
+    { type: 'divider' },
+    {
+      key: 'logout',
+      label: 'Log out',
+      icon: <LogOut className="w-4 h-4" />,
+      danger: true,
+      onClick: handleLogout,
+    },
+  ];
+
+  const notificationContent = (
+    <div className="w-[380px]">
+      <div className="p-4 border-b border-[#EEEEEE] flex items-center justify-between">
+        <h3 className="font-['Manrope:SemiBold',sans-serif] text-[16px] text-[#111111]">
+          Notifications {unreadCount > 0 && `(${unreadCount})`}
+        </h3>
+        {notifications.length > 0 && (
+          <Button
+            type="text"
+            size="small"
+            onClick={handleClearAllNotifications}
+            className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#ff3b3b] hover:text-[#ff3b3b]"
+          >
+            Clear All
+          </Button>
+        )}
+      </div>
+      <div className="max-h-[400px] overflow-y-auto">
+        {isLoadingNotifications ? (
+          <div className="p-8 text-center text-[#999999]">Loading...</div>
+        ) : notifications.length === 0 ? (
+          <div className="p-8 text-center text-[#999999]">No notifications</div>
+        ) : (
+          <List
+            itemLayout="horizontal"
+            dataSource={notifications}
+            renderItem={(item) => (
+              <div
+                onClick={() => !item.type && !item.unread ? {} : handleMarkAsRead(item.id)}
+                className={`p-4 border-b border-[#EEEEEE] hover:bg-[#F7F7F7] cursor-pointer transition-colors ${item.unread ? 'bg-[#FEF3F2]' : ''}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111]">
+                        {item.title}
+                      </h4>
+                      {item.unread && <Badge color="#ff3b3b" />}
+                    </div>
+                    <p className="font-['Manrope:Regular',sans-serif] text-[12px] text-[#666666] mb-1">
+                      {item.message}
+                    </p>
+                    <span className="font-['Manrope:Regular',sans-serif] text-[11px] text-[#999999]">
+                      {item.time}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          />
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <>
+      {contextHolder}
       <div className="bg-white rounded-full p-4 w-full">
         <div className="flex flex-row items-center justify-between w-full">
           {/* Left: Greeting text */}
-          <div className="flex flex-col font-['Inter:Regular',sans-serif] font-normal justify-center not-italic text-[#111111] text-nowrap">
+          <div className="flex flex-col font-['Manrope:Regular',sans-serif] font-normal justify-center not-italic text-[#111111] text-nowrap">
             <div className="flex items-center gap-3">
               <p className="leading-[normal] text-[20px] whitespace-pre">
-                <span className="font-['Manrope:Regular',sans-serif]">{`👋 Morning! `}</span>
-                <span className="font-['Manrope:Bold',sans-serif]">Satyam</span>
+                <span className="font-['Manrope:Regular',sans-serif]">{`👋 ${greeting}! `}</span>
+                <span className="font-['Manrope:Bold',sans-serif]">{firstName}</span>
               </p>
-              <AccessBadge role={userRole} />
+              <AccessBadge role={mappedRole || userRole} />
             </div>
           </div>
 
           {/* Right: CTAs, icons & profile section */}
           <div className="flex flex-row gap-6 items-center">
-            {/* Add Button with Dropdown - Only visible to Admin, Manager, Leader */}
-            {userRole !== 'Employee' && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="w-10 h-10 rounded-full bg-[#ff3b3b] hover:bg-[#cc2f2f] flex items-center justify-center transition-all active:scale-95 hover:shadow-lg shadow-[4px_4px_7px_0px_inset_rgba(255,255,255,0.3)]">
-                    <Add24Filled className="w-5 h-5 text-white" strokeWidth={2.5} />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-60 p-2">
-                  <DropdownMenuLabel className="text-[11px] text-[#999999] font-['Inter:Medium',sans-serif] px-2 py-1.5 uppercase tracking-wider">
-                    Create New
-                  </DropdownMenuLabel>
-
-                  <DropdownMenuItem
-                    onClick={() => setShowRequirementDialog(true)}
-                    className="cursor-pointer py-2.5 px-3 rounded-lg font-['Inter:Medium',sans-serif] text-[14px] focus:bg-[#FEF3F2] focus:text-[#ff3b3b]"
-                  >
-                    <PeopleTeam24Filled className="w-4 h-4 mr-3" />
-                    Requirement
-                  </DropdownMenuItem>
-
-                  {(userRole === 'Admin' || userRole === 'Manager') && (
-                    <DropdownMenuItem
-                      onClick={() => setShowWorkspaceDialog(true)}
-                      className="cursor-pointer py-2.5 px-3 rounded-lg font-['Inter:Medium',sans-serif] text-[14px] focus:bg-[#FEF3F2] focus:text-[#ff3b3b]"
-                    >
-                      <Apps24Filled className="w-4 h-4 mr-3" />
-                      Workspace
-                    </DropdownMenuItem>
-                  )}
-
-                  <DropdownMenuItem
-                    onClick={() => setShowTaskDialog(true)}
-                    className="cursor-pointer py-2.5 px-3 rounded-lg font-['Inter:Medium',sans-serif] text-[14px] focus:bg-[#FEF3F2] focus:text-[#ff3b3b]"
-                  >
-                    <ClipboardTaskListLtr24Filled className="w-4 h-4 mr-3" />
-                    Task
-                  </DropdownMenuItem>
-
-                  {(userRole === 'Admin' || userRole === 'Manager') && (
-                    <>
-                      <DropdownMenuSeparator className="my-2 bg-[#F7F7F7]" />
-                      <DropdownMenuLabel className="text-[11px] text-[#999999] font-['Inter:Medium',sans-serif] px-2 py-1.5 uppercase tracking-wider">
-                        People
-                      </DropdownMenuLabel>
-
-                      <DropdownMenuItem
-                        onClick={() => router.push('/employees')}
-                        className="cursor-pointer py-2.5 px-3 rounded-lg font-['Inter:Medium',sans-serif] text-[14px] focus:bg-[#FEF3F2] focus:text-[#ff3b3b]"
-                      >
-                        <People24Filled className="w-4 h-4 mr-3" />
-                        Employee
-                      </DropdownMenuItem>
-
-                      <DropdownMenuItem
-                        onClick={() => router.push('/clients')}
-                        className="cursor-pointer py-2.5 px-3 rounded-lg font-['Inter:Medium',sans-serif] text-[14px] focus:bg-[#FEF3F2] focus:text-[#ff3b3b]"
-                      >
-                        <Handshake24Filled className="w-4 h-4 mr-3" />
-                        Client
-                      </DropdownMenuItem>
-                    </>
-                  )}
-
-                  {userRole === 'Admin' && (
-                    <>
-                      <DropdownMenuSeparator className="my-2 bg-[#F7F7F7]" />
-                      <DropdownMenuLabel className="text-[11px] text-[#999999] font-['Inter:Medium',sans-serif] px-2 py-1.5 uppercase tracking-wider">
-                        Finance
-                      </DropdownMenuLabel>
-
-                      <DropdownMenuItem
-                        onClick={() => router.push('/invoices')}
-                        className="cursor-pointer py-2.5 px-3 rounded-lg font-['Inter:Medium',sans-serif] text-[14px] focus:bg-[#FEF3F2] focus:text-[#ff3b3b]"
-                      >
-                        <Receipt24Filled className="w-4 h-4 mr-3" />
-                        Invoice
-                      </DropdownMenuItem>
-                    </>
-                  )}
-
-                  <DropdownMenuSeparator className="my-2 bg-[#F7F7F7]" />
-                  <DropdownMenuLabel className="text-[11px] text-[#999999] font-['Inter:Medium',sans-serif] px-2 py-1.5 uppercase tracking-wider">
-                    Quick Actions
-                  </DropdownMenuLabel>
-
-                  <DropdownMenuItem
-                    onClick={() => router.push('/calendar')}
-                    className="cursor-pointer py-2.5 px-3 rounded-lg font-['Inter:Medium',sans-serif] text-[14px] focus:bg-[#FEF3F2] focus:text-[#ff3b3b]"
-                  >
-                    <Calendar24Filled className="w-4 h-4 mr-3" />
-                    Schedule Meeting
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={() => router.push('/notes')}
-                    className="cursor-pointer py-2.5 px-3 rounded-lg font-['Inter:Medium',sans-serif] text-[14px] focus:bg-[#FEF3F2] focus:text-[#ff3b3b]"
-                  >
-                    <Notepad24Filled className="w-4 h-4 mr-3" />
-                    Add Note
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            {/* Add Button with Dropdown */}
+            <Dropdown menu={{ items: addMenuItems }} placement="bottomRight" trigger={['click']}>
+              <Button
+                className="!w-10 !h-10 !min-w-[40px] rounded-full bg-[#ff3b3b] hover:bg-[#cc2f2f] flex items-center justify-center p-0 border-none shadow-[4px_4px_7px_0px_inset_rgba(255,255,255,0.3)]"
+                type="primary"
+                shape="circle"
+                icon={<Add24Filled className="w-5 h-5 text-white" />}
+              />
+            </Dropdown>
 
             {/* Notification icon */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="relative hover:opacity-70 transition-opacity">
-                  <Alert24Filled className="w-6 h-6 text-[#000000]" strokeWidth={1.5} />
-                  {/* Notification Badge */}
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-[#ff3b3b] rounded-full border-2 border-white flex items-center justify-center">
-                      <span className="text-[10px] font-['Inter:Bold',sans-serif] text-white">{unreadCount}</span>
-                    </span>
-                  )}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[380px] p-0">
-                <div className="p-4 border-b border-[#EEEEEE] flex items-center justify-between">
-                  <h3 className="font-['Manrope:SemiBold',sans-serif] text-[16px] text-[#111111]">
-                    Notifications {unreadCount > 0 && `(${unreadCount})`}
-                  </h3>
-                  {notifications.length > 0 && (
-                    <button
-                      onClick={clearAllNotifications}
-                      className="text-[12px] font-['Inter:Medium',sans-serif] text-[#ff3b3b] hover:underline"
-                    >
-                      Clear All
-                    </button>
-                  )}
-                </div>
-                <div className="max-h-[400px] overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <div className="p-8 text-center">
-                      <p className="font-['Inter:Regular',sans-serif] text-[14px] text-[#999999]">
-                        No notifications
-                      </p>
-                    </div>
-                  ) : (
-                    notifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        onClick={() => markAsRead(notification.id)}
-                        className={`p-4 border-b border-[#EEEEEE] hover:bg-[#F7F7F7] cursor-pointer transition-colors ${notification.unread ? 'bg-[#FEF3F2]' : ''
-                          }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-['Inter:SemiBold',sans-serif] text-[13px] text-[#111111]">
-                                {notification.title}
-                              </h4>
-                              {notification.unread && (
-                                <span className="w-2 h-2 bg-[#ff3b3b] rounded-full" />
-                              )}
-                            </div>
-                            <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#666666] mb-1">
-                              {notification.message}
-                            </p>
-                            <span className="font-['Inter:Regular',sans-serif] text-[11px] text-[#999999]">
-                              {notification.time}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Popover
+              content={notificationContent}
+              trigger="click"
+              placement="bottomRight"
+              overlayInnerStyle={{ padding: 0 }}
+            >
+              <Badge count={unreadCount} size="small" offset={[-5, 5]} color="#ff3b3b">
+                <Button
+                  type="text"
+                  shape="circle"
+                  icon={<Alert24Filled className="w-6 h-6 text-[#000000]" />}
+                  className="hover:bg-transparent"
+                />
+              </Badge>
+            </Popover>
 
             {/* Profile photo & Role Switcher */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="relative shrink-0 size-[40px] rounded-full ring-2 ring-transparent hover:ring-[#ff3b3b]/20 transition-all cursor-pointer">
-                  <div className="absolute inset-0">
-                    <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 40 40">
-                      <circle cx="20" cy="20" fill="var(--fill-0, #D9D9D9)" id="Ellipse 41" r="19" stroke="var(--stroke-0, #EEEEEE)" strokeWidth="2" />
-                    </svg>
-                  </div>
-                  <div className="absolute inset-0 overflow-hidden rounded-full">
-                    <Image
-                      alt="Satyam"
-                      src="https://github.com/shadcn.png"
-                      width={40}
-                      height={40}
-                      className="size-full object-cover"
-                    />
-                  </div>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="font-['Manrope:Bold',sans-serif] text-[#111111]">My Account</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {userRole === 'Admin' && (
-                  <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
-                    <Settings className="w-4 h-4 mr-2" />
-                    Settings
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer">
-                  <UserCog className="w-4 h-4 mr-2" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-xs text-gray-500 font-normal">Switch View (Demo)</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setUserRole?.('Admin')} className="cursor-pointer justify-between">
-                  <span>Admin</span>
-                  {userRole === 'Admin' && <CheckSquare className="w-4 h-4 text-[#ff3b3b]" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setUserRole?.('Manager')} className="cursor-pointer justify-between">
-                  <span>Manager</span>
-                  {userRole === 'Manager' && <CheckSquare className="w-4 h-4 text-[#ff3b3b]" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setUserRole?.('Leader')} className="cursor-pointer justify-between">
-                  <span>Leader</span>
-                  {userRole === 'Leader' && <CheckSquare className="w-4 h-4 text-[#ff3b3b]" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setUserRole?.('Employee')} className="cursor-pointer justify-between">
-                  <span>Employee</span>
-                  {userRole === 'Employee' && <CheckSquare className="w-4 h-4 text-[#ff3b3b]" />}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-500 cursor-pointer">
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Dropdown menu={{ items: profileMenuItems }} placement="bottomRight" trigger={['click']}>
+              <div className="relative shrink-0 size-[40px] rounded-full ring-2 ring-transparent hover:ring-[#ff3b3b]/20 transition-all cursor-pointer">
+                <Avatar
+                  size={40}
+                  src={user?.user_profile?.profile_pic || user?.profile_pic || "https://github.com/shadcn.png"}
+                  alt={user?.name || 'User'}
+                />
+              </div>
+            </Dropdown>
           </div>
         </div>
       </div>
 
-      {/* Workspace Dialog - Rendered conditionally based on role is handled in trigger, but also here for safety */}
-      <Dialog open={showWorkspaceDialog} onOpenChange={setShowWorkspaceDialog}>
-        <DialogContent className="sm:max-w-[600px] bg-white rounded-[16px] border border-[#EEEEEE] p-0 overflow-hidden gap-0">
-          <div className="p-6 border-b border-[#EEEEEE]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                <div className="p-2 rounded-full bg-[#F7F7F7]">
-                  <FolderOpen className="w-5 h-5 text-[#666666]" />
-                </div>
-                Create Workspace
-              </DialogTitle>
-              <DialogDescription className="text-[13px] text-[#666666] font-['Inter:Regular',sans-serif] ml-11">
-                Create a new workspace to organize tasks and requirements.
-              </DialogDescription>
-            </DialogHeader>
+      {/* Workspace Modal */}
+      <Modal
+        open={showWorkspaceDialog}
+        onCancel={() => setShowWorkspaceDialog(false)}
+        footer={null}
+        width={600}
+        centered
+        className="rounded-[16px] overflow-hidden"
+      >
+        <div className="p-0">
+          <div className="border-b border-[#EEEEEE] mb-6 pb-4">
+            <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+              <div className="p-2 rounded-full bg-[#F7F7F7]">
+                <FolderOpen className="w-5 h-5 text-[#666666]" />
+              </div>
+              Create Workspace
+            </div>
+            <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
+              Create a new workspace to organize tasks and requirements.
+            </p>
           </div>
 
-          <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Workspace Name</Label>
-                <Input
-                  placeholder="e.g. Website Redesign"
-                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b]"
-                  value={newWorkspace.name}
-                  onChange={(e) => setNewWorkspace({ ...newWorkspace, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Client</Label>
-                <Select
-                  value={newWorkspace.client}
-                  onValueChange={(v) => setNewWorkspace({ ...newWorkspace, client: v })}
-                >
-                  <SelectTrigger className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b]">
-                    <SelectValue placeholder="Select client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Eventus Security">Eventus Security</SelectItem>
-                    <SelectItem value="Triam Security">Triam Security</SelectItem>
-                    <SelectItem value="DIST">DIST</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Project Lead</Label>
-                <Select
-                  value={newWorkspace.lead}
-                  onValueChange={(v) => setNewWorkspace({ ...newWorkspace, lead: v })}
-                >
-                  <SelectTrigger className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b]">
-                    <SelectValue placeholder="Select lead" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="me">Me (Current User)</SelectItem>
-                    <SelectItem value="sarah">Sarah Wilson</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
+          <div className="grid grid-cols-2 gap-6 mb-6">
             <div className="space-y-2">
-              <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</Label>
-              <Textarea
-                placeholder="Describe your workspace..."
-                className="min-h-[100px] rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] p-3"
-                value={newWorkspace.description}
-                onChange={(e) => setNewWorkspace({ ...newWorkspace, description: e.target.value })}
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Workspace Name</span>
+              <Input
+                placeholder="e.g. Website Redesign"
+                className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif]"
+                value={newWorkspace.name}
+                onChange={(e) => setNewWorkspace({ ...newWorkspace, name: e.target.value })}
               />
             </div>
-          </div>
-
-          <DialogFooter className="p-6 border-t border-[#EEEEEE] flex items-center justify-end bg-white">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:bg-[#F7F7F7]">Reset Data</Button>
-              <Button className="h-10 px-6 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif]">Create Workspace</Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Task Dialog */}
-      <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
-        <DialogContent className="sm:max-w-[600px] bg-white rounded-[16px] border border-[#EEEEEE] p-0 overflow-hidden gap-0">
-          <div className="p-6 border-b border-[#EEEEEE]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                <div className="p-2 rounded-full bg-[#F7F7F7]">
-                  <CheckSquare className="w-5 h-5 text-[#666666]" />
-                </div>
-                Create New Task
-              </DialogTitle>
-              <DialogDescription className="text-[13px] text-[#666666] font-['Inter:Regular',sans-serif] ml-11">
-                Assign task for people join to team
-              </DialogDescription>
-            </DialogHeader>
-          </div>
-
-          <TaskForm
-            onSubmit={(data) => {
-              console.log("Task created from header", data);
-              setShowTaskDialog(false);
-            }}
-            onCancel={() => setShowTaskDialog(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Requirement Dialog */}
-      <Dialog open={showRequirementDialog} onOpenChange={setShowRequirementDialog}>
-        <DialogContent className="sm:max-w-[600px] bg-white rounded-[16px] border border-[#EEEEEE] p-0 overflow-hidden gap-0">
-          <div className="p-6 border-b border-[#EEEEEE]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                <div className="p-2 rounded-full bg-[#F7F7F7]">
-                  <FileText className="w-5 h-5 text-[#666666]" />
-                </div>
-                Create New Requirement
-              </DialogTitle>
-              <DialogDescription className="text-[13px] text-[#666666] font-['Inter:Regular',sans-serif] ml-11">
-                Define a new requirement for the team
-              </DialogDescription>
-            </DialogHeader>
-          </div>
-
-          <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Title</Label>
-                <Input
-                  placeholder="Requirement title"
-                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b]"
-                  value={newRequirement.title}
-                  onChange={(e) => setNewRequirement({ ...newRequirement, title: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Workspace</Label>
-                <Select value={newRequirement.workspace} onValueChange={(v) => setNewRequirement({ ...newRequirement, workspace: v })}>
-                  <SelectTrigger className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b]">
-                    <SelectValue placeholder="Select workspace" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="redesign">Website Redesign</SelectItem>
-                    <SelectItem value="app">Mobile App</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Type</Label>
-                <Select value={newRequirement.type} onValueChange={(v) => setNewRequirement({ ...newRequirement, type: v })}>
-                  <SelectTrigger className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b]">
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="inhouse">In-house</SelectItem>
-                    <SelectItem value="outsourced">Outsourced</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Priority</Label>
-                <Select value={newRequirement.priority} onValueChange={(v) => setNewRequirement({ ...newRequirement, priority: v })}>
-                  <SelectTrigger className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b]">
-                    <SelectValue placeholder="Select priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Category</Label>
-                <Input
-                  placeholder="e.g. Development"
-                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b]"
-                  value={newRequirement.category}
-                  onChange={(e) => setNewRequirement({ ...newRequirement, category: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Due Date</Label>
-                <Input type="date" className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b]" />
-              </div>
-            </div>
-
             <div className="space-y-2">
-              <Label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</Label>
-              <Textarea
-                placeholder="Requirement details..."
-                className="min-h-[100px] rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] p-3"
-                value={newRequirement.description}
-                onChange={(e) => setNewRequirement({ ...newRequirement, description: e.target.value })}
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Client</span>
+              <Select
+                className="w-full h-11"
+                placeholder="Select client"
+                value={newWorkspace.client || undefined}
+                onChange={(v) => setNewWorkspace({ ...newWorkspace, client: String(v) })}
+              >
+                {clientsData?.result && clientsData.result.length > 0 ? (
+                  clientsData.result.map((client: any) => (
+                    <Option key={String(client.id || client.association_id || '')} value={String(client.name || client.company || '')}>
+                      {client.name || client.company}
+                    </Option>
+                  ))
+                ) : (
+                  <Option value="none" disabled>No clients available</Option>
+                )}
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6 mb-6">
+            <div className="space-y-2">
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Project Lead</span>
+              <Select
+                className="w-full h-11"
+                placeholder="Select lead"
+                value={newWorkspace.lead || undefined}
+                onChange={(v) => setNewWorkspace({ ...newWorkspace, lead: String(v) })}
+              >
+                {employeesData?.result && employeesData.result.length > 0 ? (
+                  employeesData.result.map((emp: any) => (
+                    <Option key={String(emp.user_id || emp.id || '')} value={String(emp.user_id || emp.id || '')}>
+                      {emp.name}
+                    </Option>
+                  ))
+                ) : (
+                  <Option value="none" disabled>No employees available</Option>
+                )}
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2 mb-6">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</span>
+            <TextArea
+              placeholder="Describe your workspace..."
+              className="font-['Manrope:Regular',sans-serif]"
+              rows={4}
+              value={newWorkspace.description}
+              onChange={(e) => setNewWorkspace({ ...newWorkspace, description: e.target.value })}
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#EEEEEE]">
+            <Button
+              type="text"
+              onClick={() => setNewWorkspace({ name: '', client: '', description: '', lead: '' })}
+              className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666]"
+            >
+              Reset Data
+            </Button>
+            <Button
+              type="primary"
+              onClick={handleCreateWorkspace}
+              loading={createWorkspaceMutation.isPending}
+              className="h-10 px-6 rounded-lg bg-[#111111] hover:bg-[#000000] text-white font-['Manrope:SemiBold',sans-serif] border-none"
+            >
+              Create Workspace
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Task Modal */}
+      <Modal
+        open={showTaskDialog}
+        onCancel={() => setShowTaskDialog(false)}
+        footer={null}
+        width={600}
+        centered
+        className="rounded-[16px] overflow-hidden"
+      >
+        <div className="border-b border-[#EEEEEE] mb-6 pb-4">
+          <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+            <div className="p-2 rounded-full bg-[#F7F7F7]">
+              <CheckSquare className="w-5 h-5 text-[#666666]" />
+            </div>
+            Create New Task
+          </div>
+          <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
+            Assign task for people join to team
+          </p>
+        </div>
+        <TaskForm
+          onSubmit={(data) => {
+            if (!data.start_date) {
+              messageApi.error("Start Date is required");
+              return;
+            }
+            const formattedData = {
+              ...data,
+              start_date: data.start_date,
+            };
+            createTaskMutation.mutate(formattedData as any, {
+              onSuccess: () => {
+                setShowTaskDialog(false);
+                messageApi.success("Task created successfully");
+              },
+              onError: (error: any) => {
+                const errorMessage = error?.response?.data?.message || error?.message || "Failed to create task";
+                messageApi.error(errorMessage);
+              }
+            });
+          }}
+          onCancel={() => setShowTaskDialog(false)}
+          users={usersDropdown}
+          requirements={requirementsDropdown}
+          workspaces={workspacesData?.result?.projects?.map((p: any) => ({ id: p.id, name: p.name })) || []}
+        />
+      </Modal>
+
+      {/* Requirement Modal */}
+      <Modal
+        open={showRequirementDialog}
+        onCancel={() => setShowRequirementDialog(false)}
+        footer={null}
+        width={600}
+        centered
+        className="rounded-[16px] overflow-hidden"
+      >
+        <div className="p-0">
+          <div className="border-b border-[#EEEEEE] mb-6 pb-4">
+            <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+              <div className="p-2 rounded-full bg-[#F7F7F7]">
+                <FileText className="w-5 h-5 text-[#666666]" />
+              </div>
+              Create New Requirement
+            </div>
+            <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
+              Requirements helps you grouping tasks better
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6 mb-6">
+            <div className="space-y-2">
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Requirement Title</span>
+              <Input
+                placeholder="e.g. Navigation Bar"
+                className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif]"
+                value={newRequirement.title}
+                onChange={(e) => setNewRequirement({ ...newRequirement, title: e.target.value })}
               />
             </div>
+            <div className="space-y-2">
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Workspace</span>
+              <Select
+                className="w-full h-11"
+                placeholder="Select workspace"
+                value={newRequirement.workspace || undefined}
+                onChange={(v) => setNewRequirement({ ...newRequirement, workspace: String(v) })}
+              >
+                {workspacesData?.result?.projects && workspacesData.result.projects.length > 0 ? (
+                  workspacesData.result.projects.map((w: any) => (
+                    <Option key={String(w.id)} value={String(w.id)}>
+                      {w.name}
+                    </Option>
+                  ))
+                ) : (
+                  <Option value="none" disabled>No workspaces available</Option>
+                )}
+              </Select>
+            </div>
           </div>
 
-          <DialogFooter className="p-6 border-t border-[#EEEEEE] flex items-center justify-end bg-white">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:bg-[#F7F7F7]">Reset Data</Button>
-              <Button className="h-10 px-6 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif]">Save Requirement</Button>
+          <div className="grid grid-cols-2 gap-6 mb-6">
+            <div className="space-y-2">
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Due Date</span>
+              <Input
+                type="date"
+                className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif]"
+                value={newRequirement.dueDate ? new Date(newRequirement.dueDate).toISOString().split('T')[0] : ''}
+                onChange={(e) => setNewRequirement({ ...newRequirement, dueDate: e.target.value })}
+              />
             </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <div className="space-y-2">
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Priority</span>
+              <Select
+                className="w-full h-11"
+                placeholder="Select priority"
+                value={newRequirement.priority || undefined}
+                onChange={(v) => setNewRequirement({ ...newRequirement, priority: String(v) })}
+              >
+                <Option value="low">Low</Option>
+                <Option value="medium">Medium</Option>
+                <Option value="high">High</Option>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2 mb-6">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</span>
+            <TextArea
+              placeholder="Describe the requirement..."
+              className="font-['Manrope:Regular',sans-serif]"
+              rows={4}
+              value={newRequirement.description}
+              onChange={(e) => setNewRequirement({ ...newRequirement, description: e.target.value })}
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#EEEEEE]">
+            <Button
+              type="text"
+              onClick={() => setNewRequirement({ title: '', workspace: '', type: '', priority: '', category: '', dueDate: '', description: '' })}
+              className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666]"
+            >
+              Reset Data
+            </Button>
+            <Button
+              type="primary"
+              onClick={handleCreateRequirement}
+              loading={createRequirementMutation.isPending}
+              className="h-10 px-6 rounded-lg bg-[#111111] hover:bg-[#000000] text-white font-['Manrope:SemiBold',sans-serif] border-none"
+            >
+              Save Requirement
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }

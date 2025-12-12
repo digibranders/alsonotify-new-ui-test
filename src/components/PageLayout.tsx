@@ -36,6 +36,7 @@ interface PageLayoutProps {
   }>;
   customFilters?: ReactNode;
   customTabRender?: (tab: { id: string; label: string; count?: number }, isActive: boolean, onClick: () => void) => ReactNode;
+  action?: ReactNode;
 }
 
 export function PageLayout({
@@ -54,7 +55,8 @@ export function PageLayout({
   titleAction,
   secondaryActions,
   customFilters,
-  customTabRender
+  customTabRender,
+  action
 }: PageLayoutProps) {
   return (
     <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] p-8 flex flex-col overflow-hidden">
@@ -86,8 +88,8 @@ export function PageLayout({
                   key={tab.id}
                   onClick={() => onTabChange?.(tab.id)}
                   className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === tab.id
-                      ? 'text-[#ff3b3b]'
-                      : 'text-[#666666] hover:text-[#111111]'
+                    ? 'text-[#ff3b3b]'
+                    : 'text-[#666666] hover:text-[#111111]'
                     }`}
                 >
                   {tab.label}
@@ -112,7 +114,7 @@ export function PageLayout({
                 value={searchValue}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="pl-10 pr-4 py-2.5 bg-white border border-[#EEEEEE] rounded-full text-[14px] font-['Inter:Medium',sans-serif] text-[#111111] placeholder:text-[#999999] focus:outline-none focus:border-[#ff3b3b] w-[280px]"
+                className="pl-10 pr-4 py-2.5 bg-white border border-[#EEEEEE] rounded-full text-[14px] font-['Manrope:Regular',sans-serif] text-[#111111] placeholder:text-[#999999] focus:outline-none focus:border-[#ff3b3b] w-[280px]"
               />
             </div>
           )}
@@ -159,6 +161,9 @@ export function PageLayout({
               </span>
             </button>
           )}
+
+          {/* Primary Action */}
+          {action}
         </div>
       </div>
 

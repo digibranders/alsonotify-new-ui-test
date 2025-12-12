@@ -1,7 +1,9 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
-// import alsonotifyLogo from "figma:asset/ee55d04bda35eb248f7697579ebb8072daa6fa8b.png"; // Removed
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
+import BrandLogo from '@/assets/images/logo.png';
 import {
   Home24Filled,
   People24Filled,
@@ -36,7 +38,6 @@ type NavItemConfig = {
 
 export function Sidebar({ userRole }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
 
   const navItems: NavItemConfig[] = [
     {
@@ -128,8 +129,10 @@ export function Sidebar({ userRole }: SidebarProps) {
   const filteredNavItems = navItems.filter(item => item.allowedRoles.includes(userRole));
 
   const isActive = (path: string) => {
-    if (path === '/dashboard' && pathname === '/') return true;
-    if (path === '/workspaces' && pathname.includes('/workspaces')) return true;
+    if (path === '/dashboard') {
+      return pathname === '/dashboard' || pathname === '/';
+    }
+    // For nested routes, check if pathname starts with the path
     return pathname.startsWith(path);
   };
 
@@ -137,8 +140,14 @@ export function Sidebar({ userRole }: SidebarProps) {
     <div className="bg-white rounded-[24px] p-6 w-full flex flex-col" style={{ height: 'calc(100vh - 40px)' }}>
       {/* Logo */}
       <div className="flex items-center justify-center mb-6">
-        {/* <Image src="/placeholder-logo.png" alt="Alsonotify" width={120} height={29} className="h-[29px] w-auto object-contain" /> */}
-        <span className="text-xl font-bold">AlsoNotify</span>
+        <Image 
+          src={BrandLogo} 
+          alt="Alsonotify" 
+          width={120} 
+          height={29} 
+          className="h-[29px] w-auto object-contain" 
+          priority
+        />
       </div>
 
       {/* Divider */}
@@ -149,10 +158,10 @@ export function Sidebar({ userRole }: SidebarProps) {
         {filteredNavItems.map((item) => (
           <NavItem
             key={item.id}
+            href={item.path}
             icon={item.icon}
             label={item.label}
             active={isActive(item.path)}
-            onClick={() => router.push(item.path)}
           />
         ))}
       </nav>
@@ -166,37 +175,39 @@ export function Sidebar({ userRole }: SidebarProps) {
   );
 }
 
-function NavItem({ icon, label, active = false, onClick }: { icon: React.ReactNode; label: string; active?: boolean; onClick?: () => void }) {
+function NavItem({ href, icon, label, active = false }: { href: string; icon: React.ReactNode; label: string; active?: boolean }) {
   const iconColor = active ? '#ff3b3b' : '#434343';
   const iconWithColor = React.isValidElement(icon)
     ? React.cloneElement(icon as React.ReactElement<any>, { color: iconColor })
     : icon;
 
   return (
-    <div className="relative w-full cursor-pointer group shrink-0" onClick={onClick}>
-      {/* Background */}
-      <div className={`
-        h-[40px] rounded-full w-full transition-all
+    <Link
+      href={href}
+      className={`
+        relative w-full h-[40px] rounded-full transition-all group shrink-0
+        flex items-center gap-4 px-6
         ${active
           ? 'bg-[#FEF3F2] border-2 border-[#ff3b3b]'
-          : 'bg-white group-hover:bg-[#F7F7F7]'
+          : 'bg-white hover:bg-[#F7F7F7] border-2 border-transparent'
         }
-      `} />
-
+        cursor-pointer outline-none focus:outline-none focus:ring-2 focus:ring-[#ff3b3b]/20
+        no-underline
+      `}
+    >
       {/* Icon */}
-      <div className="absolute left-[24px] top-1/2 -translate-y-1/2">
+      <div className="flex-shrink-0">
         {iconWithColor}
       </div>
 
       {/* Label */}
-      <div className={`
-        absolute left-[56px] top-1/2 -translate-y-1/2
-        font-['Manrope:SemiBold',sans-serif] text-[14px]
+      <span className={`
+        font-['Manrope:SemiBold',sans-serif] text-[14px] leading-normal
         ${active ? 'text-[#ff3b3b]' : 'text-[#434343]'}
       `}>
-        <p className="leading-[normal] whitespace-pre">{label}</p>
-      </div>
-    </div>
+        {label}
+      </span>
+    </Link>
   );
 }
 
