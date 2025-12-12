@@ -1,7 +1,7 @@
 'use client';
 
 import { AlsonotifyLayoutWrapper } from '../../AlsonotifyLayoutWrapper';
-import { TaskDetailsPage } from '../../../components/details/TaskDetailsPage';
+import { TaskDetailsPage } from '@/components/features/tasks/TaskDetailsPage';
 
 export default function TaskDetailsPageRoute() {
   return (

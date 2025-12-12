@@ -9,6 +9,7 @@ import {
   updateCurrentUserProfile,
   getCompanyDepartments,
   updateUserStatus,
+  inviteUser,
   type UserType,
   type ClientOrOutsourceType,
   type CompanyDepartmentType,
@@ -94,6 +95,19 @@ export const useUserDetails = () => {
     queryKey: ["user", "details"],
     queryFn: () => getUserDetails(),
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+// Invite user
+export const useInviteUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: { email: string; requestSentFor: string }) =>
+      inviteUser(params.email, params.requestSentFor),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
   });
 };
 

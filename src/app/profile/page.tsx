@@ -1,7 +1,7 @@
 'use client';
 
 import { AlsonotifyLayoutWrapper } from '../AlsonotifyLayoutWrapper';
-import { ProfilePage } from '@/components/ProfilePage';
+import { ProfilePage } from '@/components/features/profile/ProfilePage';
 
 export default function ProfilePageRoute() {
     return (

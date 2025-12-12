@@ -112,6 +112,9 @@
 .custom-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner {
   background-color: #030213 !important;
   border: none !important;
+  width: 100% !important;
+  /* Fixed width */
+  height: 100% !important;
 }
 
 .custom-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner::after {
@@ -168,7 +171,7 @@
   background-color: #030213 !important;
 }
 
-/* Custom Select/Dropdown Styling - Match design from screenshot */
+/* Custom Select/Dropdown Styling */
 .ant-select-dropdown {
   background: #ffffff !important;
   border-radius: 8px !important;
@@ -232,4 +235,45 @@
   color: #111111 !important;
   font-weight: 500 !important;
   line-height: 42px !important;
+}
+
+/* Custom Overrides from Clients Page adjustments */
+
+/* Make AntD Select match 42px height and rounded look for custom-select-client */
+.custom-select-client .ant-select-selector {
+  height: 42px !important;
+  border-radius: 8px !important;
+  padding-top: 5px !important;
+  padding-bottom: 5px !important;
+  align-items: center !important;
+  border-color: #E5E7EB !important;
+}
+
+/* Allow border color change on focus/active */
+.custom-select-client.ant-select-focused .ant-select-selector,
+.custom-select-client:hover .ant-select-selector {
+  border-color: #4096ff !important;
+  box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1) !important;
+}
+
+/* Ensure inner selection area is vertically centered */
+.custom-select-client .ant-select-selection-item {
+  line-height: 32px !important;
+}
+
+.custom-select-client .ant-select-selection-placeholder {
+  line-height: 32px !important;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }

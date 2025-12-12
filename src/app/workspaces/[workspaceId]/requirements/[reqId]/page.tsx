@@ -1,7 +1,7 @@
 'use client';
 
 import { AlsonotifyLayoutWrapper } from '../../../../AlsonotifyLayoutWrapper';
-import { RequirementDetailsPage } from '../../../../../components/RequirementDetailsPage';
+import { RequirementDetailsPage } from '@/components/features/requirements/RequirementDetailsPage';
 
 export default function RequirementDetailsPageRoute() {
   return (

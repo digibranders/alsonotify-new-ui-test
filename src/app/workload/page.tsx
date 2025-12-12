@@ -1,7 +1,7 @@
 'use client';
 
 import { AlsonotifyLayoutWrapper } from '../AlsonotifyLayoutWrapper';
-import { WorkloadChartPage } from '../../components/WorkloadChartPage';
+import { WorkloadChartPage } from '../../components/features/workload/WorkloadChartPage';
 
 export default function WorkloadPageRoute() {
   return (

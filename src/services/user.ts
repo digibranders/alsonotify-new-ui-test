@@ -6,6 +6,7 @@ export interface UserType {
   name: string;
   email: string;
   phone?: string;
+  mobile_number?: string;
   designation?: string;
   is_active?: boolean;
   [key: string]: any;

@@ -1,7 +1,7 @@
 'use client';
 
 import { AlsonotifyLayoutWrapper } from '../AlsonotifyLayoutWrapper';
-import { EmployeesPage } from '../../components/EmployeesPage';
+import { EmployeesPage } from '../../components/features/employees/EmployeesPage';
 
 export default function EmployeesPageRoute() {
   return (

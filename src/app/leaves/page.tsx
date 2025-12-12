@@ -1,7 +1,7 @@
 'use client';
 
 import { AlsonotifyLayoutWrapper } from '../AlsonotifyLayoutWrapper';
-import { LeavesPage } from '../../components/LeavesPage';
+import { LeavesPage } from '../../components/features/leaves/LeavesPage';
 
 export default function LeavesPageRoute() {
   return (

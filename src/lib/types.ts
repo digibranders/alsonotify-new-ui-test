@@ -16,6 +16,7 @@ export interface Employee {
   workingHours: number;
   leaves: number;
   roleId?: number;
+  employmentType?: 'In-house' | 'Freelancer' | 'Agency';
 }
 
 export interface Client {

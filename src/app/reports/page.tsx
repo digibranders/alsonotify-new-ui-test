@@ -1,7 +1,7 @@
 'use client';
 
 import { AlsonotifyLayoutWrapper } from '../AlsonotifyLayoutWrapper';
-import { ReportsPage } from '../../components/ReportsPage';
+import { ReportsPage } from '../../components/features/reports/ReportsPage';
 
 export default function ReportsPageRoute() {
   return (

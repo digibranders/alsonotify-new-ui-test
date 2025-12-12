@@ -1,7 +1,7 @@
 'use client';
 
 import { AlsonotifyLayoutWrapper } from '../../AlsonotifyLayoutWrapper';
-import { WorkspaceDetailsPage } from '../../../components/WorkspaceDetailsPage';
+import { WorkspaceDetailsPage } from '@/components/features/workspaces/WorkspaceDetailsPage';
 
 export default function WorkspaceDetailsPageRoute({ params }: { params: { workspaceId: string } }) {
   return (
