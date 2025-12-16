@@ -1,9 +1,8 @@
 
 import { Badge, Dropdown, MenuProps, Checkbox } from "antd";
 import { Briefcase, CalendarDays, Edit, MoreVertical, Trash2 } from "lucide-react";
-import Link from "next/link";
 import { AccessBadge } from '../../../ui/AccessBadge';
-import { Employee } from "@/lib/types";
+import { Employee } from "@/types/genericTypes";
 
 interface EmployeeRowProps {
   employee: Employee;
@@ -11,6 +10,7 @@ interface EmployeeRowProps {
   onSelect: () => void;
   onEdit: () => void;
   onDeactivate?: () => void;
+  onViewDetails?: () => void;
 }
 
 export function EmployeeRow({
@@ -18,7 +18,8 @@ export function EmployeeRow({
   selected,
   onSelect,
   onEdit,
-  onDeactivate
+  onDeactivate,
+  onViewDetails
 }: EmployeeRowProps) {
 
   const items: MenuProps['items'] = [
@@ -43,14 +44,14 @@ export function EmployeeRow({
     <div
       onClick={onSelect}
       className={`
-        group bg-white border rounded-[16px] p-4 transition-all duration-300 cursor-pointer relative z-10
+        group bg-white border rounded-[12px] px-4 py-4 transition-all duration-300 cursor-pointer relative z-10
         ${selected
-          ? 'border-[#ff3b3b] shadow-[0_0_0_1px_#ff3b3b] bg-[#FFF5F5]'
-          : 'border-[#EEEEEE] hover:border-[#ff3b3b]/20 hover:shadow-lg'
+          ? 'border-[#ff3b3b] shadow-md bg-[#FFF5F5]'
+          : 'border-[#E5E7EB] hover:border-[#ff3b3b] hover:shadow-md'
         }
       `}
     >
-      <div className="grid grid-cols-[40px_2.5fr_1fr_1.5fr_1fr_0.8fr_1fr_0.3fr] gap-4 items-center">
+      <div className="grid grid-cols-[40px_2fr_1.8fr_1.2fr_1fr_1fr_1.2fr_40px] gap-4 items-center">
         {/* Checkbox */}
         <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
           <Checkbox
@@ -65,76 +66,65 @@ export function EmployeeRow({
         {/* Employee Info - Name, Role & Dept */}
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Link
-              href={`/employees/${employee.id}`}
-              onClick={(e) => e.stopPropagation()}
-              className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111] hover:text-[#ff3b3b] transition-colors hover:underline"
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewDetails?.();
+              }}
+              className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111] hover:text-[#ff3b3b] transition-colors cursor-pointer text-left"
             >
               {employee.name}
-            </Link>
+            </button>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] font-['Manrope:SemiBold',sans-serif] text-[#666666]">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
               {employee.role}
             </span>
             <span className="text-[#DDDDDD]">|</span>
-            <div className="inline-flex items-center gap-1">
-              <p className="text-[11px] text-[#666666] font-['Manrope:Medium',sans-serif]">
-                {employee.department}
-              </p>
-            </div>
+            <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+              {employee.department}
+            </span>
           </div>
-        </div>
-
-        {/* Employment Type */}
-        <div>
-          <span className={`
-            inline-flex items-center px-2 py-0.5 rounded text-[11px] font-['Manrope:Bold',sans-serif] uppercase tracking-wide
-            ${employee.employmentType === 'In-house' ? 'bg-blue-50 text-blue-600 border border-blue-100' : ''}
-            ${employee.employmentType === 'Freelancer' ? 'bg-green-50 text-green-600 border border-green-100' : ''}
-            ${employee.employmentType === 'Agency' ? 'bg-orange-50 text-orange-600 border border-orange-100' : ''}
-            ${!employee.employmentType ? 'bg-gray-50 text-gray-500 border border-gray-100' : ''}
-          `}>
-            {employee.employmentType || 'Unknown'}
-          </span>
         </div>
 
         {/* Email */}
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[13px] text-[#111111] font-['Manrope:Medium',sans-serif]">
-              {employee.email}
-            </span>
-          </div>
+          <span className="text-[13px] text-[#111111] font-['Manrope:Regular',sans-serif]">
+            {employee.email}
+          </span>
         </div>
 
         {/* Access */}
-        <div className="flex flex-col items-start gap-2">
+        <div className="flex flex-col items-start">
           <AccessBadge role={employee.access} />
+        </div>
+
+        {/* Employment Type */}
+        <div>
+          <span className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#111111]">
+            {employee.employmentType || 'Unknown'}
+          </span>
         </div>
 
         {/* Hourly Rate */}
         <div>
-          <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+          <span className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#111111]">
             {employee.hourlyRate}
           </span>
         </div>
 
         {/* Joining Date */}
         <div>
-          <div className="flex items-center gap-2">
-            <CalendarDays className="w-3.5 h-3.5 text-[#999999]" />
-            <span className="text-[13px] text-[#111111] font-['Manrope:Medium',sans-serif]">
-              {employee.dateOfJoining}
-            </span>
-          </div>
+          <span className="text-[13px] text-[#111111] font-['Manrope:Regular',sans-serif]">
+            {employee.dateOfJoining}
+          </span>
         </div>
 
         {/* Actions */}
         <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-          <Dropdown menu={{ items }} trigger={['click']}>
-            <button className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F7F7F7] transition-colors">
-              <MoreVertical className="w-4 h-4 text-[#666666]" />
+          <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
+            <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F7F7F7] transition-colors opacity-0 group-hover:opacity-100">
+              <MoreVertical className="w-4 h-4 text-[#999999]" />
             </button>
           </Dropdown>
         </div>

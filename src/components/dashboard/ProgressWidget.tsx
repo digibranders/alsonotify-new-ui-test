@@ -1,20 +1,23 @@
 
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, CheckSquare } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Label, Tooltip } from 'recharts';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { useQueries } from '@tanstack/react-query';
-import { DatePicker, ConfigProvider, Select } from 'antd';
+import { DatePicker, ConfigProvider } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import quarterOfYear from 'dayjs/plugin/quarterOfYear';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 
 dayjs.extend(isoWeek);
 dayjs.extend(quarterOfYear);
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
 import { useTasks } from '@/hooks/useTask';
 import { useWorkspaces } from '@/hooks/useWorkspace';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
 
-const { Option } = Select;
 const { RangePicker } = DatePicker;
 
 export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => void }) {
@@ -23,6 +26,13 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
     const now = dayjs();
     return [now.startOf('month'), now.endOf('month')];
   });
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [startDate, setStartDate] = useState<Dayjs | null>(null);
+  const [endDate, setEndDate] = useState<Dayjs | null>(null);
+  const [currentMonth, setCurrentMonth] = useState<Dayjs>(dayjs());
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
 
   // Construct query string for tasks based on date range
   const taskQueryString = useMemo(() => {
@@ -36,6 +46,24 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
   // Handle Dropdown Selection
   const handleRangeTypeChange = (value: string) => {
     setSelectedRangeType(value);
+    setIsDropdownOpen(false);
+    
+    if (value === 'custom') {
+      setCalendarOpen(true);
+      // If we already have a custom range, use it; otherwise reset
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        setStartDate(dateRange[0]);
+        setEndDate(dateRange[1]);
+        setCurrentMonth(dateRange[0]);
+      } else {
+        setStartDate(null);
+        setEndDate(null);
+        setCurrentMonth(dayjs());
+      }
+      return;
+    }
+    
+    setCalendarOpen(false);
     const now = dayjs();
     let newRange: [Dayjs, Dayjs] | null = null;
 
@@ -50,14 +78,8 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
         const lastMonth = now.subtract(1, 'month');
         newRange = [lastMonth.startOf('month'), lastMonth.endOf('month')];
         break;
-      case 'this_quarter':
-        newRange = [now.startOf('quarter'), now.endOf('quarter')];
-        break;
       case 'this_year':
         newRange = [now.startOf('year'), now.endOf('year')];
-        break;
-      case 'custom':
-        // Do nothing to dateRange, let user pick
         break;
       default:
         newRange = null;
@@ -68,10 +90,107 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
     }
   };
 
-  // Handle Manual Date Selection
-  const handleDateRangeChange = (dates: [Dayjs | null, Dayjs | null] | null) => {
-    setDateRange(dates);
-    setSelectedRangeType('custom');
+  // Get display label for selected range
+  const getRangeLabel = () => {
+    if (selectedRangeType === 'custom') {
+      return getCustomRangeLabel();
+    }
+    switch (selectedRangeType) {
+      case 'this_week':
+        return 'This week';
+      case 'this_month':
+        return 'This month';
+      case 'last_month':
+        return 'Last Month';
+      case 'this_year':
+        return 'This Year';
+      default:
+        return 'This week';
+    }
+  };
+
+  // Check if date is in selected range (for highlighting)
+  const isDateInRange = (date: Dayjs) => {
+    if (!startDate || !endDate) {
+      // If only start date is selected, don't highlight range yet
+      return false;
+    }
+    const start = startDate.isBefore(endDate) ? startDate : endDate;
+    const end = startDate.isBefore(endDate) ? endDate : startDate;
+    return date.isAfter(start.startOf('day')) && date.isBefore(end.endOf('day'));
+  };
+
+  // Check if date is start or end of range
+  const isDateStartOrEnd = (date: Dayjs) => {
+    if (!startDate || !endDate) {
+      // If only start date is selected, highlight it
+      if (startDate) {
+        return date.isSame(startDate, 'day');
+      }
+      return false;
+    }
+    return date.isSame(startDate, 'day') || date.isSame(endDate, 'day');
+  };
+
+  // Get calendar days for current month
+  const getCalendarDays = () => {
+    const start = currentMonth.startOf('month').startOf('week');
+    const end = currentMonth.endOf('month').endOf('week');
+    const days: Dayjs[] = [];
+    let current = start;
+    while (current.isSameOrBefore(end, 'day')) {
+      days.push(current);
+      current = current.add(1, 'day');
+    }
+    return days;
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Handle Manual Date Selection (custom calendar)
+  const handleDateClick = (date: Dayjs) => {
+    if (!startDate || (startDate && endDate)) {
+      // First click or reset: set start date
+      setStartDate(date);
+      setEndDate(null);
+    } else if (startDate && !endDate) {
+      // Second click: set end date
+      let finalStart = startDate;
+      let finalEnd = date;
+      
+      if (date.isBefore(startDate)) {
+        // If clicked date is before start, swap them
+        finalStart = date;
+        finalEnd = startDate;
+      }
+      
+      // Set the range and close calendar
+      setStartDate(finalStart);
+      setEndDate(finalEnd);
+      setDateRange([finalStart, finalEnd]);
+      setSelectedRangeType('custom');
+      setCalendarOpen(false);
+    }
+  };
+
+  // Get display label for custom range
+  const getCustomRangeLabel = () => {
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      return `${dateRange[0].format('MMM D')} - ${dateRange[1].format('MMM D')}`;
+    }
+    return 'Custom';
   };
 
   // Fetch all tasks
@@ -135,7 +254,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
       }
     });
     return combined;
-  }, [requirementQueries, workspaceIds.length]);
+  }, [requirementQueries]);
 
   // Calculate requirements statistics
   const requirementsData = useMemo(() => {
@@ -178,62 +297,127 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
   const isLoading = isLoadingTasks || isLoadingWorkspaces || isLoadingRequirements;
 
   return (
-    <div className="bg-white rounded-[24px] p-6 w-full h-full flex flex-col">
+    <div className="bg-white rounded-[24px] p-5 w-full h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-1.5">
         <h3 className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">Progress</h3>
-        <ConfigProvider
-          theme={{
-            token: {
-              colorPrimary: '#ff3b3b',
-              borderRadius: 8,
-              colorBorder: '#EEEEEE',
-              controlHeight: 40,
-            },
-            components: {
-              Select: {
-                selectorBg: '#F7F7F7',
-                colorIcon: '#666666',
-                colorBorder: '#EEEEEE',
-              },
-              DatePicker: {
-                colorBgContainer: '#F7F7F7',
-                colorBorder: '#EEEEEE',
-                activeBorderColor: '#ff3b3b',
-              }
-            }
-          }}
-        >
-          <div className="flex items-center gap-3">
-            {selectedRangeType === 'custom' && (
-              <RangePicker
-                value={dateRange}
-                onChange={(dates) => handleDateRangeChange(dates as [Dayjs | null, Dayjs | null] | null)}
-                className="font-['Manrope',sans-serif] hover:border-[#ff3b3b] focus:border-[#ff3b3b]"
-                allowClear={false}
-                format="MMM D, YYYY"
-              />
-            )}
+        <div className="relative" ref={dropdownRef}>
+          {/* Custom Dropdown Button */}
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-[#E5E5E5] rounded-full hover:border-[#CCCCCC] transition-colors"
+          >
+            <span className="font-['Manrope:Regular',sans-serif] text-[14px] text-[#111111]">
+              {getRangeLabel()}
+            </span>
+            <ChevronDown className="w-4 h-4 text-[#111111]" />
+          </button>
 
-            <Select
-              value={selectedRangeType}
-              onChange={handleRangeTypeChange}
-              className="w-[140px] font-['Manrope',sans-serif]"
-              dropdownStyle={{ borderRadius: '12px', padding: '8px' }}
-            >
-              <Option value="this_week">This Week</Option>
-              <Option value="this_month">This Month</Option>
-              <Option value="last_month">Last Month</Option>
-              <Option value="this_quarter">This Quarter</Option>
-              <Option value="this_year">This Year</Option>
-              <Option value="custom">Custom</Option>
-            </Select>
-          </div>
-        </ConfigProvider>
+          {/* Dropdown Menu */}
+          {isDropdownOpen && (
+            <div className="absolute top-full right-0 mt-2 bg-white border border-[#EEEEEE] rounded-[12px] shadow-lg z-50 min-w-[160px] overflow-hidden">
+              {[
+                { value: 'this_week', label: 'This week' },
+                { value: 'this_month', label: 'This month' },
+                { value: 'last_month', label: 'Last Month' },
+                { value: 'this_year', label: 'This Year' },
+                { value: 'custom', label: 'Custom' },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => handleRangeTypeChange(option.value)}
+                  className="w-full text-left px-3 py-2.5 font-['Manrope:Regular',sans-serif] text-[14px] text-[#111111] hover:bg-[#F7F7F7] transition-colors flex items-center justify-between"
+                >
+                  <span>{option.label}</span>
+                  {selectedRangeType === option.value && (
+                    <CheckSquare className="w-4 h-4 text-[#ff3b3b] flex-shrink-0" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Custom Calendar Popup - Single Calendar */}
+          {calendarOpen && (
+            <div className="absolute top-full right-0 mt-2 bg-white border border-[#EEEEEE] rounded-[12px] shadow-lg z-50 w-[280px] p-3" ref={calendarRef}>
+              {/* Select Range Header */}
+              <div className="flex items-center gap-2 mb-3">
+                <button
+                  onClick={() => {
+                    setCalendarOpen(false);
+                    setIsDropdownOpen(false);
+                  }}
+                  className="w-5 h-5 flex items-center justify-center hover:bg-[#F7F7F7] rounded transition-colors"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5 text-[#666666]" />
+                </button>
+                <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111]">
+                  Select Range
+                </h4>
+              </div>
+
+              {/* Month Navigation */}
+              <div className="flex items-center justify-between mb-3">
+                <button
+                  onClick={() => setCurrentMonth(currentMonth.subtract(1, 'month'))}
+                  className="w-7 h-7 rounded-lg bg-[#F7F7F7] hover:bg-[#EEEEEE] flex items-center justify-center transition-colors"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5 text-[#111111]" />
+                </button>
+                <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111]">
+                  {currentMonth.format('MMMM YYYY')}
+                </h4>
+                <button
+                  onClick={() => setCurrentMonth(currentMonth.add(1, 'month'))}
+                  className="w-7 h-7 rounded-lg bg-[#F7F7F7] hover:bg-[#EEEEEE] flex items-center justify-center transition-colors"
+                >
+                  <ChevronRight className="w-3.5 h-3.5 text-[#111111]" />
+                </button>
+              </div>
+
+              {/* Day Headers */}
+              <div className="grid grid-cols-7 gap-0.5 mb-1.5">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
+                  <div key={day} className="text-center text-[11px] font-['Manrope:Regular',sans-serif] text-[#999999] py-0.5">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              {/* Calendar Grid */}
+              <div className="grid grid-cols-7 gap-0.5">
+                {getCalendarDays().map((date, index) => {
+                  const isCurrentMonth = date.month() === currentMonth.month();
+                  const isInRange = isDateInRange(date);
+                  const isStartOrEnd = isDateStartOrEnd(date);
+                  
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleDateClick(date)}
+                      className={`
+                        w-8 h-8 rounded-lg text-[12px] font-['Manrope:Regular',sans-serif] transition-colors
+                        ${!isCurrentMonth ? 'text-[#CCCCCC]' : 'text-[#111111]'}
+                        ${isStartOrEnd 
+                          ? 'bg-[#111111] text-white' 
+                          : isInRange 
+                            ? 'bg-[#F7F7F7]' 
+                            : 'hover:bg-[#F7F7F7]'
+                        }
+                      `}
+                    >
+                      {date.date()}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Sub-cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 flex-1 mt-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 mt-2">
         <ProgressCard
           title="Requirements"
           data={requirementsData}
@@ -267,9 +451,9 @@ interface ProgressCardProps {
 
 function ProgressCard({ title, data, isLoading = false, onClick }: ProgressCardProps) {
   const chartData = [
-    { name: 'Completed', value: data.completed, color: '#ff3b3b' },
-    { name: 'In Progress', value: data.inProgress, color: '#ff8080' },
-    { name: 'Delayed', value: data.delayed, color: '#ffcccc' },
+    { name: 'Completed', value: data.completed, color: '#FF3B3B' },
+    { name: 'In Progress', value: data.inProgress, color: '#FF6B6B' },
+    { name: 'Delayed', value: data.delayed, color: '#FFCCCC' },
   ];
 
   // Filter out zero values for the chart only
@@ -290,11 +474,11 @@ function ProgressCard({ title, data, isLoading = false, onClick }: ProgressCardP
 
   return (
     <div
-      className="group relative flex flex-col bg-white rounded-[20px] border border-gray-100 p-5 hover:shadow-lg hover:border-[#ff3b3b]/10 transition-all duration-300 cursor-pointer h-full"
+      className="group relative flex flex-col bg-white rounded-[20px] border border-gray-100 p-4 hover:shadow-lg hover:border-[#ff3b3b]/10 transition-all duration-300 cursor-pointer h-full"
       onClick={onClick}
     >
       {/* Card Header */}
-      <div className="flex items-center justify-between mb-4 z-10 shrink-0">
+      <div className="flex items-center justify-between mb-3 z-10 shrink-0">
         <h4 className="font-['Manrope',sans-serif] font-semibold text-[16px] text-[#111111]">{title}</h4>
         <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-[#ff3b3b] transition-colors duration-300">
           <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors duration-300" />
@@ -302,17 +486,17 @@ function ProgressCard({ title, data, isLoading = false, onClick }: ProgressCardP
       </div>
 
       {/* Content Container - Side by Side Layout */}
-      <div className="flex-1 flex items-center gap-6 min-h-[160px] px-2">
+      <div className="flex-1 flex items-center gap-5 min-h-[140px] px-2">
         {/* Chart Section */}
-        <div className="relative w-[150px] h-[150px] shrink-0">
+        <div className="relative w-[130px] h-[130px] shrink-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
               <Pie
                 data={activeData}
                 cx="50%"
                 cy="50%"
-                innerRadius={52}
-                outerRadius={70}
+                innerRadius={45}
+                outerRadius={60}
                 paddingAngle={4}
                 cornerRadius={4}
                 dataKey="value"
@@ -362,10 +546,10 @@ function ProgressCard({ title, data, isLoading = false, onClick }: ProgressCardP
           {chartData.map((item) => (
             <div
               key={item.name}
-              className="flex items-center justify-between w-full py-3 border-b border-gray-50 last:border-0 group/item transition-colors hover:bg-gray-50/50 rounded-lg px-2 -mx-2"
+              className="flex items-center justify-between w-full py-2 border-b border-gray-50 last:border-0 group/item transition-colors hover:bg-gray-50/50 rounded-lg px-2 -mx-2"
             >
               <div className="flex items-center gap-3">
-                <div className={`w - 2 h - 2 rounded - full shrink - 0 ring - 2 ring - white shadow - sm`} style={{ backgroundColor: item.color }} />
+                <div className="w-2 h-2 rounded-full shrink-0 ring-2 ring-white shadow-sm" style={{ backgroundColor: item.color }} />
                 <span className="text-[13px] text-[#666666] font-medium font-['Manrope',sans-serif] whitespace-nowrap group-hover/item:text-[#111111] transition-colors">
                   {item.name === 'In Progress' ? 'In Progress' : item.name}
                 </span>

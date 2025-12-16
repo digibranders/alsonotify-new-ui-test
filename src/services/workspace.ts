@@ -1,5 +1,5 @@
 import axiosApi from "../config/axios";
-import { ApiResponse } from "../config/constants";
+import { ApiResponse } from "../constants/constants";
 
 // Workspace/Project types (simplified - will expand based on actual backend types)
 export interface WorkspaceType {

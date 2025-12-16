@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Plus, CheckSquare, Trash2, Users } from 'lucide-react';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { Modal, Checkbox } from "antd";
-import { TaskForm, TaskFormData } from './forms/TaskForm';
+import { TaskForm, TaskFormData } from '../../modals/TaskForm';
 import { TaskRow } from './rows/TaskRow';
 import { useTasks, useCreateTask } from '@/hooks/useTask';
 import { useClients as useGetClients, useEmployees } from '@/hooks/useUser';
@@ -11,11 +11,11 @@ import { searchUsersByName } from '@/services/user';
 import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
 import { message } from 'antd';
 import { useRouter } from 'next/navigation';
-import { Task } from '@/lib/types';
+import { Task } from '@/types/genericTypes';
 
 type ITaskStatus = Task['status'];
 
-type StatusTab = 'all' | 'in-progress' | 'completed' | 'impediment';
+type StatusTab = 'all' | 'in-progress' | 'completed' | 'delayed';
 
 export function TasksPage() {
   const router = useRouter();
@@ -82,14 +82,39 @@ export function TasksPage() {
   }, [workspacesData]);
 
   // Transform backend data to UI format
-  // Transform backend data to UI format
-  const mapBackendStatusToUI = (status: string): 'impediment' | 'in-progress' | 'completed' | 'todo' | 'delayed' => {
-    const statusLower = status?.toLowerCase() || '';
-    if (statusLower.includes('completed') || statusLower === 'done') return 'completed';
-    if (statusLower.includes('blocked') || statusLower === 'impediment') return 'impediment';
-    if (statusLower.includes('progress') || statusLower === 'in_progress') return 'in-progress';
-    if (statusLower.includes('delayed')) return 'delayed';
-    return 'todo';
+  // Backend statuses: 'Assigned', 'In_Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'
+  const mapBackendStatusToUI = (status: string): 'in-progress' | 'completed' | 'delayed' | 'todo' | 'review' => {
+    if (!status) return 'todo';
+    
+    // Normalize status (handle both 'In_Progress' and 'In Progress')
+    const normalizedStatus = status.replace(/\s+/g, '_');
+    
+    // Map exact backend statuses to UI statuses
+    switch (normalizedStatus) {
+      case 'Assigned':
+        return 'todo'; // Not started yet - shows clock icon
+      case 'In_Progress':
+        return 'in-progress'; // Active work - shows blue rotating ring
+      case 'Completed':
+        return 'completed'; // Done - shows green circle with checkmark
+      case 'Delayed':
+        return 'delayed'; // Delayed - shows red circle with exclamation
+      case 'Impediment':
+        return 'delayed'; // Blocked/Impediment - shows red circle with exclamation
+      case 'Stuck':
+        return 'delayed'; // Stuck - shows red circle with exclamation
+      case 'Review':
+        return 'review'; // Under review - can be treated as in-progress
+      default:
+        // Fallback: try to match by lowercase
+        const statusLower = normalizedStatus.toLowerCase();
+        if (statusLower === 'completed' || statusLower === 'done') return 'completed';
+        if (statusLower === 'delayed' || statusLower === 'impediment' || statusLower === 'stuck') return 'delayed';
+        if (statusLower === 'in_progress' || statusLower === 'in-progress' || statusLower.includes('progress')) return 'in-progress';
+        if (statusLower === 'review') return 'review';
+        if (statusLower === 'assigned') return 'todo';
+        return 'todo'; // Default to todo for unknown statuses
+    }
   };
 
   const tasks = useMemo(() => {
@@ -126,7 +151,7 @@ export function TasksPage() {
     return ['All', ...Array.from(new Set(tasks.map(t => t.project)))];
   }, [tasks]);
 
-  const statuses = useMemo(() => ['All', 'In Progress', 'Completed', 'Impediment'], []);
+  const statuses = useMemo(() => ['All', 'In Progress', 'Completed', 'Delayed'], []);
 
   const filterOptions: FilterOption[] = [
     { id: 'user', label: 'User', options: users, defaultValue: 'All' },
@@ -185,7 +210,11 @@ export function TasksPage() {
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      const matchesTab = activeTab === 'all' || task.status === activeTab;
+      // Tab filtering: 'review' should show in 'in-progress' tab
+      const matchesTab = activeTab === 'all' || 
+        task.status === activeTab || 
+        (activeTab === 'in-progress' && task.status === 'review');
+      
       const matchesSearch = searchQuery === '' ||
         task.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         task.taskId.includes(searchQuery) ||
@@ -195,18 +224,18 @@ export function TasksPage() {
       const matchesCompany = filters.company === 'All' || task.client === filters.company;
       const matchesProject = filters.project === 'All' || task.project === filters.project;
       const matchesStatus = filters.status === 'All' ||
-        (filters.status === 'In Progress' && task.status === 'in-progress') ||
+        (filters.status === 'In Progress' && (task.status === 'in-progress' || task.status === 'review')) ||
         (filters.status === 'Completed' && task.status === 'completed') ||
-        (filters.status === 'Impediment' && task.status === 'impediment');
+        (filters.status === 'Delayed' && task.status === 'delayed');
       return matchesTab && matchesSearch && matchesUser && matchesCompany && matchesProject && matchesStatus;
     });
   }, [tasks, activeTab, searchQuery, filters]);
 
   const stats = useMemo(() => ({
     all: tasks.length,
-    'in-progress': tasks.filter(t => t.status === 'in-progress').length,
+    'in-progress': tasks.filter(t => t.status === 'in-progress' || t.status === 'review').length,
     completed: tasks.filter(t => t.status === 'completed').length,
-    impediment: tasks.filter(t => t.status === 'impediment').length,
+    delayed: tasks.filter(t => t.status === 'delayed').length,
   }), [tasks]);
 
   const toggleSelectAll = () => {
@@ -246,19 +275,10 @@ export function TasksPage() {
             width={600}
             centered
             className="rounded-[16px] overflow-hidden"
+            bodyStyle={{
+              padding: 0,
+            }}
           >
-            <div className="border-b border-[#EEEEEE] mb-6 pb-4">
-              <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                <div className="p-2 rounded-full bg-[#F7F7F7]">
-                  <CheckSquare className="w-5 h-5 text-[#666666]" />
-                </div>
-                Assign Task
-              </div>
-              <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
-                Assign task for people join to team
-              </p>
-            </div>
-
             <TaskForm
               onSubmit={handleCreateTask}
               onCancel={() => setIsDialogOpen(false)}
@@ -269,28 +289,30 @@ export function TasksPage() {
         </div>
 
         {/* Status Tabs */}
-        <div className="flex items-center gap-6 border-b border-[#EEEEEE]">
-          {(['all', 'in-progress', 'completed', 'impediment'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors flex items-center gap-2 ${activeTab === tab
-                ? 'text-[#ff3b3b]'
-                : 'text-[#666666] hover:text-[#111111]'
-                }`}
-            >
-              {tab === 'all' ? 'All Tasks' : tab === 'in-progress' ? 'In Progress' : tab === 'completed' ? 'Completed' : 'Blocked'}
-              <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === tab
-                ? 'bg-[#ff3b3b] text-white'
-                : 'bg-[#F7F7F7] text-[#666666]'
-                }`}>
-                {stats[tab]}
-              </span>
-              {activeTab === tab && (
-                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />
-              )}
-            </button>
-          ))}
+        <div className="flex items-center">
+          <div className="flex items-center gap-6 border-b border-[#EEEEEE]">
+            {(['all', 'in-progress', 'completed', 'delayed'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors flex items-center gap-2 ${activeTab === tab
+                  ? 'text-[#ff3b3b]'
+                  : 'text-[#666666] hover:text-[#111111]'
+                  }`}
+              >
+                {tab === 'all' ? 'All Tasks' : tab === 'in-progress' ? 'In Progress' : tab === 'completed' ? 'Completed' : 'Delayed'}
+                <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === tab
+                  ? 'bg-[#ff3b3b] text-white'
+                  : 'bg-[#F7F7F7] text-[#666666]'
+                  }`}>
+                  {stats[tab]}
+                </span>
+                {activeTab === tab && (
+                  <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

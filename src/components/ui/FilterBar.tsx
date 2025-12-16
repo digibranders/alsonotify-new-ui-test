@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search24Filled, ChevronDown24Filled } from '@fluentui/react-icons';
+import { X } from 'lucide-react';
 
 export interface FilterOption {
   id: string;
@@ -59,16 +60,6 @@ export function FilterBar({
 
   return (
     <div className="flex items-center gap-3 pb-6 border-b border-[#EEEEEE]">
-      {/* Clear Filter Button */}
-      {showClearButton && hasActiveFilters && onClearFilters && (
-        <button
-          onClick={onClearFilters}
-          className="text-[#ff3b3b] text-[14px] font-['Manrope:SemiBold',sans-serif] hover:text-[#ff6b6b] transition-colors"
-        >
-          Clear Filter
-        </button>
-      )}
-
       {/* Filter Dropdowns */}
       {filters.map((filter, index) => {
         const selectedValue = selectedFilters[filter.id] || filter.defaultValue || filter.options[0];
@@ -117,6 +108,17 @@ export function FilterBar({
           </div>
         );
       })}
+
+      {/* Clear Filter Button - Moved to right of all filters */}
+      {showClearButton && hasActiveFilters && onClearFilters && (
+        <button
+          onClick={onClearFilters}
+          className="w-8 h-8 rounded-full bg-[#FEF3F2] hover:bg-[#FEE4E2] transition-colors flex items-center justify-center"
+          title="Clear filters"
+        >
+          <X className="w-4 h-4 text-[#ff3b3b]" />
+        </button>
+      )}
 
       {/* Search Bar */}
       {onSearchChange && (

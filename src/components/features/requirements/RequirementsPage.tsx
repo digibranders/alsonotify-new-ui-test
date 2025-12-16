@@ -467,7 +467,7 @@ export function RequirementsPage() {
           <div className="flex items-center justify-end gap-4 pt-4 mt-8">
             <button
               onClick={handleResetData}
-              className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] transition-colors"
+              className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
             >
               Reset Data
             </button>

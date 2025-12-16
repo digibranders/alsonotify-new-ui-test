@@ -33,7 +33,7 @@ export function TaskDetailsPage() {
         return (
             <div className="flex flex-col items-center justify-center h-full">
                 <h2 className="text-xl font-semibold mb-2">Task not found</h2>
-                <Button onClick={() => router.push('/tasks')}>Back to Tasks</Button>
+                <Button onClick={() => router.push('/dashboard/tasks')}>Back to Tasks</Button>
             </div>
         );
     }
@@ -75,7 +75,7 @@ export function TaskDetailsPage() {
         <div className="w-full h-full flex flex-col p-6 overflow-y-auto">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
-                <Button type="text" onClick={() => router.push('/tasks')} className="pl-0 hover:bg-transparent hover:text-[#ff3b3b]">
+                <Button type="text" onClick={() => router.push('/dashboard/tasks')} className="pl-0 hover:bg-transparent hover:text-[#ff3b3b]">
                     ← Back to Tasks
                 </Button>
 

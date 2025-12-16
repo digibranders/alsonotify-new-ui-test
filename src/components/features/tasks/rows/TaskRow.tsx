@@ -1,5 +1,5 @@
 import { Checkbox, Tooltip } from "antd";
-import { AlertCircle, CheckCircle2, Clock, Loader2, MoreVertical } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Loader2, MoreVertical, ArrowRightCircle } from "lucide-react";
 import Link from "next/link";
 
 export interface Task {
@@ -15,7 +15,7 @@ export interface Task {
   estTime: number;
   timeSpent: number;
   activities: number;
-  status: 'impediment' | 'in-progress' | 'completed' | 'todo' | 'delayed';
+  status: 'in-progress' | 'completed' | 'delayed' | 'todo' | 'review';
   priority: 'high' | 'medium' | 'low';
 }
 
@@ -84,7 +84,7 @@ export function TaskRow({
         {/* Project */}
         <div>
           <Link
-            href="/workspaces"
+            href="/dashboard/workspace"
             onClick={(e) => e.stopPropagation()}
             className="text-[13px] text-[#111111] font-['Manrope:Medium',sans-serif] truncate hover:text-[#ff3b3b] hover:underline"
           >
@@ -94,29 +94,18 @@ export function TaskRow({
 
         {/* Assigned To */}
         <div className="flex items-center justify-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center">
+          <div className="w-7 h-7 rounded-full bg-[#ff3b3b] flex items-center justify-center">
             <span className="text-[11px] text-white font-['Manrope:Bold',sans-serif]">
               {task.assignedTo.split(' ').map((n: string) => n[0]).join('')}
             </span>
-          </div>
-          <div className="hidden group-hover:block absolute bg-white px-2 py-1 rounded shadow-lg border border-gray-100 -bottom-8 left-1/2 -translate-x-1/2 z-20">
-            <p className="text-[12px] text-[#666666] font-['Manrope:Medium',sans-serif] whitespace-nowrap">
-              {task.assignedTo.split(' ')[0]}
-            </p>
           </div>
         </div>
 
         {/* Duration */}
         <div className="flex justify-center">
-          <div className="relative w-9 h-9 rounded-full border-[2.5px] border-[#F0F0F0] group-hover:border-[#ff3b3b]/20 transition-all flex flex-col items-center justify-center bg-white">
-            {/* Little top knob for stopwatch look */}
-            <div className="absolute -top-[4px] left-1/2 -translate-x-1/2 w-[2px] h-[3px] bg-[#F0F0F0] group-hover:bg-[#ff3b3b]/20 transition-all" />
-
-            <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#111111] leading-none -mt-0.5">
-              {task.estTime}
-            </span>
-            <span className="text-[7px] font-['Manrope:SemiBold',sans-serif] text-[#999999] leading-none mt-[1px]">
-              HR
+          <div className="w-9 h-9 rounded-full bg-[#F7F7F7] flex items-center justify-center">
+            <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+              {task.estTime} HR
             </span>
           </div>
         </div>
@@ -134,10 +123,8 @@ export function TaskRow({
           <div className="w-full h-1.5 bg-[#F7F7F7] rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${progress >= 100
-                ? 'bg-[#2E7D32]'
-                : progress >= 75
-                  ? 'bg-[#FF9800]'
-                  : 'bg-[#3B82F6]'
+                ? 'bg-[#0F9D58]'
+                : 'bg-[#3B82F6]'
                 }`}
               style={{ width: `${Math.min(progress, 100)}%` }}
             />
@@ -161,41 +148,66 @@ export function TaskRow({
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const config = {
+  const config: Record<string, {
+    icon: any;
+    bgColor: string;
+    iconColor: string;
+    label: string;
+    showCircle: boolean;
+    animate?: boolean;
+  }> = {
     'completed': {
       icon: CheckCircle2,
-      color: 'text-[#0F9D58]',
-      label: 'Completed'
+      bgColor: 'bg-[#0F9D58]',
+      iconColor: 'text-white',
+      label: 'Completed',
+      showCircle: true
     },
     'in-progress': {
       icon: Loader2,
-      color: 'text-[#2F80ED]',
-      label: 'In Progress'
-    },
-    'impediment': {
-      icon: AlertCircle,
-      color: 'text-[#EB5757]',
-      label: 'Blocked'
+      bgColor: 'bg-transparent',
+      iconColor: 'text-[#2F80ED]',
+      label: 'In Progress',
+      showCircle: false,
+      animate: true
     },
     'delayed': {
       icon: AlertCircle,
-      color: 'text-[#EB5757]',
-      label: 'Delayed'
+      bgColor: 'bg-[#EB5757]',
+      iconColor: 'text-white',
+      label: 'Delayed',
+      showCircle: true
+    },
+    'review': {
+      icon: Loader2,
+      bgColor: 'bg-transparent',
+      iconColor: 'text-[#2F80ED]',
+      label: 'Review',
+      showCircle: false,
+      animate: true
     },
     'todo': {
       icon: Clock,
-      color: 'text-[#555555]',
-      label: 'Todo'
+      bgColor: 'bg-transparent',
+      iconColor: 'text-[#555555]',
+      label: 'Assigned',
+      showCircle: false
     }
   };
 
-  const style = config[status as keyof typeof config] || config['todo'];
+  const style = config[status] || config['todo'];
   const Icon = style.icon;
 
   return (
     <Tooltip title={style.label}>
       <div className="cursor-help p-1">
-        <Icon className={`w-5 h-5 ${style.color} ${status === 'in-progress' ? 'animate-spin' : ''}`} />
+        {style.showCircle ? (
+          <div className={`w-5 h-5 rounded-full ${style.bgColor} flex items-center justify-center`}>
+            <Icon className={`w-3 h-3 ${style.iconColor}`} />
+          </div>
+        ) : (
+          <Icon className={`w-5 h-5 ${style.iconColor} ${(style as any).animate ? 'animate-spin' : ''}`} />
+        )}
       </div>
     </Tooltip>
   );

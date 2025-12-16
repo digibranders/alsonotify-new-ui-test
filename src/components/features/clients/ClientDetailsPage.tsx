@@ -46,7 +46,7 @@ export function ClientDetailsPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full">
         <h2 className="text-xl font-semibold mb-2">Client not found</h2>
-        <Button onClick={() => router.push('/clients')}>Back to Clients</Button>
+        <Button onClick={() => router.push('/dashboard/clients')}>Back to Clients</Button>
       </div>
     );
   }
@@ -57,7 +57,7 @@ export function ClientDetailsPage() {
       titleAction={{
         label: "Back",
         icon: <ArrowLeft className="w-5 h-5" />,
-        onClick: () => router.push('/clients'),
+        onClick: () => router.push('/dashboard/clients'),
         variant: "outline"
       }}
     >

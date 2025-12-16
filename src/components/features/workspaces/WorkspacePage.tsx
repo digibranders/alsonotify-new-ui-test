@@ -8,6 +8,8 @@ import { Modal, Button, Input, Select, Dropdown, MenuProps } from "antd";
 import { useWorkspaces, useCreateWorkspace, useClients } from '@/hooks/useWorkspace';
 import { useClients as useGetClients, useEmployees } from '@/hooks/useUser';
 import { message } from 'antd';
+import { useQueries } from '@tanstack/react-query';
+import { getRequirementsByWorkspaceId } from '@/services/workspace';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -38,21 +40,62 @@ export function WorkspacePage() {
 
   const itemsPerPage = 12;
 
-  // Transform backend data to frontend format
+  // Get all workspace IDs
+  const workspaceIds = useMemo(() => {
+    return workspacesData?.result?.projects?.map((w: any) => w.id) || [];
+  }, [workspacesData]);
+
+  // Fetch requirements for all workspaces
+  const requirementQueries = useQueries({
+    queries: workspaceIds.map((id: number) => ({
+      queryKey: ['requirements', id],
+      queryFn: () => getRequirementsByWorkspaceId(id),
+      enabled: !!id && workspaceIds.length > 0,
+    })),
+  });
+
+  // Transform backend data to frontend format with requirements counts
   const workspaces = useMemo(() => {
     if (!workspacesData?.result?.projects) return [];
-    return workspacesData.result.projects.map((w: any) => ({
-      id: w.id,
-      name: w.name,
-      client: w.client?.name || w.client_company_name || 'N/A',
-      taskCount: w.total_task || 0,
-      inProgressCount: w.total_task_in_progress || 0,
-      delayedCount: w.total_task_delayed || 0,
-      completedCount: w.total_task_completed || 0,
-      status: ['active', 'in_progress', 'assigned'].includes((w.status || '').toLowerCase()) ? 'active' : 'inactive',
-      description: w.description || '',
-    }));
-  }, [workspacesData]);
+    return workspacesData.result.projects.map((w: any) => {
+      // Find requirements for this workspace
+      const reqQuery = requirementQueries.find((q, idx) => workspaceIds[idx] === w.id);
+      const requirements = reqQuery?.data?.result || [];
+      
+      // Calculate requirement counts
+      let totalRequirements = requirements.length;
+      let inProgressRequirements = 0;
+      let delayedRequirements = 0;
+      
+      requirements.forEach((req: any) => {
+        const status = (req.status || '').toLowerCase();
+        if (status.includes('completed') || status === 'done') {
+          // Completed - don't count in progress or delayed
+        } else if (status.includes('delayed') || status.includes('stuck') || status.includes('impediment')) {
+          delayedRequirements++;
+        } else {
+          // In progress, assigned, etc.
+          inProgressRequirements++;
+        }
+      });
+
+      return {
+        id: w.id,
+        name: w.name,
+        client: w.client?.name || w.client_company_name || 'N/A',
+        taskCount: w.total_task || 0,
+        inProgressCount: w.total_task_in_progress || 0,
+        delayedCount: w.total_task_delayed || 0,
+        completedCount: w.total_task_completed || 0,
+        // Requirements data
+        totalRequirements,
+        inProgressRequirements,
+        delayedRequirements,
+        status: ['active', 'in_progress', 'assigned'].includes((w.status || '').toLowerCase()) ? 'active' : 'inactive',
+        description: w.description || '',
+      };
+    });
+  }, [workspacesData, requirementQueries, workspaceIds]);
 
   // Extract unique companies from workspace data
   const companies = useMemo(() => {
@@ -142,8 +185,8 @@ export function WorkspacePage() {
   const endIndex = startIndex + itemsPerPage;
   const currentWorkspaces = filteredWorkspaces.slice(startIndex, endIndex);
 
-  const handleSelectWorkspace = (workspace: { id: number; name: string; client: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; status: string }) => {
-    router.push(`/workspaces/${workspace.id}`);
+  const handleSelectWorkspace = (workspace: { id: number; name: string; client: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; totalRequirements?: number; inProgressRequirements?: number; delayedRequirements?: number; status: string }) => {
+    router.push(`/dashboard/workspace/${workspace.id}/requirements`);
   };
 
   return (
@@ -250,11 +293,11 @@ export function WorkspacePage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-6 border-t border-[#EEEEEE]">
+                <div className="flex items-center justify-end gap-4 pt-6 border-t border-[#EEEEEE]">
                   <Button
                     type="text"
                     onClick={() => setNewWorkspace({ name: '', client: '', description: '', lead: '' })}
-                    className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:bg-[#F7F7F7] rounded-lg"
+                    className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
                   >
                     Reset Data
                   </Button>
@@ -262,7 +305,7 @@ export function WorkspacePage() {
                     type="primary"
                     onClick={handleCreateWorkspace}
                     disabled={createWorkspaceMutation.isPending}
-                    className="h-10 px-6 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] border-none"
+                    className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
                   >
                     {createWorkspaceMutation.isPending ? "Creating..." : "Create Workspace"}
                   </Button>
@@ -289,31 +332,33 @@ export function WorkspacePage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-8 border-b border-[#EEEEEE]">
-          <button
-            onClick={() => setActiveTab('active')}
-            className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === 'active'
-              ? 'text-[#ff3b3b]'
-              : 'text-[#666666] hover:text-[#111111]'
-              }`}
-          >
-            Active
-            {activeTab === 'active' && (
-              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('inactive')}
-            className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === 'inactive'
-              ? 'text-[#ff3b3b]'
-              : 'text-[#666666] hover:text-[#111111]'
-              }`}
-          >
-            Deactivated
-            {activeTab === 'inactive' && (
-              <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />
-            )}
-          </button>
+        <div className="flex items-center">
+          <div className="flex items-center gap-8 border-b border-[#EEEEEE]">
+            <button
+              onClick={() => setActiveTab('active')}
+              className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === 'active'
+                ? 'text-[#ff3b3b]'
+                : 'text-[#666666] hover:text-[#111111]'
+                }`}
+            >
+              Active
+              {activeTab === 'active' && (
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('inactive')}
+              className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === 'inactive'
+                ? 'text-[#ff3b3b]'
+                : 'text-[#666666] hover:text-[#111111]'
+                }`}
+            >
+              Deactivated
+              {activeTab === 'inactive' && (
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -411,64 +456,59 @@ export function WorkspacePage() {
   );
 }
 
-function WorkspaceProgress({
-  taskCount,
-  inProgressCount,
-  delayedCount,
-  completedCount
+function WorkspaceRequirementsSummary({
+  total,
+  inProgress,
+  delayed
 }: {
-  taskCount: number;
-  inProgressCount?: number;
-  delayedCount?: number;
-  completedCount?: number;
+  total: number;
+  inProgress: number;
+  delayed: number;
 }) {
-  if (taskCount === 0) {
-    return (
-      <div className="px-2.5 py-1 rounded-full bg-[#F7F7F7] border border-[#EEEEEE] flex items-center gap-1.5 self-start">
-        <div className="w-1.5 h-1.5 rounded-full bg-[#999999]" />
-        <span className="text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#999999]">
-          No tasks
-        </span>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-wrap gap-2">
-      {/* In Progress - Real Data from Backend */}
-      {inProgressCount !== undefined && inProgressCount > 0 && (
-        <div className="px-2.5 py-1 rounded-full bg-[#F0F9FF] border border-[#B9E6FE] flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#0284C7]" />
-          <span className="text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#0284C7]">
-            {inProgressCount} In Progress
+    <div className="space-y-3">
+      {/* REQUIREMENTS Label - Centered */}
+      <p className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#999999] uppercase tracking-wide text-center">
+        REQUIREMENTS
+      </p>
+      
+      {/* Three Columns with Vertical Separators */}
+      <div className="flex items-center justify-center">
+        {/* TOTAL Column */}
+        <div className="flex-1 flex flex-col items-center border-r border-[#EEEEEE]">
+          <span className="text-[12px] text-[#999999] font-['Manrope:Regular',sans-serif] uppercase mb-1">
+            TOTAL
+          </span>
+          <span className="text-[18px] text-[#111111] font-['Manrope:Bold',sans-serif]">
+            {total}
           </span>
         </div>
-      )}
-
-      {/* Delayed - Real Data from Backend */}
-      {delayedCount !== undefined && delayedCount > 0 && (
-        <div className="px-2.5 py-1 rounded-full bg-[#FEF3F2] border border-[#FECACA] flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#ff3b3b]" />
-          <span className="text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#ff3b3b]">
-            {delayedCount} Delayed
+        
+        {/* PROGRESS Column */}
+        <div className="flex-1 flex flex-col items-center border-r border-[#EEEEEE]">
+          <span className="text-[12px] text-[#999999] font-['Manrope:Regular',sans-serif] uppercase mb-1">
+            PROGRESS
+          </span>
+          <span className="text-[18px] text-[#2F80ED] font-['Manrope:Bold',sans-serif]">
+            {inProgress}
           </span>
         </div>
-      )}
-
-      {/* Completed - Real Data from Backend */}
-      {completedCount !== undefined && completedCount > 0 && (
-        <div className="px-2.5 py-1 rounded-full bg-[#F0FDF4] border border-[#BBF7D0] flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />
-          <span className="text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#16A34A]">
-            {completedCount} Completed
+        
+        {/* DELAYED Column */}
+        <div className="flex-1 flex flex-col items-center">
+          <span className="text-[12px] text-[#999999] font-['Manrope:Regular',sans-serif] uppercase mb-1">
+            DELAYED
+          </span>
+          <span className="text-[18px] text-[#ff3b3b] font-['Manrope:Bold',sans-serif]">
+            {delayed}
           </span>
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
-function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: string; client: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; status: string }; onClick?: () => void }) {
+function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: string; client: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; totalRequirements?: number; inProgressRequirements?: number; delayedRequirements?: number; status: string }; onClick?: () => void }) {
   const items: MenuProps['items'] = [
     {
       key: 'manage',
@@ -489,11 +529,8 @@ function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: 
   return (
     <div
       onClick={onClick}
-      className="group relative bg-white border border-[#EEEEEE] rounded-[16px] p-6 hover:border-[#ff3b3b] hover:shadow-lg hover:shadow-[#ff3b3b]/10 transition-all cursor-pointer overflow-hidden"
+      className="group relative bg-white border-2 border-transparent rounded-[16px] p-6 hover:border-[#ff3b3b] focus-within:border-[#ff3b3b] transition-all cursor-pointer overflow-hidden shadow-sm hover:shadow-md"
     >
-      {/* Accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#ff3b3b] to-[#ff6b6b] opacity-0 group-hover:opacity-100 transition-opacity" />
-
       {/* Action Menu - Absolute Positioned */}
       <div className="absolute top-4 right-4 z-20" onClick={(e) => e.stopPropagation()}>
         <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
@@ -504,49 +541,43 @@ function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: 
       </div>
 
       <div className="flex flex-col h-full">
-        {/* Folder Icon */}
-        <div className="mb-4">
-          <div className="w-12 h-12 rounded-[12px] bg-[#FEF3F2] border border-[#ff3b3b]/20 flex items-center justify-center group-hover:bg-[#ff3b3b] transition-all">
-            <FolderOpen className="w-6 h-6 text-[#ff3b3b] group-hover:text-white transition-colors" />
+        {/* Header Section - Icon and Text */}
+        <div className="flex items-start gap-4 mb-4">
+          {/* Folder Icon - Light pink background with red outline */}
+          <div className="w-12 h-12 rounded-[10px] bg-[#FEF3F2] border border-[#ff3b3b]/30 flex items-center justify-center shrink-0">
+            <FolderOpen className="w-6 h-6 text-[#ff3b3b]" strokeWidth={2} />
           </div>
-        </div>
 
-        {/* Workspace Name */}
-        <h3 className="font-['Manrope:Bold',sans-serif] text-[15px] text-[#111111] mb-3 line-clamp-2 flex-1 pr-6">
-          {workspace.name}
-        </h3>
-
-        {/* Task Count / Progress */}
-        <div className="mb-4 min-h-[26px]">
-          <WorkspaceProgress
-            taskCount={workspace.taskCount}
-            inProgressCount={workspace.inProgressCount}
-            delayedCount={workspace.delayedCount}
-            completedCount={workspace.completedCount}
-          />
-        </div>
-
-        {/* Footer: Client + Total */}
-        <div className="pt-3 border-t border-[#EEEEEE] flex items-center justify-between">
-          <div className="flex flex-col">
-            <p className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif] mb-0.5">Client</p>
-            <p className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif] truncate max-w-[120px]">
+          {/* Title and Subtitle */}
+          <div className="flex-1 min-w-0">
+            {/* Workspace Name - 16-18px, bold, black, truncated */}
+            <h3 className="font-['Manrope:Bold',sans-serif] text-[17px] text-[#111111] mb-1 line-clamp-1">
+              {workspace.name}
+            </h3>
+            {/* Client Name - 14px, regular, dark grey */}
+            <p className="text-[14px] text-[#666666] font-['Manrope:Regular',sans-serif]">
               {workspace.client}
             </p>
           </div>
-          <div className="flex flex-col items-end">
-            <p className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif] mb-0.5">Total</p>
-            <p className="text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">
-              {workspace.taskCount}
-            </p>
-          </div>
+        </div>
+
+        {/* Separator Line */}
+        <div className="border-t border-[#EEEEEE] my-4"></div>
+
+        {/* Requirements Summary - At the bottom */}
+        <div className="mt-auto">
+          <WorkspaceRequirementsSummary
+            total={workspace.totalRequirements || 0}
+            inProgress={workspace.inProgressRequirements || 0}
+            delayed={workspace.delayedRequirements || 0}
+          />
         </div>
       </div>
     </div>
   );
 }
 
-function WorkspaceListItem({ workspace, onClick }: { workspace: { id: number; name: string; client: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; status: string }; onClick?: () => void }) {
+function WorkspaceListItem({ workspace, onClick }: { workspace: { id: number; name: string; client: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; totalRequirements?: number; inProgressRequirements?: number; delayedRequirements?: number; status: string }; onClick?: () => void }) {
   const items: MenuProps['items'] = [
     {
       key: 'manage',
@@ -567,7 +598,7 @@ function WorkspaceListItem({ workspace, onClick }: { workspace: { id: number; na
   return (
     <div
       onClick={onClick}
-      className="group flex items-center justify-between bg-white border border-[#EEEEEE] rounded-[12px] p-4 hover:border-[#ff3b3b] hover:shadow-md hover:shadow-[#ff3b3b]/5 transition-all cursor-pointer"
+      className="group flex items-center justify-between bg-white border-2 border-transparent rounded-[12px] p-4 hover:border-[#ff3b3b] shadow-sm hover:shadow-md transition-all cursor-pointer"
     >
       <div className="flex items-center gap-4 flex-1">
         {/* Icon */}
@@ -586,20 +617,20 @@ function WorkspaceListItem({ workspace, onClick }: { workspace: { id: number; na
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="flex items-center gap-4 mr-8">
-        <WorkspaceProgress
-          taskCount={workspace.taskCount}
-          inProgressCount={workspace.inProgressCount}
-          delayedCount={workspace.delayedCount}
-          completedCount={workspace.completedCount}
-        />
-      </div>
-
-      {/* Total - Right */}
-      <div className="flex flex-col items-end mr-4 min-w-[40px]">
-        <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">Total</span>
-        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">{workspace.taskCount}</span>
+      {/* Requirements Stats */}
+      <div className="flex items-center gap-6 mr-8">
+        <div className="flex flex-col">
+          <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif] mb-0.5">Total</span>
+          <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">{workspace.totalRequirements || 0}</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif] mb-0.5">Progress</span>
+          <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#2F80ED]">{workspace.inProgressRequirements || 0}</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif] mb-0.5">Delayed</span>
+          <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#ff3b3b]">{workspace.delayedRequirements || 0}</span>
+        </div>
       </div>
 
       {/* Action */}

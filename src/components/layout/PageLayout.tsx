@@ -82,23 +82,25 @@ export function PageLayout({
 
           {/* Tabs below title */}
           {tabs && tabs.length > 0 && (
-            <div className="flex items-center gap-8 border-b border-[#EEEEEE]">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => onTabChange?.(tab.id)}
-                  className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === tab.id
-                    ? 'text-[#ff3b3b]'
-                    : 'text-[#666666] hover:text-[#111111]'
-                    }`}
-                >
-                  {tab.label}
-                  {tab.count !== undefined && ` (${tab.count})`}
-                  {activeTab === tab.id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />
-                  )}
-                </button>
-              ))}
+            <div className="flex items-center">
+              <div className="flex items-center gap-8 border-b border-[#EEEEEE]">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => onTabChange?.(tab.id)}
+                    className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === tab.id
+                      ? 'text-[#ff3b3b]'
+                      : 'text-[#666666] hover:text-[#111111]'
+                      }`}
+                  >
+                    {tab.label}
+                    {tab.count !== undefined && ` (${tab.count})`}
+                    {activeTab === tab.id && (
+                      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
