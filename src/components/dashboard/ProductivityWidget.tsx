@@ -18,7 +18,7 @@ import {
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { generateAgentResponse } from "@/services/assistant";
-import { message as antdMessage } from "antd";
+import { message as antdMessage, Tooltip } from "antd";
 import { useUserDetails } from "@/hooks/useUser";
 import { useTasks, useUpdateTaskStatus } from "@/hooks/useTask";
 import { useWorkspaces } from "@/hooks/useWorkspace";
@@ -179,20 +179,67 @@ export function ProductivityWidget() {
     }
   };
 
-  const handleReset = () => {
-    if (isRunning) {
-      // If running, stop first
-      setIsRunning(false);
-
-      // Update status if task selected
-      if (selectedTask) {
-        const task = tasks.find(t => t.name === selectedTask);
-        if (task) {
-          updateStatusMutation.mutate({ id: task.id, status: 'Assigned' });
-        }
-      }
+  const handleStuck = () => {
+    if (!selectedTask) {
+      antdMessage.warning("Please select a task first");
+      return;
     }
-    setTime(0);
+
+    if (isRunning) {
+      setIsRunning(false);
+    }
+
+    const task = tasks.find(t => t.name === selectedTask);
+    if (task) {
+      updateStatusMutation.mutate(
+        { id: task.id, status: 'Stuck' },
+        {
+          onSuccess: () => {
+            antdMessage.success(`Marked "${task.name}" as stuck`);
+            const stuckMessage: Message = {
+              id: Date.now(),
+              type: 'ai',
+              content: `I've marked "${task.name}" as stuck. What specific challenge are you facing? I can help you brainstorm or find resources.`,
+              timestamp: new Date(),
+              responseType: 'info'
+            };
+            setConversations(prev => [...prev, stuckMessage]);
+            setShowChatPopup(true);
+          },
+          onError: () => {
+            antdMessage.error("Failed to update task status");
+          }
+        }
+      );
+    }
+  };
+
+  const handleComplete = () => {
+    if (!selectedTask) {
+      antdMessage.warning("Please select a task first");
+      return;
+    }
+
+    if (isRunning) {
+      setIsRunning(false);
+    }
+
+    const task = tasks.find(t => t.name === selectedTask);
+    if (task) {
+      updateStatusMutation.mutate(
+        { id: task.id, status: 'Completed' },
+        {
+          onSuccess: () => {
+            antdMessage.success(`Marked "${task.name}" as completed`);
+            setSelectedTask("");
+            setTime(0);
+          },
+          onError: () => {
+            antdMessage.error("Failed to update task status");
+          }
+        }
+      );
+    }
   };
 
   const handleSend = async () => {
@@ -239,7 +286,8 @@ export function ProductivityWidget() {
       return;
     }
     if (queryLower.includes("reset timer")) {
-      handleReset();
+      setIsRunning(false);
+      setTime(0);
       const timerMessage: Message = {
         id: Date.now() + 1,
         type: 'ai',
@@ -335,7 +383,7 @@ export function ProductivityWidget() {
   );
 
   return (
-    <div className="flex flex-col gap-3 w-full relative">
+    <div className="flex flex-col gap-3 w-full relative pr-1">
 
 
       {/* Expandable Command Center - White Rectangle Expands Upward */}
@@ -467,27 +515,24 @@ export function ProductivityWidget() {
 
         {/* Fixed Input & Timer Controls at Bottom */}
         <div className="absolute bottom-0 left-0 right-0 p-4">
-          <div className="flex items-center justify-between w-full gap-6">
-            {/* Left: AI Command Input */}
-            <div className="flex-1 flex items-center gap-3 px-6 py-2.5 bg-[#F7F7F7] rounded-full border border-[#EEEEEE] hover:bg-[#EEEEEE] hover:border-[#D3D2D2] transition-all">
-              <Sparkle24Filled className="w-4 h-4 text-[#ff3b3b] fill-[#ff3b3b] flex-shrink-0" />
-              <input
-                ref={inputRef}
-                type="text"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onFocus={() => setShowChatPopup(true)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder="Ask anything or give command..."
-                className="flex-1 bg-transparent text-[14px] font-['Manrope:Regular',sans-serif] text-[#111111] placeholder:text-[#999999] focus:outline-none min-w-0"
-              />
-              <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Grid Layout: 3 columns matching dashboard layout with same gap-5 */}
+          <div className="grid grid-cols-3 gap-5 w-full items-center">
+            {/* Left Section: Input Box (col-span-2 - aligned with Notes and Progress) */}
+            <div className="col-span-2">
+              <div className="flex items-center gap-3 px-6 py-2.5 bg-[#F7F7F7] rounded-full border border-[#EEEEEE] hover:bg-[#EEEEEE] hover:border-[#D3D2D2] transition-all">
                 <button className="text-[#666666] hover:text-[#ff3b3b] flex items-center justify-center transition-all active:scale-90">
                   <Mic24Filled className="w-[18px] h-[18px]" />
                 </button>
-                <button className="text-[#666666] hover:text-[#ff3b3b] flex items-center justify-center transition-all active:scale-90">
-                  <Document24Filled className="w-[18px] h-[18px]" />
-                </button>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onFocus={() => setShowChatPopup(true)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder="Ask anything or give command..."
+                  className="flex-1 bg-transparent text-[14px] font-['Manrope:Regular',sans-serif] text-[#111111] placeholder:text-[#999999] focus:outline-none min-w-0"
+                />
                 <button
                   onClick={handleSend}
                   disabled={isPending || !message.trim()}
@@ -502,22 +547,24 @@ export function ProductivityWidget() {
               </div>
             </div>
 
-            {/* Right: Timer Section (Display + Controls) */}
-            <div className="flex items-center gap-4">
-              <div className="h-6 w-px bg-[#EEEEEE]" />
-
-              {/* Timer Display with Task Selector */}
+            {/* Right Section: Timer & Controls (col-span-1 - aligned with Meetings and Leaves left start) */}
+            <div className="col-span-1 flex items-center gap-4 justify-between">
+              {/* Left: Vertical Separator and Timer Display with Task Selector */}
               <div className="flex items-center gap-4">
+                {/* Vertical Separator - Small line at the start */}
+                <div className="h-12 w-px bg-[#EEEEEE] flex-shrink-0" />
+
+                {/* Timer Display with Task Selector */}
                 <div className="flex flex-col">
                   <div className="text-[22px] font-['Manrope:Bold',sans-serif] text-[#111111] leading-none tracking-tight">
                     {formatTime(time)}
                   </div>
-                  {/* Task Selector Button */}
+                  {/* Task Selector Dropdown */}
                   <button
                     onClick={() => setShowTaskSelector(!showTaskSelector)}
-                    className="flex items-center gap-1.5 mt-1 group hover:bg-[#F7F7F7] rounded-full pr-2 -ml-1 transition-all"
+                    className="flex items-center gap-1.5 mt-1 group hover:bg-[#F7F7F7] rounded-md px-1 transition-all text-left"
                   >
-                    <p className="text-[11px] text-[#666666] font-['Manrope:Medium',sans-serif] group-hover:text-[#111111] transition-colors pl-1">
+                    <p className="text-[11px] text-[#666666] font-['Manrope:Medium',sans-serif] group-hover:text-[#111111] transition-colors">
                       {selectedTask || "Select Task"}
                     </p>
                     <ChevronDown24Filled className="w-3 h-3 text-[#666666] group-hover:text-[#111111] transition-colors" />
@@ -525,24 +572,41 @@ export function ProductivityWidget() {
                 </div>
               </div>
 
-              {/* Timer Controls */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handlePlayPause}
-                  className="w-10 h-10 bg-[#F7F7F7] hover:bg-gradient-to-br hover:from-[#ff3b3b] hover:to-[#cc2f2f] hover:text-white text-[#666666] rounded-full flex items-center justify-center transition-all active:scale-90 group"
-                >
-                  {isRunning ? (
-                    <Pause24Filled className="w-5 h-5 group-hover:text-white" fill="currentColor" />
-                  ) : (
-                    <Play24Filled className="w-5 h-5 ml-0.5 group-hover:text-white" fill="currentColor" />
-                  )}
-                </button>
-                <button
-                  onClick={handleReset}
-                  className="w-10 h-10 bg-[#F7F7F7] hover:bg-gradient-to-br hover:from-[#ff3b3b] hover:to-[#cc2f2f] hover:text-white text-[#666666] rounded-full flex items-center justify-center transition-all active:scale-90 group"
-                >
-                  <ArrowCounterclockwise24Filled className="w-5 h-5 group-hover:text-white" />
-                </button>
+              {/* Right: Control Buttons - Pushed to far right */}
+              <div className="flex items-center gap-2 ml-auto">
+                {/* Play/Pause Button */}
+                <Tooltip title={isRunning ? "Pause" : "Play"}>
+                  <button
+                    onClick={handlePlayPause}
+                    className="w-10 h-10 bg-[#EAEAEA] hover:bg-[#DDDDDD] text-[#666666] rounded-full flex items-center justify-center transition-all active:scale-90"
+                  >
+                    {isRunning ? (
+                      <Pause24Filled className="w-5 h-5" fill="currentColor" />
+                    ) : (
+                      <Play24Filled className="w-5 h-5 ml-0.5" fill="currentColor" />
+                    )}
+                  </button>
+                </Tooltip>
+
+                {/* Stuck Button (Palm/Hand) */}
+                <Tooltip title="I'm stuck">
+                  <button
+                    onClick={handleStuck}
+                    className="w-10 h-10 bg-[#EAEAEA] hover:bg-[#DDDDDD] rounded-full flex items-center justify-center transition-all active:scale-90"
+                  >
+                    <span className="text-[18px]">✋</span>
+                  </button>
+                </Tooltip>
+
+                {/* Completed Button */}
+                <Tooltip title="Mark as Complete">
+                  <button
+                    onClick={handleComplete}
+                    className="w-10 h-10 bg-[#EAEAEA] hover:bg-[#DDDDDD] text-[#666666] rounded-full flex items-center justify-center transition-all active:scale-90"
+                  >
+                    <CheckmarkCircle24Filled className="w-5 h-5 text-[#666666]" />
+                  </button>
+                </Tooltip>
               </div>
             </div>
           </div>

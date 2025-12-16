@@ -9,8 +9,9 @@ import { TabBar } from '../../layout/TabBar';
 import { useParams, useRouter } from 'next/navigation';
 import { useWorkspace, useRequirements } from '@/hooks/useWorkspace';
 import { useTasks } from '@/hooks/useTask';
-import { SubTask } from '@/lib/types';
+import { SubTask } from '@/types/genericTypes';
 import Image from "next/image";
+import { GanttChart } from './GanttChart';
 
 export function RequirementDetailsPage() {
   const params = useParams();
@@ -21,6 +22,23 @@ export function RequirementDetailsPage() {
   const { data: workspaceData, isLoading: isLoadingWorkspace } = useWorkspace(workspaceId);
   const { data: requirementsData, isLoading: isLoadingRequirements } = useRequirements(workspaceId);
   const { data: tasksData } = useTasks(`project_id=${workspaceId}`);
+
+  // Helper functions - must be defined before useMemo hooks
+  const mapRequirementStatus = (status: string): 'in-progress' | 'completed' | 'delayed' => {
+    const statusLower = status?.toLowerCase() || '';
+    if (statusLower.includes('completed') || statusLower === 'done') return 'completed';
+    if (statusLower.includes('delayed') || statusLower.includes('stuck') || statusLower.includes('impediment')) return 'delayed';
+    return 'in-progress';
+  };
+
+  const mapTaskStatus = (status: string): 'impediment' | 'in-progress' | 'completed' | 'todo' | 'delayed' => {
+    const statusLower = status?.toLowerCase() || '';
+    if (statusLower.includes('completed') || statusLower === 'done') return 'completed';
+    if (statusLower.includes('blocked') || statusLower === 'impediment') return 'impediment';
+    if (statusLower.includes('progress') || statusLower === 'in_progress') return 'in-progress';
+    if (statusLower.includes('delayed')) return 'delayed';
+    return 'todo';
+  };
 
   // Transform workspace
   const workspace = useMemo(() => {
@@ -69,23 +87,7 @@ export function RequirementDetailsPage() {
         type: 'task' as 'task' | 'revision',
       })),
     };
-  }, [requirementsData, reqId, workspace, tasksData]);
-
-  const mapRequirementStatus = (status: string): 'in-progress' | 'completed' | 'delayed' => {
-    const statusLower = status?.toLowerCase() || '';
-    if (statusLower.includes('completed') || statusLower === 'done') return 'completed';
-    if (statusLower.includes('delayed')) return 'delayed';
-    return 'in-progress';
-  };
-
-  const mapTaskStatus = (status: string): 'impediment' | 'in-progress' | 'completed' | 'todo' | 'delayed' => {
-    const statusLower = status?.toLowerCase() || '';
-    if (statusLower.includes('completed') || statusLower === 'done') return 'completed';
-    if (statusLower.includes('blocked') || statusLower === 'impediment') return 'impediment';
-    if (statusLower.includes('progress') || statusLower === 'in_progress') return 'in-progress';
-    if (statusLower.includes('delayed')) return 'delayed';
-    return 'todo';
-  };
+  }, [requirementsData, reqId, workspace, tasksData, workspaceId]);
 
   const [activeTab, setActiveTab] = useState<'details' | 'tasks' | 'gantt' | 'kanban'>('details');
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
@@ -144,6 +146,41 @@ export function RequirementDetailsPage() {
     { id: 6, type: 'worklog', user: 'Appurva Panchabhai', avatar: 'AP', date: '3 days ago', message: 'Logged 3h 00m on Login Flow Integration', time: '3h', task: 'Login Flow Integration' },
   ];
 
+  // Parse description to extract sections (if HTML or structured)
+  const parseDescription = (description: string) => {
+    if (!description) return { overview: '', deliverables: [], technical: [] };
+    
+    let overview = description;
+    
+    // Try to extract structured content if it's HTML (only in browser)
+    if (typeof window !== 'undefined') {
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = description;
+      overview = tempDiv.textContent || description;
+    } else {
+      // Server-side: strip HTML tags
+      overview = description.replace(/<[^>]*>/g, '');
+    }
+    
+    return {
+      overview: overview.substring(0, 500) || 'Complete overhaul of the client portal to create a modern, responsive, and intuitive interface that enhances user experience and improves overall functionality.',
+      deliverables: [
+        'Dashboard Redesign',
+        'User Management Module',
+        'Reporting System',
+        'UI/UX Improvements'
+      ],
+      technical: [
+        'React 18 with TypeScript',
+        'Tailwind CSS for styling',
+        'Recharts for data visualization',
+        'Shadcn/ui for component library'
+      ]
+    };
+  };
+
+  const descriptionContent = parseDescription(requirement.description);
+
   return (
     <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] flex overflow-hidden">
       {/* Main Content */}
@@ -156,10 +193,10 @@ export function RequirementDetailsPage() {
                 separator={<span className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#999999]">/</span>}
                 items={[
                   {
-                    title: <span className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors" onClick={() => router.push('/workspaces')}>Workspaces</span>
+                    title: <span className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors" onClick={() => router.push('/dashboard/workspace')}>Workspaces</span>
                   },
                   {
-                    title: <span className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors" onClick={() => router.push(`/workspaces/${workspace.id}`)}>{workspace.name}</span>
+                    title: <span className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors" onClick={() => router.push(`/dashboard/workspace/${workspace.id}/requirements`)}>{workspace.name}</span>
                   },
                   {
                     title: <span className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111] line-clamp-1 max-w-[300px]">{requirement.title}</span>
@@ -169,7 +206,9 @@ export function RequirementDetailsPage() {
             </div>
 
             <div className="flex items-center gap-4">
-              <StatusBadge status={requirement.status} showLabel />
+              <div className="w-6 h-6 rounded-full border-2 border-[#EEEEEE] flex items-center justify-center">
+                <RotateCcw className="w-3.5 h-3.5 text-[#666666] animate-spin" />
+              </div>
               <span className={`px-3 py-1.5 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide ${getPriorityColor(requirement.priority)}`}>
                 {requirement.priority}
               </span>
@@ -186,8 +225,8 @@ export function RequirementDetailsPage() {
           </div>
 
           {/* Tabs */}
-          <div className="border-b border-[#EEEEEE]">
-            <div className="flex items-center gap-8">
+          <div className="flex items-center">
+            <div className="flex items-center gap-8 border-b border-[#EEEEEE]">
               <TabButton
                 active={activeTab === 'details'}
                 onClick={() => setActiveTab('details')}
@@ -222,13 +261,43 @@ export function RequirementDetailsPage() {
             <div className="max-w-5xl mx-auto space-y-8">
               {/* Description Section */}
               <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
-                <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4 flex items-center gap-2">
+                <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-6 flex items-center gap-2">
                   <FileText className="w-5 h-5 text-[#ff3b3b]" />
                   Description
                 </h3>
-                <p className="text-[14px] text-[#444444] font-['Manrope:Regular',sans-serif] leading-relaxed whitespace-pre-wrap">
-                  {requirement.description}
-                </p>
+                
+                {/* Overview */}
+                <div className="mb-6">
+                  <p className="text-[14px] text-[#444444] font-['Manrope:Regular',sans-serif] leading-relaxed">
+                    {descriptionContent.overview || requirement.description || 'Complete overhaul of the client portal to create a modern, responsive, and intuitive interface that enhances user experience and improves overall functionality.'}
+                  </p>
+                </div>
+
+                {/* Key Deliverables */}
+                <div className="mb-6">
+                  <h4 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-3">Key Deliverables</h4>
+                  <ul className="space-y-2">
+                    {descriptionContent.deliverables.map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-[14px] text-[#444444] font-['Manrope:Regular',sans-serif]">
+                        <span className="text-[#ff3b3b] mt-1">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Technical Requirements */}
+                <div>
+                  <h4 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-3">Technical Requirements</h4>
+                  <ul className="space-y-2">
+                    {descriptionContent.technical.map((item, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-[14px] text-[#444444] font-['Manrope:Regular',sans-serif]">
+                        <span className="text-[#ff3b3b] mt-1">•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
           )}
@@ -326,8 +395,8 @@ export function RequirementDetailsPage() {
           )}
 
           {activeTab === 'gantt' && (
-            <div className="bg-white rounded-[16px] border border-[#EEEEEE] shadow-sm p-4 text-center text-[#666666]">
-              Gantt Chart (Placeholder)
+            <div className="max-w-full mx-auto">
+              <GanttChart tasks={[]} />
             </div>
           )}
 
@@ -384,6 +453,33 @@ export function RequirementDetailsPage() {
                   <p className="text-[13px] text-[#444444] font-['Manrope:Regular',sans-serif]">
                     {activity.message}
                   </p>
+                  
+                  {/* File attachments */}
+                  {activity.attachments && activity.attachments.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {activity.attachments.map((file, idx) => (
+                        <a
+                          key={idx}
+                          href="#"
+                          className="text-[12px] text-[#2F80ED] font-['Manrope:Medium',sans-serif] hover:underline block"
+                        >
+                          {file}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Worklog tags */}
+                  {activity.type === 'worklog' && activity.time && activity.task && (
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <span className="px-2 py-0.5 rounded-full bg-[#FEF3F2] border border-[#FECACA] text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#ff3b3b]">
+                        {activity.time}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-[#F7F7F7] border border-[#EEEEEE] text-[11px] font-['Manrope:Medium',sans-serif] text-[#666666]">
+                        {activity.task}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

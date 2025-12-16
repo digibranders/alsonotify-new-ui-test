@@ -2,13 +2,14 @@ import { useState, useMemo, useEffect } from 'react';
 import { Button, Input, Select, Divider, message } from "antd";
 import { Camera, Pencil } from 'lucide-react';
 import Image from "next/image";
-import { useUserDetails } from '@/hooks/useUser';
+import { useUserDetails, useUpdateProfile } from '@/hooks/useUser';
 
 const { Option } = Select;
 
 export function ProfilePage() {
    const [isEditing, setIsEditing] = useState(false);
    const { data: userDetailsData } = useUserDetails();
+   const updateProfileMutation = useUpdateProfile();
 
    // Get user data from localStorage or backend
    const user = useMemo(() => {
@@ -99,9 +100,38 @@ export function ProfilePage() {
       );
    };
 
-   const handleSaveChanges = () => {
-      setIsEditing(false);
-      message.success('Profile updated successfully!');
+   const handleSaveChanges = async () => {
+      try {
+         // Prepare user profile payload
+         const userProfilePayload = {
+            first_name: profile.firstName,
+            middle_name: profile.middleName || null,
+            last_name: profile.lastName,
+            mobile_number: profile.phone,
+            designation: profile.designation,
+            date_of_birth: profile.dob ? new Date(profile.dob).toISOString() : null,
+            gender: profile.gender,
+            employee_id: profile.employeeId,
+            address: `${profile.addressLine1}, ${profile.addressLine2}`.trim(),
+            city: profile.city,
+            state: profile.state,
+            zipcode: profile.zipCode,
+            country: profile.country,
+            emergency_contact: {
+               name: profile.emergencyContactName,
+               relationship: profile.emergencyRelationship,
+               phone: profile.emergencyContactNumber,
+            },
+         };
+
+         await updateProfileMutation.mutateAsync(userProfilePayload);
+         message.success('Profile updated successfully!');
+         setIsEditing(false);
+      } catch (error: any) {
+         console.error("Error updating profile:", error);
+         const errorMessage = error?.response?.data?.message || "Failed to update profile";
+         message.error(errorMessage);
+      }
    };
 
    const handleCancelEdit = () => {
@@ -138,6 +168,7 @@ export function ProfilePage() {
                      </Button>
                      <Button
                         onClick={handleSaveChanges}
+                        loading={updateProfileMutation.isPending}
                         className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-8 h-10 rounded-full shadow-lg shadow-[#ff3b3b]/20 text-[13px] border-none"
                      >
                         Save Changes

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Edit, Trash2, X, Pencil } from 'lucide-react';
 import { Button, Input, Select, Switch, Divider } from "antd";
 import { message } from "antd";
+import { useUpdateCompany } from '@/hooks/useUser';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -27,6 +28,7 @@ interface LeaveType {
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'company' | 'leaves' | 'working-hours' | 'integrations'>('company');
   const [isEditing, setIsEditing] = useState(false);
+  const updateCompanyMutation = useUpdateCompany();
 
   // Company Details State
   const [companyName, setCompanyName] = useState('Digibranders Private Limited');
@@ -87,9 +89,29 @@ export function SettingsPage() {
     setLeaves(leaves.map(l => l.id === id ? { ...l, count: parseInt(count) || 0 } : l));
   };
 
-  const handleSaveChanges = () => {
-    setIsEditing(false);
-    message.success('Settings saved successfully!');
+  const handleSaveChanges = async () => {
+    try {
+      // Prepare company update payload based on active tab
+      const payload: any = {};
+      
+      if (activeTab === 'company') {
+        payload.name = companyName;
+        payload.tax_id = taxId;
+        payload.timezone = timeZone;
+        payload.currency = currency;
+        payload.address = address;
+      }
+      // Note: Departments, leaves, and working hours might need separate API endpoints
+      // For now, we'll save company basic info
+      
+      await updateCompanyMutation.mutateAsync(payload);
+      message.success('Settings saved successfully!');
+      setIsEditing(false);
+    } catch (error: any) {
+      console.error("Error updating settings:", error);
+      const errorMessage = error?.response?.data?.message || "Failed to update settings";
+      message.error(errorMessage);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -126,6 +148,7 @@ export function SettingsPage() {
               </Button>
               <Button
                 onClick={handleSaveChanges}
+                loading={updateCompanyMutation.isPending}
                 className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-8 h-10 rounded-full shadow-lg shadow-[#ff3b3b]/20 text-[13px] border-none"
               >
                 Save Changes

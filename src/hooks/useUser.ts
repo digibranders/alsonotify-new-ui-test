@@ -10,6 +10,7 @@ import {
   getCompanyDepartments,
   updateUserStatus,
   inviteUser,
+  updateCurrentUserCompany,
   type UserType,
   type ClientOrOutsourceType,
   type CompanyDepartmentType,
@@ -19,6 +20,7 @@ export const useEmployees = (options: string = "") => {
   return useQuery({
     queryKey: ["employees", options],
     queryFn: () => getEmployees(options),
+    staleTime: 5 * 1000, // 5 seconds
   });
 };
 
@@ -54,8 +56,11 @@ export const useUpdateEmployee = () => {
   return useMutation({
     mutationFn: ({ id, ...params }: { id: number } & Partial<UserType>) => updateUserById(id, params as any),
     onSuccess: (_, variables) => {
+      // Invalidate all employee queries (both active and inactive)
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       queryClient.invalidateQueries({ queryKey: ["employee", variables.id] });
+      // Also invalidate user details if updating current user's own data
+      queryClient.invalidateQueries({ queryKey: ["user", "details"] });
     },
   });
 };
@@ -85,6 +90,7 @@ export const useUpdateEmployeeStatus = () => {
   return useMutation({
     mutationFn: (params: { user_id: number; is_active: boolean }) => updateUserStatus(params),
     onSuccess: () => {
+      // Invalidate all employee queries (both active and inactive) when status changes
       queryClient.invalidateQueries({ queryKey: ["employees"] });
     },
   });
@@ -119,6 +125,19 @@ export const useCreateClient = () => {
     mutationFn: (params: any) => createUser(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
+    },
+  });
+};
+
+// Update company details
+export const useUpdateCompany = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: any) => updateCurrentUserCompany(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user", "company"] });
+      queryClient.invalidateQueries({ queryKey: ["user", "details"] });
     },
   });
 };

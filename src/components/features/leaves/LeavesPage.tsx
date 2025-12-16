@@ -1,106 +1,55 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Calendar, User, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { PageLayout } from '../../layout/PageLayout';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
+import { Spin, message, Modal, Form, DatePicker, Select, Input, Button } from 'antd';
+import dayjs from 'dayjs';
+import type { Dayjs } from 'dayjs';
+import { useCompanyLeaves, useUpdateLeaveStatus, useApplyForLeave } from '../../../hooks/useLeave';
+import { LeaveType } from '../../../services/leave';
 
-interface LeaveRequest {
-  id: string;
-  employeeName: string;
-  leaveType: 'sick' | 'casual' | 'vacation';
-  startDate: string;
-  endDate: string;
-  days: number;
+const { TextArea } = Input;
+const { Option } = Select;
+
+// Helper function to get initials from name
+const getInitials = (name: string | null | undefined): string => {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+};
+
+// Helper function to format date
+const formatDate = (dateString: string): string => {
+  return dayjs(dateString).format('DD-MMM-YYYY');
+};
+
+// Helper function to normalize status
+const normalizeStatus = (status: string): 'pending' | 'approved' | 'rejected' => {
+  const upper = status.toUpperCase();
+  if (upper === 'APPROVED') return 'approved';
+  if (upper === 'REJECTED') return 'rejected';
+  return 'pending';
+};
+
+// Helper function to normalize leave type
+const normalizeLeaveType = (type: string): 'sick' | 'casual' | 'vacation' => {
+  const lower = type.toLowerCase();
+  if (lower.includes('sick')) return 'sick';
+  if (lower.includes('casual')) return 'casual';
+  if (lower.includes('vacation') || lower.includes('vacation')) return 'vacation';
+  return 'casual'; // default
+};
+
+interface ApplyLeaveFormValues {
+  start_date: Dayjs;
+  end_date: Dayjs;
+  day_type: string;
+  leave_type: string;
   reason: string;
-  status: 'pending' | 'approved' | 'rejected';
-  appliedOn: string;
 }
-
-interface LeaveBalance {
-  employeeName: string;
-  sick: { used: number; total: number };
-  casual: { used: number; total: number };
-  vacation: { used: number; total: number };
-}
-
-const leaveRequestsData: LeaveRequest[] = [
-  {
-    id: '1',
-    employeeName: 'Yusuf Shaikh',
-    leaveType: 'sick',
-    startDate: '26-Nov-2025',
-    endDate: '27-Nov-2025',
-    days: 2,
-    reason: 'Fever and cold',
-    status: 'pending',
-    appliedOn: '19-Nov-2025'
-  },
-  {
-    id: '2',
-    employeeName: 'Appurva Panchabhai',
-    leaveType: 'vacation',
-    startDate: '02-Dec-2025',
-    endDate: '06-Dec-2025',
-    days: 5,
-    reason: 'Family vacation',
-    status: 'approved',
-    appliedOn: '15-Nov-2025'
-  },
-  {
-    id: '3',
-    employeeName: 'Farheen',
-    leaveType: 'casual',
-    startDate: '22-Nov-2025',
-    endDate: '22-Nov-2025',
-    days: 1,
-    reason: 'Personal work',
-    status: 'approved',
-    appliedOn: '18-Nov-2025'
-  },
-  {
-    id: '4',
-    employeeName: 'Sharifudeen',
-    leaveType: 'vacation',
-    startDate: '25-Dec-2025',
-    endDate: '31-Dec-2025',
-    days: 7,
-    reason: 'Year-end break',
-    status: 'pending',
-    appliedOn: '19-Nov-2025'
-  }
-];
-
-const leaveBalanceData: LeaveBalance[] = [
-  {
-    employeeName: 'Satyam Yadav',
-    sick: { used: 2, total: 7 },
-    casual: { used: 5, total: 10 },
-    vacation: { used: 8, total: 20 }
-  },
-  {
-    employeeName: 'Appurva Panchabhai',
-    sick: { used: 1, total: 7 },
-    casual: { used: 3, total: 10 },
-    vacation: { used: 5, total: 20 }
-  },
-  {
-    employeeName: 'Pranita Kadav',
-    sick: { used: 0, total: 7 },
-    casual: { used: 2, total: 10 },
-    vacation: { used: 10, total: 20 }
-  },
-  {
-    employeeName: 'Sharifudeen',
-    sick: { used: 4, total: 7 },
-    casual: { used: 6, total: 10 },
-    vacation: { used: 15, total: 20 }
-  },
-  {
-    employeeName: 'Farheen',
-    sick: { used: 1, total: 7 },
-    casual: { used: 3, total: 10 },
-    vacation: { used: 12, total: 20 }
-  }
-];
 
 export function LeavesPage() {
   const [activeTab, setActiveTab] = useState<'requests' | 'balance'>('requests');
@@ -110,25 +59,76 @@ export function LeavesPage() {
     leaveType: 'All',
     employee: 'All'
   });
+  const [isApplyLeaveModalOpen, setIsApplyLeaveModalOpen] = useState(false);
+  const [form] = Form.useForm<ApplyLeaveFormValues>();
 
-  const filteredRequests = leaveRequestsData.filter(request => {
-    const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
-    const matchesSearch = searchQuery === '' ||
-      request.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.reason.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesLeaveType = filters.leaveType === 'All' || request.leaveType === filters.leaveType.toLowerCase();
-    const matchesEmployee = filters.employee === 'All' || request.employeeName === filters.employee;
-    return matchesStatus && matchesSearch && matchesLeaveType && matchesEmployee;
-  });
+  const { data: leavesData, isLoading, error } = useCompanyLeaves();
+  const updateStatusMutation = useUpdateLeaveStatus();
+  const applyLeaveMutation = useApplyForLeave();
 
-  const filteredBalances = leaveBalanceData.filter(balance =>
-    searchQuery === '' ||
-    balance.employeeName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Process leaves data
+  const processedLeaves = useMemo(() => {
+    if (!leavesData?.result) return [];
+
+    return leavesData.result.map((leave: LeaveType) => {
+      const daysValue = typeof leave.days === 'number' 
+        ? leave.days 
+        : typeof leave.days === 'string' 
+        ? parseFloat(leave.days) 
+        : leave.days_count || 0;
+
+      return {
+        id: String(leave.id),
+        employeeName: leave.user?.name || 'Unknown Employee',
+        leaveType: normalizeLeaveType(leave.leave_type),
+        startDate: formatDate(leave.start_date),
+        endDate: formatDate(leave.end_date),
+        days: Math.round(daysValue) || 1,
+        reason: leave.reason || 'No reason provided',
+        status: normalizeStatus(leave.status),
+        appliedOn: leave.created_at ? formatDate(leave.created_at) : formatDate(leave.start_date),
+        rawLeave: leave,
+      };
+    });
+  }, [leavesData]);
+
+  // Filter leaves
+  const filteredRequests = useMemo(() => {
+    return processedLeaves.filter(request => {
+      const matchesStatus = statusFilter === 'all' || request.status === statusFilter;
+      const matchesSearch = searchQuery === '' ||
+        request.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        request.reason.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesLeaveType = filters.leaveType === 'All' || request.leaveType === filters.leaveType.toLowerCase();
+      const matchesEmployee = filters.employee === 'All' || request.employeeName === filters.employee;
+      return matchesStatus && matchesSearch && matchesLeaveType && matchesEmployee;
+    });
+  }, [processedLeaves, statusFilter, searchQuery, filters]);
 
   // Get unique values for filters
-  const leaveTypes = ['All', 'Sick', 'Casual', 'Vacation'];
-  const employees = ['All', ...Array.from(new Set(leaveRequestsData.map(r => r.employeeName)))];
+  const leaveTypes = useMemo(() => {
+    const types = new Set(processedLeaves.map(l => {
+      const type = l.leaveType;
+      return type.charAt(0).toUpperCase() + type.slice(1);
+    }));
+    return ['All', ...Array.from(types)];
+  }, [processedLeaves]);
+
+  // Get unique leave types for the apply leave form dropdown
+  const availableLeaveTypes = useMemo(() => {
+    if (!leavesData?.result) return ['Sick Leave', 'Casual Leave', 'Vacation'];
+    const types = new Set(leavesData.result.map((leave: LeaveType) => leave.leave_type));
+    return Array.from(types).filter(Boolean).length > 0 
+      ? Array.from(types).filter(Boolean) as string[]
+      : ['Sick Leave', 'Casual Leave', 'Vacation'];
+  }, [leavesData]);
+
+  const DAY_TYPES = ['Full Day', 'First Half', 'Second Half'];
+
+  const employees = useMemo(() => {
+    const names = new Set(processedLeaves.map(l => l.employeeName));
+    return ['All', ...Array.from(names)];
+  }, [processedLeaves]);
 
   const filterOptions: FilterOption[] = [
     {
@@ -157,6 +157,22 @@ export function LeavesPage() {
     setStatusFilter('all');
   };
 
+  const handleApprove = async (leaveId: number) => {
+    try {
+      await updateStatusMutation.mutateAsync({ id: leaveId, status: 'APPROVED' });
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  const handleReject = async (leaveId: number) => {
+    try {
+      await updateStatusMutation.mutateAsync({ id: leaveId, status: 'REJECTED' });
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
   const getLeaveTypeColor = (type: string) => {
     switch (type) {
       case 'sick':
@@ -183,6 +199,27 @@ export function LeavesPage() {
     }
   };
 
+  const handleApplyLeave = async (values: ApplyLeaveFormValues) => {
+    try {
+      await applyLeaveMutation.mutateAsync({
+        start_date: values.start_date.format('YYYY-MM-DD'),
+        end_date: values.end_date.format('YYYY-MM-DD'),
+        day_type: values.day_type,
+        leave_type: values.leave_type,
+        reason: values.reason,
+      });
+      form.resetFields();
+      setIsApplyLeaveModalOpen(false);
+    } catch (error) {
+      // Error handled by mutation
+    }
+  };
+
+  const handleCancelApplyLeave = () => {
+    form.resetFields();
+    setIsApplyLeaveModalOpen(false);
+  };
+
   return (
     <PageLayout
       title="Leaves"
@@ -196,7 +233,7 @@ export function LeavesPage() {
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
       titleAction={{
-        onClick: () => console.log('Apply leave')
+        onClick: () => setIsApplyLeaveModalOpen(true)
       }}
     >
       {activeTab === 'requests' ? (
@@ -229,211 +266,277 @@ export function LeavesPage() {
 
           {/* Leave Requests List */}
           <div className="flex-1 overflow-y-auto">
-            <div className="space-y-3">
-              {filteredRequests.map((request) => (
-                <div
-                  key={request.id}
-                  className="bg-white border border-[#EEEEEE] rounded-[16px] p-6 hover:border-[#ff3b3b]/20 hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center">
-                          <span className="text-[14px] text-white font-['Manrope:Bold',sans-serif]">
-                            {request.employeeName.split(' ').map((n: string) => n[0]).join('')}
-                          </span>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Spin size="large" />
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center py-12">
+                <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-red-500">
+                  Failed to load leave requests
+                </p>
+              </div>
+            ) : filteredRequests.length === 0 ? (
+              <div className="flex items-center justify-center py-12">
+                <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                  No leave requests found
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    className="bg-white border border-[#EEEEEE] rounded-[16px] p-6 hover:border-[#ff3b3b]/20 hover:shadow-lg transition-all duration-300"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center">
+                            <span className="text-[14px] text-white font-['Manrope:Bold',sans-serif]">
+                              {getInitials(request.employeeName)}
+                            </span>
+                          </div>
+                          <div>
+                            <h4 className="font-['Manrope:SemiBold',sans-serif] text-[15px] text-[#111111] mb-1">
+                              {request.employeeName}
+                            </h4>
+                            <span
+                              className={`inline-block px-3 py-1 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] ${getLeaveTypeColor(
+                                request.leaveType
+                              )}`}
+                            >
+                              {request.leaveType.charAt(0).toUpperCase() + request.leaveType.slice(1)} Leave
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-['Manrope:SemiBold',sans-serif] text-[15px] text-[#111111] mb-1">
-                            {request.employeeName}
-                          </h4>
-                          <span
-                            className={`inline-block px-3 py-1 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] ${getLeaveTypeColor(
-                              request.leaveType
-                            )}`}
-                          >
-                            {request.leaveType.charAt(0).toUpperCase() + request.leaveType.slice(1)} Leave
-                          </span>
-                        </div>
-                      </div>
 
-                      <div className="grid grid-cols-3 gap-4 mb-3">
-                        <div>
-                          <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
-                            Duration
-                          </p>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-[#666666]" />
-                            <p className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111]">
-                              {request.startDate} - {request.endDate}
+                        <div className="grid grid-cols-3 gap-4 mb-3">
+                          <div>
+                            <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
+                              Duration
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-[#666666]" />
+                              <p className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111]">
+                                {request.startDate} - {request.endDate}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
+                              Days
+                            </p>
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-[#666666]" />
+                              <p className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
+                                {request.days} {request.days === 1 ? 'day' : 'days'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
+                              Applied On
+                            </p>
+                            <p className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666]">
+                              {request.appliedOn}
                             </p>
                           </div>
                         </div>
 
-                        <div>
+                        <div className="bg-white rounded-[12px] p-3">
                           <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
-                            Days
+                            Reason
                           </p>
-                          <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3 text-[#666666]" />
-                            <p className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
-                              {request.days} {request.days === 1 ? 'day' : 'days'}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div>
-                          <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
-                            Applied On
-                          </p>
-                          <p className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666]">
-                            {request.appliedOn}
+                          <p className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                            {request.reason}
                           </p>
                         </div>
                       </div>
 
-                      <div className="bg-white rounded-[12px] p-3">
-                        <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
-                          Reason
-                        </p>
-                        <p className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666]">
-                          {request.reason}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-3">
-                      <div
-                        className={`flex items-center gap-2 px-4 py-2 rounded-[8px] ${request.status === 'approved'
-                          ? 'bg-[#E8F5E9]'
-                          : request.status === 'rejected'
-                            ? 'bg-[#FFEBEE]'
-                            : 'bg-[#FFF3E0]'
-                          }`}
-                      >
-                        {getStatusIcon(request.status)}
-                        <span
-                          className={`font-['Manrope:SemiBold',sans-serif] text-[13px] ${request.status === 'approved'
-                            ? 'text-[#4CAF50]'
+                      <div className="flex flex-col items-end gap-3">
+                        <div
+                          className={`flex items-center gap-2 px-4 py-2 rounded-[8px] ${request.status === 'approved'
+                            ? 'bg-[#E8F5E9]'
                             : request.status === 'rejected'
-                              ? 'text-[#ff3b3b]'
-                              : 'text-[#FF9800]'
+                              ? 'bg-[#FFEBEE]'
+                              : 'bg-[#FFF3E0]'
                             }`}
                         >
-                          {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                        </span>
-                      </div>
-
-                      {request.status === 'pending' && (
-                        <div className="flex items-center gap-2">
-                          <button className="px-4 py-2 bg-[#4CAF50] text-white rounded-[8px] hover:bg-[#45a049] transition-colors">
-                            <span className="font-['Manrope:SemiBold',sans-serif] text-[12px]">
-                              Approve
-                            </span>
-                          </button>
-                          <button className="px-4 py-2 bg-[#ff3b3b] text-white rounded-[8px] hover:bg-[#e63535] transition-colors">
-                            <span className="font-['Manrope:SemiBold',sans-serif] text-[12px]">
-                              Reject
-                            </span>
-                          </button>
+                          {getStatusIcon(request.status)}
+                          <span
+                            className={`font-['Manrope:SemiBold',sans-serif] text-[13px] ${request.status === 'approved'
+                              ? 'text-[#4CAF50]'
+                              : request.status === 'rejected'
+                                ? 'text-[#ff3b3b]'
+                                : 'text-[#FF9800]'
+                              }`}
+                          >
+                            {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                          </span>
                         </div>
-                      )}
+
+                        {request.status === 'pending' && (
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => handleApprove(request.rawLeave.id)}
+                              disabled={updateStatusMutation.isPending}
+                              className="px-4 py-2 bg-[#4CAF50] text-white rounded-[8px] hover:bg-[#45a049] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <span className="font-['Manrope:SemiBold',sans-serif] text-[12px]">
+                                Approve
+                              </span>
+                            </button>
+                            <button 
+                              onClick={() => handleReject(request.rawLeave.id)}
+                              disabled={updateStatusMutation.isPending}
+                              className="px-4 py-2 bg-[#ff3b3b] text-white rounded-[8px] hover:bg-[#e63535] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <span className="font-['Manrope:SemiBold',sans-serif] text-[12px]">
+                                Reject
+                              </span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       ) : (
         /* Leave Balance View */
         <div className="flex-1 overflow-y-auto">
-          <div className="space-y-3">
-            {filteredBalances.map((balance) => (
-              <div
-                key={balance.employeeName}
-                className="bg-[#F7F7F7] rounded-[16px] p-6 hover:bg-[#EEEEEE] transition-all"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center">
-                    <span className="text-[14px] text-white font-['Manrope:Bold',sans-serif]">
-                      {balance.employeeName.split(' ').map((n: string) => n[0]).join('')}
-                    </span>
-                  </div>
-                  <h4 className="font-['Manrope:SemiBold',sans-serif] text-[15px] text-[#111111]">
-                    {balance.employeeName}
-                  </h4>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  {/* Sick Leave */}
-                  <div className="bg-white rounded-[12px] p-4">
-                    <p className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2">
-                      Sick Leave
-                    </p>
-                    <div className="flex items-baseline gap-1 mb-2">
-                      <span className="font-['Manrope:Bold',sans-serif] text-[20px] text-[#ff3b3b]">
-                        {balance.sick.total - balance.sick.used}
-                      </span>
-                      <span className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#999999]">
-                        / {balance.sick.total}
-                      </span>
-                    </div>
-                    <div className="w-full h-2 bg-[#F7F7F7] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#ff3b3b] rounded-full"
-                        style={{ width: `${(balance.sick.used / balance.sick.total) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Casual Leave */}
-                  <div className="bg-white rounded-[12px] p-4">
-                    <p className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2">
-                      Casual Leave
-                    </p>
-                    <div className="flex items-baseline gap-1 mb-2">
-                      <span className="font-['Manrope:Bold',sans-serif] text-[20px] text-[#FF9800]">
-                        {balance.casual.total - balance.casual.used}
-                      </span>
-                      <span className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#999999]">
-                        / {balance.casual.total}
-                      </span>
-                    </div>
-                    <div className="w-full h-2 bg-[#F7F7F7] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#FF9800] rounded-full"
-                        style={{ width: `${(balance.casual.used / balance.casual.total) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Vacation Leave */}
-                  <div className="bg-white rounded-[12px] p-4">
-                    <p className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2">
-                      Vacation Leave
-                    </p>
-                    <div className="flex items-baseline gap-1 mb-2">
-                      <span className="font-['Manrope:Bold',sans-serif] text-[20px] text-[#2196F3]">
-                        {balance.vacation.total - balance.vacation.used}
-                      </span>
-                      <span className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#999999]">
-                        / {balance.vacation.total}
-                      </span>
-                    </div>
-                    <div className="w-full h-2 bg-[#F7F7F7] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-[#2196F3] rounded-full"
-                        style={{ width: `${(balance.vacation.used / balance.vacation.total) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <p className="text-[16px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2">
+                Leave Balance
+              </p>
+              <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#999999]">
+                Company-wide leave balance feature coming soon
+              </p>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Apply Leave Modal */}
+      <Modal
+        title="Apply Leave"
+        open={isApplyLeaveModalOpen}
+        onCancel={handleCancelApplyLeave}
+        footer={null}
+        width={600}
+        centered
+        className="rounded-[16px] overflow-hidden"
+        destroyOnClose
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleApplyLeave}
+          className="mt-6"
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item
+              name="start_date"
+              label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]"><span className="text-red-500">*</span> Start Date</span>}
+              rules={[{ required: true, message: 'Please select start date' }]}
+              required={false}
+            >
+              <DatePicker
+                className="w-full h-10 rounded-lg font-['Manrope:Medium',sans-serif]"
+                placeholder="Select date"
+                format="YYYY-MM-DD"
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="end_date"
+              label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]"><span className="text-red-500">*</span> End Date</span>}
+              rules={[{ required: true, message: 'Please select end date' }]}
+              required={false}
+            >
+              <DatePicker
+                className="w-full h-10 rounded-lg font-['Manrope:Medium',sans-serif]"
+                placeholder="Select date"
+                format="YYYY-MM-DD"
+              />
+            </Form.Item>
+          </div>
+
+          <Form.Item
+            name="day_type"
+            label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]"><span className="text-red-500">*</span> Day Type</span>}
+            rules={[{ required: true, message: 'Please select day type' }]}
+            required={false}
+          >
+            <Select
+              className="w-full h-10 rounded-lg font-['Manrope:Medium',sans-serif]"
+              placeholder="Select day type"
+            >
+              {DAY_TYPES.map((dayType) => (
+                <Option key={dayType} value={dayType}>
+                  {dayType}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="leave_type"
+            label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]"><span className="text-red-500">*</span> Leave Type</span>}
+            rules={[{ required: true, message: 'Please select leave type' }]}
+            required={false}
+          >
+            <Select
+              className="w-full h-10 rounded-lg font-['Manrope:Medium',sans-serif]"
+              placeholder="Select leave type"
+            >
+              {availableLeaveTypes.map((leaveType) => (
+                <Option key={leaveType} value={leaveType}>
+                  {leaveType}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="reason"
+            label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]"><span className="text-red-500">*</span> Reason</span>}
+            rules={[{ required: true, message: 'Please enter reason' }]}
+            required={false}
+          >
+            <TextArea
+              rows={4}
+              className="rounded-lg font-['Manrope:Medium',sans-serif]"
+              placeholder="Type or select a reason"
+            />
+          </Form.Item>
+
+          <div className="flex items-center justify-end gap-4 pt-4 mt-6 border-t border-[#EEEEEE]">
+            <Button
+              type="text"
+              onClick={handleCancelApplyLeave}
+              className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={applyLeaveMutation.isPending}
+              className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
+            >
+              Save
+            </Button>
+          </div>
+        </Form>
+      </Modal>
     </PageLayout>
   );
 }

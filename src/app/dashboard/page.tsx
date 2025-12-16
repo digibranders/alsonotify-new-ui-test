@@ -20,24 +20,24 @@ export default function DashboardPage() {
           <div className="col-span-2 h-full">
             <ProgressWidget onNavigate={(page: string) => {
               if (page === 'requirements') {
-                router.push('/requirements');
+                router.push('/dashboard/kanban');
               } else if (page === 'tasks') {
-                router.push('/tasks');
+                router.push('/dashboard/tasks');
               }
             }} />
           </div>
           <div className="col-span-1 h-full">
-            <MeetingsWidget onNavigate={() => router.push('/calendar')} />
+            <MeetingsWidget onNavigate={() => router.push('/dashboard/calendar')} />
           </div>
         </div>
 
         {/* Row 3: Notes & Leaves */}
         <div className="grid grid-cols-3 gap-5 flex-1">
           <div className="col-span-2 h-full">
-            <TodoWidget onNavigate={() => router.push('/tasks')} />
+            <TodoWidget onNavigate={() => router.push('/dashboard/tasks')} />
           </div>
           <div className="col-span-1 h-full">
-            <LeavesWidget onNavigate={() => router.push('/leaves')} />
+            <LeavesWidget onNavigate={() => router.push('/dashboard/leaves')} />
           </div>
         </div>
       </div>

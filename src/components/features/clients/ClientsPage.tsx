@@ -155,12 +155,12 @@ export function ClientsPage() {
         </div>
 
         {/* Table Header */}
-        {/* Table Header */}
-        <div className="grid grid-cols-[40px_1.5fr_1.5fr_2fr_1.5fr_1fr_40px] items-center px-4 py-3 mb-2">
+        <div className="grid grid-cols-[40px_1.5fr_1.2fr_1.8fr_1.2fr_1fr_1fr_40px] items-center px-4 py-3 mb-2">
           <Checkbox className="scale-90" />
-          <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Company Name</span>
+          <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Business Name</span>
           <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Contact Person</span>
           <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Email</span>
+          <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Contact</span>
           <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Onboarding</span>
           <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Country</span>
           <span></span>
@@ -187,41 +187,53 @@ export function ClientsPage() {
 
         {/* Invite Modal */}
         <Modal
-          title={
-            <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-              <div className="p-2 rounded-full bg-[#F7F7F7]">
-                <Briefcase className="w-5 h-5 text-[#666666]" />
-              </div>
-              Invite Client
-            </div>
-          }
           open={isDialogOpen}
           onCancel={() => setIsDialogOpen(false)}
           footer={null}
           width={500}
           centered
           className="rounded-[16px] overflow-hidden"
+          bodyStyle={{
+            padding: 0,
+          }}
         >
-          <div className="mt-6 space-y-6">
-            <div className="space-y-2">
-              <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                Client Email Address <span className="text-[#ff3b3b]">*</span>
-              </label>
-              <Input
-                placeholder="email@company.com"
-                className="h-11 font-['Manrope:Medium',sans-serif]"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-              />
-              <p className="text-[12px] text-[#666666]">
+          <div className="flex flex-col h-full bg-white">
+            {/* Fixed Header */}
+            <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                  <div className="p-2 rounded-full bg-[#F7F7F7]">
+                    <Briefcase className="w-5 h-5 text-[#666666]" />
+                  </div>
+                  Invite Client
+                </div>
+              </div>
+              <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
                 An invitation link will be sent to this email address for the client to complete their registration.
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#EEEEEE]">
+            {/* Scrollable Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-6">
+              <div className="space-y-2">
+                <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                  Client Email Address <span className="text-[#ff3b3b]">*</span>
+                </label>
+                <Input
+                  placeholder="email@company.com"
+                  className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${inviteEmail ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Fixed Footer */}
+            <div className="flex-shrink-0 border-t border-[#EEEEEE] px-6 py-6 flex items-center justify-end bg-white gap-4">
               <Button
+                type="text"
                 onClick={() => setIsDialogOpen(false)}
-                className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666] border-none hover:bg-[#F7F7F7]"
+                className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
               >
                 Cancel
               </Button>
@@ -229,7 +241,7 @@ export function ClientsPage() {
                 type="primary"
                 onClick={handleInviteClient}
                 loading={inviteUserMutation.isPending}
-                className="h-10 px-6 bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] border-none rounded-lg"
+                className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
               >
                 Send Invitation
               </Button>
@@ -258,8 +270,13 @@ function ClientRow({ client }: { client: any }) {
     return `${day}-${month}-${year}`;
   };
 
+  // Get phone number from various possible fields
+  const getPhoneNumber = () => {
+    return client.phone || client.phone_number || client.mobile_number || 'N/A';
+  };
+
   return (
-    <div className="group grid grid-cols-[40px_1.5fr_1.5fr_2fr_1.5fr_1fr_40px] items-center px-4 py-4 bg-white border border-[#E5E7EB] rounded-[12px] hover:border-[#ff3b3b] hover:shadow-md transition-all">
+    <div className="group grid grid-cols-[40px_1.5fr_1.2fr_1.8fr_1.2fr_1fr_1fr_40px] items-center px-4 py-4 bg-white border border-[#E5E7EB] rounded-[12px] hover:border-[#ff3b3b] hover:shadow-md transition-all">
       <Checkbox className="scale-90" />
 
       <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111] truncate pr-4">
@@ -275,7 +292,11 @@ function ClientRow({ client }: { client: any }) {
       </span>
 
       <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111] truncate pr-4">
-        {formatDate(client.created_at)}
+        {getPhoneNumber()}
+      </span>
+
+      <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111] truncate pr-4">
+        {formatDate(client.created_at || client.associated_date)}
       </span>
 
       <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111] truncate pr-4">

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, ReactNode } from 'react';
-import { Sidebar } from '../components/layout/Sidebar';
-import { Header } from '../components/layout/Header';
+import { Sidebar } from '../components/common/Sidebar';
+import { Header } from '../components/common/Topbar';
 
 interface AlsonotifyLayoutWrapperProps {
   children: ReactNode;

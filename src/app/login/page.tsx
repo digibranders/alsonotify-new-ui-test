@@ -93,7 +93,6 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               prefix={<LockOutlined className="text-[#999999]" />}
               className="h-10 rounded-full border border-white/60 bg-white/80 px-4 text-[15px] hover:bg-white focus:bg-white"
-              iconRender={(visible) => (visible ? <></> : <></>)} // Hide default eye if needed, or keep it. Input.Password has eye by default.
               required
             />
 

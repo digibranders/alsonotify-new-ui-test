@@ -1,23 +1,39 @@
 import { PageLayout } from '../../layout/PageLayout';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
-import { Modal, Checkbox } from "antd";
-import { User, Briefcase, Mail, Trash2 } from 'lucide-react';
-import { EmployeeForm, EmployeeFormData } from './forms/EmployeeForm';
+import { Modal, Checkbox, Tooltip, Dropdown } from "antd";
+import { ShieldCheck, Briefcase, Download, Trash2, User as UserIcon, Users } from 'lucide-react';
+import { EmployeeForm, EmployeeFormData } from '../../modals/EmployeesForm';
+import { EmployeeDetailsModal } from '../../modals/EmployeeDetailsModal';
 import { EmployeeRow } from './rows/EmployeeRow';
-import { useEmployees, useCreateEmployee, useUpdateEmployee, useCompanyDepartments, useUpdateEmployeeStatus } from '@/hooks/useUser';
+import { useEmployees, useCreateEmployee, useUpdateEmployee, useCompanyDepartments, useUpdateEmployeeStatus, useUserDetails } from '@/hooks/useUser';
 import { message } from 'antd';
 import { useRouter } from 'next/navigation';
-import { Employee } from '@/lib/types';
+import { Employee } from '@/types/genericTypes';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function EmployeesPage() {
   const router = useRouter();
-  const { data: employeesData, isLoading } = useEmployees();
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
+  
+  // Build query parameters based on active tab
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    if (activeTab === 'inactive') {
+      params.append('is_active', 'false');
+    } else {
+      params.append('is_active', 'true');
+    }
+    return params.toString();
+  }, [activeTab]);
+
+  const { data: employeesData, isLoading } = useEmployees(queryParams);
   const { data: departmentsData } = useCompanyDepartments();
+  const { data: currentUserData } = useUserDetails();
   const createEmployeeMutation = useCreateEmployee();
   const updateEmployeeMutation = useUpdateEmployee();
   const updateEmployeeStatusMutation = useUpdateEmployeeStatus();
-  const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({
     role: 'All',
@@ -26,23 +42,58 @@ export function EmployeesPage() {
     employmentType: 'All'
   });
   const [selectedEmployees, setSelectedEmployees] = useState<number[]>([]);
+  const [showAccessDropdown, setShowAccessDropdown] = useState(false);
+  const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
+  const accessDropdownRef = useRef<HTMLDivElement>(null);
+  const departmentDropdownRef = useRef<HTMLDivElement>(null);
 
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedEmployeeForDetails, setSelectedEmployeeForDetails] = useState<Employee | null>(null);
 
-  // Helper function to map role to access level - must be defined before useMemo
-  const mapRoleToAccess = (roleId: any, roleName?: string): 'Admin' | 'Manager' | 'Leader' | 'Employee' => {
-    // Map role name to access level if available
+  // Helper function to map role_id to access level
+  const mapRoleIdToAccess = (roleId: number | null | undefined): 'Admin' | 'Manager' | 'Leader' | 'Employee' => {
+    if (!roleId) return 'Employee';
+    
+    // Reverse mapping: role_id -> access level
+    // Based on the seed data order: Super Admin (1), Employee (2), HR (3), Admin (4), Leader (5), Finance (6), Manager (7)
+    // Map to our UI access levels: Admin, Manager, Leader, Employee
+    const roleIdMapping: Record<number, 'Admin' | 'Manager' | 'Leader' | 'Employee'> = {
+      1: 'Admin',   // Super Admin -> Admin
+      2: 'Employee', // Employee -> Employee
+      3: 'Employee', // HR -> Employee
+      4: 'Admin',   // Admin -> Admin
+      5: 'Leader', // Leader -> Leader
+      6: 'Employee', // Finance -> Employee
+      7: 'Manager', // Manager -> Manager
+    };
+    
+    return roleIdMapping[roleId] || 'Employee';
+  };
+
+  // Helper function to map role to access level - wrapped in useCallback to avoid dependency warning
+  const mapRoleToAccess = useCallback((roleId: any, roleName?: string): 'Admin' | 'Manager' | 'Leader' | 'Employee' => {
+    // First try to map by role_id if available
+    if (roleId) {
+      const mapped = mapRoleIdToAccess(roleId);
+      if (mapped !== 'Employee' || !roleName) {
+        return mapped;
+      }
+    }
+    
+    // Fallback to role name mapping if role_id mapping didn't work
     if (roleName) {
       const roleLower = roleName.toLowerCase();
       if (roleLower.includes('admin')) return 'Admin';
-      if (roleLower.includes('manager') || roleLower.includes('lead')) return 'Manager';
+      if (roleLower.includes('manager')) return 'Manager';
       if (roleLower.includes('leader')) return 'Leader';
     }
+    
     // Default mapping
     return 'Employee';
-  };
+  }, []);
 
   // Transform backend data to UI format
   const employees = useMemo(() => {
@@ -53,8 +104,15 @@ export function EmployeesPage() {
       role: emp.designation || 'Unassigned',
       email: emp.email || '',
       phone: emp.mobile_number || emp.phone || '',
-      hourlyRate: emp.hourly_rates ? `$${emp.hourly_rates}` : 'N/A',
-      dateOfJoining: emp.date_of_joining ? new Date(emp.date_of_joining).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A',
+      hourlyRate: emp.hourly_rates ? `${emp.hourly_rates}/Hr` : 'N/A',
+      dateOfJoining: emp.date_of_joining ? (() => {
+        const date = new Date(emp.date_of_joining);
+        const day = date.getDate().toString().padStart(2, '0');
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = monthNames[date.getMonth()];
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+      })() : 'N/A',
       experience: emp.experience || 0,
       skillsets: emp.skills?.join(', ') || 'None',
       status: (emp.user_employee?.is_active !== false ? 'active' : 'inactive') as 'active' | 'inactive',
@@ -65,10 +123,17 @@ export function EmployeesPage() {
       currency: 'USD',
       workingHours: emp.working_hours?.start_time && emp.working_hours?.end_time ? 8 : 0,
       leaves: emp.no_of_leaves || 0,
-      // Mock Data for Employment Type (Randomly assigned for demo)
-      employmentType: ['In-house', 'Freelancer', 'Agency'][Math.floor(Math.random() * 3)] as 'In-house' | 'Freelancer' | 'Agency',
+      // Map employment type - convert old values to new format
+      employmentType: (() => {
+        // If backend provides employment type, use it; otherwise default
+        const type = emp.employment_type || emp.employmentType;
+        if (type === 'In-house') return 'Full-time';
+        if (type === 'Freelancer' || type === 'Agency') return 'Contract';
+        if (type === 'Full-time' || type === 'Contract' || type === 'Part-time') return type;
+        return ['Full-time', 'Contract', 'Part-time'][Math.floor(Math.random() * 3)] as 'Full-time' | 'Contract' | 'Part-time';
+      })(),
     }));
-  }, [employeesData]);
+  }, [employeesData, mapRoleToAccess]);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => {
@@ -86,7 +151,11 @@ export function EmployeesPage() {
           ? (emp.access === 'Employee')
           : emp.access === filters.access);
 
-      const matchesType = filters.employmentType === 'All' || emp.employmentType === filters.employmentType;
+      const matchesType = filters.employmentType === 'All' || 
+        (filters.employmentType === 'Full-time' && (emp.employmentType === 'Full-time' || emp.employmentType === 'In-house')) ||
+        (filters.employmentType === 'Contract' && (emp.employmentType === 'Contract' || emp.employmentType === 'Freelancer' || emp.employmentType === 'Agency')) ||
+        (filters.employmentType === 'Part-time' && emp.employmentType === 'Part-time') ||
+        (filters.employmentType !== 'All' && emp.employmentType === filters.employmentType);
 
       return matchesTab && matchesSearch && matchesRole && matchesDept && matchesAccess && matchesType;
     });
@@ -109,9 +178,9 @@ export function EmployeesPage() {
   const filterOptions: FilterOption[] = [
     {
       id: 'role',
-      label: 'Role',
+      label: 'Designation',
       options: uniqueRoles,
-      placeholder: 'Role/Designation',
+      placeholder: 'Designation',
       defaultValue: 'All'
     },
     {
@@ -122,17 +191,17 @@ export function EmployeesPage() {
       defaultValue: 'All'
     },
     {
+      id: 'employmentType',
+      label: 'Employment Type',
+      options: ['All', 'Full-time', 'Contract', 'Part-time'],
+      placeholder: 'Employment Type',
+      defaultValue: 'All'
+    },
+    {
       id: 'access',
       label: 'Access Level',
       options: accessOptions,
       placeholder: 'Access Level',
-      defaultValue: 'All'
-    },
-    {
-      id: 'employmentType',
-      label: 'Employment Type',
-      options: ['All', 'In-house', 'Freelancer', 'Agency'],
-      placeholder: 'Employment Type',
       defaultValue: 'All'
     }
   ];
@@ -149,6 +218,11 @@ export function EmployeesPage() {
   const handleOpenDialog = (employee?: Employee) => {
     setEditingEmployee(employee || null);
     setIsDialogOpen(true);
+  };
+
+  const handleViewDetails = (employee: Employee) => {
+    setSelectedEmployeeForDetails(employee);
+    setIsDetailsModalOpen(true);
   };
 
   const handleDeactivateEmployee = async (employeeId: number, isCurrentlyActive: boolean) => {
@@ -181,6 +255,9 @@ export function EmployeesPage() {
     );
     const departmentId = selectedDepartment?.id || null;
 
+    // Map access level to role_id
+    const roleId = getRoleIdByAccess(data.access) || data.role_id || editingEmployee?.roleId;
+
     // Parse hourly rate (remove $ if present)
     const hourlyRate = parseFloat(data.hourlyRate.replace(/[^0-9.]/g, '')) || 0;
 
@@ -206,7 +283,7 @@ export function EmployeesPage() {
           mobile_number: data.phone,
           designation: data.role,
           department_id: departmentId,
-          role_id: data.role_id || editingEmployee.roleId,
+          role_id: roleId,
           experience: parseInt(data.experience) || 0,
           skills: data.skillsets.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0),
           date_of_joining: dateOfJoining,
@@ -257,10 +334,19 @@ export function EmployeesPage() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedEmployees.length === filteredEmployees.length) {
-      setSelectedEmployees([]);
+    // Check if all filtered employees are selected
+    const allFilteredSelected = filteredEmployees.length > 0 && 
+      filteredEmployees.every(emp => selectedEmployees.includes(emp.id));
+    
+    if (allFilteredSelected) {
+      // Deselect all filtered employees (but keep selections from other filters)
+      const filteredIds = new Set(filteredEmployees.map(e => e.id));
+      setSelectedEmployees(selectedEmployees.filter(id => !filteredIds.has(id)));
     } else {
-      setSelectedEmployees(filteredEmployees.map(e => e.id));
+      // Select all filtered employees (merge with existing selections)
+      const filteredIds = filteredEmployees.map(e => e.id);
+      const combined = [...new Set([...selectedEmployees, ...filteredIds])];
+      setSelectedEmployees(combined);
     }
   };
 
@@ -272,12 +358,499 @@ export function EmployeesPage() {
     }
   };
 
+  // Get current user ID to prevent self-deactivation
+  const currentUserId = useMemo(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+        if (localUser?.id || localUser?.user_id) {
+          return localUser.id || localUser.user_id;
+        }
+      }
+    } catch (error) {
+      console.error("Error reading user from localStorage:", error);
+    }
+    return currentUserData?.result?.user?.id || currentUserData?.result?.user?.user_id || null;
+  }, [currentUserData]);
+
+  // Helper to map access level to role_id
+  // Based on seed data order: Super Admin (1), Employee (2), HR (3), Admin (4), Leader (5), Finance (6), Manager (7)
+  const getRoleIdByAccess = (access: 'Admin' | 'Manager' | 'Leader' | 'Employee'): number | null => {
+    const roleMapping: Record<string, number> = {
+      'Admin': 4,      // Admin role (id: 4)
+      'Manager': 7,    // Manager role (id: 7)
+      'Leader': 5,     // Leader role (id: 5)
+      'Employee': 2,   // Employee role (id: 2)
+    };
+    return roleMapping[access] || null;
+  };
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (accessDropdownRef.current && !accessDropdownRef.current.contains(event.target as Node)) {
+        setShowAccessDropdown(false);
+      }
+      if (departmentDropdownRef.current && !departmentDropdownRef.current.contains(event.target as Node)) {
+        setShowDepartmentDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Bulk update access level
+  const handleBulkUpdateAccess = async (access: 'Admin' | 'Manager' | 'Leader' | 'Employee') => {
+    if (selectedEmployees.length === 0) {
+      message.warning('Please select at least one employee');
+      return;
+    }
+
+    const roleId = getRoleIdByAccess(access);
+    if (!roleId) {
+      message.error('Invalid access level');
+      return;
+    }
+
+    // Prepare all update payloads first
+    const updatePromises: Promise<any>[] = [];
+    const failedEmployees: { id: number; name: string; reason: string }[] = [];
+
+    for (const empId of selectedEmployees) {
+      // Get employee data to include required fields
+      const employee = employees.find(e => e.id === empId);
+      if (!employee) {
+        failedEmployees.push({ id: empId, name: 'Unknown', reason: 'Employee not found in list' });
+        continue;
+      }
+
+      // Get raw backend employee data to preserve all fields
+      const rawEmployee = employeesData?.result?.find((emp: any) => {
+        const empBackendId = emp.user_id || emp.id;
+        return empBackendId === empId || empBackendId === parseInt(String(empId));
+      });
+      if (!rawEmployee) {
+        failedEmployees.push({ id: empId, name: employee.name, reason: 'Raw employee data not found' });
+        continue;
+      }
+
+      // Parse hourly rate from display format (e.g., "200/Hr" -> 200)
+      const hourlyRate = employee.hourlyRate && employee.hourlyRate !== 'N/A' 
+        ? parseFloat(employee.hourlyRate.replace(/[^0-9.]/g, '')) 
+        : (rawEmployee.hourly_rates || null);
+
+      // Parse date of joining - try multiple formats
+      let dateOfJoining = null;
+      if (employee.dateOfJoining && employee.dateOfJoining !== 'N/A') {
+        try {
+          // Parse from format "DD-MMM-YYYY" (e.g., "17-Dec-2007")
+          const dateParts = employee.dateOfJoining.split('-');
+          if (dateParts.length === 3) {
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthIndex = monthNames.indexOf(dateParts[1]);
+            if (monthIndex !== -1) {
+              const date = new Date(parseInt(dateParts[2]), monthIndex, parseInt(dateParts[0]));
+              if (!isNaN(date.getTime())) {
+                dateOfJoining = date.toISOString();
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing date:", e);
+        }
+      }
+      // Fallback to raw employee date
+      if (!dateOfJoining && rawEmployee.date_of_joining) {
+        try {
+          const date = new Date(rawEmployee.date_of_joining);
+          if (!isNaN(date.getTime())) {
+            dateOfJoining = date.toISOString();
+          }
+        } catch (e) {
+          console.error("Error parsing raw date:", e);
+        }
+      }
+
+      // Ensure working_hours is an object (not null) - backend requires object type
+      let workingHours: any = undefined;
+      if (rawEmployee.working_hours && typeof rawEmployee.working_hours === 'object' && !Array.isArray(rawEmployee.working_hours)) {
+        workingHours = rawEmployee.working_hours;
+      }
+
+      // Build update payload with all preserved fields
+      const updatePayload = {
+        id: empId,
+        name: employee.name, // Required
+        email: employee.email, // Required
+        role_id: roleId, // The field we're updating
+        // Preserve all existing fields to prevent them from being set to null
+        designation: rawEmployee.designation || null,
+        mobile_number: rawEmployee.mobile_number || rawEmployee.phone || null,
+        hourly_rates: hourlyRate,
+        salary_yearly: rawEmployee.salary_yearly || rawEmployee.salary || null,
+        experience: rawEmployee.experience || 0,
+        skills: Array.isArray(rawEmployee.skills) ? rawEmployee.skills : [],
+        date_of_joining: dateOfJoining,
+        no_of_leaves: rawEmployee.no_of_leaves || null,
+        // Preserve address fields
+        address: rawEmployee.address || null,
+        city: rawEmployee.city || null,
+        state: rawEmployee.state || null,
+        zipcode: rawEmployee.zipcode || null,
+        country: rawEmployee.country || null,
+        late_time: rawEmployee.late_time || null,
+        profile_pic: rawEmployee.profile_pic || null,
+        // Only include working_hours if it's a valid object, otherwise omit it (don't send null)
+        ...(workingHours !== undefined ? { working_hours: workingHours } : {}),
+      };
+
+      // Create promise for this update using mutateAsync
+      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload as any).catch((error: any) => {
+        const errorMsg = error?.response?.data?.message || 'Update failed';
+        failedEmployees.push({ id: empId, name: employee.name, reason: errorMsg });
+        throw error; // Re-throw to mark as failed in Promise.allSettled
+      });
+
+      updatePromises.push(updatePromise);
+    }
+
+    // Execute all updates and wait for completion
+    try {
+      const results = await Promise.allSettled(updatePromises);
+      
+      // Count successful updates
+      const successfulUpdates = results.filter(r => r.status === 'fulfilled').length;
+      const totalFailed = failedEmployees.length;
+      const totalSelected = selectedEmployees.length;
+      
+      if (totalFailed === 0 && successfulUpdates === totalSelected) {
+        message.success(`Updated access level to ${access} for ${totalSelected} employee(s)`);
+        setSelectedEmployees([]);
+        setShowAccessDropdown(false);
+        // Query invalidation is handled in the hook's onSuccess, but we can force refetch
+        queryClient.invalidateQueries({ queryKey: ["employees"] });
+        // Also invalidate user details if current user's role was updated
+        if (currentUserId && selectedEmployees.includes(currentUserId)) {
+          queryClient.invalidateQueries({ queryKey: ["user", "details"] });
+        }
+      } else if (successfulUpdates > 0) {
+        message.warning(`Updated ${successfulUpdates} employee(s), ${totalFailed} failed`);
+        console.error('Failed employees:', failedEmployees);
+      } else {
+        message.error(`Failed to update all ${totalSelected} employee(s)`);
+        console.error('Failed employees:', failedEmployees);
+      }
+    } catch (error) {
+      console.error('Bulk update error:', error);
+      message.error('An error occurred during bulk update');
+    }
+  };
+
+  // Bulk update department
+  const handleBulkUpdateDepartment = async (departmentName: string) => {
+    if (selectedEmployees.length === 0) {
+      message.warning('Please select at least one employee');
+      return;
+    }
+
+    const selectedDepartment = departmentsData?.result?.find(
+      (dept: any) => dept.name === departmentName
+    );
+    
+    if (!selectedDepartment || !selectedDepartment.id) {
+      message.error(`Department "${departmentName}" not found`);
+      return;
+    }
+    
+    const departmentId = selectedDepartment.id;
+
+    // Prepare all update payloads first
+    const updatePromises: Promise<any>[] = [];
+    const failedEmployees: { id: number; name: string; reason: string }[] = [];
+
+    for (const empId of selectedEmployees) {
+      // Get employee data to include required fields
+      const employee = employees.find(e => e.id === empId);
+      if (!employee) {
+        failedEmployees.push({ id: empId, name: 'Unknown', reason: 'Employee not found in list' });
+        continue;
+      }
+
+      // Get raw backend employee data to preserve all fields
+      const rawEmployee = employeesData?.result?.find((emp: any) => {
+        const empBackendId = emp.user_id || emp.id;
+        return empBackendId === empId || empBackendId === parseInt(String(empId));
+      });
+      if (!rawEmployee) {
+        failedEmployees.push({ id: empId, name: employee.name, reason: 'Raw employee data not found' });
+        continue;
+      }
+
+      // Parse hourly rate from display format (e.g., "200/Hr" -> 200)
+      const hourlyRate = employee.hourlyRate && employee.hourlyRate !== 'N/A' 
+        ? parseFloat(employee.hourlyRate.replace(/[^0-9.]/g, '')) 
+        : (rawEmployee.hourly_rates || null);
+
+      // Parse date of joining - try multiple formats
+      let dateOfJoining = null;
+      if (employee.dateOfJoining && employee.dateOfJoining !== 'N/A') {
+        try {
+          // Parse from format "DD-MMM-YYYY" (e.g., "17-Dec-2007")
+          const dateParts = employee.dateOfJoining.split('-');
+          if (dateParts.length === 3) {
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthIndex = monthNames.indexOf(dateParts[1]);
+            if (monthIndex !== -1) {
+              const date = new Date(parseInt(dateParts[2]), monthIndex, parseInt(dateParts[0]));
+              if (!isNaN(date.getTime())) {
+                dateOfJoining = date.toISOString();
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing date:", e);
+        }
+      }
+      // Fallback to raw employee date
+      if (!dateOfJoining && rawEmployee.date_of_joining) {
+        try {
+          const date = new Date(rawEmployee.date_of_joining);
+          if (!isNaN(date.getTime())) {
+            dateOfJoining = date.toISOString();
+          }
+        } catch (e) {
+          console.error("Error parsing raw date:", e);
+        }
+      }
+
+      // Ensure working_hours is an object (not null) - backend requires object type
+      let workingHours: any = undefined;
+      if (rawEmployee.working_hours && typeof rawEmployee.working_hours === 'object' && !Array.isArray(rawEmployee.working_hours)) {
+        workingHours = rawEmployee.working_hours;
+      }
+
+      // Get current role_id - preserve it
+      const currentRoleId = employee.roleId || getRoleIdByAccess(employee.access) || null;
+      if (!currentRoleId) {
+        failedEmployees.push({ id: empId, name: employee.name, reason: 'Unable to determine current role' });
+        continue;
+      }
+
+      // Build update payload with all preserved fields
+      const updatePayload = {
+        id: empId,
+        name: employee.name, // Required
+        email: employee.email, // Required
+        role_id: currentRoleId, // Preserve current role
+        department_id: departmentId, // The field we're updating
+        // Preserve all existing fields to prevent them from being set to null
+        designation: rawEmployee.designation || null,
+        mobile_number: rawEmployee.mobile_number || rawEmployee.phone || null,
+        hourly_rates: hourlyRate,
+        salary_yearly: rawEmployee.salary_yearly || rawEmployee.salary || null,
+        experience: rawEmployee.experience || 0,
+        skills: Array.isArray(rawEmployee.skills) ? rawEmployee.skills : [],
+        date_of_joining: dateOfJoining,
+        no_of_leaves: rawEmployee.no_of_leaves || null,
+        // Preserve address fields
+        address: rawEmployee.address || null,
+        city: rawEmployee.city || null,
+        state: rawEmployee.state || null,
+        zipcode: rawEmployee.zipcode || null,
+        country: rawEmployee.country || null,
+        late_time: rawEmployee.late_time || null,
+        profile_pic: rawEmployee.profile_pic || null,
+        // Only include working_hours if it's a valid object, otherwise omit it (don't send null)
+        ...(workingHours !== undefined ? { working_hours: workingHours } : {}),
+      };
+
+      // Create promise for this update using mutateAsync
+      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload as any).catch((error: any) => {
+        const errorMsg = error?.response?.data?.message || 'Update failed';
+        failedEmployees.push({ id: empId, name: employee.name, reason: errorMsg });
+        throw error; // Re-throw to mark as failed in Promise.allSettled
+      });
+
+      updatePromises.push(updatePromise);
+    }
+
+    // Execute all updates and wait for completion
+    try {
+      const results = await Promise.allSettled(updatePromises);
+      
+      // Count successful updates
+      const successfulUpdates = results.filter(r => r.status === 'fulfilled').length;
+      const totalFailed = failedEmployees.length;
+      const totalSelected = selectedEmployees.length;
+      
+      if (totalFailed === 0 && successfulUpdates === totalSelected) {
+        message.success(`Updated department to ${departmentName} for ${totalSelected} employee(s)`);
+        setSelectedEmployees([]);
+        setShowDepartmentDropdown(false);
+        // Query invalidation is handled in the hook's onSuccess, but we can force refetch
+        queryClient.invalidateQueries({ queryKey: ["employees"] });
+      } else if (successfulUpdates > 0) {
+        message.warning(`Updated ${successfulUpdates} employee(s), ${totalFailed} failed`);
+        console.error('Failed employees:', failedEmployees);
+      } else {
+        message.error(`Failed to update all ${totalSelected} employee(s)`);
+        console.error('Failed employees:', failedEmployees);
+      }
+    } catch (error) {
+      console.error('Bulk update error:', error);
+      message.error('An error occurred during bulk update');
+    }
+  };
+
+  // Export to CSV
+  const handleExportToCSV = () => {
+    if (selectedEmployees.length === 0) {
+      message.warning('Please select at least one employee');
+      return;
+    }
+
+    // Get selected employees data - use employees array which contains all employees
+    const selectedEmployeesData = employees.filter(emp => selectedEmployees.includes(emp.id));
+    
+    if (selectedEmployeesData.length === 0) {
+      message.error('No employee data found for selected employees');
+      return;
+    }
+
+    // CSV Headers
+    const headers = ['Name', 'Email', 'Role', 'Department', 'Access Level', 'Employment Type', 'Hourly Rate', 'Date of Joining', 'Status'];
+    
+    // CSV Rows - escape special characters properly
+    const rows = selectedEmployeesData.map(emp => [
+      emp.name || '',
+      emp.email || '',
+      emp.role || '',
+      emp.department || '',
+      emp.access || '',
+      emp.employmentType || 'N/A',
+      emp.hourlyRate || 'N/A',
+      emp.dateOfJoining || 'N/A',
+      emp.status || ''
+    ]);
+
+    // Convert to CSV format with proper escaping
+    const escapeCSV = (cell: any): string => {
+      const str = String(cell || '');
+      // Escape quotes by doubling them, and wrap in quotes if contains comma, quote, or newline
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(escapeCSV).join(','))
+    ].join('\n');
+
+    // Create blob and download
+    try {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `employees_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url); // Clean up the URL
+      
+      message.success(`Exported ${selectedEmployeesData.length} employee(s) to CSV`);
+    } catch (error) {
+      console.error('Export error:', error);
+      message.error('Failed to export employees to CSV');
+    }
+  };
+
+  // Bulk delete/deactivate
+  const handleBulkDelete = () => {
+    if (selectedEmployees.length === 0) {
+      message.warning('Please select at least one employee');
+      return;
+    }
+
+    // Filter out current user from selection
+    const employeesToDeactivate = selectedEmployees.filter(empId => empId !== currentUserId);
+    
+    if (employeesToDeactivate.length !== selectedEmployees.length) {
+      message.warning('You cannot deactivate yourself. Removed from selection.');
+    }
+
+    if (employeesToDeactivate.length === 0) {
+      message.warning('No employees to deactivate');
+      setSelectedEmployees([]);
+      return;
+    }
+
+    Modal.confirm({
+      title: 'Deactivate Employees',
+      content: `Are you sure you want to deactivate ${employeesToDeactivate.length} employee(s)?`,
+      okText: 'Yes, Deactivate',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        // Prepare all deactivation promises
+        const deactivatePromises: Promise<any>[] = [];
+        const failedEmployees: { id: number; name: string; reason: string }[] = [];
+
+        for (const empId of employeesToDeactivate) {
+          // Get employee name for error reporting
+          const employee = employees.find(e => e.id === empId);
+          const employeeName = employee?.name || 'Unknown';
+
+          // Create promise for this deactivation using mutateAsync
+          const deactivatePromise = updateEmployeeStatusMutation.mutateAsync({
+            user_id: empId,
+            is_active: false,
+          }).catch((error: any) => {
+            const errorMsg = error?.response?.data?.message || 'Deactivation failed';
+            failedEmployees.push({ id: empId, name: employeeName, reason: errorMsg });
+            throw error; // Re-throw to mark as failed in Promise.allSettled
+          });
+
+          deactivatePromises.push(deactivatePromise);
+        }
+
+        // Execute all deactivations and wait for completion
+        try {
+          const results = await Promise.allSettled(deactivatePromises);
+          
+          // Count successful deactivations
+          const successfulDeactivations = results.filter(r => r.status === 'fulfilled').length;
+          const totalFailed = failedEmployees.length;
+          const totalToDeactivate = employeesToDeactivate.length;
+          
+          if (totalFailed === 0 && successfulDeactivations === totalToDeactivate) {
+            message.success(`Deactivated ${totalToDeactivate} employee(s)`);
+            setSelectedEmployees([]);
+            // Query invalidation is handled in the hook's onSuccess
+          } else if (successfulDeactivations > 0) {
+            message.warning(`Deactivated ${successfulDeactivations} employee(s), ${totalFailed} failed`);
+            console.error('Failed employees:', failedEmployees);
+          } else {
+            message.error(`Failed to deactivate all ${totalToDeactivate} employee(s)`);
+            console.error('Failed employees:', failedEmployees);
+          }
+        } catch (error) {
+          console.error('Bulk deactivation error:', error);
+          message.error('An error occurred during bulk deactivation');
+        }
+      },
+    });
+  };
+
   return (
     <PageLayout
       title="Employees"
       tabs={[
         { id: 'active', label: 'Active' },
-        { id: 'inactive', label: 'Inactive' }
+        { id: 'inactive', label: 'Deactivated' }
       ]}
       activeTab={activeTab}
       onTabChange={(tabId) => setActiveTab(tabId as 'active' | 'inactive')}
@@ -294,7 +867,7 @@ export function EmployeesPage() {
             selectedFilters={filters}
             onFilterChange={handleFilterChange}
             onClearFilters={clearFilters}
-            searchPlaceholder="Search by name, role, or skills..."
+            searchPlaceholder="Search by name, role, or skill"
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
           />
@@ -302,20 +875,21 @@ export function EmployeesPage() {
 
         <div className="flex-1 overflow-y-auto pb-24">
           {/* Table Header */}
-          <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2.5fr_1fr_1.5fr_1fr_0.8fr_1fr_0.3fr] gap-4 px-4 py-3 mb-2 items-center">
+          <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2fr_1.8fr_1.2fr_1fr_1fr_1.2fr_40px] gap-4 px-4 py-3 mb-2 items-center">
             <div className="flex justify-center">
               <Checkbox
-                checked={filteredEmployees.length > 0 && selectedEmployees.length === filteredEmployees.length}
+                checked={filteredEmployees.length > 0 && 
+                  filteredEmployees.every(emp => selectedEmployees.includes(emp.id))}
                 onChange={toggleSelectAll}
               />
             </div>
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Employee Details</p>
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Type</p>
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Contact</p>
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Access</p>
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Hourly Rate</p>
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Date of Joining</p>
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide"></p>
+            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Name</p>
+            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Email Address</p>
+            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Access Level</p>
+            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Type</p>
+            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Hourly Rate</p>
+            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Date of Joining</p>
+            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider"></p>
           </div>
 
           <div className="space-y-2">
@@ -327,6 +901,7 @@ export function EmployeesPage() {
                 onSelect={() => toggleSelect(employee.id)}
                 onEdit={() => handleOpenDialog(employee)}
                 onDeactivate={() => handleDeactivateEmployee(employee.id, employee.status === 'active')}
+                onViewDetails={() => handleViewDetails(employee)}
               />
             ))}
           </div>
@@ -346,27 +921,109 @@ export function EmployeesPage() {
 
         {/* Bulk Action Bar */}
         {selectedEmployees.length > 0 && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#111111] text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-6 z-20 animate-in slide-in-from-bottom-4 duration-200">
-            <div className="flex items-center gap-2 border-r border-white/20 pr-6">
-              <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#111111] text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-4 z-20 animate-in slide-in-from-bottom-4 duration-200">
+            <div className="flex items-center gap-2">
+              <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
                 {selectedEmployees.length}
               </div>
               <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Send Email">
-                <Mail className="w-4 h-4" />
-              </button>
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Assign Department">
-                <Briefcase className="w-4 h-4" />
-              </button>
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]" title="Deactivate">
-                <Trash2 className="w-4 h-4" />
-              </button>
+            <div className="h-6 w-px bg-white/20" />
+
+            <div className="flex items-center gap-0">
+              {/* Update Access Level Button with Dropdown */}
+              <div className="relative" ref={accessDropdownRef}>
+                <Tooltip title="Update Access Level" placement="top">
+                  <button 
+                    onClick={() => setShowAccessDropdown(!showAccessDropdown)}
+                    className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                  </button>
+                </Tooltip>
+                {showAccessDropdown && (
+                  <div className="absolute bottom-full left-0 mb-2 bg-white rounded-lg shadow-lg border border-[#EEEEEE] overflow-hidden z-30 min-w-[200px]">
+                    {[
+                      { value: 'Admin', icon: ShieldCheck, color: '#7F56D9', bgColor: '#F9F5FF' },
+                      { value: 'Manager', icon: Briefcase, color: '#2E90FA', bgColor: '#EFF8FF' },
+                      { value: 'Leader', icon: Users, color: '#7F56D9', bgColor: '#F9F5FF' },
+                      { value: 'Employee', icon: UserIcon, color: '#12B76A', bgColor: '#ECFDF3' },
+                    ].map((access) => {
+                      const IconComponent = access.icon;
+                      return (
+                        <button
+                          key={access.value}
+                          onClick={() => handleBulkUpdateAccess(access.value as 'Admin' | 'Manager' | 'Leader' | 'Employee')}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F7F7F7] transition-colors text-left"
+                        >
+                          <div className="p-2 rounded-full" style={{ backgroundColor: access.bgColor }}>
+                            <IconComponent className="w-4 h-4" style={{ color: access.color }} />
+                          </div>
+                          <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">
+                            {access.value}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Change Department Button with Dropdown */}
+              <div className="relative" ref={departmentDropdownRef}>
+                <Tooltip title="Change Department" placement="top">
+                  <button 
+                    onClick={() => setShowDepartmentDropdown(!showDepartmentDropdown)}
+                    className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  >
+                    <Briefcase className="w-4 h-4" />
+                  </button>
+                </Tooltip>
+                {showDepartmentDropdown && (
+                  <div className="absolute bottom-full left-0 mb-2 bg-white rounded-lg shadow-lg border border-[#EEEEEE] overflow-hidden z-30 min-w-[200px] max-h-[300px] overflow-y-auto">
+                    {uniqueDepts.filter(dept => dept !== 'All').map((dept) => (
+                      <button
+                        key={dept}
+                        onClick={() => handleBulkUpdateDepartment(dept)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F7F7F7] transition-colors text-left"
+                      >
+                        <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">
+                          {dept}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Export Data Button */}
+              <Tooltip title="Export Data" placement="top">
+                <button 
+                  onClick={handleExportToCSV}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </Tooltip>
+
+              {/* Delete Button */}
+              <Tooltip title="Delete" placement="top">
+                <button 
+                  onClick={handleBulkDelete}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </Tooltip>
             </div>
 
-            <button onClick={() => setSelectedEmployees([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
+            <div className="h-6 w-px bg-white/20" />
+
+            <button 
+              onClick={() => setSelectedEmployees([])} 
+              className="text-[14px] font-['Manrope:Medium',sans-serif] text-white hover:text-white/80 transition-colors"
+            >
               Cancel
             </button>
           </div>
@@ -378,25 +1035,18 @@ export function EmployeesPage() {
         onCancel={() => setIsDialogOpen(false)}
         footer={null}
         width={700}
-        centered
+        centered={false}
         className="rounded-[16px] overflow-hidden"
+        style={{
+          top: '10px',
+          paddingBottom: '10px',
+        }}
+        bodyStyle={{
+          padding: 0,
+          height: 'calc(100vh - 20px)',
+        }}
       >
-        <div className="p-0">
-          <div className="border-b border-[#EEEEEE] mb-6 pb-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                <div className="p-2 rounded-full bg-[#F7F7F7]">
-                  <User className="w-5 h-5 text-[#666666]" />
-                </div>
-                {editingEmployee ? 'Edit Employee Details' : 'Add Employee'}
-              </div>
-            </div>
-            <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
-              {editingEmployee ? 'Update employee profile, access, and HR details.' : 'Onboard a new employee to the organization.'}
-            </p>
-          </div>
-
-          <EmployeeForm
+        <EmployeeForm
             departments={departmentsData?.result?.filter((dept: any) => dept.is_active !== false).map((dept: any) => dept.name) || []}
             initialData={editingEmployee ? {
               name: editingEmployee.name,
@@ -441,8 +1091,22 @@ export function EmployeesPage() {
             onCancel={() => setIsDialogOpen(false)}
             isEditing={!!editingEmployee}
           />
-        </div>
       </Modal>
+
+      {/* Employee Details Modal */}
+      <EmployeeDetailsModal
+        open={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedEmployeeForDetails(null);
+        }}
+        employee={selectedEmployeeForDetails}
+        onEdit={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedEmployeeForDetails(null);
+          handleOpenDialog(selectedEmployeeForDetails || undefined);
+        }}
+      />
     </PageLayout>
   );
 }

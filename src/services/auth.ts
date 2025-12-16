@@ -1,5 +1,5 @@
 import axiosApi from "../config/axios";
-import { ApiResponse } from "../config/constants";
+import { ApiResponse } from "../constants/constants";
 
 export const doLogin = async (params: { email: string; password: string }) => {
   try {

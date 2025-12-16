@@ -1,4 +1,4 @@
-import { Tag } from "antd";
+import { ShieldCheck, Briefcase, User, Users } from "lucide-react";
 
 interface AccessBadgeProps {
   role: string | "Admin" | "Manager" | "Leader" | "Employee";
@@ -6,56 +6,59 @@ interface AccessBadgeProps {
 }
 
 export function AccessBadge({ role, className }: AccessBadgeProps) {
-  let color = "default";
   let textColor = "#666666";
+  let iconColor = "#666666";
   let bgColor = "#F7F7F7";
-  let borderColor = "#DDDDDD";
+  let IconComponent = User;
 
   switch (role) {
     case "Admin":
-      color = "error";
-      textColor = "#ff3b3b";
-      bgColor = "#FFF5F5";
-      borderColor = "#ff3b3b";
+      textColor = "#7F56D9"; // Purple
+      iconColor = "#7F56D9"; // Purple
+      bgColor = "#F9F5FF"; // Light lavender
+      IconComponent = ShieldCheck;
       break;
     case "Manager":
-      color = "processing";
-      textColor = "#2F80ED";
-      bgColor = "#F0F7FF";
-      borderColor = "#2F80ED";
-      break;
-    case "Leader":
-      color = "warning";
-      textColor = "#F2994A";
-      bgColor = "#FFFAF5";
-      borderColor = "#F2994A";
+      textColor = "#2E90FA"; // Blue
+      iconColor = "#2E90FA"; // Blue
+      bgColor = "#EFF8FF"; // Light blue
+      IconComponent = Briefcase;
       break;
     case "Employee":
+      textColor = "#12B76A"; // Green
+      iconColor = "#12B76A"; // Green
+      bgColor = "#ECFDF3"; // Light green
+      IconComponent = User;
+      break;
+    case "Leader":
+      textColor = "#7F56D9"; // Purple (same as Admin)
+      iconColor = "#7F56D9"; // Purple (same as Admin)
+      bgColor = "#F9F5FF"; // Light lavender (same as Admin)
+      IconComponent = Users; // Two persons icon
+      break;
     default:
-      color = "default";
       textColor = "#666666";
+      iconColor = "#666666";
       bgColor = "#F7F7F7";
-      borderColor = "#DDDDDD";
+      IconComponent = User;
       break;
   }
 
-  // Using custom styling with Tag for exact visual match
   return (
-    <Tag
-      className={className}
+    <span
+      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full ${className || ''}`}
       style={{
-        color: textColor,
         backgroundColor: bgColor,
-        borderColor: borderColor,
-        borderRadius: "100px",
-        padding: "0 10px",
-        fontSize: "11px",
-        fontFamily: "'Manrope:SemiBold', sans-serif",
-        textTransform: "uppercase",
-        borderWidth: "1px",
+        color: textColor,
       }}
     >
-      {role}
-    </Tag>
+      <IconComponent 
+        className="w-3 h-3" 
+        style={{ color: iconColor }}
+      />
+      <span className="text-[11px] font-['Manrope:SemiBold',sans-serif]">
+        {role}
+      </span>
+    </span>
   );
 }

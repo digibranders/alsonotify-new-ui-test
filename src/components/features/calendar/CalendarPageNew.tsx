@@ -186,7 +186,7 @@ export function CalendarPage() {
           {/* Today's Events */}
           <div className="bg-[#F7F7F7] rounded-[16px] p-5">
             <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-4">
-              Today's Events
+              Today&apos;s Events
             </h4>
             <div className="space-y-3">
               {todayEvents.length > 0 ? (

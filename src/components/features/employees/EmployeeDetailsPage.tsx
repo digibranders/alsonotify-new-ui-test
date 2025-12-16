@@ -7,7 +7,7 @@ import { PageLayout } from '../../layout/PageLayout';
 import { AccessBadge } from '../../ui/AccessBadge';
 import { Button, Tag, Divider, Modal, message } from 'antd';
 import { Mail, Phone, Calendar, Briefcase, DollarSign, ArrowLeft, Edit } from 'lucide-react';
-import { EmployeeForm, EmployeeFormData } from './forms/EmployeeForm';
+import { EmployeeForm, EmployeeFormData } from '../../modals/EmployeesForm';
 
 export function EmployeeDetailsPage() {
   const params = useParams();
@@ -85,7 +85,7 @@ export function EmployeeDetailsPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full">
         <h2 className="text-xl font-semibold mb-2">Employee not found</h2>
-        <Button onClick={() => router.push('/employees')}>Back to Employees</Button>
+        <Button onClick={() => router.push('/dashboard/employees')}>Back to Employees</Button>
       </div>
     );
   }
@@ -118,7 +118,7 @@ export function EmployeeDetailsPage() {
       titleAction={{
         label: "Back",
         icon: <ArrowLeft className="w-5 h-5" />,
-        onClick: () => router.push('/employees'),
+        onClick: () => router.push('/dashboard/employees'),
         variant: "outline"
       }}
       action={
@@ -275,7 +275,13 @@ export function EmployeeDetailsPage() {
               workingHours: employee.workingHours.toString(),
               leaves: employee.leaves.toString(),
               role_id: employee.roleId,
-              employmentType: employee.employmentType
+              employmentType: (() => {
+                const type = employee.employmentType;
+                if (type === 'In-house') return 'Full-time';
+                if (type === 'Freelancer' || type === 'Agency') return 'Contract';
+                if (type === 'Full-time' || type === 'Contract' || type === 'Part-time') return type;
+                return 'Full-time' as 'Full-time' | 'Contract' | 'Part-time';
+              })()
             }}
             onSubmit={handleUpdateEmployee}
             onCancel={() => setIsDialogOpen(false)}
