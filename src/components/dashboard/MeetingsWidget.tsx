@@ -1,13 +1,14 @@
 import svgPaths from "../../constants/iconPaths";
 import { Plus, Clock, Calendar as CalendarIcon, X, Video } from 'lucide-react';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Modal, Input, Button, Select, DatePicker, Spin, message, Tag } from 'antd';
+import { Modal, Input, Button, Select, DatePicker, Spin, message, Tag, Popover } from 'antd';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { useEmployees } from '@/hooks/useUser';
 import { useTeamsConnectionStatus, useCalendarEvents } from '../../hooks/useCalendar';
 import { MicrosoftUserOAuth, GraphEvent, createCalendarEvent, CreateEventPayload } from '../../services/calendar';
+import { useQueryClient } from '@tanstack/react-query';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -21,6 +22,7 @@ interface Attendee {
 }
 
 export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => void }) {
+  const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -67,6 +69,18 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
   useEffect(() => {
     refetchTeamsStatus();
   }, [refetchTeamsStatus]);
+
+  // Periodically refresh meetings to remove ended meetings in real-time
+  useEffect(() => {
+    if (!isConnected) return;
+
+    // Refresh every minute to check for ended meetings
+    const interval = setInterval(() => {
+      refetchCalendarEvents();
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval);
+  }, [isConnected, refetchCalendarEvents]);
 
   // Handle event form submission
   const handleCreateEvent = useCallback(async () => {
@@ -150,7 +164,8 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
         description: ''
       });
 
-      // Refresh calendar events
+      // Invalidate and refetch calendar events to show the new event
+      queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
       await refetchCalendarEvents();
     } catch (error: any) {
       console.error("Error creating event:", error);
@@ -159,7 +174,7 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
     } finally {
       setSubmitting(false);
     }
-  }, [formData, userTimeZone, refetchCalendarEvents]);
+  }, [formData, userTimeZone, refetchCalendarEvents, queryClient]);
 
   // Transform and filter meetings
   const processedMeetings = useMemo(() => {
@@ -167,18 +182,29 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
 
     const now = dayjs();
     
-    // Filter upcoming meetings (from now onwards) and sort by start time
+    // Filter meetings that haven't ended yet (show until meeting end time)
+    // Parse event times properly - they come in ISO format and may be in UTC
     const upcoming = (eventsData.result as GraphEvent[])
       .filter((event: GraphEvent) => {
         if (event.isCancelled) return false;
-        const startTime = dayjs(event.start.dateTime);
-        return startTime.isAfter(now) || startTime.isSame(now, 'minute');
+        
+        // Parse end time - event.end.dateTime is in ISO format
+        // dayjs automatically handles timezone conversion from ISO strings
+        const endTime = dayjs(event.end.dateTime);
+        
+        // Show meeting if current time is before the meeting end time
+        // This means meetings will be shown until they end (including in-progress meetings)
+        // Use 'minute' precision to avoid microsecond comparison issues
+        const shouldShow = now.isBefore(endTime, 'minute') || now.isSame(endTime, 'minute');
+        
+        return shouldShow;
       })
       .sort((a: GraphEvent, b: GraphEvent) => 
         dayjs(a.start.dateTime).valueOf() - dayjs(b.start.dateTime).valueOf()
       )
-      .slice(0, 3) // Show only first 3 upcoming meetings
+      .slice(0, 3) // Show only first 3 meetings (upcoming or in-progress)
       .map((event: GraphEvent) => {
+        // Parse times with timezone awareness
         const startTime = dayjs(event.start.dateTime);
         const endTime = dayjs(event.end.dateTime);
         const durationMinutes = endTime.diff(startTime, 'minute');
@@ -206,10 +232,43 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
         const status = isInProgress ? 'in-progress' : 'upcoming';
 
         // Get platform from onlineMeeting
-        const platform = event.isOnlineMeeting ? (event.onlineMeetingUrl?.includes('teams') ? 'Teams' : event.onlineMeetingUrl?.includes('zoom') ? 'Zoom' : 'Meet') : 'Teams';
+        // Priority: 1. onlineMeetingProvider, 2. Check joinUrl/onlineMeetingUrl for platform indicators
+        let platform = 'Teams'; // Default to Teams for Microsoft Graph API events
+        if (event.isOnlineMeeting) {
+          // Check onlineMeetingProvider first (most reliable)
+          if (event.onlineMeetingProvider === 'teamsForBusiness') {
+            platform = 'Teams';
+          } else {
+            // Check URLs for platform indicators
+            const joinUrl = event.onlineMeeting?.joinUrl || event.onlineMeetingUrl || '';
+            const urlLower = joinUrl.toLowerCase();
+            
+            if (urlLower.includes('teams.microsoft.com') || urlLower.includes('teams.live.com') || urlLower.includes('/meetup-join/')) {
+              platform = 'Teams';
+            } else if (urlLower.includes('zoom.us') || urlLower.includes('zoom.com')) {
+              platform = 'Zoom';
+            } else if (urlLower.includes('meet.google.com') || urlLower.includes('google.com/meet')) {
+              platform = 'Meet';
+            } else if (event.onlineMeetingProvider) {
+              // If provider is set but not teamsForBusiness, default to Teams for Microsoft Graph
+              platform = 'Teams';
+            }
+            // If no indicators found and isOnlineMeeting is true, default to Teams (Microsoft Graph API)
+          }
+        }
 
         // Get organizer
         const organizer = event.organizer?.emailAddress?.name || event.organizer?.emailAddress?.address?.split('@')[0] || 'Unknown';
+
+        // Get join URL for the meeting
+        const joinUrl = event.onlineMeeting?.joinUrl || event.onlineMeetingUrl || event.webLink || null;
+        
+        // Get full attendees list for details modal
+        const allAttendees = (event.attendees || []).map((attendee: any) => ({
+          name: attendee?.emailAddress?.name || attendee?.emailAddress?.address?.split('@')[0] || 'Unknown',
+          email: attendee?.emailAddress?.address || '',
+          avatar: ''
+        }));
 
         return {
           id: event.id,
@@ -224,7 +283,12 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
           totalAttendees: event.attendees?.length || 0,
           status: status,
           platform: platform,
-          organizer: organizer
+          organizer: organizer,
+          joinUrl: joinUrl,
+          allAttendees: allAttendees,
+          description: event.body?.content || null,
+          startDateTime: startTime.toISOString(),
+          endDateTime: endTime.toISOString()
         };
       });
 
@@ -283,7 +347,15 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
           ) : (
             <div className="flex flex-col gap-2.5">
               {processedMeetings.map((meeting) => (
-                <MeetingItem key={meeting.id} {...meeting} />
+                <MeetingItem 
+                  key={meeting.id} 
+                  {...meeting}
+                  onJoin={(joinUrl) => {
+                    if (joinUrl) {
+                      window.open(joinUrl, '_blank');
+                    }
+                  }}
+                />
               ))}
             </div>
           )}
@@ -656,7 +728,61 @@ function AttendeesField({
   );
 }
 
-function MeetingItem({ title, time, duration, date, attendees, totalAttendees, platform, organizer }: { title: string; time: string; duration: string; date: { month: string; day: number }; attendees: { name: string; avatar: string | null }[]; totalAttendees: number; platform: string; organizer: string }) {
+function MeetingItem({ 
+  title, 
+  time, 
+  duration, 
+  date, 
+  attendees, 
+  totalAttendees, 
+  platform, 
+  organizer,
+  joinUrl,
+  allAttendees = [],
+  description,
+  startDateTime,
+  endDateTime,
+  onJoin
+}: { 
+  title: string; 
+  time: string; 
+  duration: string; 
+  date: { month: string; day: number }; 
+  attendees: { name: string; avatar: string | null }[]; 
+  totalAttendees: number; 
+  platform: string; 
+  organizer: string;
+  joinUrl?: string | null;
+  allAttendees?: Array<{ name: string; email: string; avatar: string }>;
+  description?: string | null;
+  startDateTime?: string;
+  endDateTime?: string;
+  onJoin?: (joinUrl: string) => void;
+}) {
+  const [showDetails, setShowDetails] = useState(false);
+
+  // Strip HTML tags from description
+  const stripHtml = (html: string | null): string => {
+    if (!html) return '';
+    if (typeof document === 'undefined') {
+      // SSR fallback - simple regex strip
+      return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    }
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  };
+
+  const handleJoinClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (joinUrl && onJoin) {
+      onJoin(joinUrl);
+    }
+  };
+
+  const handleCardClick = () => {
+    setShowDetails(true);
+  };
   // Get initials from name
   const getInitials = (name: string) => {
     return name
@@ -688,87 +814,182 @@ function MeetingItem({ title, time, duration, date, attendees, totalAttendees, p
   const isRedDate = isToday; // Red for today's date, grey for future
 
   return (
-    <div className="group p-3 rounded-xl border border-[#EEEEEE] hover:border-[#ff3b3b]/20 transition-all duration-300 hover:shadow-lg cursor-pointer">
-      <div className="flex items-start gap-2.5">
-        {/* Date Badge - Rounded Square */}
-        <div className="flex-shrink-0">
-          <div className={`w-[48px] h-[48px] rounded-[12px] flex flex-col items-center justify-center ${
-            isRedDate 
-              ? 'bg-[#ff3b3b]' 
-              : 'bg-[#E5E5E5]'
-          }`}>
-            <span className={`text-[10px] font-['Manrope:Medium',sans-serif] uppercase leading-none mb-0.5 ${
-              isRedDate ? 'text-white' : 'text-[#666666]'
-            }`}>
-              {date.month}
-            </span>
-            <span className={`text-[20px] font-['Manrope:Bold',sans-serif] leading-none ${
-              isRedDate ? 'text-white' : 'text-[#111111]'
-            }`}>
-              {date.day}
-            </span>
-          </div>
-        </div>
-
-        {/* Meeting Info */}
-        <div className="flex-1 min-w-0">
-          {/* Title & Platform Tag */}
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <h4 className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] line-clamp-1 flex-1">
-              {title}
-            </h4>
-            <span 
-              className="px-1.5 py-0.5 rounded-full text-[9px] font-['Manrope:Medium',sans-serif] flex-shrink-0 flex items-center gap-0.5"
-              style={{ backgroundColor: platformColor.bg, color: platformColor.text }}
-            >
-              <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-              </svg>
-              {platform}
-            </span>
-          </div>
-
-          {/* Time, Duration, Host & Attendees - All in one line */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="flex items-center gap-1 text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">
-                <Clock className="size-3.5" strokeWidth={2} />
+    <>
+      <Popover
+        open={showDetails}
+        onOpenChange={setShowDetails}
+        trigger="click"
+        placement="right"
+        content={
+          <div className="w-[300px] bg-white rounded-[12px] shadow-lg border border-[#EEEEEE] overflow-hidden">
+            {/* Header */}
+            <div className="px-4 py-3 bg-[#FAFAFA] border-b border-[#EEEEEE]">
+              <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-1.5 line-clamp-2 leading-tight">
+                {title}
+              </h4>
+              <div className="flex items-center gap-1.5 text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">
+                <Clock className="size-3" strokeWidth={2} />
                 <span>{time}</span>
+                <span className="text-[#CCCCCC]">•</span>
+                <span>{duration}</span>
               </div>
-              <div className="w-1 h-1 rounded-full bg-[#CCCCCC]" />
-              <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">{duration}</span>
-              <div className="w-1 h-1 rounded-full bg-[#CCCCCC]" />
-              <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">Host: {organizer}</span>
             </div>
 
-            {/* Attendees - Aligned to the right on same line */}
-            <div className="flex items-center -space-x-2 flex-shrink-0">
-              {attendees.slice(0, 3).map((attendee, index) => {
-                const initials = getInitials(attendee.name);
-                return (
-                  <div
-                    key={index}
-                    className="w-6 h-6 rounded-full border-2 border-white bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm relative z-[5] hover:z-10 transition-all"
-                  >
-                    <span className="text-[9px] text-white font-['Manrope:Bold',sans-serif]">{initials}</span>
-                  </div>
-                );
-              })}
-              {totalAttendees > attendees.length && (
-                <div className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-sm relative z-[1] ${
-                  isRedDate ? 'bg-[#ff3b3b]' : 'bg-[#E5E5E5]'
-                }`}>
-                  <span className={`text-[9px] font-['Manrope:SemiBold',sans-serif] ${
-                    isRedDate ? 'text-white' : 'text-[#666666]'
-                  }`}>
-                    +{totalAttendees - attendees.length}
+            {/* Content - Compact & Clean */}
+            <div className="px-4 py-3 space-y-2.5 bg-white">
+              {/* Host */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] uppercase tracking-wide min-w-[45px]">Host</span>
+                <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#111111]">{organizer}</span>
+              </div>
+
+              {/* Date & Time */}
+              {startDateTime && endDateTime && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] uppercase tracking-wide min-w-[45px]">When</span>
+                  <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#111111]">
+                    {dayjs(startDateTime).format('MMM D, YYYY')} • {time} - {dayjs(endDateTime).format('h:mm A')}
                   </span>
                 </div>
               )}
+
+              {/* Attendees - Compact */}
+              {allAttendees && allAttendees.length > 0 && (
+                <div className="flex items-start gap-2">
+                  <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] uppercase tracking-wide min-w-[45px] pt-0.5">With</span>
+                  <div className="flex-1">
+                    <div className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#111111] leading-relaxed">
+                      {allAttendees.slice(0, 3).map((a, i) => a.name).join(', ')}
+                      {allAttendees.length > 3 && (
+                        <span className="text-[#999999]"> +{allAttendees.length - 3} more</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Join Button */}
+            {joinUrl && (
+              <div className="px-4 py-3 bg-[#FAFAFA] border-t border-[#EEEEEE]">
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    if (joinUrl && onJoin) {
+                      onJoin(joinUrl);
+                    }
+                    setShowDetails(false);
+                  }}
+                  className="w-full h-9 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[13px] font-['Manrope:SemiBold',sans-serif] transition-all active:scale-95 border-none flex items-center justify-center gap-2 shadow-sm"
+                  icon={<Video className="w-3.5 h-3.5" />}
+                >
+                  Join {platform} Meeting
+                </Button>
+              </div>
+            )}
+          </div>
+        }
+      >
+        <div 
+          className="group p-3 rounded-xl border border-[#EEEEEE] hover:border-[#ff3b3b]/20 transition-all duration-300 hover:shadow-lg cursor-pointer"
+          onClick={handleCardClick}
+        >
+        <div className="flex items-start gap-2.5">
+          {/* Date Badge - Rounded Square */}
+          <div className="flex-shrink-0">
+            <div className={`w-[48px] h-[48px] rounded-[12px] flex flex-col items-center justify-center ${
+              isRedDate 
+                ? 'bg-[#ff3b3b]' 
+                : 'bg-[#E5E5E5]'
+            }`}>
+              <span className={`text-[10px] font-['Manrope:Medium',sans-serif] uppercase leading-none mb-0.5 ${
+                isRedDate ? 'text-white' : 'text-[#666666]'
+              }`}>
+                {date.month}
+              </span>
+              <span className={`text-[20px] font-['Manrope:Bold',sans-serif] leading-none ${
+                isRedDate ? 'text-white' : 'text-[#111111]'
+              }`}>
+                {date.day}
+              </span>
+            </div>
+          </div>
+
+          {/* Meeting Info */}
+          <div className="flex-1 min-w-0">
+            {/* Title & Platform Tag */}
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <h4 className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] line-clamp-1 flex-1">
+                {title}
+              </h4>
+              {joinUrl ? (
+                <button
+                  onClick={handleJoinClick}
+                  className="px-1.5 py-0.5 rounded-full text-[9px] font-['Manrope:Medium',sans-serif] flex-shrink-0 flex items-center gap-0.5 hover:opacity-80 transition-opacity cursor-pointer"
+                  style={{ backgroundColor: platformColor.bg, color: platformColor.text }}
+                  title={`Join ${platform} meeting`}
+                >
+                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                  </svg>
+                  {platform}
+                </button>
+              ) : (
+                <span 
+                  className="px-1.5 py-0.5 rounded-full text-[9px] font-['Manrope:Medium',sans-serif] flex-shrink-0 flex items-center gap-0.5"
+                  style={{ backgroundColor: platformColor.bg, color: platformColor.text }}
+                >
+                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                  </svg>
+                  {platform}
+                </span>
+              )}
+            </div>
+
+            {/* Time, Duration, Host & Attendees - All in one line */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div className="flex items-center gap-1 text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">
+                  <Clock className="size-3.5" strokeWidth={2} />
+                  <span>{time}</span>
+                </div>
+                <div className="w-1 h-1 rounded-full bg-[#CCCCCC]" />
+                <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">{duration}</span>
+                <div className="w-1 h-1 rounded-full bg-[#CCCCCC]" />
+                <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">Host: {organizer}</span>
+              </div>
+
+              {/* Attendees - Aligned to the right on same line */}
+              <div className="flex items-center -space-x-2 flex-shrink-0">
+                {attendees.slice(0, 3).map((attendee, index) => {
+                  const initials = getInitials(attendee.name);
+                  return (
+                    <div
+                      key={index}
+                      className="w-6 h-6 rounded-full border-2 border-white bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm relative z-[5] hover:z-10 transition-all"
+                    >
+                      <span className="text-[9px] text-white font-['Manrope:Bold',sans-serif]">{initials}</span>
+                    </div>
+                  );
+                })}
+                {totalAttendees > attendees.length && (
+                  <div className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-sm relative z-[1] ${
+                    isRedDate ? 'bg-[#ff3b3b]' : 'bg-[#E5E5E5]'
+                  }`}>
+                    <span className={`text-[9px] font-['Manrope:SemiBold',sans-serif] ${
+                      isRedDate ? 'text-white' : 'text-[#666666]'
+                    }`}>
+                      +{totalAttendees - attendees.length}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+      </Popover>
+    </>
   );
 }

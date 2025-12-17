@@ -89,3 +89,21 @@ export interface Workspace {
   client: string;
   status: 'active' | 'inactive';
 }
+
+export interface DocumentType {
+  id: string;
+  name: string;
+  required: boolean;
+}
+
+export interface UserDocument {
+  id: string;
+  documentTypeId: string;
+  documentTypeName: string;
+  fileName: string;
+  fileSize: number; // in bytes
+  fileUrl: string;
+  uploadedDate: string;
+  fileType: 'image' | 'pdf' | 'docx' | 'text' | 'csv' | 'excel';
+  isRequired: boolean;
+}

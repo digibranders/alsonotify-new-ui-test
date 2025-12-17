@@ -171,6 +171,27 @@
   background-color: #030213 !important;
 }
 
+/* Red Checkbox Styling for Multi-select Pages */
+.red-checkbox .ant-checkbox-checked,
+.red-checkbox .ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #ff3b3b !important;
+  border-color: #ff3b3b !important;
+}
+
+.red-checkbox .ant-checkbox-checked .ant-checkbox-inner::after {
+  border-color: #ffffff !important;
+}
+
+.red-checkbox .ant-checkbox:hover:not(.ant-checkbox-disabled) .ant-checkbox-inner {
+  border-color: #ff3b3b !important;
+}
+
+.red-checkbox .ant-checkbox-checked:hover:not(.ant-checkbox-disabled),
+.red-checkbox .ant-checkbox-checked:hover:not(.ant-checkbox-disabled) .ant-checkbox-inner {
+  background-color: #ff3b3b !important;
+  border-color: #ff3b3b !important;
+}
+
 /* Custom Select/Dropdown Styling */
 .ant-select-dropdown {
   background: #ffffff !important;
@@ -276,4 +297,49 @@
   /* IE and Edge */
   scrollbar-width: none;
   /* Firefox */
+}
+
+/* Date Range Popover - Remove extra background ONLY for calendar view, keep background for presets */
+.date-range-popover-calendar {
+  padding: 0 !important;
+}
+
+.date-range-popover-calendar .ant-popover-content {
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.date-range-popover-calendar .ant-popover-inner {
+  background: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+.date-range-popover-calendar .ant-popover-inner-content {
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+/* Keep the arrow visible for calendar */
+.date-range-popover-calendar .ant-popover-arrow {
+  display: block !important;
+  opacity: 1 !important;
+}
+
+/* Presets dropdown - Keep normal background */
+.date-range-popover-presets .ant-popover-content {
+  background: white !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.date-range-popover-presets .ant-popover-inner {
+  background: white !important;
+}
+
+.date-range-popover-presets .ant-popover-arrow {
+  display: block !important;
+  opacity: 1 !important;
 }

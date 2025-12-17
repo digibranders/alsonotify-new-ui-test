@@ -7,8 +7,9 @@ import { useTasks } from '@/hooks/useTask';
 import { useMeetings } from '@/hooks/useMeeting';
 import { useLeaves } from '@/hooks/useLeave';
 import { useTeamsConnectionStatus, useCalendarEvents } from '@/hooks/useCalendar';
-import { MicrosoftUserOAuth, createCalendarEvent, CreateEventPayload } from '@/services/calendar';
+import { MicrosoftUserOAuth, createCalendarEvent, CreateEventPayload, GraphEvent } from '@/services/calendar';
 import { useEmployees } from '@/hooks/useUser';
+import { useQueryClient } from '@tanstack/react-query';
 import { TaskType } from '@/services/task';
 import { MeetingType } from '@/services/meeting';
 import { LeaveType } from '@/services/leave';
@@ -43,6 +44,8 @@ export function CalendarPage() {
   const [showEventDialog, setShowEventDialog] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  const queryClient = useQueryClient();
+  
   // Fetch employees for autocomplete (only when modal is open)
   const { data: employeesData } = useEmployees(showEventDialog ? 'limit=100' : '');
   
@@ -50,7 +53,7 @@ export function CalendarPage() {
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const startISO = dayjs().startOf("day").toISOString();
   const endISO = dayjs().add(7, "day").endOf("day").toISOString();
-  const { refetch: refetchCalendarEvents } = useCalendarEvents(startISO, endISO);
+  const { data: calendarEventsData, refetch: refetchCalendarEvents } = useCalendarEvents(startISO, endISO);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -184,6 +187,9 @@ export function CalendarPage() {
     }
   }, [formData, userTimeZone, refetchCalendarEvents]);
 
+  // Extract calendar events result for dependency tracking
+  const calendarEvents = calendarEventsData?.result;
+
   // Process and merge events
   const events = useMemo(() => {
     const allEvents: CalendarEvent[] = [];
@@ -207,8 +213,32 @@ export function CalendarPage() {
       });
     }
 
-    // Process Meetings
-    if (meetings?.result) {
+    // Process Calendar Events (Teams meetings) - Priority over old meetings API
+    if (calendarEvents) {
+      (calendarEvents as GraphEvent[]).forEach((event: GraphEvent) => {
+        if (event.isCancelled) return;
+        const startTime = dayjs(event.start.dateTime);
+        allEvents.push({
+          id: `calendar-event-${event.id}`,
+          title: event.subject || 'Untitled Meeting',
+          date: startTime.format('YYYY-MM-DD'),
+          time: startTime.format('h:mm A'),
+          type: 'meeting',
+          location: event.isOnlineMeeting ? 'Microsoft Teams' : undefined,
+          description: event.body?.content || '',
+          status: 'scheduled',
+          participants: event.attendees?.map((a: any) => ({ 
+            name: a.emailAddress?.name || a.emailAddress?.address?.split('@')[0] || 'Unknown', 
+            avatar: undefined 
+          })),
+          color: '#3B82F6',
+          raw: event
+        });
+      });
+    }
+
+    // Process Old Meetings API (fallback if calendar events not available)
+    if (meetings?.result && (!calendarEvents || calendarEvents.length === 0)) {
       meetings.result.forEach((meeting: MeetingType) => {
         allEvents.push({
           id: `meeting-${meeting.id}`,
@@ -253,7 +283,7 @@ export function CalendarPage() {
     }
 
     return allEvents;
-  }, [tasks, meetings, leaves]);
+  }, [tasks, meetings, leaves, calendarEvents]);
 
   // Calendar Grid Generation
   const calendarDays = useMemo(() => {
@@ -319,40 +349,148 @@ export function CalendarPage() {
     .sort((a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf())
     .slice(0, 5);
 
-  const renderEventPopup = (event: CalendarEvent) => (
-    <div className="w-[280px]">
-      <div className="flex items-center justify-between mb-2">
-        <Tag color={event.color}>{event.type.toUpperCase()}</Tag>
-        {event.status && <span className="text-xs text-gray-500 capitalize">{event.status}</span>}
-      </div>
-      <h4 className="font-semibold text-base mb-1">{event.title}</h4>
-      <div className="flex items-center gap-2 text-gray-600 text-sm mb-2">
-        <Clock size={14} />
-        <span>{event.date} • {event.time}</span>
-      </div>
-      {event.location && (
-        <div className="flex items-center gap-2 text-gray-600 text-sm mb-2">
-          <MapPin size={14} />
-          <span>{event.location}</span>
+  const renderEventPopup = (event: CalendarEvent) => {
+    // Extract Teams meeting details from raw GraphEvent
+    const graphEvent = event.raw as GraphEvent | undefined;
+    const isTeamsMeeting = graphEvent?.isOnlineMeeting || event.location === 'Microsoft Teams';
+    const joinUrl = graphEvent?.onlineMeeting?.joinUrl || graphEvent?.onlineMeetingUrl;
+    const webLink = graphEvent?.webLink;
+    
+    // Extract meeting ID and passcode from description or body content
+    let meetingId: string | null = null;
+    let passcode: string | null = null;
+    
+    if (graphEvent?.body?.content) {
+      // Remove HTML tags for text extraction
+      const textContent = graphEvent.body.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      
+      // Try to extract meeting ID (format: numbers separated by spaces, e.g., "415 314 166 645 2")
+      const meetingIdPatterns = [
+        /Meeting ID[:\s]+([\d\s]+)/i,
+        /(\d{3}\s+\d{3}\s+\d{3}\s+\d{3}\s+\d+)/,
+        /ID[:\s]+([\d\s]{10,})/i
+      ];
+      
+      for (const pattern of meetingIdPatterns) {
+        const match = textContent.match(pattern);
+        if (match) {
+          meetingId = match[1].trim().replace(/\s+/g, ' ');
+          break;
+        }
+      }
+      
+      // Try to extract passcode (alphanumeric, typically 6-10 characters)
+      const passcodePatterns = [
+        /Passcode[:\s]+([A-Za-z0-9]{4,12})/i,
+        /Password[:\s]+([A-Za-z0-9]{4,12})/i,
+        /Code[:\s]+([A-Za-z0-9]{4,12})/i
+      ];
+      
+      for (const pattern of passcodePatterns) {
+        const match = textContent.match(pattern);
+        if (match) {
+          passcode = match[1].trim();
+          break;
+        }
+      }
+    }
+
+    return (
+      <div className="w-[320px] p-1">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <Tag color={event.color} className="m-0">{event.type.toUpperCase()}</Tag>
+          {event.status && <span className="text-[12px] text-[#999999] font-['Manrope:Regular',sans-serif] capitalize">{event.status}</span>}
         </div>
-      )}
-      {event.description && (
-        <p className="text-gray-600 text-sm mb-3 bg-gray-50 p-2 rounded">{event.description}</p>
-      )}
-      {event.participants && event.participants.length > 0 && (
-        <div className="mt-3">
-          <p className="text-xs font-semibold text-gray-500 mb-1">Participants</p>
-          <Avatar.Group maxCount={5} size="small">
-            {event.participants.map((p, idx) => (
-              <Tooltip title={p.name} key={idx}>
-                <Avatar src={p.avatar}>{p.name[0]}</Avatar>
-              </Tooltip>
-            ))}
-          </Avatar.Group>
+
+        {/* Title */}
+        <h4 className="font-['Manrope:Bold',sans-serif] text-[16px] text-[#111111] mb-3">{event.title}</h4>
+
+        {/* Date & Time */}
+        <div className="flex items-center gap-2 text-[#666666] text-[13px] font-['Manrope:Regular',sans-serif] mb-3">
+          <Clock className="w-4 h-4" />
+          <span>{dayjs(event.date).format('MMM D, YYYY')} • {event.time}</span>
         </div>
-      )}
-    </div>
-  );
+
+        {/* Location */}
+        {event.location && (
+          <div className="flex items-center gap-2 text-[#666666] text-[13px] font-['Manrope:Regular',sans-serif] mb-4">
+            <MapPin className="w-4 h-4" />
+            <span>{event.location}</span>
+          </div>
+        )}
+
+        {/* Meeting Details (for Teams meetings) */}
+        {isTeamsMeeting && (meetingId || passcode || joinUrl) && (
+          <div className="border-t border-[#EEEEEE] pt-4 mt-4 space-y-3">
+            {meetingId && (
+              <div>
+                <span className="text-[13px] text-[#616161] font-['Manrope:Regular',sans-serif] mb-1 block">Meeting ID:</span>
+                <span className="text-[13px] text-[#242424] font-['Manrope:Regular',sans-serif]">{meetingId}</span>
+              </div>
+            )}
+            {passcode && (
+              <div>
+                <span className="text-[13px] text-[#616161] font-['Manrope:Regular',sans-serif] mb-1 block">Passcode:</span>
+                <span className="text-[13px] text-[#242424] font-['Manrope:Regular',sans-serif]">{passcode}</span>
+              </div>
+            )}
+            
+            {/* Meeting Link - For organizers */}
+            {webLink && (
+              <div className="mt-4">
+                <span className="text-[13px] text-[#616161] font-['Manrope:Regular',sans-serif] mb-2 block">For organizers:</span>
+                <a
+                  href={webLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[13px] text-[#5B5FC7] font-['Manrope:Regular',sans-serif] underline hover:text-[#4A4FC7] transition-colors"
+                >
+                  Meeting options
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Join Meeting Button */}
+        {isTeamsMeeting && joinUrl && (
+          <div className="mt-4 pt-4 border-t border-[#EEEEEE]">
+            <a
+              href={joinUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#5B5FC7] hover:bg-[#4A4FC7] text-white text-[13px] font-['Manrope:SemiBold',sans-serif] rounded-lg transition-colors"
+            >
+              <Video className="w-4 h-4" />
+              Join Meeting
+            </a>
+          </div>
+        )}
+
+        {/* Description */}
+        {event.description && !isTeamsMeeting && (
+          <div className="mt-4 pt-4 border-t border-[#EEEEEE]">
+            <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] leading-relaxed">{event.description}</p>
+          </div>
+        )}
+
+        {/* Participants */}
+        {event.participants && event.participants.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-[#EEEEEE]">
+            <p className="text-[12px] font-['Manrope:SemiBold',sans-serif] text-[#999999] mb-2">Participants</p>
+            <Avatar.Group maxCount={5} size="small">
+              {event.participants.map((p, idx) => (
+                <Tooltip title={p.name} key={idx}>
+                  <Avatar src={p.avatar}>{p.name[0]}</Avatar>
+                </Tooltip>
+              ))}
+            </Avatar.Group>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <PageLayout

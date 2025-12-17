@@ -9,6 +9,7 @@ import {
   addRequirementToWorkspace,
   updateRequirementById,
   deleteRequirementById,
+  approveRequirement,
   type WorkspaceType,
   type RequirementType,
 } from "../services/workspace";
@@ -90,6 +91,8 @@ export const useCreateRequirement = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["requirements", variables.project_id] });
       queryClient.invalidateQueries({ queryKey: ["workspace", variables.project_id] });
+      // Invalidate all requirements queries
+      queryClient.invalidateQueries({ queryKey: ["requirements"] });
     },
   });
 };
@@ -102,6 +105,8 @@ export const useUpdateRequirement = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["requirements", variables.project_id] });
       queryClient.invalidateQueries({ queryKey: ["workspace", variables.project_id] });
+      // Invalidate all requirements queries
+      queryClient.invalidateQueries({ queryKey: ["requirements"] });
     },
   });
 };
@@ -115,7 +120,21 @@ export const useDeleteRequirement = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["requirements", variables.project_id] });
       queryClient.invalidateQueries({ queryKey: ["workspace", variables.project_id] });
+      // Invalidate all requirements queries
+      queryClient.invalidateQueries({ queryKey: ["requirements"] });
     },
   });
 };
 
+export const useApproveRequirement = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ requirement_id, status }: { requirement_id: number; status: "Assigned" | "Rejected" }) =>
+      approveRequirement(requirement_id, status),
+    onSuccess: () => {
+      // Invalidate all requirements queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["requirements"] });
+    },
+  });
+};

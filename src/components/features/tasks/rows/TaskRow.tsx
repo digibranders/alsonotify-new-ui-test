@@ -1,6 +1,7 @@
 import { Checkbox, Tooltip } from "antd";
 import { AlertCircle, CheckCircle2, Clock, Loader2, MoreVertical, ArrowRightCircle } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export interface Task {
   id: string;
@@ -30,11 +31,12 @@ export function TaskRow({
   selected,
   onSelect
 }: TaskRowProps) {
+  const router = useRouter();
   const progress = task.estTime > 0 ? (task.timeSpent / task.estTime) * 100 : 0;
 
   return (
     <div
-      onClick={onSelect}
+      onClick={() => router.push(`/tasks/${task.id}`)}
       className={`
         group bg-white border rounded-[16px] p-4 transition-all duration-300 cursor-pointer relative z-10
         ${selected
@@ -52,20 +54,16 @@ export function TaskRow({
               e.stopPropagation();
               onSelect();
             }}
-            className="data-[state=checked]:bg-[#ff3b3b] data-[state=checked]:border-[#ff3b3b]"
+            className="red-checkbox"
           />
         </div>
 
         {/* Task Info */}
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Link
-              href={`/tasks/${task.id}`}
-              onClick={(e) => e.stopPropagation()}
-              className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111] hover:text-[#ff3b3b] transition-colors hover:underline"
-            >
+            <span className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111] group-hover:text-[#ff3b3b] transition-colors">
               {task.name}
-            </Link>
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">

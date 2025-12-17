@@ -466,42 +466,20 @@ function WorkspaceRequirementsSummary({
   delayed: number;
 }) {
   return (
-    <div className="space-y-3">
-      {/* REQUIREMENTS Label - Centered */}
-      <p className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#999999] uppercase tracking-wide text-center">
-        REQUIREMENTS
-      </p>
-      
-      {/* Three Columns with Vertical Separators */}
-      <div className="flex items-center justify-center">
-        {/* TOTAL Column */}
-        <div className="flex-1 flex flex-col items-center border-r border-[#EEEEEE]">
-          <span className="text-[12px] text-[#999999] font-['Manrope:Regular',sans-serif] uppercase mb-1">
-            TOTAL
-          </span>
-          <span className="text-[18px] text-[#111111] font-['Manrope:Bold',sans-serif]">
-            {total}
-          </span>
+    <div>
+      <p className="text-[10px] text-[#999999] font-['Manrope:Bold',sans-serif] uppercase tracking-wider text-center mb-3">Requirements</p>
+      <div className="grid grid-cols-3 divide-x divide-[#EEEEEE]">
+        <div className="flex flex-col items-center px-1">
+          <span className="text-[10px] text-[#999999] font-['Inter:Medium',sans-serif] uppercase tracking-wider mb-0.5">Total</span>
+          <span className="text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">{total}</span>
         </div>
-        
-        {/* PROGRESS Column */}
-        <div className="flex-1 flex flex-col items-center border-r border-[#EEEEEE]">
-          <span className="text-[12px] text-[#999999] font-['Manrope:Regular',sans-serif] uppercase mb-1">
-            PROGRESS
-          </span>
-          <span className="text-[18px] text-[#2F80ED] font-['Manrope:Bold',sans-serif]">
-            {inProgress}
-          </span>
+        <div className="flex flex-col items-center px-1">
+          <span className="text-[10px] text-[#999999] font-['Inter:Medium',sans-serif] uppercase tracking-wider mb-0.5">Progress</span>
+          <span className="text-[13px] text-[#0284C7] font-['Manrope:Bold',sans-serif]">{inProgress}</span>
         </div>
-        
-        {/* DELAYED Column */}
-        <div className="flex-1 flex flex-col items-center">
-          <span className="text-[12px] text-[#999999] font-['Manrope:Regular',sans-serif] uppercase mb-1">
-            DELAYED
-          </span>
-          <span className="text-[18px] text-[#ff3b3b] font-['Manrope:Bold',sans-serif]">
-            {delayed}
-          </span>
+        <div className="flex flex-col items-center px-1">
+          <span className="text-[10px] text-[#999999] font-['Inter:Medium',sans-serif] uppercase tracking-wider mb-0.5">Delayed</span>
+          <span className="text-[13px] text-[#DC2626] font-['Manrope:Bold',sans-serif]">{delayed}</span>
         </div>
       </div>
     </div>
@@ -529,10 +507,13 @@ function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: 
   return (
     <div
       onClick={onClick}
-      className="group relative bg-white border-2 border-transparent rounded-[16px] p-6 hover:border-[#ff3b3b] focus-within:border-[#ff3b3b] transition-all cursor-pointer overflow-hidden shadow-sm hover:shadow-md"
+      className="group relative bg-white border border-[#EEEEEE] rounded-[16px] p-5 hover:border-[#ff3b3b] hover:shadow-lg hover:shadow-[#ff3b3b]/10 transition-all cursor-pointer overflow-hidden flex flex-col h-[180px]"
     >
+      {/* Accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#ff3b3b] to-[#ff6b6b] opacity-0 group-hover:opacity-100 transition-opacity" />
+      
       {/* Action Menu - Absolute Positioned */}
-      <div className="absolute top-4 right-4 z-20" onClick={(e) => e.stopPropagation()}>
+      <div className="absolute top-3 right-3 z-20" onClick={(e) => e.stopPropagation()}>
         <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
           <button className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
             <MoreVertical className="w-5 h-5 text-[#666666]" />
@@ -541,31 +522,26 @@ function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: 
       </div>
 
       <div className="flex flex-col h-full">
-        {/* Header Section - Icon and Text */}
-        <div className="flex items-start gap-4 mb-4">
-          {/* Folder Icon - Light pink background with red outline */}
-          <div className="w-12 h-12 rounded-[10px] bg-[#FEF3F2] border border-[#ff3b3b]/30 flex items-center justify-center shrink-0">
-            <FolderOpen className="w-6 h-6 text-[#ff3b3b]" strokeWidth={2} />
+        {/* Header: Icon + Details Side-by-Side */}
+        <div className="flex items-start gap-3 mb-auto pr-8">
+          {/* Folder Icon */}
+          <div className="shrink-0 w-12 h-12 rounded-[12px] bg-[#FEF3F2] border border-[#ff3b3b]/20 flex items-center justify-center group-hover:bg-[#ff3b3b] transition-all">
+            <FolderOpen className="w-6 h-6 text-[#ff3b3b] group-hover:text-white transition-colors" />
           </div>
 
-          {/* Title and Subtitle */}
-          <div className="flex-1 min-w-0">
-            {/* Workspace Name - 16-18px, bold, black, truncated */}
-            <h3 className="font-['Manrope:Bold',sans-serif] text-[17px] text-[#111111] mb-1 line-clamp-1">
+          {/* Text Details */}
+          <div className="flex flex-col pt-0.5 min-w-0">
+            <h3 className="font-['Manrope:Bold',sans-serif] text-[15px] text-[#111111] leading-tight mb-1 truncate w-full">
               {workspace.name}
             </h3>
-            {/* Client Name - 14px, regular, dark grey */}
-            <p className="text-[14px] text-[#666666] font-['Manrope:Regular',sans-serif]">
+            <p className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif] truncate w-full">
               {workspace.client}
             </p>
           </div>
         </div>
 
-        {/* Separator Line */}
-        <div className="border-t border-[#EEEEEE] my-4"></div>
-
-        {/* Requirements Summary - At the bottom */}
-        <div className="mt-auto">
+        {/* Footer: Stats */}
+        <div className="border-t border-[#EEEEEE] pt-3 mt-auto">
           <WorkspaceRequirementsSummary
             total={workspace.totalRequirements || 0}
             inProgress={workspace.inProgressRequirements || 0}

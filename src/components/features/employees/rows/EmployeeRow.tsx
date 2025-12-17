@@ -42,7 +42,7 @@ export function EmployeeRow({
 
   return (
     <div
-      onClick={onSelect}
+      onClick={() => onViewDetails?.()}
       className={`
         group bg-white border rounded-[12px] px-4 py-4 transition-all duration-300 cursor-pointer relative z-10
         ${selected
@@ -60,21 +60,16 @@ export function EmployeeRow({
               e.stopPropagation();
               onSelect();
             }}
+            className="red-checkbox"
           />
         </div>
 
         {/* Employee Info - Name, Role & Dept */}
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onViewDetails?.();
-              }}
-              className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111] hover:text-[#ff3b3b] transition-colors cursor-pointer text-left"
-            >
+            <span className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111] group-hover:text-[#ff3b3b] transition-colors">
               {employee.name}
-            </button>
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">

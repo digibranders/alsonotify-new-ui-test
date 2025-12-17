@@ -20,5 +20,7 @@ export const useCalendarEvents = (startISO?: string, endISO?: string) => {
     queryKey: ["calendarEvents", start, end],
     queryFn: () => getCalendarEvents(start, end),
     enabled: !!start && !!end,
+    staleTime: 0, // Always consider data stale to allow refetching
+    refetchOnWindowFocus: true, // Refetch when window regains focus
   });
 };

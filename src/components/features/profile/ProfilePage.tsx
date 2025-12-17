@@ -1,8 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Button, Input, Select, Divider, message } from "antd";
-import { Camera, Pencil } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { Button, Input, Select, Divider, message, Upload } from "antd";
+import { Camera, Pencil, Upload as UploadIcon } from 'lucide-react';
 import Image from "next/image";
 import { useUserDetails, useUpdateProfile } from '@/hooks/useUser';
+import { DocumentCard } from '@/components/ui/DocumentCard';
+import { DocumentPreviewModal } from '@/components/ui/DocumentPreviewModal';
+import { UserDocument, DocumentType } from '@/types/genericTypes';
 
 const { Option } = Select;
 

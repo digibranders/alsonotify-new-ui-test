@@ -2,6 +2,7 @@ import { Checkbox, Dropdown, MenuProps } from "antd";
 import { Edit, MoreVertical, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { MouseEvent } from "react";
+import { useRouter } from "next/navigation";
 
 export interface Client {
   id: number;
@@ -28,6 +29,7 @@ export function ClientRow({
   onSelect,
   onEdit
 }: ClientRowProps) {
+  const router = useRouter();
 
   const items: MenuProps['items'] = [
     {
@@ -47,7 +49,7 @@ export function ClientRow({
 
   return (
     <div
-      onClick={onSelect}
+      onClick={() => router.push(`/clients/${client.id}`)}
       className={`
         group bg-white border rounded-[16px] p-4 transition-all duration-300 cursor-pointer relative z-10
         ${selected
@@ -62,6 +64,7 @@ export function ClientRow({
           <Checkbox
             checked={selected}
             onChange={onSelect}
+            className="red-checkbox"
           />
         </div>
 
@@ -77,13 +80,9 @@ export function ClientRow({
         {/* Contact Person */}
         <div>
           <div className="flex items-center gap-2">
-            <Link
-              href={`/clients/${client.id}`}
-              onClick={(e) => e.stopPropagation()}
-              className="font-['Manrope:Bold',sans-serif] text-[13px] text-[#111111] hover:text-[#ff3b3b] transition-colors hover:underline"
-            >
+            <span className="font-['Manrope:Bold',sans-serif] text-[13px] text-[#111111] group-hover:text-[#ff3b3b] transition-colors">
               {client.name}
-            </Link>
+            </span>
           </div>
         </div>
 

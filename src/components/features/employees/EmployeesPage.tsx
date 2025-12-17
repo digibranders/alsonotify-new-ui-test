@@ -881,6 +881,7 @@ export function EmployeesPage() {
                 checked={filteredEmployees.length > 0 && 
                   filteredEmployees.every(emp => selectedEmployees.includes(emp.id))}
                 onChange={toggleSelectAll}
+                className="red-checkbox"
               />
             </div>
             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Name</p>

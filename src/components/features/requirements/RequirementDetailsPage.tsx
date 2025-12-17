@@ -549,9 +549,11 @@ function SubTaskRow({
   selected?: boolean;
   onSelect?: () => void;
 }) {
+  const router = useRouter();
+  
   return (
     <div
-      onClick={onSelect}
+      onClick={() => router.push(`/tasks/${task.id}`)}
       className={`
         group bg-white border rounded-[16px] p-4 transition-all duration-300 cursor-pointer relative z-10
         ${selected
@@ -565,7 +567,11 @@ function SubTaskRow({
         <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
           <Checkbox
             checked={selected}
-            onChange={onSelect}
+            onChange={(e) => {
+              e.stopPropagation();
+              onSelect?.();
+            }}
+            className="red-checkbox"
           />
         </div>
 

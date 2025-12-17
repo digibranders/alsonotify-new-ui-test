@@ -127,18 +127,13 @@ export function NotesPage() {
         titleAction={{
           onClick: () => setShowDialog(true)
         }}
+        searchPlaceholder="Search notes by title or con..."
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
       >
-        {/* Search Bar - No Filters */}
-        <div className="mb-6">
-          <FilterBar
-            searchPlaceholder="Search notes by title or content..."
-            searchValue={searchQuery}
-            onSearchChange={setSearchQuery}
-          />
-        </div>
-
+        {/* Notes Grid - Scrollable */}
         <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-3 gap-6 pb-4">
             {filteredNotes.map((note) => (
               <NoteCard key={note.id} note={note} onToggleItem={toggleNoteItem} />
             ))}
@@ -232,55 +227,52 @@ function NoteCard({ note, onToggleItem }: {
   ];
 
   return (
-    <div className="relative group h-[280px]">
+    <div className="relative group h-[220px]">
       {/* Card with white background */}
       <div className="relative h-full bg-white rounded-xl border border-[#EEEEEE] hover:border-[#ff3b3b]/20 hover:shadow-lg transition-all duration-300 cursor-pointer p-4 flex flex-col">
         {/* Header with action buttons */}
         <div className="flex items-start justify-between mb-2 gap-2">
           {/* Title */}
-          <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] flex-1">
+          <h4 className="font-['Manrope:SemiBold',sans-serif] text-[16px] text-[#111111] flex-1 leading-tight group-hover:text-[#ff3b3b] transition-colors">
             {note.title}
           </h4>
 
           {/* Three-dot menu - appears on hover */}
           <Dropdown menu={{ items }} trigger={['click']}>
             <button
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-[#F7F7F7] rounded-md flex-shrink-0"
+              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-[#F7F7F7] rounded-md flex-shrink-0 -mr-2 -mt-1"
               onClick={(e) => e.stopPropagation()}
             >
-              <MoreVertical className="size-3.5 text-[#666666]" strokeWidth={2} />
+              <MoreVertical className="size-4 text-[#666666]" strokeWidth={2} />
             </button>
           </Dropdown>
         </div>
 
         {/* Content */}
-        {note.type === 'text' && note.content && (
-          <p className="font-['Manrope:Regular',sans-serif] text-[12px] text-[#666666] line-clamp-4 whitespace-pre-line">
-            {note.content}
-          </p>
-        )}
+        <div className="flex-1 overflow-hidden">
+          {note.type === 'text' && note.content && (
+            <p className="font-['Inter:Regular',sans-serif] text-[13px] text-[#666666] line-clamp-[8] whitespace-pre-line leading-relaxed">
+              {note.content}
+            </p>
+          )}
 
-        {note.type === 'checklist' && note.items && (
-          <div className="flex flex-col gap-2">
-            {note.items.slice(0, 3).map((item, index) => (
-              <div key={index} className="flex items-start gap-2">
-                <Checkbox
-                  checked={item.checked}
-                  onChange={() => onToggleItem(note.id, index)}
-                  className="mt-0.5"
-                />
-                <span className={`font-['Manrope:Regular',sans-serif] text-[11px] flex-1 ${item.checked ? 'line-through text-[#999999]' : 'text-[#666666]'}`}>
-                  {item.text}
-                </span>
-              </div>
-            ))}
-            {note.items.length > 3 && (
-              <span className="font-['Manrope:Regular',sans-serif] text-[10px] text-[#999999]">
-                +{note.items.length - 3} more
-              </span>
-            )}
-          </div>
-        )}
+          {note.type === 'checklist' && note.items && (
+            <div className="flex flex-col gap-2.5">
+              {note.items.map((item, index) => (
+                <div key={index} className="flex items-start gap-2">
+                  <Checkbox
+                    checked={item.checked}
+                    onChange={() => onToggleItem(note.id, index)}
+                    className="mt-0.5 custom-checkbox-wrapper"
+                  />
+                  <span className={`font-['Inter:Regular',sans-serif] text-[13px] flex-1 leading-tight ${item.checked ? 'line-through text-[#999999]' : 'text-[#666666]'}`}>
+                    {item.text}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
