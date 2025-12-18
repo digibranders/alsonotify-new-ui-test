@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 
-export default async function middleware(req: NextRequest) {
+export default async function proxy(req: NextRequest) {
   const response = NextResponse;
   const hasToken = req.cookies.get("_token");
   const pathname = req.nextUrl.pathname;
@@ -44,4 +44,3 @@ export const config = {
     "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 };
-
