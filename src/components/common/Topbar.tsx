@@ -497,7 +497,7 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
               }
               trigger="click"
               placement="bottomRight"
-              styles={{ body: { padding: 0 } }}
+              styles={{ root: { padding: 0 } }}
               overlayClassName="notification-popover"
             >
               <Badge count={unreadCount} size="small" offset={[-5, 5]} color="#ff3b3b">
