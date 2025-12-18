@@ -1042,9 +1042,11 @@ export function EmployeesPage() {
           top: '10px',
           paddingBottom: '10px',
         }}
-        bodyStyle={{
-          padding: 0,
-          height: 'calc(100vh - 20px)',
+        styles={{
+          body: {
+            padding: 0,
+            height: 'calc(100vh - 20px)',
+          },
         }}
       >
         <EmployeeForm

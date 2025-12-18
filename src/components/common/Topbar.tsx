@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { AccessBadge } from '../ui/AccessBadge';
 import Image from 'next/image';
-import { Button, Dropdown, Modal, Input, Select, Popover, Avatar, Badge, Typography, List, message } from 'antd';
+import { Button, Dropdown, Modal, Input, Select, Popover, Avatar, Badge, Typography, message } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   Alert24Filled,
@@ -20,6 +20,7 @@ import {
 } from '@fluentui/react-icons';
 import { UserCog, Settings, LogOut, FolderOpen, CheckSquare, FileText } from 'lucide-react';
 import { TaskForm } from '../modals/TaskForm';
+import { NotificationPanel } from './NotificationPanel';
 import { useUserDetails } from '@/hooks/useUser';
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/useNotification';
 import { useWorkspaces, useClients } from '@/hooks/useWorkspace';
@@ -119,7 +120,7 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
   // Helper to map role_id to access level (same as EmployeesPage)
   const mapRoleIdToAccess = (roleId: number | null | undefined): UserRole => {
     if (!roleId) return 'Employee';
-    
+
     // Reverse mapping: role_id -> access level
     // Based on seed data order: Super Admin (1), Employee (2), HR (3), Admin (4), Leader (5), Finance (6), Manager (7)
     const roleIdMapping: Record<number, UserRole> = {
@@ -131,24 +132,24 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
       6: 'Employee', // Finance -> Employee
       7: 'Manager', // Manager -> Manager
     };
-    
+
     return roleIdMapping[roleId] || 'Employee';
   };
 
   // Map role from backend to UI role
   const mappedRole: UserRole = useMemo(() => {
     // First try to get role_id from various sources
-    const roleId = user?.role_id || 
-                   user?.user_employee?.role_id || 
-                   userDetailsData?.result?.user?.role_id ||
-                   userDetailsData?.result?.user?.user_employee?.role_id ||
-                   null;
-    
+    const roleId = user?.role_id ||
+      user?.user_employee?.role_id ||
+      userDetailsData?.result?.user?.role_id ||
+      userDetailsData?.result?.user?.user_employee?.role_id ||
+      null;
+
     // If we have role_id, use it for mapping
     if (roleId) {
       return mapRoleIdToAccess(roleId);
     }
-    
+
     // Fallback to role name if available
     const roleName = user?.role?.name || user?.user_employee?.role?.name;
     if (roleName) {
@@ -157,7 +158,7 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
       if (roleLower.includes('manager')) return 'Manager';
       if (roleLower.includes('leader')) return 'Leader';
     }
-    
+
     return 'Employee';
   }, [user, userDetailsData]);
 
@@ -214,13 +215,15 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
       id: n.id,
       title: n.title || n.message || 'Notification',
       message: n.message || n.title || '',
-      time: n.created_at ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true }) : 'Just now',
+      time: n.created_at
+        ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true })
+        : 'Just now',
       unread: !n.is_read,
       type: n.type || 'general',
     }));
   }, [notificationsData]);
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const unreadCount = notifications.filter((n) => n.unread).length;
 
   const handleMarkAsRead = (id: number) => {
     markReadMutation.mutate(id);
@@ -453,60 +456,6 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
     },
   ];
 
-  const notificationContent = (
-    <div className="w-[380px]">
-      <div className="p-4 border-b border-[#EEEEEE] flex items-center justify-between">
-        <h3 className="font-['Manrope:SemiBold',sans-serif] text-[16px] text-[#111111]">
-          Notifications {unreadCount > 0 && `(${unreadCount})`}
-        </h3>
-        {notifications.length > 0 && (
-          <Button
-            type="text"
-            size="small"
-            onClick={handleClearAllNotifications}
-            className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#ff3b3b] hover:text-[#ff3b3b]"
-          >
-            Clear All
-          </Button>
-        )}
-      </div>
-      <div className="max-h-[400px] overflow-y-auto">
-        {isLoadingNotifications ? (
-          <div className="p-8 text-center text-[#999999]">Loading...</div>
-        ) : notifications.length === 0 ? (
-          <div className="p-8 text-center text-[#999999]">No notifications</div>
-        ) : (
-          <List
-            itemLayout="horizontal"
-            dataSource={notifications}
-            renderItem={(item) => (
-              <div
-                onClick={() => !item.type && !item.unread ? {} : handleMarkAsRead(item.id)}
-                className={`p-4 border-b border-[#EEEEEE] hover:bg-[#F7F7F7] cursor-pointer transition-colors ${item.unread ? 'bg-[#FEF3F2]' : ''}`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111]">
-                        {item.title}
-                      </h4>
-                      {item.unread && <Badge color="#ff3b3b" />}
-                    </div>
-                    <p className="font-['Manrope:Regular',sans-serif] text-[12px] text-[#666666] mb-1">
-                      {item.message}
-                    </p>
-                    <span className="font-['Manrope:Regular',sans-serif] text-[11px] text-[#999999]">
-                      {item.time}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-          />
-        )}
-      </div>
-    </div>
-  );
 
   return (
     <>
@@ -529,7 +478,7 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
             {/* Add Button with Dropdown */}
             <Dropdown menu={{ items: addMenuItems }} placement="bottomRight" trigger={['click']}>
               <Button
-                className="!w-10 !h-10 !min-w-[40px] rounded-full bg-[#ff3b3b] hover:!bg-[#ff6b6b] flex items-center justify-center p-0 !border-none shadow-[4px_4px_7px_0px_inset_rgba(255,255,255,0.3)]"
+                className="!w-10 !h-10 !min-w-[40px] rounded-full !bg-[#ff3b3b] hover:!bg-[#ff6b6b] flex items-center justify-center p-0 !border-none !shadow-none"
                 type="primary"
                 shape="circle"
                 icon={<Add24Filled className="w-5 h-5 text-white" />}
@@ -538,10 +487,18 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
 
             {/* Notification icon */}
             <Popover
-              content={notificationContent}
+              content={
+                <NotificationPanel
+                  notifications={notifications}
+                  isLoading={isLoadingNotifications}
+                  onMarkAsRead={handleMarkAsRead}
+                  onMarkAllRead={handleClearAllNotifications}
+                />
+              }
               trigger="click"
               placement="bottomRight"
-              overlayInnerStyle={{ padding: 0 }}
+              styles={{ body: { padding: 0 } }}
+              overlayClassName="notification-popover"
             >
               <Badge count={unreadCount} size="small" offset={[-5, 5]} color="#ff3b3b">
                 <Button
@@ -558,7 +515,8 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
               <div className="relative shrink-0 size-[40px] rounded-full ring-2 ring-transparent hover:ring-[#ff3b3b]/20 transition-all cursor-pointer">
                 <Avatar
                   size={40}
-                  src={user?.user_profile?.profile_pic || user?.profile_pic || "https://github.com/shadcn.png"}
+                  // src={user?.user_profile?.profile_pic || user?.profile_pic || "https://github.com/shadcn.png"}
+                  src={user?.user_profile?.profile_pic || user?.profile_pic || "/documents/profile.png"}
                   alt={user?.name || 'User'}
                 />
               </div>
@@ -575,8 +533,10 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
         width={600}
         centered
         className="rounded-[16px] overflow-hidden"
-        bodyStyle={{
-          padding: 0,
+        styles={{
+          body: {
+            padding: 0,
+          }
         }}
       >
         <div className="flex flex-col h-full bg-white">
@@ -693,8 +653,10 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
         width={600}
         centered
         className="rounded-[16px] overflow-hidden"
-        bodyStyle={{
-          padding: 0,
+        styles={{
+          body: {
+            padding: 0,
+          }
         }}
       >
         <TaskForm
@@ -733,8 +695,10 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
         width={600}
         centered
         className="rounded-[16px] overflow-hidden"
-        bodyStyle={{
-          padding: 0,
+        styles={{
+          body: {
+            padding: 0,
+          }
         }}
       >
         <div className="flex flex-col h-full bg-white">
@@ -868,6 +832,16 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
         .ant-input:focus {
           border-color: #EEEEEE !important;
           box-shadow: none !important;
+        }
+
+        /* Notification popover - remove default AntD background/shadow */
+        .notification-popover .ant-popover-inner {
+          background: transparent !important;
+          box-shadow: none !important;
+          padding: 0 !important;
+        }
+        .notification-popover .ant-popover-content {
+          padding: 0 !important;
         }
       `}</style>
     </>

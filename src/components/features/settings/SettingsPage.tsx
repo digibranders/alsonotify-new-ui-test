@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, Edit, Trash2, X, Pencil } from 'lucide-react';
 import { Button, Input, Select, Switch, Divider } from "antd";
 import { message } from "antd";
 import { useUpdateCompany } from '@/hooks/useUser';
-import { DocumentType } from '@/types/genericTypes';
+import { DEFAULT_DOCUMENT_TYPES, DOCUMENT_TYPES_STORAGE_KEY } from '@/constants/documentTypes';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -185,15 +185,42 @@ export function SettingsPage() {
   const [isAddingDept, setIsAddingDept] = useState(false);
   const [newDeptName, setNewDeptName] = useState('');
 
-  // Required Documents State
-  const [requiredDocuments, setRequiredDocuments] = useState<DocumentTypeLocal[]>([
-    { id: '1', name: 'Resume / CV', required: true },
-    { id: '2', name: 'ID Proof', required: true },
-    { id: '3', name: 'Contract Agreement', required: true },
-    { id: '4', name: 'Driving Licence', required: false },
-  ]);
+  // Required Documents State - initialized from localStorage (saved settings) or defaults
+  const [requiredDocuments, setRequiredDocuments] = useState<DocumentTypeLocal[]>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const stored = window.localStorage.getItem(DOCUMENT_TYPES_STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed.map((doc: any, index: number) => ({
+              id: String(doc.id ?? index + 1),
+              name: String(doc.name ?? ''),
+              required: Boolean(doc.required),
+            }));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error reading document types from localStorage:', error);
+    }
+
+    // Fallback to shared defaults
+    return DEFAULT_DOCUMENT_TYPES;
+  });
   const [isAddingDoc, setIsAddingDoc] = useState(false);
   const [newDocName, setNewDocName] = useState('');
+
+  // Persist required documents configuration so Profile page can read it
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(DOCUMENT_TYPES_STORAGE_KEY, JSON.stringify(requiredDocuments));
+      }
+    } catch (error) {
+      console.error('Error saving document types to localStorage:', error);
+    }
+  }, [requiredDocuments]);
 
   // Leaves State
   const [leaves, setLeaves] = useState<LeaveType[]>([
@@ -451,171 +478,190 @@ export function SettingsPage() {
 
             <Divider className="my-8 bg-[#EEEEEE]" />
 
-            <section>
-              <div className="flex items-center gap-2 mb-6">
-                <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Departments</h2>
-                {!isAddingDept && (
-                  <button
-                    onClick={() => setIsAddingDept(true)}
-                    className="hover:scale-110 active:scale-95 transition-transform"
-                  >
-                    <Plus className="w-5 h-5 text-[#ff3b3b]" />
-                  </button>
-                )}
-              </div>
+            {/* Departments & Required Documents side‑by‑side */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              {/* Departments Column */}
+              <section>
+                <div className="flex items-center gap-2 mb-6">
+                  <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
+                    Departments
+                  </h2>
+                  {!isAddingDept && (
+                    <button
+                      onClick={() => setIsAddingDept(true)}
+                      className="hover:scale-110 active:scale-95 transition-transform"
+                    >
+                      <Plus className="w-5 h-5 text-[#ff3b3b]" />
+                    </button>
+                  )}
+                </div>
 
-              <div className="space-y-6">
-                {departments.map((dept) => (
-                  <div key={dept.id} className="flex items-end gap-6 group">
-                    <div className="space-y-2 flex-1">
-                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Department Name</span>
-                      <Input
-                        value={dept.name}
-                        readOnly
-                        className="h-11 rounded-lg border-[#EEEEEE] bg-[#FAFAFA] text-[#666666] font-['Manrope:Medium',sans-serif] text-[13px]"
-                      />
-                    </div>
-                    <div className="flex items-center gap-4 pb-3 h-11">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-[11px] text-[#666666] font-['Manrope:Bold',sans-serif]">Active</span>
-                        <Switch
-                          checked={dept.active}
-                          onChange={() => toggleDepartmentStatus(dept.id)}
-                          className="bg-gray-200 hover:bg-gray-300"
-                          style={{
-                            backgroundColor: dept.active ? "#ff3b3b" : undefined
-                          }}
+                <div className="space-y-6">
+                  {departments.map((dept) => (
+                    <div key={dept.id} className="flex items-end gap-6 group">
+                      <div className="space-y-2 flex-1">
+                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                          Department Name
+                        </span>
+                        <Input
+                          value={dept.name}
+                          readOnly
+                          className="h-11 rounded-lg border-[#EEEEEE] bg-[#FAFAFA] text-[#666666] font-['Manrope:Medium',sans-serif] text-[13px]"
                         />
                       </div>
-                      <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteDepartment(dept.id)}
-                        className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#ff3b3b]"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-4 pb-3 h-11">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-[11px] text-[#666666] font-['Manrope:Bold',sans-serif]">
+                            Active
+                          </span>
+                          <Switch
+                            checked={dept.active}
+                            onChange={() => toggleDepartmentStatus(dept.id)}
+                            className="bg-gray-200 hover:bg-gray-300"
+                            style={{
+                              backgroundColor: dept.active ? "#ff3b3b" : undefined,
+                            }}
+                          />
+                        </div>
+                        <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDepartment(dept.id)}
+                          className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#ff3b3b]"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
 
-                {isAddingDept && (
-                  <div className="flex items-end gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="space-y-2 flex-1">
-                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">New Department Name</span>
-                      <Input
-                        value={newDeptName}
-                        onChange={(e) => setNewDeptName(e.target.value)}
-                        placeholder="e.g. Marketing"
-                        autoFocus
-                        className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddDepartment()}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 pb-1 h-11">
-                      <Button
-                        onClick={handleAddDepartment}
-                        className="h-9 px-4 bg-[#111111] hover:bg-[#000000]/90 text-white text-[12px] font-['Manrope:SemiBold',sans-serif] rounded-full border-none"
-                      >
-                        Add
-                      </Button>
-                      <Button
-                        type="text"
-                        onClick={() => setIsAddingDept(false)}
-                        className="h-9 px-4 text-[#666666] hover:text-[#111111] text-[12px] font-['Manrope:SemiBold',sans-serif] hover:bg-[#F7F7F7] rounded-full"
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            <Divider className="my-8 bg-[#EEEEEE]" />
-
-            <section>
-              <div className="flex items-center gap-2 mb-6">
-                <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Required Documents</h2>
-                {!isAddingDoc && (
-                  <button
-                    onClick={() => setIsAddingDoc(true)}
-                    className="hover:scale-110 active:scale-95 transition-transform"
-                  >
-                    <Plus className="w-5 h-5 text-[#ff3b3b]" />
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-6">
-                {requiredDocuments.map((doc) => (
-                  <div key={doc.id} className="flex items-end gap-6 group">
-                    <div className="space-y-2 flex-1">
-                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Document Name</span>
-                      <Input
-                        value={doc.name}
-                        readOnly
-                        className="h-11 rounded-lg border-[#EEEEEE] bg-[#FAFAFA] text-[#666666] font-['Manrope:Medium',sans-serif] text-[13px]"
-                      />
-                    </div>
-                    <div className="flex items-center gap-4 pb-3 h-11">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className="text-[11px] text-[#666666] font-['Manrope:Bold',sans-serif]">Required</span>
-                        <Switch
-                          checked={doc.required}
-                          onChange={() => toggleDocumentRequired(doc.id)}
-                          className="bg-gray-200 hover:bg-gray-300"
-                          style={{
-                            backgroundColor: doc.required ? "#ff3b3b" : undefined
-                          }}
+                  {isAddingDept && (
+                    <div className="flex items-end gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="space-y-2 flex-1">
+                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                          New Department Name
+                        </span>
+                        <Input
+                          value={newDeptName}
+                          onChange={(e) => setNewDeptName(e.target.value)}
+                          placeholder="e.g. Marketing"
+                          autoFocus
+                          className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
+                          onKeyDown={(e) => e.key === "Enter" && handleAddDepartment()}
                         />
                       </div>
-                      <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteDocument(doc.id)}
-                        className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#ff3b3b]"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-2 pb-1 h-11">
+                        <Button
+                          onClick={handleAddDepartment}
+                          className="h-9 px-4 bg-[#111111] hover:bg-[#000000]/90 text-white text-[12px] font-['Manrope:SemiBold',sans-serif] rounded-full border-none"
+                        >
+                          Add
+                        </Button>
+                        <Button
+                          type="text"
+                          onClick={() => setIsAddingDept(false)}
+                          className="h-9 px-4 text-[#666666] hover:text-[#111111] text-[12px] font-['Manrope:SemiBold',sans-serif] hover:bg-[#F7F7F7] rounded-full"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )}
+                </div>
+              </section>
 
-                {isAddingDoc && (
-                  <div className="flex items-end gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="space-y-2 flex-1">
-                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">New Document Name</span>
-                      <Input
-                        value={newDocName}
-                        onChange={(e) => setNewDocName(e.target.value)}
-                        placeholder="e.g. Passport"
-                        autoFocus
-                        className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddDocument()}
-                      />
+              {/* Required Documents Column */}
+              <section className="lg:border-l lg:border-[#EEEEEE] lg:pl-12">
+                <div className="flex items-center gap-2 mb-6">
+                  <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
+                    Required Documents
+                  </h2>
+                  {!isAddingDoc && (
+                    <button
+                      onClick={() => setIsAddingDoc(true)}
+                      className="hover:scale-110 active:scale-95 transition-transform"
+                    >
+                      <Plus className="w-5 h-5 text-[#ff3b3b]" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-6">
+                  {requiredDocuments.map((doc) => (
+                    <div key={doc.id} className="flex items-end gap-6 group">
+                      <div className="space-y-2 flex-1">
+                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                          Document Name
+                        </span>
+                        <Input
+                          value={doc.name}
+                          readOnly
+                          className="h-11 rounded-lg border-[#EEEEEE] bg-[#FAFAFA] text-[#666666] font-['Manrope:Medium',sans-serif] text-[13px]"
+                        />
+                      </div>
+                      <div className="flex items-center gap-4 pb-3 h-11">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="text-[11px] text-[#666666] font-['Manrope:Bold',sans-serif]">
+                            Required
+                          </span>
+                          <Switch
+                            checked={doc.required}
+                            onChange={() => toggleDocumentRequired(doc.id)}
+                            className="bg-gray-200 hover:bg-gray-300"
+                            style={{
+                              backgroundColor: doc.required ? "#ff3b3b" : undefined,
+                            }}
+                          />
+                        </div>
+                        <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDocument(doc.id)}
+                          className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#ff3b3b]"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 pb-1 h-11">
-                      <Button
-                        onClick={handleAddDocument}
-                        className="h-9 px-4 bg-[#111111] hover:bg-[#000000]/90 text-white text-[12px] font-['Manrope:SemiBold',sans-serif] rounded-full border-none"
-                      >
-                        Add
-                      </Button>
-                      <Button
-                        type="text"
-                        onClick={() => setIsAddingDoc(false)}
-                        className="h-9 px-4 text-[#666666] hover:text-[#111111] text-[12px] font-['Manrope:SemiBold',sans-serif] hover:bg-[#F7F7F7] rounded-full"
-                      >
-                        Cancel
-                      </Button>
+                  ))}
+
+                  {isAddingDoc && (
+                    <div className="flex items-end gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="space-y-2 flex-1">
+                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                          New Document Name
+                        </span>
+                        <Input
+                          value={newDocName}
+                          onChange={(e) => setNewDocName(e.target.value)}
+                          placeholder="e.g. Passport"
+                          autoFocus
+                          className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
+                          onKeyDown={(e) => e.key === "Enter" && handleAddDocument()}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 pb-1 h-11">
+                        <Button
+                          onClick={handleAddDocument}
+                          className="h-9 px-4 bg-[#111111] hover:bg-[#000000]/90 text-white text-[12px] font-['Manrope:SemiBold',sans-serif] rounded-full border-none"
+                        >
+                          Add
+                        </Button>
+                        <Button
+                          type="text"
+                          onClick={() => setIsAddingDoc(false)}
+                          className="h-9 px-4 text-[#666666] hover:text-[#111111] text-[12px] font-['Manrope:SemiBold',sans-serif] hover:bg-[#F7F7F7] rounded-full"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            </section>
+                  )}
+                </div>
+              </section>
+            </div>
           </div>
         )}
 

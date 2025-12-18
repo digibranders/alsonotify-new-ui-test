@@ -382,7 +382,9 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
         centered
         className="rounded-[16px] overflow-hidden"
         closeIcon={<X className="w-5 h-5 text-[#666666]" />}
-        bodyStyle={{ padding: 0 }}
+        styles={{
+          body: { padding: 0 },
+        }}
       >
         <div className="flex flex-col h-full bg-white">
           {/* Fixed Header */}

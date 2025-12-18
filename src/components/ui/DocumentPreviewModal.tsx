@@ -70,8 +70,10 @@ export function DocumentPreviewModal({ open, onClose, document }: DocumentPrevie
       centered
       className="rounded-[16px] overflow-hidden"
       closeIcon={<X className="w-5 h-5 text-[#666666]" />}
-      bodyStyle={{
-        padding: 0,
+      styles={{
+        body: {
+          padding: 0,
+        },
       }}
     >
       <div className="bg-white p-6">
@@ -88,3 +90,7 @@ export function DocumentPreviewModal({ open, onClose, document }: DocumentPrevie
     </Modal>
   );
 }
+
+
+
+

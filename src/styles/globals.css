@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../../tailwind.config.js";
 
 :root {
   --font-size: 16px;
@@ -85,8 +84,6 @@
   border: 1px solid #dddddd !important;
   border-radius: 4px !important;
   background-color: #f5f5f5 !important;
-  width: 16px !important;
-  height: 16px !important;
   transition: all 0.2s !important;
   box-shadow: none !important;
 }
@@ -97,13 +94,11 @@
 
 .custom-checkbox-wrapper .ant-checkbox-inner {
   border: none !important;
-  width: 100% !important;
-  height: 100% !important;
   background-color: transparent !important;
   border-radius: 4px !important;
 }
 
-/* Checked state - dark background with white checkmark */
+/* Checked state - black background with white checkmark (same geometry as default Ant checkbox) */
 .custom-checkbox-wrapper .ant-checkbox-checked {
   background-color: #030213 !important;
   border-color: #030213 !important;
@@ -112,19 +107,10 @@
 .custom-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner {
   background-color: #030213 !important;
   border: none !important;
-  width: 100% !important;
-  /* Fixed width */
-  height: 100% !important;
 }
 
 .custom-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner::after {
   border-color: #ffffff !important;
-  border-width: 2px 2px 0 0 !important;
-  width: 5px !important;
-  height: 8px !important;
-  top: 2px !important;
-  left: 4px !important;
-  transform: rotate(45deg) !important;
 }
 
 /* Hover state */

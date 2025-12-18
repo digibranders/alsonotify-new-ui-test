@@ -17,6 +17,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import { useEmployees } from '@/hooks/useUser';
 
 dayjs.extend(isoWeek);
 dayjs.extend(isSameOrBefore);
@@ -263,6 +264,7 @@ export function RequirementsPage() {
 
   // Fetch all workspaces first to get requirements for each
   const { data: workspacesData, isLoading: isLoadingWorkspaces } = useWorkspaces();
+  const { data: employeesData } = useEmployees();
 
   // Get all workspace IDs
   const workspaceIds = useMemo(() => {
@@ -301,16 +303,27 @@ export function RequirementsPage() {
     return 'in-progress';
   };
 
-  // Combine all requirements
+  // Combine all requirements and ensure each record is tagged with its workspace/project ID.
+  // The backend `getRequirementsByWorkspaceId` endpoint may not always include `project_id`
+  // in the requirement payload, so we fall back to the workspace ID used for the query.
   const allRequirements = useMemo(() => {
     const combined: any[] = [];
-    requirementQueries.forEach((query) => {
-      if (query.data?.result) {
-        combined.push(...query.data.result);
+
+    requirementQueries.forEach((query, index) => {
+      const workspaceIdFromQuery = workspaceIds[index];
+
+      if (query.data?.result && workspaceIdFromQuery) {
+        const requirementsWithWorkspace = query.data.result.map((req: any) => ({
+          ...req,
+          project_id: req.project_id ?? workspaceIdFromQuery,
+        }));
+
+        combined.push(...requirementsWithWorkspace);
       }
     });
+
     return combined;
-  }, [requirementQueries]);
+  }, [requirementQueries, workspaceIds]);
 
   // Create a map of workspace ID to workspace data for client/company lookup
   // Workspace API returns: { client: {id, name}, client_company_name, company_name }
@@ -956,24 +969,23 @@ export function RequirementsPage() {
     }
   };
 
-  const handleBulkAssign = async (person: string) => {
+  const handleBulkAssign = async (employee: any) => {
     try {
-      // PLACEHOLDER DATA: Bulk assignment requires mapping person name to user ID
-      // In real implementation, you'd fetch user list from API and map names to IDs
-      // For now, using placeholder logic - would need manager_id or leader_id from person name
       const updatePromises = selectedReqs.map(id => {
         const req = requirements.find(r => r.id === id);
         if (!req) return Promise.resolve();
-        // TODO: Map person name to actual user ID (manager_id or leader_id)
-        // This would require a separate API call to get user list
+
+        const leaderId = employee?.user_id || employee?.id;
+        if (!leaderId) return Promise.resolve();
+
         return updateRequirementMutation.mutateAsync({
           id,
           project_id: req.workspaceId,
-          // manager_id or leader_id would be set here based on person selection
+          leader_id: leaderId,
         } as any);
       });
       await Promise.all(updatePromises);
-      message.success(`Assigned ${person} to ${selectedReqs.length} requirement(s)`);
+      message.success(`Assigned ${employee?.name || 'selected user'} to ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
     } catch (error: any) {
       message.error(error?.response?.data?.message || "Failed to assign requirements");
@@ -1054,14 +1066,6 @@ export function RequirementsPage() {
       trigger="click"
       placement="bottomRight"
       overlayClassName={dateView === 'calendar' ? 'date-range-popover-calendar' : 'date-range-popover-presets'}
-      overlayInnerStyle={dateView === 'calendar' ? {
-        padding: 0,
-        backgroundColor: 'transparent',
-        boxShadow: 'none',
-      } : undefined}
-      overlayStyle={dateView === 'calendar' ? {
-        padding: 0,
-      } : undefined}
       content={
         <div className="w-auto">
           {dateView === 'calendar' ? (
@@ -1208,7 +1212,9 @@ export function RequirementsPage() {
                 onAccept={() => handleReqAccept(requirement.id)}
                 onReject={() => handleReqReject(requirement.id)}
                 onEdit={() => handleEditDraft(requirement)}
-                onNavigate={() => router.push(`/dashboard/workspace/${requirement.workspaceId}/requirements/${requirement.id}`)}
+                onNavigate={() =>
+                  router.push(`/dashboard/workspace/${requirement.workspaceId}/requirements/${requirement.id}`)
+                }
               />
             ))}
           </div>
@@ -1277,17 +1283,21 @@ export function RequirementsPage() {
               <Popover
                 content={
                   <div className="w-48">
-                    {/* PLACEHOLDER DATA: Assignee list - in real app, fetch from users/employees API */}
-                    {/* This would typically come from useEmployees or useUsers hook */}
-                    {['Satyam Yadav', 'Siddique Ahmed', 'Pranita Kadav', 'Vikrant Sontakke'].map(person => (
-                      <button
-                        key={person}
-                        onClick={() => handleBulkAssign(person)}
-                        className="w-full text-left px-3 py-2 text-[13px] hover:bg-gray-50 rounded"
-                      >
-                        {person}
-                      </button>
-                    ))}
+                    {employeesData?.result && employeesData.result.length > 0 ? (
+                      employeesData.result.map((emp: any) => (
+                        <button
+                          key={String(emp.user_id || emp.id || '')}
+                          onClick={() => handleBulkAssign(emp)}
+                          className="w-full text-left px-3 py-2 text-[13px] hover:bg-gray-50 rounded"
+                        >
+                          {emp.name}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-[13px] text-[#999999]">
+                        No employees available
+                      </div>
+                    )}
                   </div>
                 }
                 trigger="click"

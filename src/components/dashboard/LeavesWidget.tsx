@@ -71,7 +71,7 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
     if (!data?.result) return [];
 
     const today = dayjs().startOf("day");
-    
+
     // Filter to show only approved or pending leaves that are upcoming or current
     const filtered = data.result
       .filter((leave: LeaveType) => {
@@ -86,12 +86,12 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
 
     return filtered.map((leave: LeaveType) => {
       // Handle days field - could be number, string, or Decimal
-      const daysValue = typeof leave.days === 'number' 
-        ? leave.days 
-        : typeof leave.days === 'string' 
-        ? parseFloat(leave.days) 
-        : leave.days_count || 0;
-      
+      const daysValue = typeof leave.days === 'number'
+        ? leave.days
+        : typeof leave.days === 'string'
+          ? parseFloat(leave.days)
+          : leave.days_count || 0;
+
       return {
         id: leave.id,
         name: leave.user?.name || "Unknown Employee",
@@ -107,7 +107,7 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
   const availableLeaveTypes = useMemo(() => {
     if (!data?.result) return ['Sick Leave', 'Casual Leave', 'Vacation'];
     const types = new Set(data.result.map((leave: LeaveType) => leave.leave_type));
-    return Array.from(types).filter(Boolean).length > 0 
+    return Array.from(types).filter(Boolean).length > 0
       ? Array.from(types).filter(Boolean) as string[]
       : ['Sick Leave', 'Casual Leave', 'Vacation'];
   }, [data]);
@@ -189,7 +189,7 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
         width={600}
         centered
         className="rounded-[16px] overflow-hidden"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={form}

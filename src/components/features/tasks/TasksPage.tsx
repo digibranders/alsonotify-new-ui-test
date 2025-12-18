@@ -2,27 +2,46 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, CheckSquare, Trash2, Users, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { Modal, Checkbox, Popover } from "antd";
-import { TaskForm, TaskFormData } from '../../modals/TaskForm';
+import { TaskForm } from '../../modals/TaskForm';
 import { TaskRow } from './rows/TaskRow';
 import { useTasks, useCreateTask } from '@/hooks/useTask';
-import { useClients as useGetClients, useEmployees } from '@/hooks/useUser';
 import { useWorkspaces } from '@/hooks/useWorkspace';
 import { searchUsersByName } from '@/services/user';
 import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
 import { message } from 'antd';
 import { useRouter } from 'next/navigation';
-import { Task } from '@/types/genericTypes';
 import dayjs, { Dayjs } from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } from 'date-fns';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, differenceInCalendarDays } from 'date-fns';
 
 dayjs.extend(isoWeek);
 dayjs.extend(isSameOrBefore);
 dayjs.extend(isSameOrAfter);
 
-type ITaskStatus = Task['status'];
+type ITaskStatus = 'in-progress' | 'completed' | 'delayed' | 'todo' | 'review';
+
+type UITask = {
+  id: string;
+  name: string;
+  taskId: string;
+  client: string;
+  project: string;
+  leader: string;
+  assignedTo: string;
+  startDate: string;
+  dueDate: string;
+  estTime: number;
+  timeSpent: number;
+  activities: number;
+  status: ITaskStatus;
+  priority: 'high' | 'medium' | 'low';
+  timelineDate: string;
+  timelineLabel: string;
+  // For date-range filtering
+  dueDateValue: number | null;
+};
 
 type StatusTab = 'all' | 'in-progress' | 'completed' | 'delayed';
 
@@ -167,25 +186,115 @@ export function TasksPage() {
     }
   };
 
-  const tasks = useMemo(() => {
+  const tasks: UITask[] = useMemo(() => {
     if (!tasksData?.result) return [];
-    return tasksData.result.map((t: any) => ({
-      id: String(t.id),
-      name: t.name || t.title || '',
-      taskId: String(t.id),
-      client: t.client?.name || t.client_company_name || 'In-House',
-      project: t.requirement?.name || t.requirement_id ? `Requirement ${t.requirement_id}` : 'General',
-      leader: t.leader?.name || 'Unassigned',
-      assignedTo: t.assigned_to?.name || t.assigned_to_user?.name || 'Unassigned',
-      startDate: t.start_date ? new Date(t.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
-      dueDate: t.due_date ? new Date(t.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
-      estTime: t.estimated_time || 0,
-      timeSpent: t.time_spent || 0,
-      activities: t.worklogs?.length || 0,
-      status: mapBackendStatusToUI(t.status),
-      priority: (t.priority?.toLowerCase() as 'high' | 'medium' | 'low') || 'medium',
-    }));
+
+    const today = new Date();
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    return tasksData.result.map((t: any) => {
+      const startDateObj = t.start_date ? new Date(t.start_date) : null;
+      const dueDateObj = t.due_date ? new Date(t.due_date) : null;
+
+      const startDate = startDateObj
+        ? startDateObj
+            .toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })
+            .replace(/ /g, '-')
+        : 'TBD';
+
+      let dueDate = 'TBD';
+      let timelineDate = 'No due date';
+      let timelineLabel = 'No due date';
+      let isTimeOverdue = false;
+      let dueDateValue: number | null = null;
+
+      if (dueDateObj) {
+        const dueMidnight = new Date(
+          dueDateObj.getFullYear(),
+          dueDateObj.getMonth(),
+          dueDateObj.getDate()
+        );
+
+        dueDateValue = dueMidnight.getTime();
+
+        dueDate = dueDateObj
+          .toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })
+          .replace(/ /g, '-');
+
+        timelineDate = format(dueDateObj, 'MMM d');
+
+        const diffDays = differenceInCalendarDays(todayMidnight, dueMidnight);
+
+        if (diffDays > 0) {
+          // Today is after due date
+          isTimeOverdue = true;
+          timelineLabel = `Overdue by ${diffDays} day${diffDays > 1 ? 's' : ''}`;
+        } else if (diffDays === 0) {
+          timelineLabel = 'Due today';
+        } else {
+          const daysLeft = Math.abs(diffDays);
+          timelineLabel = `Due in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`;
+        }
+      }
+
+      const estTime = t.estimated_time || 0;
+      const timeSpent = t.time_spent || 0;
+      const isOverEstimate = estTime > 0 && timeSpent > estTime;
+
+      const baseStatus = mapBackendStatusToUI(t.status);
+      const isDelayedByTime = isTimeOverdue || isOverEstimate;
+      const uiStatus: ITaskStatus =
+        baseStatus === 'completed'
+          ? 'completed'
+          : isDelayedByTime
+            ? 'delayed'
+            : baseStatus;
+
+      return {
+        id: String(t.id),
+        name: t.name || t.title || '',
+        taskId: String(t.id),
+        client: t.client?.name || t.client_company_name || 'In-House',
+        project:
+          t.requirement?.name
+            ? t.requirement.name
+            : t.requirement_id
+              ? `Requirement ${t.requirement_id}`
+              : 'General',
+        leader:
+          t.leader?.name ||
+          (t as any).leader_user?.name ||
+          'Unassigned',
+        assignedTo:
+          (t as any).member_user?.name ||
+          t.assigned_to?.name ||
+          t.assigned_to_user?.name ||
+          'Unassigned',
+        startDate,
+        dueDate,
+        estTime,
+        timeSpent,
+        activities: t.worklogs?.length || 0,
+        status: uiStatus,
+        priority: (t.priority?.toLowerCase() as 'high' | 'medium' | 'low') || 'medium',
+        timelineDate,
+        timelineLabel,
+        dueDateValue,
+      };
+    });
   }, [tasksData]);
+
+  useEffect(() => {
+    // side-effects after tasks change (currently none)
+  }, [tasks, tasksData]);
 
   const users = useMemo(() => {
     const userNames = tasks.map(t => t.assignedTo).filter((name): name is string => name !== 'Unassigned');
@@ -224,38 +333,25 @@ export function TasksPage() {
     setSearchQuery('');
   };
 
-  const handleCreateTask = async (data: TaskFormData) => {
-    if (!data.name) {
-      message.error("Task name is required");
+  const handleCreateTask = async (data: any) => {
+    // `TaskForm` already validates all required fields, but we keep a
+    // defensive check here to avoid sending an incomplete payload.
+    if (!data?.start_date) {
+      message.error("Start Date is required");
       return;
     }
 
-    createTaskMutation.mutate(
-      {
-        name: data.name,
-        description: data.description || '',
-        status: 'IN_PROGRESS',
-        priority: data.high_priority ? 'HIGH' : 'MEDIUM',
-        requirement_id: data.requirement_id ? parseInt(data.requirement_id) : undefined,
-        assigned_to: data.member_id ? parseInt(data.member_id) : undefined,
-        leader_id: data.leader_id ? parseInt(data.leader_id) : undefined,
-        project_id: data.project_id ? parseInt(data.project_id) : undefined,
-        due_date: undefined, // Form doesn't seem to have due date, or it's not in TaskFormData
-        start_date: data.start_date ? new Date(data.start_date).toISOString() : undefined,
-        estimated_time: data.estimated_time ? parseFloat(data.estimated_time) : 0,
-        high_priority: data.high_priority,
-      } as any,
-      {
-        onSuccess: () => {
-          message.success("Task created successfully!");
-          setIsDialogOpen(false);
-        },
-        onError: (error: any) => {
-          const errorMessage = error?.response?.data?.message || "Failed to create task";
-          message.error(errorMessage);
-        },
-      }
-    );
+    createTaskMutation.mutate(data as any, {
+      onSuccess: () => {
+        message.success("Task created successfully!");
+        setIsDialogOpen(false);
+      },
+      onError: (error: any) => {
+        const errorMessage =
+          error?.response?.data?.message || error?.message || "Failed to create task";
+        message.error(errorMessage);
+      },
+    });
   };
 
   const filteredTasks = useMemo(() => {
@@ -273,13 +369,40 @@ export function TasksPage() {
       const matchesUser = filters.user === 'All' || task.assignedTo === filters.user;
       const matchesCompany = filters.company === 'All' || task.client === filters.company;
       const matchesProject = filters.project === 'All' || task.project === filters.project;
-      const matchesStatus = filters.status === 'All' ||
-        (filters.status === 'In Progress' && (task.status === 'in-progress' || task.status === 'review')) ||
+      const matchesStatus =
+        filters.status === 'All' ||
+        (filters.status === 'In Progress' &&
+          (task.status === 'in-progress' || task.status === 'review')) ||
         (filters.status === 'Completed' && task.status === 'completed') ||
         (filters.status === 'Delayed' && task.status === 'delayed');
-      return matchesTab && matchesSearch && matchesUser && matchesCompany && matchesProject && matchesStatus;
+
+      let matchesDate = true;
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        const from = dateRange[0].startOf('day').toDate().getTime();
+        const to = dateRange[1].endOf('day').toDate().getTime();
+
+        if (task.dueDateValue == null) {
+          matchesDate = false;
+        } else {
+          matchesDate = task.dueDateValue >= from && task.dueDateValue <= to;
+        }
+      }
+
+      return (
+        matchesTab &&
+        matchesSearch &&
+        matchesUser &&
+        matchesCompany &&
+        matchesProject &&
+        matchesStatus &&
+        matchesDate
+      );
     });
-  }, [tasks, activeTab, searchQuery, filters]);
+  }, [tasks, activeTab, searchQuery, filters, dateRange]);
+
+  useEffect(() => {
+    // side-effects after filters, search, or date label change (currently none)
+  }, [tasks.length, filteredTasks.length, activeTab, searchQuery, filters, dateLabel]);
 
   const stats = useMemo(() => ({
     all: tasks.length,
@@ -452,14 +575,6 @@ export function TasksPage() {
       trigger="click"
       placement="bottomRight"
       overlayClassName={dateView === 'calendar' ? 'date-range-popover-calendar' : 'date-range-popover-presets'}
-      overlayInnerStyle={dateView === 'calendar' ? {
-        padding: 0,
-        backgroundColor: 'transparent',
-        boxShadow: 'none',
-      } : undefined}
-      overlayStyle={dateView === 'calendar' ? {
-        padding: 0,
-      } : undefined}
       content={
         <div className="w-auto">
           {dateView === 'calendar' ? (
@@ -572,34 +687,48 @@ export function TasksPage() {
     <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] p-8 flex flex-col overflow-hidden relative">
       {/* Header Section */}
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">Tasks</h2>
+        <div className="flex items-center justify-between mb-4">
+          {/* Left: Title + Add button */}
+          <div className="flex items-center gap-2">
+            <h2 className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">
+              Tasks
+            </h2>
 
-          <button
-            onClick={() => setIsDialogOpen(true)}
-            className="hover:scale-110 active:scale-95 transition-transform"
-          >
-            <Plus className="size-5 text-[#ff3b3b]" strokeWidth={2} />
-          </button>
+            <button
+              onClick={() => setIsDialogOpen(true)}
+              className="hover:scale-110 active:scale-95 transition-transform"
+            >
+              <Plus className="size-5 text-[#ff3b3b]" strokeWidth={2} />
+            </button>
 
-          <Modal
-            open={isDialogOpen}
-            onCancel={() => setIsDialogOpen(false)}
-            footer={null}
-            width={600}
-            centered
-            className="rounded-[16px] overflow-hidden"
-            bodyStyle={{
-              padding: 0,
-            }}
-          >
-            <TaskForm
-              onSubmit={handleCreateTask}
+            <Modal
+              open={isDialogOpen}
               onCancel={() => setIsDialogOpen(false)}
-              users={usersDropdown}
-              requirements={requirementsDropdown}
-            />
-          </Modal>
+              footer={null}
+              width={600}
+              centered
+              className="rounded-[16px] overflow-hidden"
+              styles={{
+                body: {
+                  padding: 0,
+                },
+              }}
+            >
+              <TaskForm
+                onSubmit={handleCreateTask}
+                onCancel={() => setIsDialogOpen(false)}
+                users={usersDropdown}
+                requirements={requirementsDropdown}
+                workspaces={workspacesData?.result?.projects?.map((p: any) => ({
+                  id: p.id,
+                  name: p.name,
+                })) || []}
+              />
+            </Modal>
+          </div>
+
+          {/* Right: Date range selector */}
+          {DateFilter}
         </div>
 
         {/* Status Tabs */}
@@ -644,14 +773,13 @@ export function TasksPage() {
               onSearchChange={setSearchQuery}
             />
           </div>
-          {DateFilter}
         </div>
       </div>
 
       {/* Tasks List */}
       <div className="flex-1 overflow-y-auto pb-24 relative">
         {/* Table Header */}
-        <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2.5fr_1.2fr_1fr_1fr_1.4fr_0.6fr_0.3fr] gap-4 px-4 py-3 mb-2 items-center">
+        <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2.5fr_1.2fr_1.1fr_1fr_1fr_1.4fr_0.6fr_0.3fr] gap-4 px-4 py-3 mb-2 items-center">
           <div className="flex justify-center">
             <Checkbox
               checked={filteredTasks.length > 0 && selectedTasks.length === filteredTasks.length}
@@ -659,17 +787,32 @@ export function TasksPage() {
               className="red-checkbox"
             />
           </div>
-          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Task</p>
-          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Requirements</p>
+          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+            Task
+          </p>
+          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+            Requirements
+          </p>
+          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+            Timeline
+          </p>
           <div className="flex justify-center">
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Assigned</p>
+            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+              Assigned
+            </p>
           </div>
           <div className="flex justify-center">
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Duration</p>
+            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+              Duration
+            </p>
           </div>
-          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Progress</p>
+          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+            Progress
+          </p>
           <div className="flex justify-center">
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Status</p>
+            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+              Status
+            </p>
           </div>
           <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide"></p>
         </div>

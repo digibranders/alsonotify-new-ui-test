@@ -13,10 +13,10 @@ export function AlsonotifyLayoutWrapper({ children }: AlsonotifyLayoutWrapperPro
 
   return (
     <div className="w-full h-screen bg-[#F7F7F7] p-5 flex overflow-hidden">
-      {/* Desktop: Sidebar + Main Content Layout */}
-      <div className="hidden lg:flex lg:gap-5 w-full h-full overflow-hidden">
-        {/* Left Sidebar */}
-        <div className="w-[292px] shrink-0 h-full overflow-y-auto">
+      {/* Main Layout - Visible on all screens */}
+      <div className="flex gap-5 w-full h-full overflow-hidden">
+        {/* Left Sidebar - Hidden on mobile, visible on lg+ */}
+        <div className="hidden lg:block w-[292px] shrink-0 h-full overflow-y-auto">
           <Sidebar userRole={userRole} />
         </div>
 
@@ -30,11 +30,6 @@ export function AlsonotifyLayoutWrapper({ children }: AlsonotifyLayoutWrapperPro
           {/* Page Content */}
           {children}
         </div>
-      </div>
-
-      {/* Mobile/Tablet Fallback - Simple message for now since we focus on Desktop */}
-      <div className="lg:hidden flex items-center justify-center w-full h-full text-center p-10">
-        <p className="text-xl text-gray-500">Please view on a desktop screen (Large or X-Large).</p>
       </div>
     </div>
   );

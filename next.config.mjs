@@ -35,13 +35,13 @@ const nextConfig = {
                 aggregateTimeout: 300,
                 ignored: ['**/node_modules', '**/.git', '**/.next'],
             };
-            
+
             // Cache optimization for faster rebuilds
             config.cache = {
                 type: 'filesystem',
             };
         }
-        
+
         // Optimize chunk splitting for production
         if (!isServer && !dev) {
             config.optimization = {
@@ -92,11 +92,12 @@ const nextConfig = {
                 },
             };
         }
-        
+
         return config;
     },
     // Optimize build output
-    swcMinify: true,
+    // swcMinify is removed as it is default
+
     // Reduce bundle size
     modularizeImports: {
         'lucide-react': {

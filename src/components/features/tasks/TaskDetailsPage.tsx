@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useTask } from '@/hooks/useTask';
-import { Button, Tag, Divider } from 'antd';
+import { Button, Tag, Divider, Tooltip } from 'antd';
 import { CheckCircle2, Loader2, AlertCircle, Clock, Calendar, User, Briefcase, FileText } from 'lucide-react';
 
 const mapBackendStatusToUI = (status: string): 'impediment' | 'in-progress' | 'completed' | 'todo' | 'delayed' => {
@@ -39,22 +39,45 @@ export function TaskDetailsPage() {
     }
 
     // Transform backend data to UI format
-    const assignedToName = (backendTask.assigned_to as any)?.name || (backendTask.assigned_to_user as any)?.name || 'Unassigned';
+    const assignedToName =
+        (backendTask as any).member_user?.name ||
+        (backendTask.assigned_to as any)?.name ||
+        (backendTask.assigned_to_user as any)?.name ||
+        'Unassigned';
+
+    const detailedTaskProject =
+        backendTask.requirement?.name
+            ? backendTask.requirement.name
+            : backendTask.requirement_id
+                ? `Requirement ${backendTask.requirement_id}`
+                : 'General';
+
+    const estTime = backendTask.estimated_time || 0;
+    const timeSpent = backendTask.time_spent || 0;
+    const isOverEstimate = estTime > 0 && timeSpent > estTime;
+
+    const baseStatus = mapBackendStatusToUI(backendTask.status || '');
+    const effectiveStatus =
+        baseStatus === 'completed'
+            ? 'completed'
+            : isOverEstimate
+                ? 'delayed'
+                : baseStatus;
 
     const task = {
         id: String(backendTask.id),
         name: backendTask.name || backendTask.title || '',
         taskId: String(backendTask.id),
         client: backendTask.client?.name || backendTask.client_company_name || 'In-House',
-        project: backendTask.requirement?.name || backendTask.requirement_id ? `Requirement ${backendTask.requirement_id}` : 'General',
-        leader: backendTask.leader?.name || 'Unassigned',
+        project: detailedTaskProject,
+        leader: (backendTask as any).leader_user?.name || backendTask.leader?.name || 'Unassigned',
         assignedTo: assignedToName,
         startDate: backendTask.start_date ? new Date(backendTask.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
         dueDate: backendTask.due_date ? new Date(backendTask.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
-        estTime: backendTask.estimated_time || 0,
-        timeSpent: backendTask.time_spent || 0,
+        estTime,
+        timeSpent,
         activities: backendTask.worklogs?.length || 0,
-        status: mapBackendStatusToUI(backendTask.status || ''),
+        status: effectiveStatus,
         priority: (typeof backendTask.priority === 'string' ? backendTask.priority.toLowerCase() : 'medium') as 'high' | 'medium' | 'low',
     };
 
@@ -62,6 +85,7 @@ export function TaskDetailsPage() {
         switch (status) {
             case 'completed': return { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Completed' };
             case 'in-progress': return { icon: Loader2, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', label: 'In Progress' };
+            case 'delayed': return { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Delayed' };
             case 'impediment': return { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Blocked' };
             default: return { icon: Clock, color: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200', label: 'To Do' };
         }
@@ -69,7 +93,20 @@ export function TaskDetailsPage() {
 
     const statusConfig = getStatusConfig(task.status);
     const StatusIcon = statusConfig.icon;
-    const progress = (task.timeSpent / task.estTime) * 100;
+    const progress = task.estTime > 0 ? (task.timeSpent / task.estTime) * 100 : 0;
+    const formatHours = (hours: number | string | null | undefined) =>
+        Number(Number(hours || 0).toFixed(1));
+    const overtimeHours = isOverEstimate ? timeSpent - estTime : 0;
+    const progressLabel = isOverEstimate
+        ? `${Math.round(progress)}% of estimate`
+        : `${Math.round(progress)}% Complete`;
+    const progressBarColor = isOverEstimate
+        ? 'bg-red-500'
+        : progress >= 100
+            ? 'bg-green-500'
+            : progress >= 75
+                ? 'bg-orange-500'
+                : 'bg-blue-500';
 
     return (
         <div className="w-full h-full flex flex-col p-6 overflow-y-auto">
@@ -126,13 +163,19 @@ export function TaskDetailsPage() {
                             <h3 className="text-sm font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide mb-4">Progress</h3>
                             <div className="bg-[#F7F7F7] rounded-xl p-6">
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium text-[#111111]">{Math.round(progress)}% Complete</span>
-                                    <span className="text-sm text-[#666666]">{task.timeSpent}h of {task.estTime}h</span>
+                                    <span className="text-sm font-medium text-[#111111]">{progressLabel}</span>
+                                    <span className="text-sm text-[#666666]">
+                                        {formatHours(task.timeSpent)}h of {formatHours(task.estTime)}h
+                                        {isOverEstimate && (
+                                            <span className="ml-1 text-[#EB5757] font-['Manrope:Medium',sans-serif]">
+                                                (+{formatHours(overtimeHours)}h overtime)
+                                            </span>
+                                        )}
+                                    </span>
                                 </div>
                                 <div className="w-full h-2 bg-[#EEEEEE] rounded-full overflow-hidden">
                                     <div
-                                        className={`h-full rounded-full transition-all ${progress >= 100 ? 'bg-green-500' : progress >= 75 ? 'bg-orange-500' : 'bg-blue-500'
-                                            }`}
+                                        className={`h-full rounded-full transition-all ${progressBarColor}`}
                                         style={{ width: `${Math.min(progress, 100)}%` }}
                                     />
                                 </div>
@@ -148,9 +191,11 @@ export function TaskDetailsPage() {
                                 <div>
                                     <p className="text-xs text-[#999999] mb-1 m-0">Assigned To</p>
                                     <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center text-white text-[10px] font-bold">
-                                            {task.assignedTo.charAt(0)}
-                                        </div>
+                                        <Tooltip title={task.assignedTo}>
+                                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center text-white text-[10px] font-bold">
+                                                {task.assignedTo.charAt(0)}
+                                            </div>
+                                        </Tooltip>
                                         <p className="text-sm font-medium text-[#111111] m-0">{task.assignedTo}</p>
                                     </div>
                                 </div>
