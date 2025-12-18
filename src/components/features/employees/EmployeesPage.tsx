@@ -881,6 +881,7 @@ export function EmployeesPage() {
                 checked={filteredEmployees.length > 0 && 
                   filteredEmployees.every(emp => selectedEmployees.includes(emp.id))}
                 onChange={toggleSelectAll}
+                className="red-checkbox"
               />
             </div>
             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Name</p>
@@ -1041,9 +1042,11 @@ export function EmployeesPage() {
           top: '10px',
           paddingBottom: '10px',
         }}
-        bodyStyle={{
-          padding: 0,
-          height: 'calc(100vh - 20px)',
+        styles={{
+          body: {
+            padding: 0,
+            height: 'calc(100vh - 20px)',
+          },
         }}
       >
         <EmployeeForm

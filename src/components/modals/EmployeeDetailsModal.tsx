@@ -1,7 +1,10 @@
-import { Modal, Button } from 'antd';
-import { Briefcase, Mail, Phone, Calendar, DollarSign, Clock, CalendarDays, X } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Modal, Button, message } from 'antd';
+import { Briefcase, Mail, Phone, Calendar, DollarSign, Clock, CalendarDays, X, FileText } from 'lucide-react';
 import { AccessBadge } from '../ui/AccessBadge';
-import { Employee } from '@/types/genericTypes';
+import { Employee, UserDocument } from '@/types/genericTypes';
+import { DocumentCard } from '@/components/ui/DocumentCard';
+import { DocumentPreviewModal } from '@/components/ui/DocumentPreviewModal';
 
 interface EmployeeDetailsModalProps {
   open: boolean;
@@ -16,6 +19,67 @@ export function EmployeeDetailsModal({
   employee,
   onEdit,
 }: EmployeeDetailsModalProps) {
+  // Documents state
+  const [selectedDocument, setSelectedDocument] = useState<UserDocument | null>(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+
+  // Mock documents data - TODO: Replace with actual API call when available
+  const documents = useMemo(() => {
+    // Check if employee data has documents
+    const employeeDocs = (employee as any)?.documents || [];
+    if (Array.isArray(employeeDocs) && employeeDocs.length > 0) {
+      return employeeDocs;
+    }
+    // Mock documents from docs folder - all 4 types
+    const mockDocuments: UserDocument[] = [
+      {
+        id: '1',
+        documentTypeId: '1',
+        documentTypeName: 'Resume',
+        fileName: 'Resume_Updated.pdf',
+        fileSize: 2400000, // 2.4 MB
+        fileUrl: '/documents/Jayendra_Jadhav_Resume.pdf',
+        uploadedDate: '2024-10-24T00:00:00Z',
+        fileType: 'pdf',
+        isRequired: true,
+      },
+      {
+        id: '2',
+        documentTypeId: '2',
+        documentTypeName: 'ID Proof',
+        fileName: 'Identity_Proof.jpeg',
+        fileSize: 1000000, // 1 MB
+        fileUrl: '/documents/profile.jpeg',
+        uploadedDate: '2024-01-15T00:00:00Z',
+        fileType: 'image',
+        isRequired: true,
+      },
+      {
+        id: '3',
+        documentTypeId: '3',
+        documentTypeName: 'Contract',
+        fileName: 'Employment_Contract.docx',
+        fileSize: 206000, // 206 KB
+        fileUrl: '/documents/AI Agent Documentation.docx',
+        uploadedDate: '2024-01-20T00:00:00Z',
+        fileType: 'docx',
+        isRequired: true,
+      },
+      {
+        id: '4',
+        documentTypeId: '4',
+        documentTypeName: 'Supporting Docs',
+        fileName: 'ollama_data.csv',
+        fileSize: 50000, // 50 KB
+        fileUrl: '/documents/ollama_filtered_json_support.csv',
+        uploadedDate: '2024-12-17T00:00:00Z',
+        fileType: 'csv',
+        isRequired: false,
+      },
+    ];
+    return mockDocuments;
+  }, [employee]);
+
   if (!employee) return null;
 
   // Format date of joining
@@ -43,13 +107,13 @@ export function EmployeeDetailsModal({
   };
 
   // Parse skillsets
-  const skills = employee.skillsets && employee.skillsets !== 'None' 
+  const skills = employee.skillsets && employee.skillsets !== 'None'
     ? employee.skillsets.split(',').map(s => s.trim()).filter(s => s.length > 0)
     : [];
 
   // Format hourly rate
-  const hourlyRate = employee.hourlyRate && employee.hourlyRate !== 'N/A' 
-    ? employee.hourlyRate 
+  const hourlyRate = employee.hourlyRate && employee.hourlyRate !== 'N/A'
+    ? employee.hourlyRate
     : 'N/A';
 
   // Format experience
@@ -61,6 +125,24 @@ export function EmployeeDetailsModal({
   // Format leaves
   const leavesTaken = employee.leaves ? `${employee.leaves} Days` : '0 Days';
 
+  const handleDocumentPreview = (document: UserDocument) => {
+    setSelectedDocument(document);
+    setIsPreviewModalOpen(true);
+  };
+
+  const handleDocumentDownload = (document: UserDocument) => {
+    if (document.fileUrl) {
+      window.open(document.fileUrl, '_blank');
+    } else {
+      message.warning('Document URL not available');
+    }
+  };
+
+  const handleDocumentUpload = (documentTypeId: string) => {
+    message.info(`Upload functionality for document type ${documentTypeId} - To be implemented`);
+    // TODO: Implement upload functionality
+  };
+
   return (
     <Modal
       open={open}
@@ -70,8 +152,10 @@ export function EmployeeDetailsModal({
       centered
       className="rounded-[16px] overflow-hidden"
       closeIcon={<X className="w-5 h-5 text-[#666666]" />}
-      bodyStyle={{
-        padding: 0,
+      styles={{
+        body: {
+          padding: 0,
+        }
       }}
     >
       <div className="bg-white">
@@ -92,11 +176,10 @@ export function EmployeeDetailsModal({
             <div className="flex items-center gap-2">
               <AccessBadge role={employee.access} />
               <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] ${
-                  employee.status === 'active'
-                    ? 'bg-[#ECFDF3] text-[#12B76A]'
-                    : 'bg-[#FEF3F2] text-[#F04438]'
-                }`}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] ${employee.status === 'active'
+                  ? 'bg-[#ECFDF3] text-[#12B76A]'
+                  : 'bg-[#FEF3F2] text-[#F04438]'
+                  }`}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
                 {employee.status === 'active' ? 'Active' : 'Inactive'}
@@ -232,6 +315,37 @@ export function EmployeeDetailsModal({
           </div>
         )}
 
+        {/* Documents Section */}
+        <div className="px-6 py-6 border-b border-[#EEEEEE]">
+          <h3 className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider mb-4">
+            Attached Documents
+          </h3>
+          {documents && documents.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3">
+              {documents.map((doc: UserDocument) => (
+                <DocumentCard
+                  key={doc.id}
+                  document={doc}
+                  onPreview={handleDocumentPreview}
+                  onDownload={handleDocumentDownload}
+                  showUpload={!doc.fileUrl}
+                  onUpload={handleDocumentUpload}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="border border-[#EEEEEE] border-dashed rounded-lg p-6 bg-[#FAFAFA] text-center">
+              <FileText className="w-10 h-10 text-[#CCCCCC] mx-auto mb-2" />
+              <p className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-1">
+                No documents uploaded
+              </p>
+              <p className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
+                Documents will appear here once uploaded
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Bottom Section - Action Buttons */}
         <div className="px-6 py-6 flex items-center justify-end gap-3">
           <Button
@@ -252,6 +366,16 @@ export function EmployeeDetailsModal({
           </Button>
         </div>
       </div>
+
+      {/* Document Preview Modal */}
+      <DocumentPreviewModal
+        open={isPreviewModalOpen}
+        onClose={() => {
+          setIsPreviewModalOpen(false);
+          setSelectedDocument(null);
+        }}
+        document={selectedDocument}
+      />
     </Modal>
   );
 }

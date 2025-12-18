@@ -2,8 +2,18 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Plus, ArrowUp, ArrowDown, Search, MoreVertical, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
-import { Breadcrumb, Button, Checkbox, Dropdown, MenuProps, Progress, Tooltip } from 'antd';
+import {
+  Plus,
+  ArrowUp,
+  ArrowDown,
+  MoreVertical,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  Loader2,
+  Calendar as CalendarIcon,
+} from 'lucide-react';
+import { Breadcrumb, Checkbox, Dropdown, MenuProps, Progress, Tooltip } from 'antd';
 import { TabBar } from '../../layout/TabBar';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { useWorkspace, useRequirements } from '@/hooks/useWorkspace';
@@ -20,93 +30,150 @@ export function WorkspaceRequirementsPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'in-progress' | 'completed' | 'delayed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({
-    priority: 'All'
+    priority: 'All',
   });
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  // Helper function to map requirement status
+  // Map backend status to UI buckets
   const mapRequirementStatus = (status: string): 'in-progress' | 'completed' | 'delayed' => {
     const statusLower = status?.toLowerCase() || '';
     if (statusLower.includes('completed') || statusLower === 'done') return 'completed';
-    if (statusLower.includes('delayed') || statusLower.includes('stuck') || statusLower.includes('impediment')) return 'delayed';
+    if (
+      statusLower.includes('delayed') ||
+      statusLower.includes('stuck') ||
+      statusLower.includes('impediment')
+    ) {
+      return 'delayed';
+    }
     return 'in-progress';
   };
 
-  // Transform workspace
   const workspace = useMemo(() => {
     if (!workspaceData?.result) return null;
     return {
       id: workspaceData.result.id,
       name: workspaceData.result.name || '',
-      client: workspaceData.result.client?.name || workspaceData.result.client_company_name || 'N/A',
+      client:
+        workspaceData.result.client?.name ||
+        workspaceData.result.client_company_name ||
+        'N/A',
     };
   }, [workspaceData]);
 
-  // Transform requirements
   const requirements = useMemo(() => {
     if (!requirementsData?.result) return [];
+
     return requirementsData.result.map((req: any) => {
-      // Get assigned team members - combine manager, leader, and any assigned users
-      const assignedTeam: string[] = [];
-      if (req.manager?.name) assignedTeam.push(req.manager.name);
-      if (req.leader?.name && !assignedTeam.includes(req.leader.name)) assignedTeam.push(req.leader.name);
-      
+      const assigned: string[] = [];
+      if (req.manager?.name) assigned.push(req.manager.name);
+      if (req.leader?.name && !assigned.includes(req.leader.name)) assigned.push(req.leader.name);
+
+      const start = req.start_date ? new Date(req.start_date) : null;
+      const end = req.end_date ? new Date(req.end_date) : null;
+
+      let timeline = 'No date';
+      if (start && end) {
+        timeline = `${format(start, 'MMM d')} - ${format(end, 'MMM d')}`;
+      } else if (start) {
+        timeline = `From ${format(start, 'MMM d')}`;
+      } else if (end) {
+        timeline = `Until ${format(end, 'MMM d')}`;
+      }
+
+      const progress = req.progress || 0;
+      const totalTasks = req.total_tasks || 0;
+      const completedTasks = totalTasks ? Math.floor((totalTasks * progress) / 100) : 0;
+
+      const status = mapRequirementStatus(req.status || '');
+      const priority = (req.priority?.toLowerCase() as 'high' | 'medium' | 'low') || 'medium';
+      const department = req.department?.name || null;
+      const client =
+        req.project?.client?.name || req.client_company_name || workspace?.client || 'In-House';
+
+      // Use real budget/estimate data from backend when available instead of mock values
+      const rawBudget = req.estimated_cost ?? req.budget ?? null;
+      const budgetValue =
+        rawBudget !== null && rawBudget !== undefined ? Number(rawBudget) || 0 : 0;
+      const budgetFormatted =
+        rawBudget !== null && rawBudget !== undefined
+          ? `$${budgetValue.toLocaleString('en-US')}`
+          : 'N/A';
+
       return {
         id: req.id,
         title: req.name || req.title || '',
         description: req.description || '',
-        assignedTo: assignedTeam,
-        startDate: req.start_date ? format(new Date(req.start_date), 'dd MMM') : 'TBD',
-        endDate: req.end_date ? format(new Date(req.end_date), 'dd MMM') : 'TBD',
-        progress: req.progress || 0,
-        tasksCompleted: req.total_tasks ? Math.floor(req.total_tasks * (req.progress || 0) / 100) : 0,
-        tasksTotal: req.total_tasks || 0,
-        status: mapRequirementStatus(req.status || ''),
-        priority: (req.priority?.toLowerCase() as 'high' | 'medium' | 'low') || 'medium',
-        department: req.department?.name || null,
-        client: req.project?.client?.name || req.client_company_name || workspace?.client || 'N/A',
+        assignedTo: assigned,
+        // for sorting
+        startDateValue: start ? start.getTime() : 0,
+        // displayed
+        timeline,
+        progress,
+        tasksCompleted: completedTasks,
+        tasksTotal: totalTasks,
+        status,
+        priority,
+        department,
+        client,
+        budgetValue,
+        budgetFormatted,
       };
     });
   }, [requirementsData, workspace]);
 
-  // Calculate status counts
-  const statusCounts = useMemo(() => {
-    return {
+  const statusCounts = useMemo(
+    () => ({
       all: requirements.length,
-      inProgress: requirements.filter(r => r.status === 'in-progress').length,
-      completed: requirements.filter(r => r.status === 'completed').length,
-      delayed: requirements.filter(r => r.status === 'delayed').length,
-    };
-  }, [requirements]);
+      inProgress: requirements.filter((r) => r.status === 'in-progress').length,
+      completed: requirements.filter((r) => r.status === 'completed').length,
+      delayed: requirements.filter((r) => r.status === 'delayed').length,
+    }),
+    [requirements],
+  );
 
-  // Filter and sort requirements
   const filteredAndSortedRequirements = useMemo(() => {
-    let filtered = requirements.filter(req => {
+    let filtered = requirements.filter((req) => {
       const matchesTab = activeTab === 'all' || req.status === activeTab;
-      const matchesSearch = searchQuery === '' ||
+      const matchesSearch =
+        searchQuery === '' ||
         req.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         req.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesPriority = filters.priority === 'All' || req.priority === filters.priority.toLowerCase();
+      const matchesPriority =
+        filters.priority === 'All' || req.priority === filters.priority.toLowerCase();
+
       return matchesTab && matchesSearch && matchesPriority;
     });
 
-    // Sort
     if (sortColumn) {
       filtered = [...filtered].sort((a, b) => {
-        let aVal: any = a[sortColumn as keyof typeof a];
-        let bVal: any = b[sortColumn as keyof typeof b];
+        let aVal: any;
+        let bVal: any;
 
-        if (sortColumn === 'startDate' || sortColumn === 'endDate') {
-          // Parse dates for comparison
-          aVal = aVal === 'TBD' ? 0 : new Date(aVal).getTime();
-          bVal = bVal === 'TBD' ? 0 : new Date(bVal).getTime();
-        } else if (sortColumn === 'progress') {
-          aVal = a.progress || 0;
-          bVal = b.progress || 0;
-        } else if (sortColumn === 'title') {
-          aVal = a.title.toLowerCase();
-          bVal = b.title.toLowerCase();
+        switch (sortColumn) {
+          case 'timeline':
+            aVal = a.startDateValue;
+            bVal = b.startDateValue;
+            break;
+          case 'budget':
+            aVal = a.budgetValue;
+            bVal = b.budgetValue;
+            break;
+          case 'progress':
+            aVal = a.progress || 0;
+            bVal = b.progress || 0;
+            break;
+          case 'title':
+            aVal = a.title.toLowerCase();
+            bVal = b.title.toLowerCase();
+            break;
+          case 'status':
+            aVal = a.status;
+            bVal = b.status;
+            break;
+          default:
+            aVal = (a as any)[sortColumn];
+            bVal = (b as any)[sortColumn];
         }
 
         if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
@@ -129,22 +196,39 @@ export function WorkspaceRequirementsPage() {
 
   const getSortIcon = (column: string) => {
     if (sortColumn !== column) return null;
-    return sortDirection === 'asc' ? <ArrowUp className="w-3 h-3 inline ml-1" /> : <ArrowDown className="w-3 h-3 inline ml-1" />;
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="w-3 h-3 inline ml-1" />
+    ) : (
+      <ArrowDown className="w-3 h-3 inline ml-1" />
+    );
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle2 className="w-4 h-4 text-[#0F9D58]" />;
+        return (
+          <div className="w-5 h-5 rounded-full bg-[#0F9D58] flex items-center justify-center">
+            <CheckCircle2 className="w-3 h-3 text-white" />
+          </div>
+        );
       case 'delayed':
-        return <AlertCircle className="w-4 h-4 text-[#EB5757]" />;
+        return (
+          <div className="w-5 h-5 rounded-full bg-[#EB5757] flex items-center justify-center">
+            <AlertCircle className="w-3 h-3 text-white" />
+          </div>
+        );
       default:
-        return <Clock className="w-4 h-4 text-[#2F80ED] animate-spin" />;
+        return <Loader2 className="w-5 h-5 text-[#2F80ED] animate-spin" />;
     }
   };
 
   const filterOptions: FilterOption[] = [
-    { id: 'priority', label: 'Priority', options: ['All', 'High', 'Medium', 'Low'], placeholder: 'Priority' }
+    {
+      id: 'priority',
+      label: 'Priority',
+      options: ['All', 'High', 'Medium', 'Low'],
+      placeholder: 'Priority',
+    },
   ];
 
   if (isLoadingWorkspace || isLoadingRequirements) {
@@ -156,162 +240,176 @@ export function WorkspaceRequirementsPage() {
   }
 
   return (
-    <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] flex flex-col overflow-hidden">
+    <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] p-8 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-8 pb-0 border-b border-[#EEEEEE]">
-        {/* Breadcrumb and Add Button */}
+      <div className="mb-6">
         <div className="flex items-center justify-between mb-6">
           <Breadcrumb
-            separator={<span className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#999999]">/</span>}
+            separator={
+              <span className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#999999]">/
+              </span>
+            }
             items={[
               {
-                title: <span className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors" onClick={() => router.push('/dashboard/workspace')}>Workspaces</span>
+                title: (
+                  <span
+                    className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors"
+                    onClick={() => router.push('/dashboard/workspace')}
+                  >
+                    Workspaces
+                  </span>
+                ),
               },
               {
-                title: <span className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">{workspace.name}</span>
-              }
+                title: (
+                  <div className="flex items-center gap-2">
+                    <span className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">
+                      {workspace.name}
+                    </span>
+                    <button
+                      className="hover:scale-110 active:scale-95 transition-transform"
+                      aria-label="Add requirement"
+                    >
+                      <Plus className="w-4 h-4 text-[#ff3b3b]" />
+                    </button>
+                  </div>
+                ),
+              },
             ]}
           />
-          <button className="w-6 h-6 rounded-full bg-[#ff3b3b] flex items-center justify-center hover:bg-[#ff5252] transition-colors">
-            <Plus className="w-4 h-4 text-white" />
-          </button>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-6 -mt-2">
+        <div className="mb-2 -mt-2">
           <TabBar
             tabs={[
               { id: 'all', label: 'All Requirements', count: statusCounts.all },
               { id: 'in-progress', label: 'In Progress', count: statusCounts.inProgress },
               { id: 'completed', label: 'Completed', count: statusCounts.completed },
-              { id: 'delayed', label: 'Delayed', count: statusCounts.delayed }
+              { id: 'delayed', label: 'Delayed', count: statusCounts.delayed },
             ]}
             activeTab={activeTab}
-            onTabChange={(tabId: string) => setActiveTab(tabId as 'all' | 'in-progress' | 'completed' | 'delayed')}
+            onTabChange={(tabId: string) =>
+              setActiveTab(tabId as 'all' | 'in-progress' | 'completed' | 'delayed')
+            }
           />
-        </div>
-
-        {/* Filters */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 flex-1">
-              <FilterBar
-                filters={filterOptions}
-                selectedFilters={filters}
-                onFilterChange={(id, val) => setFilters(prev => ({ ...prev, [id]: val }))}
-                onClearFilters={() => setFilters({ priority: 'All' })}
-                searchPlaceholder="Search requirements..."
-                searchValue={searchQuery}
-                onSearchChange={setSearchQuery}
-              />
-            </div>
-            {workspace.client && (
-              <div className="px-3 py-1.5 rounded-lg bg-[#F7F7F7] border border-[#EEEEEE]">
-                <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666]">{workspace.client}</span>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* Requirements Table */}
-      <div className="flex-1 overflow-y-auto p-8">
-        <div className="bg-white rounded-[16px] border border-[#EEEEEE] overflow-hidden">
-          {/* Table Header */}
-          <div className="grid grid-cols-[40px_2fr_180px_120px_120px_200px_100px_40px] gap-4 px-6 py-3 bg-[#FAFAFA] border-b border-[#EEEEEE] items-center">
-            <div className="flex justify-center">
-              <Checkbox />
-            </div>
-            <button
-              onClick={() => handleSort('title')}
-              className="text-left text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide hover:text-[#111111] transition-colors flex items-center"
-            >
-              Requirement {getSortIcon('title')}
-            </button>
-            <div className="text-center text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
-              Assigned Team
-            </div>
-            <button
-              onClick={() => handleSort('startDate')}
-              className="text-center text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide hover:text-[#111111] transition-colors flex items-center justify-center"
-            >
-              Start Date {getSortIcon('startDate')}
-            </button>
-            <button
-              onClick={() => handleSort('endDate')}
-              className="text-center text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide hover:text-[#111111] transition-colors flex items-center justify-center"
-            >
-              End Date {getSortIcon('endDate')}
-            </button>
-            <button
-              onClick={() => handleSort('progress')}
-              className="text-center text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide hover:text-[#111111] transition-colors flex items-center justify-center"
-            >
-              Progress {getSortIcon('progress')}
-            </button>
-            <button
-              onClick={() => handleSort('status')}
-              className="text-center text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide hover:text-[#111111] transition-colors flex items-center justify-center"
-            >
-              Status {getSortIcon('status')}
-            </button>
-            <div></div>
-          </div>
+      {/* Filters bar */}
+      <div className="mb-6">
+        <FilterBar
+          filters={filterOptions}
+          selectedFilters={filters}
+          onFilterChange={(id, val) => setFilters((prev) => ({ ...prev, [id]: val }))}
+          onClearFilters={() => setFilters({ priority: 'All' })}
+          searchPlaceholder="Search requirements..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          showClearButton
+        />
+      </div>
 
-          {/* Table Rows */}
-          <div className="divide-y divide-[#EEEEEE]">
-            {filteredAndSortedRequirements.length === 0 ? (
-              <div className="text-center py-12 text-[#999999] text-[13px]">
-                No requirements found
-              </div>
-            ) : (
-              filteredAndSortedRequirements.map((req) => (
-                <div
-                  key={req.id}
-                  onClick={() => router.push(`/dashboard/workspace/${workspaceId}/requirements/${req.id}`)}
-                  className="grid grid-cols-[40px_2fr_180px_120px_120px_200px_100px_40px] gap-4 px-6 py-4 hover:bg-[#FAFAFA] transition-colors cursor-pointer items-center group"
-                >
+      {/* Table */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Header row */}
+        <div className="sticky top-0 z-10 bg-white grid grid-cols-[40px_2.6fr_1.6fr_1.2fr_1.4fr_1.4fr_0.7fr_0.3fr] gap-4 px-4 py-3 mb-2 items-center">
+          <div className="flex justify-center">
+            <Checkbox />
+          </div>
+          <button
+            onClick={() => handleSort('title')}
+            className="text-left text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide hover:text-[#111111] transition-colors flex items-center"
+          >
+            Requirement {getSortIcon('title')}
+          </button>
+          <button
+            onClick={() => handleSort('timeline')}
+            className="text-left text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide hover:text-[#111111] transition-colors flex items-center justify-start"
+          >
+            Timeline {getSortIcon('timeline')}
+          </button>
+          <button
+            onClick={() => handleSort('budget')}
+            className="text-left text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide hover:text-[#111111] transition-colors flex items-center justify-start"
+          >
+            Budget {getSortIcon('budget')}
+          </button>
+          <div className="text-center text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+            Team
+          </div>
+          <button
+            onClick={() => handleSort('progress')}
+            className="text-center text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide hover:text-[#111111] transition-colors flex items-center justify-center"
+          >
+            Progress {getSortIcon('progress')}
+          </button>
+          <button
+            onClick={() => handleSort('status')}
+            className="text-center text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide hover:text-[#111111] transition-colors flex items-center justify-center"
+          >
+            Status {getSortIcon('status')}
+          </button>
+          <div />
+        </div>
+
+        {/* Rows */}
+        <div className="space-y-2">
+          {filteredAndSortedRequirements.length === 0 ? (
+            <div className="text-center py-12 text-[#999999] text-[13px]">No requirements found</div>
+          ) : (
+            filteredAndSortedRequirements.map((req) => (
+              <div
+                key={req.id}
+                onClick={() =>
+                  router.push(`/dashboard/workspace/${workspaceId}/requirements/${req.id}`)
+                }
+                className="group bg-white border border-[#EEEEEE] rounded-[16px] p-4 transition-all duration-300 cursor-pointer relative z-10 hover:border-[#ff3b3b]/20 hover:shadow-lg"
+              >
+                <div className="grid grid-cols-[40px_2.6fr_1.6fr_1.2fr_1.4fr_1.4fr_0.7fr_0.3fr] gap-4 items-center">
                   <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
                     <Checkbox />
                   </div>
 
-                  {/* Requirement Name & Details */}
-                  <div>
-                    {/* Requirement Name (Bold) */}
-                    <h3 className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111] group-hover:text-[#ff3b3b] transition-colors mb-1.5">
-                      {req.title}
-                    </h3>
-                    
-                    {/* Details Below Name: # number, Client, Department */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* Requirement Number */}
-                      <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
-                        #{req.id}
-                      </span>
-                      
-                      {/* Separator dot if client exists */}
-                      {req.client && req.client !== 'N/A' && (
-                        <>
-                          <span className="text-[11px] text-[#999999]">•</span>
-                          <span className="text-[11px] text-[#666666] font-['Manrope:Regular',sans-serif]">
-                            {req.client}
-                          </span>
-                        </>
-                      )}
-                      
-                      {/* Department Tags */}
-                      {req.department && (
-                        <>
-                          <span className="text-[11px] text-[#999999]">•</span>
+                  {/* Requirement + client */}
+                  <div className="flex items-start gap-3">
+                    <span
+                      className={`mt-1 w-2.5 h-2.5 rounded-full ${
+                        req.priority === 'high'
+                          ? 'bg-[#ff3b3b]'
+                          : req.priority === 'low'
+                          ? 'bg-[#FACC15]'
+                          : 'bg-[#F59E0B]'
+                      }`}
+                    />
+                    <div>
+                      <h3 className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111] group-hover:text-[#ff3b3b] transition-colors mb-1.5">
+                        {req.title}
+                      </h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
+                          {req.client}
+                        </span>
+                        {req.department && (
                           <span className="px-2 py-0.5 rounded-full bg-[#F7F7F7] text-[10px] font-['Manrope:Medium',sans-serif] text-[#666666]">
                             {req.department}
                           </span>
-                        </>
-                      )}
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Assigned Team - Circular Avatars with Initials */}
+                  {/* Timeline */}
+                  <div className="flex items-center gap-2 text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif]">
+                    <CalendarIcon className="w-4 h-4 text-[#999999]" />
+                    <span>{req.timeline}</span>
+                  </div>
+
+                  {/* Budget */}
+                  <div className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#16A34A]">
+                    {req.budgetFormatted}
+                  </div>
+
+                  {/* Team */}
                   <div className="flex items-center justify-center">
                     {req.assignedTo.length > 0 ? (
                       <div className="flex items-center -space-x-2">
@@ -322,7 +420,7 @@ export function WorkspaceRequirementsPage() {
                             .join('')
                             .toUpperCase()
                             .slice(0, 2);
-                          
+
                           return (
                             <Tooltip key={i} title={person}>
                               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center border-2 border-white shadow-sm relative z-[5] hover:z-10 transition-all">
@@ -342,22 +440,10 @@ export function WorkspaceRequirementsPage() {
                         )}
                       </div>
                     ) : (
-                      <span className="text-[13px] text-[#999999] font-['Manrope:Regular',sans-serif]">N/A</span>
+                      <span className="text-[13px] text-[#999999] font-['Manrope:Regular',sans-serif]">
+                        N/A
+                      </span>
                     )}
-                  </div>
-
-                  {/* Start Date */}
-                  <div className="text-center">
-                    <span className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif]">{req.startDate}</span>
-                  </div>
-
-                  {/* End Date */}
-                  <div className="text-center">
-                    <span className={`text-[13px] font-['Manrope:Medium',sans-serif] ${
-                      req.status === 'delayed' ? 'text-[#ff3b3b]' : 'text-[#666666]'
-                    }`}>
-                      {req.endDate}
-                    </span>
                   </div>
 
                   {/* Progress */}
@@ -374,7 +460,13 @@ export function WorkspaceRequirementsPage() {
                       <Progress
                         percent={req.progress}
                         showInfo={false}
-                        strokeColor={req.status === 'completed' ? '#0F9D58' : req.status === 'delayed' ? '#EB5757' : '#2F80ED'}
+                        strokeColor={
+                          req.status === 'completed'
+                            ? '#0F9D58'
+                            : req.status === 'delayed'
+                            ? '#EB5757'
+                            : '#2F80ED'
+                        }
                         trailColor="#F7F7F7"
                         size="small"
                       />
@@ -382,18 +474,18 @@ export function WorkspaceRequirementsPage() {
                   </div>
 
                   {/* Status */}
-                  <div className="flex items-center justify-center">
-                    {getStatusIcon(req.status)}
-                  </div>
+                  <div className="flex items-center justify-center">{getStatusIcon(req.status)}</div>
 
                   {/* Actions */}
                   <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
                     <Dropdown
                       menu={{
                         items: [
-                          { key: 'edit', label: 'Edit' },
-                          { key: 'delete', label: 'Delete', danger: true }
-                        ]
+                          { key: 'edit', label: 'Edit Details' },
+                          { key: 'priority', label: 'Set Priority' },
+                          { type: 'divider' as const },
+                          { key: 'delete', label: 'Delete', danger: true },
+                        ] as MenuProps['items'],
                       }}
                       trigger={['click']}
                       placement="bottomRight"
@@ -404,9 +496,9 @@ export function WorkspaceRequirementsPage() {
                     </Dropdown>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

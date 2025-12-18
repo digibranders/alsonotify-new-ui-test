@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEmployee, useUpdateEmployee, useCompanyDepartments } from '@/hooks/useUser';
 import { PageLayout } from '../../layout/PageLayout';
 import { AccessBadge } from '../../ui/AccessBadge';
 import { Button, Tag, Divider, Modal, message } from 'antd';
-import { Mail, Phone, Calendar, Briefcase, DollarSign, ArrowLeft, Edit } from 'lucide-react';
+import { Mail, Phone, Calendar, Briefcase, DollarSign, ArrowLeft, Edit, FileText } from 'lucide-react';
 import { EmployeeForm, EmployeeFormData } from '../../modals/EmployeesForm';
+import { DocumentCard } from '@/components/ui/DocumentCard';
+import { DocumentPreviewModal } from '@/components/ui/DocumentPreviewModal';
+import { UserDocument } from '@/types/genericTypes';
 
 export function EmployeeDetailsPage() {
   const params = useParams();
@@ -18,6 +21,67 @@ export function EmployeeDetailsPage() {
   const updateEmployeeMutation = useUpdateEmployee();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<UserDocument | null>(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+
+  const backendEmp = employeeData?.result;
+
+  // Mock documents data - TODO: Replace with actual API call when available
+  const documents = useMemo(() => {
+    // Check if employee data has documents
+    const employeeDocs = backendEmp?.documents || [];
+    if (Array.isArray(employeeDocs) && employeeDocs.length > 0) {
+      return employeeDocs;
+    }
+    // Mock documents from docs folder - all 4 types
+    const mockDocuments: UserDocument[] = [
+      {
+        id: '1',
+        documentTypeId: '1',
+        documentTypeName: 'Resume',
+        fileName: 'Resume_Updated.pdf',
+        fileSize: 2400000, // 2.4 MB
+        fileUrl: '/documents/Jayendra_Jadhav_Resume.pdf',
+        uploadedDate: '2024-10-24T00:00:00Z',
+        fileType: 'pdf',
+        isRequired: true,
+      },
+      {
+        id: '2',
+        documentTypeId: '2',
+        documentTypeName: 'ID Proof',
+        fileName: 'Identity_Proof.webp',
+        fileSize: 1000000, // 1 MB
+        fileUrl: '/documents/profile.jpeg',
+        uploadedDate: '2024-01-15T00:00:00Z',
+        fileType: 'image',
+        isRequired: true,
+      },
+      {
+        id: '3',
+        documentTypeId: '3',
+        documentTypeName: 'Contract',
+        fileName: 'Employment_Contract.docx',
+        fileSize: 206000, // 206 KB
+        fileUrl: '/documents/AI Agent Documentation.docx',
+        uploadedDate: '2024-01-20T00:00:00Z',
+        fileType: 'docx',
+        isRequired: true,
+      },
+      {
+        id: '4',
+        documentTypeId: '4',
+        documentTypeName: 'Supporting Docs',
+        fileName: 'ollama_data.csv',
+        fileSize: 50000, // 50 KB
+        fileUrl: '/documents/ollama_filtered_json_support.csv',
+        uploadedDate: '2024-12-17T00:00:00Z',
+        fileType: 'csv',
+        isRequired: false,
+      },
+    ];
+    return mockDocuments;
+  }, [backendEmp]);
 
   const handleUpdateEmployee = (data: EmployeeFormData) => {
     // Find department ID from name
@@ -80,7 +144,6 @@ export function EmployeeDetailsPage() {
     );
   }
 
-  const backendEmp = employeeData?.result;
   if (!backendEmp) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
@@ -110,6 +173,24 @@ export function EmployeeDetailsPage() {
     leaves: backendEmp.no_of_leaves || 0,
     roleId: backendEmp.user_employee?.role_id,
     employmentType: 'In-house' as 'In-house' | 'Freelancer' | 'Agency', // Mock data default
+  };
+
+  const handleDocumentPreview = (document: UserDocument) => {
+    setSelectedDocument(document);
+    setIsPreviewModalOpen(true);
+  };
+
+  const handleDocumentDownload = (document: UserDocument) => {
+    if (document.fileUrl) {
+      window.open(document.fileUrl, '_blank');
+    } else {
+      message.warning('Document URL not available');
+    }
+  };
+
+  const handleDocumentUpload = (documentTypeId: string) => {
+    message.info(`Upload functionality for document type ${documentTypeId} - To be implemented`);
+    // TODO: Implement upload functionality
   };
 
   return (
@@ -234,7 +315,48 @@ export function EmployeeDetailsPage() {
           </div>
         </div>
 
+        <Divider className="my-8" />
+
+        {/* Documents Section */}
+        <div>
+          <h3 className="text-sm font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide mb-4">Attached Documents</h3>
+          {documents && documents.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {documents.map((doc: UserDocument) => (
+                <DocumentCard
+                  key={doc.id}
+                  document={doc}
+                  onPreview={handleDocumentPreview}
+                  onDownload={handleDocumentDownload}
+                  showUpload={!doc.fileUrl}
+                  onUpload={handleDocumentUpload}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="border border-[#EEEEEE] border-dashed rounded-lg p-8 bg-[#FAFAFA] text-center">
+              <FileText className="w-12 h-12 text-[#CCCCCC] mx-auto mb-3" />
+              <p className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-1">
+                No documents uploaded
+              </p>
+              <p className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
+                Documents will appear here once uploaded
+              </p>
+            </div>
+          )}
+        </div>
+
       </div>
+
+      {/* Document Preview Modal */}
+      <DocumentPreviewModal
+        open={isPreviewModalOpen}
+        onClose={() => {
+          setIsPreviewModalOpen(false);
+          setSelectedDocument(null);
+        }}
+        document={selectedDocument}
+      />
 
       <Modal
         open={isDialogOpen}

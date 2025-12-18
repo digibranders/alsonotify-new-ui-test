@@ -4,8 +4,10 @@ import '../styles/globals.css';
 import { AntDesignProvider } from '../components/AntDesignProvider';
 import ReactQueryProvider from '../provider/ReactQueryClient';
 
-
-const manrope = Manrope({ subsets: ['latin'] });
+const manrope = Manrope({
+  subsets: ['latin'],
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Alsonotify - Agency-Client Collaboration',
@@ -21,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={manrope.className}>
         <ReactQueryProvider>
           <AntDesignProvider>

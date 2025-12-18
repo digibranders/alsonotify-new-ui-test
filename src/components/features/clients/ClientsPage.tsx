@@ -193,8 +193,10 @@ export function ClientsPage() {
           width={500}
           centered
           className="rounded-[16px] overflow-hidden"
-          bodyStyle={{
-            padding: 0,
+          styles={{
+            body: {
+              padding: 0,
+            },
           }}
         >
           <div className="flex flex-col h-full bg-white">

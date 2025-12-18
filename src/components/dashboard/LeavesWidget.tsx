@@ -71,7 +71,7 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
     if (!data?.result) return [];
 
     const today = dayjs().startOf("day");
-    
+
     // Filter to show only approved or pending leaves that are upcoming or current
     const filtered = data.result
       .filter((leave: LeaveType) => {
@@ -86,12 +86,12 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
 
     return filtered.map((leave: LeaveType) => {
       // Handle days field - could be number, string, or Decimal
-      const daysValue = typeof leave.days === 'number' 
-        ? leave.days 
-        : typeof leave.days === 'string' 
-        ? parseFloat(leave.days) 
-        : leave.days_count || 0;
-      
+      const daysValue = typeof leave.days === 'number'
+        ? leave.days
+        : typeof leave.days === 'string'
+          ? parseFloat(leave.days)
+          : leave.days_count || 0;
+
       return {
         id: leave.id,
         name: leave.user?.name || "Unknown Employee",
@@ -107,7 +107,7 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
   const availableLeaveTypes = useMemo(() => {
     if (!data?.result) return ['Sick Leave', 'Casual Leave', 'Vacation'];
     const types = new Set(data.result.map((leave: LeaveType) => leave.leave_type));
-    return Array.from(types).filter(Boolean).length > 0 
+    return Array.from(types).filter(Boolean).length > 0
       ? Array.from(types).filter(Boolean) as string[]
       : ['Sick Leave', 'Casual Leave', 'Vacation'];
   }, [data]);
@@ -137,25 +137,25 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
 
   return (
     <>
-      <div className="bg-white rounded-[20px] shadow-[0_2px_8px_rgba(0,0,0,0.08)] w-full h-full flex flex-col">
+      <div className="bg-white rounded-[24px] p-5 w-full h-full flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-3">
+        <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center gap-2">
             <h3 className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">Leaves</h3>
             <button onClick={() => setShowDialog(true)} className="hover:scale-110 active:scale-95 transition-transform">
               <Plus className="size-5 text-[#FF4500]" strokeWidth={2} />
             </button>
           </div>
-          <button className="flex items-center gap-1 text-[#666666] text-[16px] font-['Manrope:Regular',sans-serif] hover:text-[#111111] transition-colors" onClick={() => onNavigate && onNavigate('leaves')}>
+          <button className="flex items-center gap-1 text-[#666666] text-[14px] font-['Manrope:SemiBold',sans-serif] hover:text-[#111111] transition-colors" onClick={() => onNavigate && onNavigate('leaves')}>
             <span>View All</span>
-            <svg className="size-[14px]" fill="none" viewBox="0 0 17 17">
-              <path d={svgPaths.p3ac7a560} stroke="#666666" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
+            <svg className="size-[17px]" fill="none" viewBox="0 0 17 17">
+              <path d={svgPaths.p3ac7a560} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
             </svg>
           </button>
         </div>
 
         {/* Leaves List */}
-        <div className="flex flex-col gap-3 flex-1 px-6 pb-5 overflow-y-auto scrollbar-hide">
+        <div className="flex flex-col gap-2.5 flex-1 mt-2 overflow-y-auto scrollbar-hide">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Spin size="small" />
@@ -189,7 +189,7 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
         width={600}
         centered
         className="rounded-[16px] overflow-hidden"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form
           form={form}
@@ -298,29 +298,46 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
 
 function LeaveItem({ name, dateRange, duration, avatar, initials }: { name: string; dateRange: string; duration: string; avatar: string | null; initials: string }) {
   return (
-    <div className="bg-white rounded-[10px] border border-gray-100 p-4 flex items-center gap-4 hover:border-[#ff3b3b]/20 hover:shadow-lg transition-all duration-300 cursor-pointer">
-      {/* Avatar */}
-      <div className="flex-shrink-0 w-12 h-12 rounded-full overflow-hidden bg-[#F7F7F7] flex items-center justify-center">
-        {avatar ? (
-          <Image src={avatar} alt={name} width={48} height={48} className="w-full h-full object-cover" />
-        ) : (
-          <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]">
-            {initials}
-          </span>
-        )}
-      </div>
+    <div className="group p-3 rounded-xl border border-[#EEEEEE] hover:border-[#ff3b3b]/20 transition-all duration-300 hover:shadow-lg cursor-pointer">
+      <div className="flex items-start gap-2.5">
+        {/* Avatar - Match meeting date badge size */}
+        <div className="flex-shrink-0">
+          <div className="w-[48px] h-[48px] rounded-full overflow-hidden bg-[#F7F7F7] flex items-center justify-center">
+            {avatar ? (
+              <Image src={avatar} alt={name} width={48} height={48} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]">
+                {initials}
+              </span>
+            )}
+          </div>
+        </div>
 
-      {/* Leave Details */}
-      <div className="flex-1 min-w-0">
-        <p className="font-['Manrope:Medium',sans-serif] text-[17px] text-[#333333] mb-1">{name}</p>
-        <p className="font-['Manrope:Regular',sans-serif] text-[14px] text-[#888888]">{dateRange}</p>
-      </div>
+        {/* Leave Details - Match meeting card layout */}
+        <div className="flex-1 min-w-0">
+          {/* Name - Match meeting title size */}
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h4 className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] line-clamp-1 flex-1">
+              {name}
+            </h4>
+          </div>
 
-      {/* Duration Badge */}
-      <div className="flex-shrink-0">
-        <span className="inline-block px-3 py-1 rounded-full bg-[#EEEEEE] text-[14px] font-['Manrope:Regular',sans-serif] text-[#333333]">
-          {duration}
-        </span>
+          {/* Date Range - Match meeting details size and layout */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">
+                {dateRange}
+              </span>
+            </div>
+
+            {/* Duration Badge - Match meeting attendees position */}
+            <div className="flex-shrink-0">
+              <span className="inline-block px-2.5 py-1 rounded-full bg-[#EEEEEE] text-[11px] font-['Manrope:Regular',sans-serif] text-[#333333]">
+                {duration}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

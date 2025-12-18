@@ -13,6 +13,7 @@ export interface GraphEvent {
   showAs?: string;
   isOnlineMeeting?: boolean;
   onlineMeetingUrl?: string;
+  onlineMeetingProvider?: "teamsForBusiness" | "skypeForBusiness" | "unknown";
   start: {
     dateTime: string;
     timeZone: string;

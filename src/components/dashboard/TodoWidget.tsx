@@ -75,9 +75,9 @@ export function TodoWidget({ onNavigate }: { onNavigate?: (page: string) => void
 
   return (
     <>
-      <div className="bg-white rounded-[24px] p-6 w-full h-full flex flex-col">
+      <div className="bg-white rounded-[24px] p-5 w-full h-full flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center gap-2">
             <h3 className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">Notes</h3>
             <button onClick={() => setShowDialog(true)} className="hover:scale-110 active:scale-95 transition-transform">
@@ -93,7 +93,7 @@ export function TodoWidget({ onNavigate }: { onNavigate?: (page: string) => void
         </div>
 
         {/* Notes Grid - 4 columns */}
-        <div className="grid grid-cols-4 gap-3 flex-1 mt-3">
+        <div className="grid grid-cols-4 gap-3 flex-1 mt-2">
           {notes.map((note) => (
             <NoteCard key={note.id} note={note} onToggleItem={toggleNoteItem} />
           ))}
@@ -110,14 +110,14 @@ export function TodoWidget({ onNavigate }: { onNavigate?: (page: string) => void
         centered
         className="rounded-[16px] overflow-hidden"
       >
-        <div className="font-['Manrope:Regular',sans-serif] text-[14px] text-[#666666] mb-4">Create a new sticky note for quick reminders and tasks.</div>
+        <div className="font-['Inter:Regular',sans-serif] text-[14px] text-[#666666] mb-4">Create a new sticky note for quick reminders and tasks.</div>
         <div className="space-y-4">
           <div>
-            <label className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Title</label>
+            <label className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2 block">Title</label>
             <Input placeholder="Note title" className="rounded-lg h-9" />
           </div>
           <div>
-            <label className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 flex items-center justify-between">
+            <label className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2 flex items-center justify-between">
               <span>Content</span>
               <div className="flex gap-1">
                 <button className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Bold">
@@ -137,7 +137,7 @@ export function TodoWidget({ onNavigate }: { onNavigate?: (page: string) => void
             <TextArea placeholder="Note content..." className="rounded-lg min-h-[120px]" />
           </div>
           <div>
-            <label className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Color</label>
+            <label className="text-[14px] font-['Inter:Medium',sans-serif] text-[#666666] mb-2 block">Color</label>
             <div className="flex gap-2">
               {['#ff3b3b', '#3b8eff', '#9b59b6', '#FFA500', '#2ecc71', '#e74c3c'].map((color) => (
                 <button
@@ -177,12 +177,12 @@ function NoteCard({ note, onToggleItem }: {
   const items: MenuProps['items'] = [
     {
       key: 'archive',
-      label: <span className="text-[13px] font-['Manrope:Medium',sans-serif]">Archive</span>,
+      label: <span className="text-[13px] font-['Inter:Medium',sans-serif]">Archive</span>,
       icon: <Archive className="size-3.5" />,
     },
     {
       key: 'delete',
-      label: <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#ff3b3b]">Delete</span>,
+      label: <span className="text-[13px] font-['Inter:Medium',sans-serif] text-[#ff3b3b]">Delete</span>,
       icon: <Trash2 className="size-3.5 text-[#ff3b3b]" />,
       danger: true,
     },
@@ -195,7 +195,7 @@ function NoteCard({ note, onToggleItem }: {
         {/* Header with action buttons */}
         <div className="flex items-start justify-between mb-2 gap-2">
           {/* Title */}
-          <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] flex-1">
+          <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] flex-1 group-hover:text-[#ff3b3b] transition-colors">
             {note.title}
           </h4>
 
@@ -212,7 +212,7 @@ function NoteCard({ note, onToggleItem }: {
 
         {/* Content */}
         {note.type === 'text' && note.content && (
-          <p className="font-['Manrope:Regular',sans-serif] text-[12px] text-[#666666] line-clamp-4 whitespace-pre-line">
+          <p className="font-['Inter:Regular',sans-serif] text-[12px] text-[#666666] line-clamp-4 whitespace-pre-line">
             {note.content}
           </p>
         )}
@@ -220,19 +220,19 @@ function NoteCard({ note, onToggleItem }: {
         {note.type === 'checklist' && note.items && (
           <div className="flex flex-col gap-2">
             {note.items.slice(0, 3).map((item, index) => (
-              <div key={index} className="flex items-start gap-2">
+              <div key={index} className="flex items-center gap-2">
                 <Checkbox
                   checked={item.checked}
                   onChange={() => onToggleItem(note.id, index)}
-                  className="mt-0.5"
+                  className="custom-checkbox-wrapper"
                 />
-                <span className={`font - ['Manrope:Regular', sans - serif] text - [11px] flex - 1 ${item.checked ? 'line-through text-[#999999]' : 'text-[#666666]'} `}>
+                <span className={`font-['Inter:Regular',sans-serif] text-[11px] flex-1 leading-tight ${item.checked ? 'line-through text-[#999999]' : 'text-[#666666]'}`}>
                   {item.text}
                 </span>
               </div>
             ))}
             {note.items.length > 3 && (
-              <span className="font-['Manrope:Regular',sans-serif] text-[10px] text-[#999999]">
+              <span className="font-['Inter:Regular',sans-serif] text-[10px] text-[#999999]">
                 +{note.items.length - 3} more
               </span>
             )}

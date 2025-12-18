@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FolderOpen, ChevronLeft, ChevronRight, Plus, UploadCloud, LayoutGrid, List, MoreVertical, Edit, Trash2, Archive, Users, RotateCcw } from 'lucide-react';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
-import { Modal, Button, Input, Select, Dropdown, MenuProps } from "antd";
+import { Modal, Button, Input, Select, Dropdown, MenuProps, Checkbox } from "antd";
 import { useWorkspaces, useCreateWorkspace, useClients } from '@/hooks/useWorkspace';
 import { useClients as useGetClients, useEmployees } from '@/hooks/useUser';
 import { message } from 'antd';
@@ -28,6 +28,7 @@ export function WorkspacePage() {
   const [filters, setFilters] = useState<Record<string, string>>({
     company: 'All'
   });
+  const [selectedWorkspaces, setSelectedWorkspaces] = useState<number[]>([]);
 
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -97,6 +98,10 @@ export function WorkspacePage() {
     });
   }, [workspacesData, requirementQueries, workspaceIds]);
 
+  useEffect(() => {
+    // side-effects after workspaces change (currently none)
+  }, [workspaces]);
+
   // Extract unique companies from workspace data
   const companies = useMemo(() => {
     const clientNames = workspaces.map(w => w.client).filter(c => c !== 'N/A');
@@ -112,6 +117,7 @@ export function WorkspacePage() {
     setFilters({ company: 'All' });
     setSearchQuery('');
     setCurrentPage(1);
+    setSelectedWorkspaces([]);
   };
 
   const filterOptions: FilterOption[] = [
@@ -179,11 +185,35 @@ export function WorkspacePage() {
     return matchesTab && matchesSearch && matchesCompany;
   });
 
+  useEffect(() => {
+    // side-effects after filters, search, or pagination change (currently none)
+  }, [workspaces.length, filteredWorkspaces.length, activeTab, searchQuery, filters, currentPage]);
+
   // Pagination
   const totalPages = Math.ceil(filteredWorkspaces.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentWorkspaces = filteredWorkspaces.slice(startIndex, endIndex);
+
+  const toggleSelectAllWorkspaces = () => {
+    if (currentWorkspaces.length === 0) return;
+    const currentIds = currentWorkspaces.map((w) => w.id);
+    const allSelected = currentIds.every((id) => selectedWorkspaces.includes(id));
+
+    if (allSelected) {
+      // Deselect only the ones on this page
+      setSelectedWorkspaces((prev) => prev.filter((id) => !currentIds.includes(id)));
+    } else {
+      // Add all current page ids
+      setSelectedWorkspaces((prev) => Array.from(new Set([...prev, ...currentIds])));
+    }
+  };
+
+  const toggleSelectWorkspaceRow = (id: number) => {
+    setSelectedWorkspaces((prev) =>
+      prev.includes(id) ? prev.filter((wId) => wId !== id) : [...prev, id]
+    );
+  };
 
   const handleSelectWorkspace = (workspace: { id: number; name: string; client: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; totalRequirements?: number; inProgressRequirements?: number; delayedRequirements?: number; status: string }) => {
     router.push(`/dashboard/workspace/${workspace.id}/requirements`);
@@ -389,10 +419,45 @@ export function WorkspacePage() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
+            {/* List header – aligned with rows, matches dashboard style */}
+            <div className="grid grid-cols-[40px_2.8fr_1.6fr_1.6fr_0.7fr_0.3fr] gap-4 px-4 py-3 items-center bg-white">
+              <div className="flex justify-center">
+                <Checkbox
+                  className="red-checkbox"
+                  checked={
+                    currentWorkspaces.length > 0 &&
+                    currentWorkspaces.every((w) => selectedWorkspaces.includes(w.id))
+                  }
+                  indeterminate={
+                    currentWorkspaces.some((w) => selectedWorkspaces.includes(w.id)) &&
+                    !currentWorkspaces.every((w) => selectedWorkspaces.includes(w.id))
+                  }
+                  onChange={toggleSelectAllWorkspaces}
+                />
+              </div>
+              <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+                Workspace Name
+              </p>
+              <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+                Client
+              </p>
+              <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+                Requirements
+              </p>
+              <div className="flex justify-center">
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+                  Status
+                </p>
+              </div>
+              <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide" />
+            </div>
+
             {currentWorkspaces.map((workspace) => (
               <WorkspaceListItem
                 key={workspace.id}
                 workspace={workspace}
+                selected={selectedWorkspaces.includes(workspace.id)}
+                onToggleSelect={() => toggleSelectWorkspaceRow(workspace.id)}
                 onClick={() => handleSelectWorkspace(workspace)}
               />
             ))}
@@ -466,42 +531,20 @@ function WorkspaceRequirementsSummary({
   delayed: number;
 }) {
   return (
-    <div className="space-y-3">
-      {/* REQUIREMENTS Label - Centered */}
-      <p className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#999999] uppercase tracking-wide text-center">
-        REQUIREMENTS
-      </p>
-      
-      {/* Three Columns with Vertical Separators */}
-      <div className="flex items-center justify-center">
-        {/* TOTAL Column */}
-        <div className="flex-1 flex flex-col items-center border-r border-[#EEEEEE]">
-          <span className="text-[12px] text-[#999999] font-['Manrope:Regular',sans-serif] uppercase mb-1">
-            TOTAL
-          </span>
-          <span className="text-[18px] text-[#111111] font-['Manrope:Bold',sans-serif]">
-            {total}
-          </span>
+    <div>
+      <p className="text-[10px] text-[#999999] font-['Manrope:Bold',sans-serif] uppercase tracking-wider text-center mb-3">Requirements</p>
+      <div className="grid grid-cols-3 divide-x divide-[#EEEEEE]">
+        <div className="flex flex-col items-center px-1">
+          <span className="text-[10px] text-[#999999] font-['Inter:Medium',sans-serif] uppercase tracking-wider mb-0.5">Total</span>
+          <span className="text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">{total}</span>
         </div>
-        
-        {/* PROGRESS Column */}
-        <div className="flex-1 flex flex-col items-center border-r border-[#EEEEEE]">
-          <span className="text-[12px] text-[#999999] font-['Manrope:Regular',sans-serif] uppercase mb-1">
-            PROGRESS
-          </span>
-          <span className="text-[18px] text-[#2F80ED] font-['Manrope:Bold',sans-serif]">
-            {inProgress}
-          </span>
+        <div className="flex flex-col items-center px-1">
+          <span className="text-[10px] text-[#999999] font-['Inter:Medium',sans-serif] uppercase tracking-wider mb-0.5">Progress</span>
+          <span className="text-[13px] text-[#0284C7] font-['Manrope:Bold',sans-serif]">{inProgress}</span>
         </div>
-        
-        {/* DELAYED Column */}
-        <div className="flex-1 flex flex-col items-center">
-          <span className="text-[12px] text-[#999999] font-['Manrope:Regular',sans-serif] uppercase mb-1">
-            DELAYED
-          </span>
-          <span className="text-[18px] text-[#ff3b3b] font-['Manrope:Bold',sans-serif]">
-            {delayed}
-          </span>
+        <div className="flex flex-col items-center px-1">
+          <span className="text-[10px] text-[#999999] font-['Inter:Medium',sans-serif] uppercase tracking-wider mb-0.5">Delayed</span>
+          <span className="text-[13px] text-[#DC2626] font-['Manrope:Bold',sans-serif]">{delayed}</span>
         </div>
       </div>
     </div>
@@ -529,10 +572,13 @@ function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: 
   return (
     <div
       onClick={onClick}
-      className="group relative bg-white border-2 border-transparent rounded-[16px] p-6 hover:border-[#ff3b3b] focus-within:border-[#ff3b3b] transition-all cursor-pointer overflow-hidden shadow-sm hover:shadow-md"
+      className="group relative bg-white border border-[#EEEEEE] rounded-[16px] p-5 hover:border-[#ff3b3b] hover:shadow-lg hover:shadow-[#ff3b3b]/10 transition-all cursor-pointer overflow-hidden flex flex-col h-[180px]"
     >
+      {/* Accent bar */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#ff3b3b] to-[#ff6b6b] opacity-0 group-hover:opacity-100 transition-opacity" />
+      
       {/* Action Menu - Absolute Positioned */}
-      <div className="absolute top-4 right-4 z-20" onClick={(e) => e.stopPropagation()}>
+      <div className="absolute top-3 right-3 z-20" onClick={(e) => e.stopPropagation()}>
         <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
           <button className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
             <MoreVertical className="w-5 h-5 text-[#666666]" />
@@ -541,31 +587,26 @@ function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: 
       </div>
 
       <div className="flex flex-col h-full">
-        {/* Header Section - Icon and Text */}
-        <div className="flex items-start gap-4 mb-4">
-          {/* Folder Icon - Light pink background with red outline */}
-          <div className="w-12 h-12 rounded-[10px] bg-[#FEF3F2] border border-[#ff3b3b]/30 flex items-center justify-center shrink-0">
-            <FolderOpen className="w-6 h-6 text-[#ff3b3b]" strokeWidth={2} />
+        {/* Header: Icon + Details Side-by-Side */}
+        <div className="flex items-start gap-3 mb-auto pr-8">
+          {/* Folder Icon */}
+          <div className="shrink-0 w-12 h-12 rounded-[12px] bg-[#FEF3F2] border border-[#ff3b3b]/20 flex items-center justify-center group-hover:bg-[#ff3b3b] transition-all">
+            <FolderOpen className="w-6 h-6 text-[#ff3b3b] group-hover:text-white transition-colors" />
           </div>
 
-          {/* Title and Subtitle */}
-          <div className="flex-1 min-w-0">
-            {/* Workspace Name - 16-18px, bold, black, truncated */}
-            <h3 className="font-['Manrope:Bold',sans-serif] text-[17px] text-[#111111] mb-1 line-clamp-1">
+          {/* Text Details */}
+          <div className="flex flex-col pt-0.5 min-w-0">
+            <h3 className="font-['Manrope:Bold',sans-serif] text-[15px] text-[#111111] leading-tight mb-1 truncate w-full">
               {workspace.name}
             </h3>
-            {/* Client Name - 14px, regular, dark grey */}
-            <p className="text-[14px] text-[#666666] font-['Manrope:Regular',sans-serif]">
+            <p className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif] truncate w-full">
               {workspace.client}
             </p>
           </div>
         </div>
 
-        {/* Separator Line */}
-        <div className="border-t border-[#EEEEEE] my-4"></div>
-
-        {/* Requirements Summary - At the bottom */}
-        <div className="mt-auto">
+        {/* Footer: Stats */}
+        <div className="border-t border-[#EEEEEE] pt-3 mt-auto">
           <WorkspaceRequirementsSummary
             total={workspace.totalRequirements || 0}
             inProgress={workspace.inProgressRequirements || 0}
@@ -577,7 +618,29 @@ function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: 
   );
 }
 
-function WorkspaceListItem({ workspace, onClick }: { workspace: { id: number; name: string; client: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; totalRequirements?: number; inProgressRequirements?: number; delayedRequirements?: number; status: string }; onClick?: () => void }) {
+function WorkspaceListItem({
+  workspace,
+  selected,
+  onToggleSelect,
+  onClick,
+}: {
+  workspace: {
+    id: number;
+    name: string;
+    client: string;
+    taskCount: number;
+    inProgressCount?: number;
+    delayedCount?: number;
+    completedCount?: number;
+    totalRequirements?: number;
+    inProgressRequirements?: number;
+    delayedRequirements?: number;
+    status: string;
+  };
+  selected: boolean;
+  onToggleSelect: () => void;
+  onClick?: () => void;
+}) {
   const items: MenuProps['items'] = [
     {
       key: 'manage',
@@ -595,51 +658,91 @@ function WorkspaceListItem({ workspace, onClick }: { workspace: { id: number; na
     { key: 'delete', label: 'Delete Workspace', icon: <Trash2 className="w-4 h-4" />, danger: true }
   ];
 
+  const isActive = workspace.status === 'active';
+
   return (
     <div
       onClick={onClick}
-      className="group flex items-center justify-between bg-white border-2 border-transparent rounded-[12px] p-4 hover:border-[#ff3b3b] shadow-sm hover:shadow-md transition-all cursor-pointer"
+      className="group bg-white border border-[#F3F4F6] rounded-[12px] px-4 py-3 hover:border-[#ff3b3b] hover:shadow-md transition-all cursor-pointer"
     >
-      <div className="flex items-center gap-4 flex-1">
-        {/* Icon */}
-        <div className="w-10 h-10 rounded-[10px] bg-[#FEF3F2] border border-[#ff3b3b]/20 flex items-center justify-center shrink-0 group-hover:bg-[#ff3b3b] transition-colors">
-          <FolderOpen className="w-5 h-5 text-[#ff3b3b] group-hover:text-white transition-colors" />
+      <div className="grid grid-cols-[40px_2.8fr_1.6fr_1.6fr_0.7fr_0.3fr] items-center gap-4">
+        {/* Checkbox */}
+        <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            className="red-checkbox"
+            checked={selected}
+            onChange={onToggleSelect}
+          />
         </div>
 
-        {/* Name & Client */}
-        <div className="flex flex-col">
-          <h3 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] line-clamp-1">
-            {workspace.name}
-          </h3>
-          <p className="text-[12px] text-[#666666] font-['Manrope:Regular',sans-serif]">
+        {/* Workspace name */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-[10px] bg-[#FEF3F2] border border-[#ff3b3b]/20 flex items-center justify-center shrink-0 group-hover:bg-[#ff3b3b] transition-colors">
+            <FolderOpen className="w-5 h-5 text-[#ff3b3b] group-hover:text-white transition-colors" />
+          </div>
+          <div className="flex flex-col">
+            <h3 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] line-clamp-1">
+              {workspace.name}
+            </h3>
+          </div>
+        </div>
+
+        {/* Client */}
+        <div>
+          <p className="text-[13px] text-[#111111] font-['Manrope:Medium',sans-serif] line-clamp-1">
             {workspace.client}
           </p>
         </div>
-      </div>
 
-      {/* Requirements Stats */}
-      <div className="flex items-center gap-6 mr-8">
-        <div className="flex flex-col">
-          <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif] mb-0.5">Total</span>
-          <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">{workspace.totalRequirements || 0}</span>
+        {/* Requirements Stats */}
+        <div className="flex items-center gap-6">
+          <div className="flex flex-col">
+            <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif] mb-0.5">
+              Total
+            </span>
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+              {workspace.totalRequirements || 0}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif] mb-0.5">
+              Progress
+            </span>
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#2F80ED]">
+              {workspace.inProgressRequirements || 0}
+            </span>
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif] mb-0.5">
+              Delayed
+            </span>
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#ff3b3b]">
+              {workspace.delayedRequirements || 0}
+            </span>
+          </div>
         </div>
-        <div className="flex flex-col">
-          <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif] mb-0.5">Progress</span>
-          <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#2F80ED]">{workspace.inProgressRequirements || 0}</span>
-        </div>
-        <div className="flex flex-col">
-          <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif] mb-0.5">Delayed</span>
-          <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#ff3b3b]">{workspace.delayedRequirements || 0}</span>
-        </div>
-      </div>
 
-      {/* Action */}
-      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-        <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
-          <button className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
-            <MoreVertical className="w-5 h-5 text-[#666666]" />
-          </button>
-        </Dropdown>
+        {/* Status */}
+        <div className="flex justify-center">
+          <span
+            className={`inline-flex items-center px-3 py-1 rounded-full text-[12px] font-['Manrope:SemiBold',sans-serif] ${
+              isActive
+                ? 'bg-[#ECFDF3] text-[#16A34A]'
+                : 'bg-[#F3F4F6] text-[#6B7280]'
+            }`}
+          >
+            {isActive ? 'Active' : 'Deactivated'}
+          </span>
+        </div>
+
+        {/* Action */}
+        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+          <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
+            <button className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
+              <MoreVertical className="w-5 h-5 text-[#666666]" />
+            </button>
+          </Dropdown>
+        </div>
       </div>
     </div>
   );
