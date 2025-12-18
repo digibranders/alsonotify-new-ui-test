@@ -299,7 +299,7 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
 function LeaveItem({ name, dateRange, duration, avatar, initials }: { name: string; dateRange: string; duration: string; avatar: string | null; initials: string }) {
   return (
     <div className="group p-3 rounded-xl border border-[#EEEEEE] hover:border-[#ff3b3b]/20 transition-all duration-300 hover:shadow-lg cursor-pointer">
-      <div className="flex items-start gap-2.5">
+      <div className="flex items-center gap-2.5">
         {/* Avatar - Match meeting date badge size */}
         <div className="flex-shrink-0">
           <div className="w-[48px] h-[48px] rounded-full overflow-hidden bg-[#F7F7F7] flex items-center justify-center">
@@ -313,25 +313,21 @@ function LeaveItem({ name, dateRange, duration, avatar, initials }: { name: stri
           </div>
         </div>
 
-        {/* Leave Details - Match meeting card layout */}
+        {/* Leave Details + Duration */}
         <div className="flex-1 min-w-0">
-          {/* Name - Match meeting title size */}
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <h4 className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] line-clamp-1 flex-1">
-              {name}
-            </h4>
-          </div>
-
-          {/* Date Range - Match meeting details size and layout */}
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">
+            {/* Name + Date stacked on the left */}
+            <div className="flex flex-col min-w-0">
+              <h4 className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] line-clamp-1">
+                {name}
+              </h4>
+              <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif] mt-0.5">
                 {dateRange}
               </span>
             </div>
 
-            {/* Duration Badge - Match meeting attendees position */}
-            <div className="flex-shrink-0">
+            {/* Duration Badge vertically centered on the right */}
+            <div className="flex-shrink-0 self-center">
               <span className="inline-block px-2.5 py-1 rounded-full bg-[#EEEEEE] text-[11px] font-['Manrope:Regular',sans-serif] text-[#333333]">
                 {duration}
               </span>
