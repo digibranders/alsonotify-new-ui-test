@@ -11,6 +11,7 @@ import {
   updateUserStatus,
   inviteUser,
   updateCurrentUserCompany,
+  getCurrentUserCompany,
   type UserType,
   type ClientOrOutsourceType,
   type CompanyDepartmentType,
@@ -126,6 +127,15 @@ export const useCreateClient = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
     },
+  });
+};
+
+// Get current user company
+export const useCurrentUserCompany = () => {
+  return useQuery({
+    queryKey: ["user", "company"],
+    queryFn: () => getCurrentUserCompany(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
 

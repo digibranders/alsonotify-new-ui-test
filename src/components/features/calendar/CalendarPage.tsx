@@ -8,7 +8,7 @@ import { useMeetings } from '@/hooks/useMeeting';
 import { useLeaves } from '@/hooks/useLeave';
 import { useTeamsConnectionStatus, useCalendarEvents } from '@/hooks/useCalendar';
 import { MicrosoftUserOAuth, createCalendarEvent, CreateEventPayload, GraphEvent } from '@/services/calendar';
-import { useEmployees } from '@/hooks/useUser';
+import { useEmployees, useCurrentUserCompany } from '@/hooks/useUser';
 import { useQueryClient } from '@tanstack/react-query';
 import { TaskType } from '@/services/task';
 import { MeetingType } from '@/services/meeting';
@@ -49,8 +49,11 @@ export function CalendarPage() {
   // Fetch employees for autocomplete (only when modal is open)
   const { data: employeesData } = useEmployees(showEventDialog ? 'limit=100' : '');
   
+  // Get company timezone from backend, fallback to browser timezone
+  const { data: companyData } = useCurrentUserCompany();
+  const companyTimeZone = companyData?.result?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  
   // Fetch calendar events for refreshing after creation
-  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const startISO = dayjs().startOf("day").toISOString();
   const endISO = dayjs().add(7, "day").endOf("day").toISOString();
   const { data: calendarEventsData, refetch: refetchCalendarEvents } = useCalendarEvents(startISO, endISO);
@@ -137,11 +140,11 @@ export function CalendarPage() {
         subject: formData.title.trim(),
         start: {
           dateTime: formData.startDateTime.toISOString(),
-          timeZone: userTimeZone,
+          timeZone: companyTimeZone,
         },
         end: {
           dateTime: endTime.toISOString(),
-          timeZone: userTimeZone,
+          timeZone: companyTimeZone,
         },
         body: {
           contentType: "HTML",
@@ -185,7 +188,7 @@ export function CalendarPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [formData, userTimeZone, refetchCalendarEvents]);
+  }, [formData, companyTimeZone, refetchCalendarEvents]);
 
   // Extract calendar events result for dependency tracking
   const calendarEvents = calendarEventsData?.result;
