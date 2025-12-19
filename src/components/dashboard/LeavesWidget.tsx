@@ -85,18 +85,19 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
       });
 
     return filtered.map((leave: LeaveType) => {
-      // Handle days field - could be number, string, or Decimal
-      const daysValue = typeof leave.days === 'number'
-        ? leave.days
-        : typeof leave.days === 'string'
-          ? parseFloat(leave.days)
-          : leave.days_count || 0;
-
+      // Calculate remaining days from today to end date
+      const endDate = dayjs(leave.end_date).startOf("day");
+      const today = dayjs().startOf("day");
+      
+      // Calculate remaining days: from today (inclusive) to end date (inclusive)
+      // dayjs diff returns the difference, so we add 1 to include both today and end date
+      const remainingDays = Math.max(1, endDate.diff(today, "day") + 1);
+      
       return {
         id: leave.id,
         name: leave.user?.name || "Unknown Employee",
         dateRange: formatDateRange(leave.start_date, leave.end_date),
-        duration: formatDuration(Math.round(daysValue) || 1),
+        duration: formatDuration(remainingDays),
         avatar: leave.user?.avatar || null,
         initials: getInitials(leave.user?.name),
       };

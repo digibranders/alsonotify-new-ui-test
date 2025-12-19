@@ -833,7 +833,7 @@ function MeetingItem({
                 <Clock className="size-3" strokeWidth={2} />
                 <span>{time}</span>
                 <span className="text-[#CCCCCC]">•</span>
-                <span>{duration}</span>
+                {/* <span>{duration}</span> */}
               </div>
             </div>
 
@@ -956,8 +956,6 @@ function MeetingItem({
                   <Clock className="size-3.5" strokeWidth={2} />
                   <span>{time}</span>
                 </div>
-                <div className="w-1 h-1 rounded-full bg-[#CCCCCC]" />
-                <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">{duration}</span>
                 <div className="w-1 h-1 rounded-full bg-[#CCCCCC]" />
                 <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">Host: {organizer}</span>
               </div>
