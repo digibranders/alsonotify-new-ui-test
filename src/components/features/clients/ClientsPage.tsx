@@ -155,9 +155,10 @@ export function ClientsPage() {
         </div>
 
         {/* Table Header */}
-        <div className="grid grid-cols-[40px_1.5fr_1.2fr_1.8fr_1.2fr_1fr_1fr_40px] items-center px-4 py-3 mb-2">
+        <div className="grid grid-cols-[40px_1.5fr_1fr_1.2fr_1.8fr_1.2fr_1fr_1fr_40px] items-center px-4 py-3 mb-2">
           <Checkbox className="scale-90" />
           <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Business Name</span>
+          <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Type</span>
           <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Contact Person</span>
           <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Email</span>
           <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Contact</span>
@@ -277,12 +278,33 @@ function ClientRow({ client }: { client: any }) {
     return client.phone || client.phone_number || client.mobile_number || 'N/A';
   };
 
+  // Get client type: CLIENT = ORGANIZATION, OUTSOURCE = INDIVIDUAL
+  const getClientType = () => {
+    const requestSentFor = client.request_sent_for || client.requestSentFor;
+    if (requestSentFor === 'CLIENT') {
+      return 'ORGANIZATION';
+    } else if (requestSentFor === 'OUTSOURCE') {
+      return 'INDIVIDUAL';
+    }
+    // Default fallback - check if client_id exists (organization) or outsource_id exists (individual)
+    if (client.client_id) {
+      return 'ORGANIZATION';
+    } else if (client.outsource_id) {
+      return 'INDIVIDUAL';
+    }
+    return 'N/A';
+  };
+
   return (
-    <div className="group grid grid-cols-[40px_1.5fr_1.2fr_1.8fr_1.2fr_1fr_1fr_40px] items-center px-4 py-4 bg-white border border-[#E5E7EB] rounded-[12px] hover:border-[#ff3b3b] hover:shadow-md transition-all">
+    <div className="group grid grid-cols-[40px_1.5fr_1fr_1.2fr_1.8fr_1.2fr_1fr_1fr_40px] items-center px-4 py-4 bg-white border border-[#E5E7EB] rounded-[12px] hover:border-[#ff3b3b] hover:shadow-md transition-all">
       <Checkbox className="scale-90" />
 
       <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111] truncate pr-4">
         {client.company || 'Unknown Company'}
+      </span>
+
+      <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111] truncate pr-4">
+        {getClientType()}
       </span>
 
       <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111] truncate pr-4">

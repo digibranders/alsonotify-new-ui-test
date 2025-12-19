@@ -58,7 +58,7 @@ export function ClientRow({
         }
       `}
     >
-      <div className="grid grid-cols-[40px_1.5fr_1.2fr_1.5fr_1fr_1fr_0.8fr_0.3fr] gap-4 items-center">
+      <div className="grid grid-cols-[40px_1.5fr_1fr_1.2fr_1.5fr_1fr_1fr_0.8fr_0.3fr] gap-4 items-center">
         {/* Checkbox */}
         <div className="flex justify-center" onClick={(e: MouseEvent) => e.stopPropagation()}>
           <Checkbox
@@ -73,6 +73,19 @@ export function ClientRow({
           <div className="flex items-center gap-2">
             <span className="text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">
               {client.company}
+            </span>
+          </div>
+        </div>
+
+        {/* Type */}
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-[13px] text-[#111111] font-['Manrope:Medium',sans-serif]">
+              {(client as any).request_sent_for === 'CLIENT' || (client as any).requestSentFor === 'CLIENT' || (client as any).client_id
+                ? 'ORGANIZATION'
+                : (client as any).request_sent_for === 'OUTSOURCE' || (client as any).requestSentFor === 'OUTSOURCE' || (client as any).outsource_id
+                ? 'INDIVIDUAL'
+                : 'N/A'}
             </span>
           </div>
         </div>
