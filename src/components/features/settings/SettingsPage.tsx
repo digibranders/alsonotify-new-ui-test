@@ -11,22 +11,68 @@ const { Option } = Select;
 // Get all IANA timezones without duplicates
 // Only returns canonical (latest) timezone names, excluding deprecated aliases
 const getTimezones = (): Array<{ value: string; label: string }> => {
+  // Mapping of deprecated timezone aliases to their canonical names
+  const deprecatedToCanonical: Record<string, string> = {
+    'Asia/Calcutta': 'Asia/Kolkata',      // India - Calcutta deprecated, use Kolkata
+    'America/Godthab': 'America/Nuuk',    // Greenland - Godthab deprecated, use Nuuk
+    'Europe/Kiev': 'Europe/Kyiv',         // Ukraine - Kiev deprecated, use Kyiv
+    'US/Alaska': 'America/Anchorage',     // US timezone aliases
+    'US/Aleutian': 'America/Adak',
+    'US/Arizona': 'America/Phoenix',
+    'US/Central': 'America/Chicago',
+    'US/East-Indiana': 'America/Indiana/Indianapolis',
+    'US/Eastern': 'America/New_York',
+    'US/Hawaii': 'Pacific/Honolulu',
+    'US/Indiana-Starke': 'America/Indiana/Knox',
+    'US/Michigan': 'America/Detroit',
+    'US/Mountain': 'America/Denver',
+    'US/Pacific': 'America/Los_Angeles',
+    'US/Pacific-New': 'America/Los_Angeles',
+    'US/Samoa': 'Pacific/Pago_Pago',
+    'Canada/Atlantic': 'America/Halifax',
+    'Canada/Central': 'America/Winnipeg',
+    'Canada/Eastern': 'America/Toronto',
+    'Canada/Mountain': 'America/Edmonton',
+    'Canada/Newfoundland': 'America/St_Johns',
+    'Canada/Pacific': 'America/Vancouver',
+    'Canada/Saskatchewan': 'America/Regina',
+    'Canada/Yukon': 'America/Whitehorse',
+    'Mexico/BajaNorte': 'America/Tijuana',
+    'Mexico/BajaSur': 'America/Mazatlan',
+    'Mexico/General': 'America/Mexico_City',
+    'Brazil/Acre': 'America/Rio_Branco',
+    'Brazil/DeNoronha': 'America/Noronha',
+    'Brazil/East': 'America/Sao_Paulo',
+    'Brazil/West': 'America/Manaus',
+    'Egypt': 'Africa/Cairo',
+    'Libya': 'Africa/Tripoli',
+    'Poland': 'Europe/Warsaw',
+    'Portugal': 'Europe/Lisbon',
+    'Turkey': 'Europe/Istanbul',
+    'GMT': 'UTC',
+    'GMT+0': 'UTC',
+    'GMT-0': 'UTC',
+    'GMT0': 'UTC',
+    'Greenwich': 'UTC',
+    'Universal': 'UTC',
+    'Zulu': 'UTC',
+  };
+
   try {
     // Use native Intl API if available (modern browsers)
     if (typeof Intl !== 'undefined' && 'supportedValuesOf' in Intl) {
       const timezones = Intl.supportedValuesOf('timeZone');
       
-      // List of deprecated timezone aliases to exclude (these are duplicates of canonical names)
-      const deprecatedTimezones = new Set([
-        'Asia/Calcutta',  // Use Asia/Kolkata instead
-        'America/Godthab',  // Use America/Nuuk instead
-        'Europe/Kiev',  // Use Europe/Kyiv instead
-      ]);
+      // Convert deprecated timezones to canonical names and remove duplicates
+      const canonicalTimezones = timezones.map(tz => deprecatedToCanonical[tz] || tz);
       
-      // Remove deprecated duplicates and ensure uniqueness using Set
-      const uniqueTimezones = Array.from(new Set(
-        timezones.filter(tz => !deprecatedTimezones.has(tz))
-      ));
+      // Remove duplicates and ensure uniqueness using Set
+      const uniqueTimezones = Array.from(new Set(canonicalTimezones));
+      
+      // Ensure Asia/Kolkata is always included (important for Indian users)
+      if (!uniqueTimezones.includes('Asia/Kolkata')) {
+        uniqueTimezones.push('Asia/Kolkata');
+      }
       
       return uniqueTimezones
         .sort()
@@ -136,6 +182,15 @@ const getTimezones = (): Array<{ value: string; label: string }> => {
   // Remove duplicates using Set (ensures uniqueness) and sort
   // Note: The hardcoded list already contains only canonical names, no deprecated aliases
   const uniqueTimezones = Array.from(new Set(commonTimezones)).sort();
+  
+  // Ensure Asia/Kolkata is always included (important for Indian users)
+  if (!uniqueTimezones.includes('Asia/Kolkata')) {
+    uniqueTimezones.push('Asia/Kolkata');
+  }
+  
+  // Final sort after adding Kolkata if needed
+  uniqueTimezones.sort();
+  
   return uniqueTimezones.map(tz => ({ value: tz, label: tz }));
 };
 
@@ -440,10 +495,43 @@ export function SettingsPage() {
                     className="w-full h-11"
                     showSearch
                     filterOption={(input, option) => {
-                      const label = String(option?.label ?? option?.children ?? '');
-                      return label.toLowerCase().includes(input.toLowerCase());
+                      const searchText = input.toLowerCase().trim();
+                      
+                      // If no search text, show all options
+                      if (!searchText) {
+                        return true;
+                      }
+                      
+                      // Get the label text
+                      const label = String(option?.label ?? option?.children ?? '').toLowerCase();
+                      const value = String(option?.value ?? '').toLowerCase();
+                      
+                      // Direct match in label or value
+                      if (label.includes(searchText) || value.includes(searchText)) {
+                        return true;
+                      }
+                      
+                      // Special handling for Indian timezone searches
+                      // "kol", "cal", "calcutta", "kolkata" should match "Asia/Kolkata"
+                      if (label.includes('kolkata')) {
+                        if (searchText.includes('kol') || 
+                            searchText.includes('cal') || 
+                            searchText.includes('kolkata') || 
+                            searchText.includes('calcutta') ||
+                            searchText.includes('india') ||
+                            searchText.includes('ist')) {
+                          return true;
+                        }
+                      }
+                      
+                      return false;
                     }}
                     placeholder="Select timezone"
+                    optionFilterProp="label"
+                    notFoundContent="No timezone found"
+                    popupMatchSelectWidth={true}
+                    virtual={false}
+                    listHeight={400}
                   >
                     {timezones.map((tz) => (
                       <Option key={tz.value} value={tz.value} label={tz.label}>
