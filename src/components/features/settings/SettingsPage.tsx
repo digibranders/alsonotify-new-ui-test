@@ -63,20 +63,20 @@ const getTimezones = (): Array<{ value: string; label: string }> => {
     if (typeof Intl !== 'undefined' && 'supportedValuesOf' in Intl) {
       const timezones = Intl.supportedValuesOf('timeZone');
       
-      // Convert deprecated timezones to canonical names and remove duplicates
+      // Convert deprecated timezones to canonical names
       const canonicalTimezones = timezones.map(tz => deprecatedToCanonical[tz] || tz);
       
-      // Remove duplicates and ensure uniqueness using Set
-      const uniqueTimezones = Array.from(new Set(canonicalTimezones));
+      // Create a Set to remove duplicates and ensure uniqueness
+      const uniqueTimezonesSet = new Set(canonicalTimezones);
       
-      // Ensure Asia/Kolkata is always included (important for Indian users)
-      if (!uniqueTimezones.includes('Asia/Kolkata')) {
-        uniqueTimezones.push('Asia/Kolkata');
-      }
+      // CRITICAL: Always ensure Asia/Kolkata is included (important for Indian users)
+      // This handles cases where the browser might not include it or it might be filtered out
+      uniqueTimezonesSet.add('Asia/Kolkata');
       
-      return uniqueTimezones
-        .sort()
-        .map(tz => ({ value: tz, label: tz }));
+      // Convert Set to sorted array
+      const uniqueTimezones = Array.from(uniqueTimezonesSet).sort();
+      
+      return uniqueTimezones.map(tz => ({ value: tz, label: tz }));
     }
   } catch (e) {
     // Fallback if Intl.supportedValuesOf is not available
@@ -179,17 +179,15 @@ const getTimezones = (): Array<{ value: string; label: string }> => {
     'UTC'
   ];
   
-  // Remove duplicates using Set (ensures uniqueness) and sort
+  // Remove duplicates using Set (ensures uniqueness)
   // Note: The hardcoded list already contains only canonical names, no deprecated aliases
-  const uniqueTimezones = Array.from(new Set(commonTimezones)).sort();
+  const uniqueTimezonesSet = new Set(commonTimezones);
   
-  // Ensure Asia/Kolkata is always included (important for Indian users)
-  if (!uniqueTimezones.includes('Asia/Kolkata')) {
-    uniqueTimezones.push('Asia/Kolkata');
-  }
+  // CRITICAL: Always ensure Asia/Kolkata is included (important for Indian users)
+  uniqueTimezonesSet.add('Asia/Kolkata');
   
-  // Final sort after adding Kolkata if needed
-  uniqueTimezones.sort();
+  // Convert Set to sorted array
+  const uniqueTimezones = Array.from(uniqueTimezonesSet).sort();
   
   return uniqueTimezones.map(tz => ({ value: tz, label: tz }));
 };
