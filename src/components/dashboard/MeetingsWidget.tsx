@@ -5,7 +5,7 @@ import { Modal, Input, Button, Select, DatePicker, Spin, message, Tag, Popover }
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
-import { useEmployees } from '@/hooks/useUser';
+import { useEmployees, useCurrentUserCompany } from '@/hooks/useUser';
 import { useTeamsConnectionStatus, useCalendarEvents } from '../../hooks/useCalendar';
 import { MicrosoftUserOAuth, GraphEvent, createCalendarEvent, CreateEventPayload } from '../../services/calendar';
 import { useQueryClient } from '@tanstack/react-query';
@@ -43,8 +43,11 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
   const { data: teamsStatus, isLoading: isLoadingTeamsStatus, refetch: refetchTeamsStatus } = useTeamsConnectionStatus();
   const isConnected = teamsStatus?.result?.connected ?? false;
 
+  // Get company timezone from backend, fallback to browser timezone
+  const { data: companyData } = useCurrentUserCompany();
+  const companyTimeZone = companyData?.result?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+
   // Fetch calendar events (meetings) from backend
-  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const startISO = dayjs().startOf("day").toISOString();
   const endISO = dayjs().add(7, "day").endOf("day").toISOString();
   const { data: eventsData, isLoading, error, isError, refetch: refetchCalendarEvents } = useCalendarEvents(startISO, endISO);
@@ -125,11 +128,11 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
         subject: formData.title.trim(),
         start: {
           dateTime: formData.startDateTime.toISOString(),
-          timeZone: userTimeZone,
+          timeZone: companyTimeZone,
         },
         end: {
           dateTime: endTime.toISOString(),
-          timeZone: userTimeZone,
+          timeZone: companyTimeZone,
         },
         body: {
           contentType: "HTML",
@@ -174,13 +177,13 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
     } finally {
       setSubmitting(false);
     }
-  }, [formData, userTimeZone, refetchCalendarEvents, queryClient]);
+  }, [formData, companyTimeZone, refetchCalendarEvents, queryClient]);
 
   // Transform and filter meetings
   const processedMeetings = useMemo(() => {
     if (!eventsData?.result) return [];
 
-    const now = dayjs();
+    const now = dayjs().tz(companyTimeZone);
     
     // Filter meetings that haven't ended yet (show until meeting end time)
     // Parse event times properly - they come in ISO format and may be in UTC
@@ -189,8 +192,8 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
         if (event.isCancelled) return false;
         
         // Parse end time - event.end.dateTime is in ISO format
-        // dayjs automatically handles timezone conversion from ISO strings
-        const endTime = dayjs(event.end.dateTime);
+        // Convert to company timezone for proper comparison
+        const endTime = dayjs.utc(event.end.dateTime).tz(companyTimeZone);
         
         // Show meeting if current time is before the meeting end time
         // This means meetings will be shown until they end (including in-progress meetings)
@@ -200,13 +203,13 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
         return shouldShow;
       })
       .sort((a: GraphEvent, b: GraphEvent) => 
-        dayjs(a.start.dateTime).valueOf() - dayjs(b.start.dateTime).valueOf()
+        dayjs.utc(a.start.dateTime).tz(companyTimeZone).valueOf() - dayjs.utc(b.start.dateTime).tz(companyTimeZone).valueOf()
       )
       .slice(0, 3) // Show only first 3 meetings (upcoming or in-progress)
       .map((event: GraphEvent) => {
-        // Parse times with timezone awareness
-        const startTime = dayjs(event.start.dateTime);
-        const endTime = dayjs(event.end.dateTime);
+        // Parse times with timezone awareness - convert to company timezone
+        const startTime = dayjs.utc(event.start.dateTime).tz(companyTimeZone);
+        const endTime = dayjs.utc(event.end.dateTime).tz(companyTimeZone);
         const durationMinutes = endTime.diff(startTime, 'minute');
         
         // Format duration
@@ -227,8 +230,9 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
           avatar: '' // GraphEvent doesn't have avatar, use empty string
         }));
 
-        // Determine status
-        const isInProgress = now.isAfter(startTime) && now.isBefore(endTime);
+        // Determine status - use company timezone for now
+        const nowTz = dayjs().tz(companyTimeZone);
+        const isInProgress = nowTz.isAfter(startTime) && nowTz.isBefore(endTime);
         const status = isInProgress ? 'in-progress' : 'upcoming';
 
         // Get platform from onlineMeeting
@@ -293,7 +297,7 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
       });
 
     return upcoming;
-  }, [eventsData]);
+  }, [eventsData, companyTimeZone]);
 
   return (
     <>
@@ -833,7 +837,7 @@ function MeetingItem({
                 <Clock className="size-3" strokeWidth={2} />
                 <span>{time}</span>
                 <span className="text-[#CCCCCC]">•</span>
-                <span>{duration}</span>
+                {/* <span>{duration}</span> */}
               </div>
             </div>
 
@@ -956,8 +960,6 @@ function MeetingItem({
                   <Clock className="size-3.5" strokeWidth={2} />
                   <span>{time}</span>
                 </div>
-                <div className="w-1 h-1 rounded-full bg-[#CCCCCC]" />
-                <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">{duration}</span>
                 <div className="w-1 h-1 rounded-full bg-[#CCCCCC]" />
                 <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">Host: {organizer}</span>
               </div>

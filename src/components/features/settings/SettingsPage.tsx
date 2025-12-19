@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { Plus, Edit, Trash2, X, Pencil } from 'lucide-react';
 import { Button, Input, Select, Switch, Divider } from "antd";
 import { message } from "antd";
-import { useUpdateCompany } from '@/hooks/useUser';
+import { useUpdateCompany, useCurrentUserCompany } from '@/hooks/useUser';
 import { DEFAULT_DOCUMENT_TYPES, DOCUMENT_TYPES_STORAGE_KEY } from '@/constants/documentTypes';
 
 const { TextArea } = Input;
@@ -167,16 +167,28 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'company' | 'leaves' | 'working-hours' | 'integrations'>('company');
   const [isEditing, setIsEditing] = useState(false);
   const updateCompanyMutation = useUpdateCompany();
+  const { data: companyData } = useCurrentUserCompany();
   
   // Get timezones list (memoized to avoid regenerating on every render)
   const timezones = useMemo(() => getTimezones(), []);
 
-  // Company Details State
-  const [companyName, setCompanyName] = useState('Digibranders Private Limited');
-  const [taxId, setTaxId] = useState('');
-  const [timeZone, setTimeZone] = useState('Asia/Kolkata');
-  const [currency, setCurrency] = useState('USD');
-  const [address, setAddress] = useState('');
+  // Company Details State - initialize from backend data
+  const [companyName, setCompanyName] = useState(companyData?.result?.name || '');
+  const [taxId, setTaxId] = useState(companyData?.result?.tax_id || '');
+  const [timeZone, setTimeZone] = useState(companyData?.result?.timezone || 'Asia/Kolkata');
+  const [currency, setCurrency] = useState(companyData?.result?.currency || 'USD');
+  const [address, setAddress] = useState(companyData?.result?.address || '');
+  
+  // Update state when company data loads
+  useEffect(() => {
+    if (companyData?.result) {
+      setCompanyName(companyData.result.name || '');
+      setTaxId(companyData.result.tax_id || '');
+      setTimeZone(companyData.result.timezone || 'Asia/Kolkata');
+      setCurrency(companyData.result.currency || 'USD');
+      setAddress(companyData.result.address || '');
+    }
+  }, [companyData]);
   const [departments, setDepartments] = useState<Department[]>([
     { id: '1', name: 'Design', active: true },
     { id: '2', name: 'Development', active: true },
