@@ -1,7 +1,7 @@
 import svgPaths from "../../constants/iconPaths";
 import { Plus, Clock, Calendar as CalendarIcon, X, Video } from 'lucide-react';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { Modal, Input, Button, Select, DatePicker, Spin, message, Tag, Popover } from 'antd';
+import { Modal, Input, Button, Select, DatePicker, Spin, Tag, Popover, App } from 'antd';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -22,6 +22,7 @@ interface Attendee {
 }
 
 export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => void }) {
+  const { message } = App.useApp();
   const queryClient = useQueryClient();
   const [showDialog, setShowDialog] = useState(false);
   const [connecting, setConnecting] = useState(false);

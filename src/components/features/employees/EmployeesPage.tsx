@@ -1,13 +1,12 @@
 import { PageLayout } from '../../layout/PageLayout';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
-import { Modal, Checkbox, Tooltip, Dropdown } from "antd";
+import { Checkbox, Tooltip, Dropdown, App, Modal } from "antd";
 import { ShieldCheck, Briefcase, Download, Trash2, User as UserIcon, Users } from 'lucide-react';
 import { EmployeeForm, EmployeeFormData } from '../../modals/EmployeesForm';
 import { EmployeeDetailsModal } from '../../modals/EmployeeDetailsModal';
 import { EmployeeRow } from './rows/EmployeeRow';
 import { useEmployees, useCreateEmployee, useUpdateEmployee, useCompanyDepartments, useUpdateEmployeeStatus, useUserDetails } from '@/hooks/useUser';
-import { message } from 'antd';
 import { useRouter } from 'next/navigation';
 import { Employee } from '@/types/genericTypes';
 import { useQueryClient } from '@tanstack/react-query';
@@ -15,6 +14,7 @@ import { useQueryClient } from '@tanstack/react-query';
 export function EmployeesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { modal, message } = App.useApp();
   const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
   
   // Build query parameters based on active tab
@@ -788,7 +788,7 @@ export function EmployeesPage() {
       return;
     }
 
-    Modal.confirm({
+    modal.confirm({
       title: 'Deactivate Employees',
       content: `Are you sure you want to deactivate ${employeesToDeactivate.length} employee(s)?`,
       okText: 'Yes, Deactivate',
@@ -935,7 +935,11 @@ export function EmployeesPage() {
             <div className="flex items-center gap-0">
               {/* Update Access Level Button with Dropdown */}
               <div className="relative" ref={accessDropdownRef}>
-                <Tooltip title="Update Access Level" placement="top">
+                <Tooltip 
+                  title="Update Access Level" 
+                  placement="top"
+                  styles={{ root: { marginBottom: '8px' } }}
+                >
                   <button 
                     onClick={() => setShowAccessDropdown(!showAccessDropdown)}
                     className="p-2 hover:bg-white/10 rounded-full transition-colors"
@@ -944,36 +948,46 @@ export function EmployeesPage() {
                   </button>
                 </Tooltip>
                 {showAccessDropdown && (
-                  <div className="absolute bottom-full left-0 mb-2 bg-white rounded-lg shadow-lg border border-[#EEEEEE] overflow-hidden z-30 min-w-[200px]">
-                    {[
-                      { value: 'Admin', icon: ShieldCheck, color: '#7F56D9', bgColor: '#F9F5FF' },
-                      { value: 'Manager', icon: Briefcase, color: '#2E90FA', bgColor: '#EFF8FF' },
-                      { value: 'Leader', icon: Users, color: '#7F56D9', bgColor: '#F9F5FF' },
-                      { value: 'Employee', icon: UserIcon, color: '#12B76A', bgColor: '#ECFDF3' },
-                    ].map((access) => {
-                      const IconComponent = access.icon;
-                      return (
-                        <button
-                          key={access.value}
-                          onClick={() => handleBulkUpdateAccess(access.value as 'Admin' | 'Manager' | 'Leader' | 'Employee')}
-                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F7F7F7] transition-colors text-left"
-                        >
-                          <div className="p-2 rounded-full" style={{ backgroundColor: access.bgColor }}>
-                            <IconComponent className="w-4 h-4" style={{ color: access.color }} />
-                          </div>
-                          <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">
-                            {access.value}
-                          </span>
-                        </button>
-                      );
-                    })}
+                  <div className="absolute bottom-full left-0 mb-6 z-30">
+                    {/* Arrow pointing down to the button */}
+                    <div className="absolute -bottom-2 left-4 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-white"></div>
+                    <div className="absolute -bottom-2.5 left-4 w-0 h-0 border-l-[7px] border-r-[7px] border-t-[7px] border-l-transparent border-r-transparent border-t-[#EEEEEE]"></div>
+                    {/* Dropdown content */}
+                    <div className="bg-white rounded-lg shadow-lg border border-[#EEEEEE] overflow-hidden min-w-[200px]">
+                      {[
+                        { value: 'Admin', icon: ShieldCheck, color: '#7F56D9', bgColor: '#F9F5FF' },
+                        { value: 'Manager', icon: Briefcase, color: '#2E90FA', bgColor: '#EFF8FF' },
+                        { value: 'Leader', icon: Users, color: '#7F56D9', bgColor: '#F9F5FF' },
+                        { value: 'Employee', icon: UserIcon, color: '#12B76A', bgColor: '#ECFDF3' },
+                      ].map((access) => {
+                        const IconComponent = access.icon;
+                        return (
+                          <button
+                            key={access.value}
+                            onClick={() => handleBulkUpdateAccess(access.value as 'Admin' | 'Manager' | 'Leader' | 'Employee')}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F7F7F7] transition-colors text-left"
+                          >
+                            <div className="p-2 rounded-full" style={{ backgroundColor: access.bgColor }}>
+                              <IconComponent className="w-4 h-4" style={{ color: access.color }} />
+                            </div>
+                            <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">
+                              {access.value}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
 
               {/* Change Department Button with Dropdown */}
               <div className="relative" ref={departmentDropdownRef}>
-                <Tooltip title="Change Department" placement="top">
+                <Tooltip 
+                  title="Change Department" 
+                  placement="top"
+                  styles={{ root: { marginBottom: '8px' } }}
+                >
                   <button 
                     onClick={() => setShowDepartmentDropdown(!showDepartmentDropdown)}
                     className="p-2 hover:bg-white/10 rounded-full transition-colors"
@@ -982,24 +996,34 @@ export function EmployeesPage() {
                   </button>
                 </Tooltip>
                 {showDepartmentDropdown && (
-                  <div className="absolute bottom-full left-0 mb-2 bg-white rounded-lg shadow-lg border border-[#EEEEEE] overflow-hidden z-30 min-w-[200px] max-h-[300px] overflow-y-auto">
-                    {uniqueDepts.filter(dept => dept !== 'All').map((dept) => (
-                      <button
-                        key={dept}
-                        onClick={() => handleBulkUpdateDepartment(dept)}
-                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F7F7F7] transition-colors text-left"
-                      >
-                        <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">
-                          {dept}
-                        </span>
-                      </button>
-                    ))}
+                  <div className="absolute bottom-full left-0 mb-6 z-30">
+                    {/* Arrow pointing down to the button */}
+                    <div className="absolute -bottom-2 left-4 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-white"></div>
+                    <div className="absolute -bottom-2.5 left-4 w-0 h-0 border-l-[7px] border-r-[7px] border-t-[7px] border-l-transparent border-r-transparent border-t-[#EEEEEE]"></div>
+                    {/* Dropdown content */}
+                    <div className="bg-white rounded-lg shadow-lg border border-[#EEEEEE] overflow-hidden min-w-[200px] max-h-[300px] overflow-y-auto">
+                      {uniqueDepts.filter(dept => dept !== 'All').map((dept) => (
+                        <button
+                          key={dept}
+                          onClick={() => handleBulkUpdateDepartment(dept)}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F7F7F7] transition-colors text-left"
+                        >
+                          <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">
+                            {dept}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
 
               {/* Export Data Button */}
-              <Tooltip title="Export Data" placement="top">
+              <Tooltip 
+                title="Export Data" 
+                placement="top"
+                styles={{ root: { marginBottom: '8px' } }}
+              >
                 <button 
                   onClick={handleExportToCSV}
                   className="p-2 hover:bg-white/10 rounded-full transition-colors"
@@ -1009,7 +1033,11 @@ export function EmployeesPage() {
               </Tooltip>
 
               {/* Delete Button */}
-              <Tooltip title="Delete" placement="top">
+              <Tooltip 
+                title="Delete" 
+                placement="top"
+                styles={{ root: { marginBottom: '8px' } }}
+              >
                 <button 
                   onClick={handleBulkDelete}
                   className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]"

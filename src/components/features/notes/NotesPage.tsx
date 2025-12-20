@@ -1,275 +1,532 @@
 import { PageLayout } from '../../layout/PageLayout';
-import { useState } from 'react';
-import { FilterBar, FilterOption } from '../../ui/FilterBar';
-import { Plus, Bold, Italic, List, CheckSquare, MoreVertical, Archive, Trash2 } from 'lucide-react';
-import { Modal, Input, Button, Checkbox, Dropdown } from 'antd';
-import type { MenuProps } from 'antd';
+import { useState, useMemo, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Archive, Trash2, FileText, ArchiveRestore } from 'lucide-react';
+import { Checkbox, App } from 'antd';
+import { NoteComposerModal } from '../../common/NoteComposerModal';
+import { NoteViewModal } from '../../common/NoteViewModal';
+import { getNotes, createNote, updateNote, deleteNote, archiveNote, unarchiveNote, Note, NoteType, ChecklistItem } from '../../../services/notes';
+import { ApiError, getErrorMessage } from '../../../types/errors';
+import { hexToRgba, DEFAULT_NOTE_COLOR } from '../../../utils/colorUtils';
+import { isArray } from '../../../utils/validation';
+import { normalizeNoteType } from '../../../utils/noteUtils';
 
-const { TextArea } = Input;
+type TabType = 'all' | 'text' | 'checklist' | 'archive';
 
-interface Note {
-  id: number;
+interface NoteSaveData {
   title: string;
-  content: string | null;
+  type: NoteType;
+  content?: string;
+  items?: ChecklistItem[];
   color: string;
-  type: 'text' | 'checklist';
-  hasFormatting?: boolean;
-  items?: Array<{ text: string; checked: boolean }>;
-  dateCreated: string;
 }
 
-const notesData: Note[] = [
-  {
-    id: 1,
-    title: "Design Sprint Goals",
-    content: "Finalize wireframes for mobile app\nComplete user flow diagrams\nPrepare presentation deck",
-    color: "#ff3b3b",
-    type: "text",
-    hasFormatting: true,
-    dateCreated: "Nov 18, 2024"
-  },
-  {
-    id: 2,
-    title: "Client Deliverables",
-    content: null,
-    color: "#3b8eff",
-    type: "checklist",
-    dateCreated: "Nov 17, 2024",
-    items: [
-      { text: "Updated brand guidelines", checked: true },
-      { text: "Q4 marketing strategy", checked: false },
-      { text: "Social media content calendar", checked: false }
-    ]
-  },
-  {
-    id: 3,
-    title: "Team Meeting Notes",
-    content: "Discussed new project timeline with stakeholders. Key decision: Launch moved to Dec 15th. Action items assigned to team leads.",
-    color: "#9b59b6",
-    type: "text",
-    hasFormatting: false,
-    dateCreated: "Nov 16, 2024"
-  },
-  {
-    id: 4,
-    title: "Weekly Tasks",
-    content: null,
-    color: "#FFA500",
-    type: "checklist",
-    dateCreated: "Nov 15, 2024",
-    items: [
-      { text: "Review design mockups", checked: true },
-      { text: "Client feedback call", checked: true },
-      { text: "Update project roadmap", checked: false },
-      { text: "Team retrospective", checked: false }
-    ]
-  },
-  {
-    id: 5,
-    title: "Product Ideas",
-    content: "Explore AI integration for the dashboard\nAdd dark mode support\nImplement real-time collaboration features",
-    color: "#2ecc71",
-    type: "text",
-    hasFormatting: false,
-    dateCreated: "Nov 14, 2024"
-  },
-  {
-    id: 6,
-    title: "Shopping List",
-    content: null,
-    color: "#e74c3c",
-    type: "checklist",
-    dateCreated: "Nov 13, 2024",
-    items: [
-      { text: "Office supplies", checked: false },
-      { text: "Team lunch ingredients", checked: false },
-      { text: "Printer paper", checked: true }
-    ]
-  },
-];
-
 export function NotesPage() {
-  const [activeTab, setActiveTab] = useState<'all' | 'text' | 'checklist'>('all');
-  const [searchQuery, setSearchQuery] = useState('');;
+  const queryClient = useQueryClient();
+  const { message: messageApi, modal } = App.useApp();
+  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showDialog, setShowDialog] = useState(false);
-  const [notes, setNotes] = useState<Note[]>(notesData);
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [viewingNote, setViewingNote] = useState<Note | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
 
-  const filteredNotes = notes.filter(note => {
-    const matchesTab = activeTab === 'all' || note.type === activeTab;
-    const matchesSearch = searchQuery === '' ||
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (note.content && note.content.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesTab && matchesSearch;
+  // Fetch all notes (both archived and non-archived) for accurate tab counts
+  // Using separate queries for better cache management
+  const { data: nonArchivedData, isLoading: isLoadingNonArchived } = useQuery({
+    queryKey: ['notes', 'non-archived'],
+    queryFn: () => getNotes(0, 100, false),
+    staleTime: 30000, // 30 seconds
   });
 
-  const toggleNoteItem = (noteId: number, itemIndex: number) => {
-    setNotes(notes.map(note => {
-      if (note.id === noteId && note.type === 'checklist' && note.items) {
-        const updatedItems = [...note.items];
-        updatedItems[itemIndex] = { ...updatedItems[itemIndex], checked: !updatedItems[itemIndex].checked };
-        return { ...note, items: updatedItems };
-      }
-      return note;
+  const { data: archivedData, isLoading: isLoadingArchived } = useQuery({
+    queryKey: ['notes', 'archived'],
+    queryFn: () => getNotes(0, 100, true),
+    staleTime: 30000, // 30 seconds
+  });
+
+  const isLoading = isLoadingNonArchived || isLoadingArchived;
+
+  // Memoize notes list to avoid unnecessary recalculations
+  const notesList: Note[] = useMemo(() => {
+    const nonArchived = isArray<Note>(nonArchivedData?.result) ? nonArchivedData.result : [];
+    const archived = isArray<Note>(archivedData?.result) ? archivedData.result : [];
+    return [...nonArchived, ...archived];
+  }, [nonArchivedData?.result, archivedData?.result]);
+
+  // Mutations with proper error handling
+  const createMutation = useMutation({
+    mutationFn: createNote,
+    onSuccess: () => {
+      messageApi.success("Note created");
+      setShowDialog(false);
+      setEditingNote(null);
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+    onError: (error: unknown) => {
+      const errorMessage = getErrorMessage(error);
+      messageApi.error(`Failed to create note: ${errorMessage}`);
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<Note> }) => updateNote(id, data),
+    onSuccess: () => {
+      messageApi.success("Note updated");
+      setShowDialog(false);
+      setEditingNote(null);
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+    onError: (error: unknown) => {
+      const errorMessage = getErrorMessage(error);
+      messageApi.error(`Failed to update note: ${errorMessage}`);
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteNote,
+    onSuccess: () => {
+      messageApi.success("Note permanently deleted");
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+    onError: (error: unknown) => {
+      const errorMessage = getErrorMessage(error);
+      messageApi.error(`Failed to delete note: ${errorMessage}`);
+    }
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: archiveNote,
+    onSuccess: () => {
+      messageApi.success("Note archived");
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+    onError: (error: unknown) => {
+      const errorMessage = getErrorMessage(error);
+      messageApi.error(`Failed to archive note: ${errorMessage}`);
+    }
+  });
+
+  const unarchiveMutation = useMutation({
+    mutationFn: unarchiveNote,
+    onSuccess: () => {
+      messageApi.success("Note unarchived");
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+    onError: (error: unknown) => {
+      const errorMessage = getErrorMessage(error);
+      messageApi.error(`Failed to unarchive note: ${errorMessage}`);
+    }
+  });
+
+
+  /**
+   * Convert ChecklistItem[] to backend format
+   */
+  const convertItemsToBackendFormat = (items: ChecklistItem[] | undefined) => {
+    if (!items || items.length === 0) {
+      return undefined;
+    }
+    
+    return items.map(item => ({
+      text: item.text,
+      checked: item.isChecked,
     }));
   };
+
+  /**
+   * Handle saving a note (create or update)
+   */
+  const handleSaveNote = useCallback(async (noteData: NoteSaveData) => {
+    if (editingNote) {
+      // Update existing note
+      await updateMutation.mutateAsync({
+        id: editingNote.id,
+        data: {
+          title: noteData.title,
+          type: noteData.type,
+          content: noteData.content,
+          items: noteData.items,
+          color: noteData.color,
+        }
+      });
+    } else {
+      // Create new note
+      await createMutation.mutateAsync({
+        title: noteData.title,
+        type: noteData.type,
+        content: noteData.content,
+        items: noteData.items,
+        color: noteData.color,
+      });
+    }
+  }, [editingNote, createMutation, updateMutation]);
+
+  /**
+   * Handle note deletion with confirmation
+   */
+  const handleDelete = useCallback((noteId: number) => {
+    modal.confirm({
+      title: 'Delete Note',
+      content: 'Are you sure you want to permanently delete this note? This action cannot be undone.',
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: () => deleteMutation.mutate(noteId)
+    });
+  }, [deleteMutation, modal]);
+
+  /**
+   * Handle archiving a note
+   */
+  const handleArchive = useCallback((noteId: number) => {
+    archiveMutation.mutate(noteId);
+  }, [archiveMutation]);
+
+  /**
+   * Handle unarchiving a note
+   */
+  const handleUnarchive = useCallback((noteId: number) => {
+    unarchiveMutation.mutate(noteId);
+  }, [unarchiveMutation]);
+
+  /**
+   * Normalize note type for filtering
+   * Helper function to handle both frontend and backend type formats
+   */
+  const normalizeNoteTypeForFilter = useCallback((type: string | NoteType): 'text' | 'checklist' => {
+    if (type === 'TEXT_NOTE' || type === 'text') {
+      return 'text';
+    }
+    return 'checklist';
+  }, []);
+
+  /**
+   * Check if note matches search query
+   */
+  const matchesSearch = useCallback((note: Note, query: string): boolean => {
+    if (!query.trim()) {
+      return true;
+    }
+    
+    const lowerQuery = query.toLowerCase();
+    const titleMatch = note.title.toLowerCase().includes(lowerQuery);
+    const contentMatch = note.content 
+      ? note.content.toLowerCase().includes(lowerQuery)
+      : false;
+    
+    // Also search in checklist items
+    const itemsMatch = note.items?.some(item => 
+      item.text.toLowerCase().includes(lowerQuery)
+    ) || false;
+    
+    return titleMatch || contentMatch || itemsMatch;
+  }, []);
+
+  /**
+   * Filter notes by tab and search - memoized for performance
+   */
+  const filteredNotes = useMemo(() => {
+    return notesList.filter(note => {
+      // Handle archive tab
+      if (activeTab === 'archive') {
+        if (!note.is_archived) return false;
+      } else {
+        // Exclude archived notes from main tabs
+        if (note.is_archived) return false;
+      }
+
+      // Filter by type
+      const normalizedType = normalizeNoteTypeForFilter(note.type);
+      if (activeTab === 'text' && normalizedType !== 'text') return false;
+      if (activeTab === 'checklist' && normalizedType !== 'checklist') return false;
+
+      // Search filter
+      return matchesSearch(note, searchQuery);
+    });
+  }, [notesList, activeTab, searchQuery, matchesSearch]);
+
+  /**
+   * Calculate tab counts - memoized for performance
+   */
+  const tabs = useMemo(() => {
+    const nonArchived = notesList.filter(n => !n.is_archived);
+    const textNotes = nonArchived.filter(n => normalizeNoteTypeForFilter(n.type) === 'text');
+    const checklistNotes = nonArchived.filter(n => normalizeNoteTypeForFilter(n.type) === 'checklist');
+    const archived = notesList.filter(n => n.is_archived);
+
+    return [
+      { id: 'all' as TabType, label: 'All Notes', count: nonArchived.length },
+      { id: 'text' as TabType, label: 'Text Notes', count: textNotes.length },
+      { id: 'checklist' as TabType, label: 'Checklists', count: checklistNotes.length },
+      { id: 'archive' as TabType, label: 'Archived', count: archived.length },
+    ];
+  }, [notesList, normalizeNoteTypeForFilter]);
 
   return (
     <>
       <PageLayout
         title="Notes"
-        tabs={[
-          { id: 'all', label: 'All Notes', count: notes.length },
-          { id: 'text', label: 'Text Notes', count: notes.filter(n => n.type === 'text').length },
-          { id: 'checklist', label: 'Checklists', count: notes.filter(n => n.type === 'checklist').length }
-        ]}
+        tabs={tabs.map(tab => ({ id: tab.id, label: tab.label, count: tab.count }))}
         activeTab={activeTab}
-        onTabChange={(tabId) => setActiveTab(tabId as 'all' | 'text' | 'checklist')}
-        titleAction={{
-          onClick: () => setShowDialog(true)
-        }}
-        searchPlaceholder="Search notes by title or con..."
+        onTabChange={(tabId) => setActiveTab(tabId as TabType)}
+        searchPlaceholder="Search notes by title or content..."
         searchValue={searchQuery}
         onSearchChange={setSearchQuery}
+        titleAction={{
+          onClick: () => setShowDialog(true),
+          label: 'Add Note',
+          icon: <Plus className="size-5 text-[#ff3b3b]" strokeWidth={2} />
+        }}
       >
-        {/* Notes Grid - Scrollable */}
+        {/* Notes Grid */}
         <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-3 gap-6 pb-4">
-            {filteredNotes.map((note) => (
-              <NoteCard key={note.id} note={note} onToggleItem={toggleNoteItem} />
-            ))}
-          </div>
-        </div>
-      </PageLayout>
-
-      {/* Add Note Modal */}
-      <Modal
-        open={showDialog}
-        onCancel={() => setShowDialog(false)}
-        footer={null}
-        width={500}
-        centered
-        className="rounded-[16px] overflow-hidden"
-      >
-        <div className="border-b border-[#EEEEEE] mb-6 pb-4">
-          <h2 className="font-['Manrope:Bold',sans-serif] text-[24px] text-[#111111]">Add Note</h2>
-          <p className="font-['Manrope:Regular',sans-serif] text-[14px] text-[#666666] mt-1">Create a new sticky note for quick reminders and tasks.</p>
-        </div>
-        <div className="space-y-4">
-          <div>
-            <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Title</span>
-            <Input placeholder="Note title" className="rounded-lg font-['Manrope:Medium',sans-serif]" />
-          </div>
-          <div>
-            <div className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 flex items-center justify-between">
-              <span>Content</span>
-              <div className="flex gap-1">
-                <button className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Bold">
-                  <Bold className="size-4 text-[#666666]" />
-                </button>
-                <button className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Italic">
-                  <Italic className="size-4 text-[#666666]" />
-                </button>
-                <button className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="List">
-                  <List className="size-4 text-[#666666]" />
-                </button>
-                <button className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Checklist">
-                  <CheckSquare className="size-4 text-[#666666]" />
-                </button>
-              </div>
+          {isLoading ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff3b3b]"></div>
             </div>
-            <TextArea placeholder="Note content..." className="rounded-lg min-h-[120px] font-['Manrope:Regular',sans-serif]" />
-          </div>
-          <div>
-            <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Color</span>
-            <div className="flex gap-2">
-              {['#ff3b3b', '#3b8eff', '#9b59b6', '#FFA500', '#2ecc71', '#e74c3c'].map((color) => (
-                <button
-                  key={color}
-                  className="w-10 h-10 rounded-lg border-2 border-transparent hover:border-[#ff3b3b] transition-colors"
-                  style={{ backgroundColor: color }}
+          ) : filteredNotes.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center py-12">
+              <div className="w-16 h-16 bg-[#FFF4F4] rounded-full flex items-center justify-center mb-4">
+                <div className="text-[#ff3b3b]"><FileText className="size-8" /></div>
+              </div>
+              <h3 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-1">
+                {activeTab === 'archive' ? 'Archive is empty' : 'No notes found'}
+              </h3>
+              <p className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                {activeTab === 'archive' ? 'Archived notes will appear here' : 'Create your first note to get started'}
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-6">
+              {filteredNotes.map((note) => (
+                <NoteCard
+                  key={note.id}
+                  note={note}
+                  onArchive={handleArchive}
+                  onUnarchive={handleUnarchive}
+                  onDelete={handleDelete}
+                  onEdit={(note) => {
+                    setEditingNote(note);
+                    setShowDialog(true);
+                  }}
+                  onClick={(note) => {
+                    setViewingNote(note);
+                    setShowViewModal(true);
+                  }}
                 />
               ))}
             </div>
-          </div>
-          <div className="flex gap-3 pt-4">
-            <Button onClick={() => setShowDialog(false)} className="flex-1 rounded-full h-10 border-[#EEEEEE] text-[#666666] font-['Manrope:SemiBold',sans-serif]">
-              Cancel
-            </Button>
-            <Button type="primary" onClick={() => setShowDialog(false)} className="flex-1 rounded-full h-10 bg-[#ff3b3b] hover:bg-[#cc2f2f] text-white font-['Manrope:SemiBold',sans-serif] border-none">
-              Add Note
-            </Button>
-          </div>
+          )}
         </div>
-      </Modal>
+      </PageLayout>
+
+      {/* Note Composer Modal */}
+      <NoteComposerModal
+        open={showDialog}
+        onClose={() => {
+          setShowDialog(false);
+          setEditingNote(null);
+        }}
+        onSave={handleSaveNote}
+        initialNote={editingNote ? {
+          id: editingNote.id,
+          title: editingNote.title,
+          type: normalizeNoteTypeForFilter(editingNote.type) === 'text' ? 'TEXT_NOTE' : 'CHECKLIST_NOTE',
+          content: editingNote.content,
+          items: editingNote.items ? editingNote.items.map((item, index) => {
+            // Handle both backend format {text, checked} and frontend format ChecklistItem
+            const isBackendFormat = 'checked' in item && !('isChecked' in item);
+            
+            return {
+              id: item.id || `item-${editingNote.id}-${index}`,
+              text: item.text || '',
+              isChecked: isBackendFormat 
+                ? (item as { checked?: boolean }).checked || false
+                : (item as ChecklistItem).isChecked || false,
+              order: item.order !== undefined ? item.order : index,
+              indentLevel: item.indentLevel || 0,
+              parentId: item.parentId || null,
+              createdAt: item.createdAt || new Date().toISOString(),
+              updatedAt: item.updatedAt || new Date().toISOString(),
+            };
+          }) : undefined,
+          color: editingNote.color || DEFAULT_NOTE_COLOR,
+        } : null}
+      />
+
+      {/* Note View Modal */}
+      <NoteViewModal
+        open={showViewModal}
+        note={viewingNote}
+        onClose={() => {
+          setShowViewModal(false);
+          setViewingNote(null);
+        }}
+        onEdit={(note) => {
+          setEditingNote(note);
+          setShowViewModal(false);
+          setShowDialog(true);
+        }}
+        onArchive={handleArchive}
+        onDelete={handleDelete}
+      />
     </>
   );
 }
 
-function NoteCard({ note, onToggleItem }: {
+interface NoteCardProps {
   note: Note;
-  onToggleItem: (noteId: number, itemIndex: number) => void;
-}) {
+  onArchive: (id: number) => void;
+  onUnarchive: (id: number) => void;
+  onDelete: (id: number) => void;
+  onEdit: (note: Note) => void;
+  onClick: (note: Note) => void;
+}
 
-  const items: MenuProps['items'] = [
-    {
-      key: 'archive',
-      label: 'Archive',
-      icon: <Archive className="size-3.5" />,
-      className: "text-[13px] font-['Manrope:Medium',sans-serif]"
-    },
-    {
-      key: 'delete',
-      label: 'Delete',
-      icon: <Trash2 className="size-3.5" />,
-      danger: true,
-      className: "text-[13px] font-['Manrope:Medium',sans-serif]"
-    },
-  ];
+function NoteCard({ note, onArchive, onUnarchive, onDelete, onEdit, onClick }: NoteCardProps) {
+  const noteColor = note.color || DEFAULT_NOTE_COLOR;
+  const borderColorNormal = hexToRgba(noteColor, 0.5);
+  const borderColorHover = noteColor;
 
   return (
-    <div className="relative group h-[220px]">
+    <div className="relative group aspect-square">
       {/* Card with white background */}
-      <div className="relative h-full bg-white rounded-xl border border-[#EEEEEE] hover:border-[#ff3b3b]/20 hover:shadow-lg transition-all duration-300 cursor-pointer p-4 flex flex-col">
+      <div
+        className="relative h-full w-full bg-white rounded-xl border transition-all duration-300 p-4 flex flex-col cursor-pointer hover:shadow-lg"
+        style={{ 
+          borderColor: borderColorNormal,
+          borderWidth: '1px'
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = borderColorHover;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = borderColorNormal;
+        }}
+        onClick={(e) => {
+          // Only trigger if click is not on action buttons
+          const target = e.target as HTMLElement;
+          const isActionButton = target.closest('button');
+          
+          if (!isActionButton) {
+            onClick(note);
+          }
+        }}
+      >
         {/* Header with action buttons */}
-        <div className="flex items-start justify-between mb-2 gap-2">
+        <div className="flex items-start justify-between mb-3 gap-2 flex-shrink-0">
           {/* Title */}
-          <h4 className="font-['Manrope:SemiBold',sans-serif] text-[16px] text-[#111111] flex-1 leading-tight group-hover:text-[#ff3b3b] transition-colors">
+          <h4 className="font-['Manrope:SemiBold',sans-serif] text-[16px] text-[#111111] flex-1 leading-tight">
             {note.title}
           </h4>
 
-          {/* Three-dot menu - appears on hover */}
-          <Dropdown menu={{ items }} trigger={['click']}>
+          {/* Action icons - appear on hover */}
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 flex-shrink-0 z-10 relative">
+            {note.is_archived ? (
+              <button
+                className="p-1.5 hover:bg-[#F7F7F7] rounded-md transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUnarchive(note.id);
+                }}
+                title="Unarchive"
+              >
+                <ArchiveRestore className="size-4 text-[#666666]" strokeWidth={2} />
+              </button>
+            ) : (
+              <button
+                className="p-1.5 hover:bg-[#F7F7F7] rounded-md transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onArchive(note.id);
+                }}
+                title="Archive"
+              >
+                <Archive className="size-4 text-[#666666]" strokeWidth={2} />
+              </button>
+            )}
             <button
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-[#F7F7F7] rounded-md flex-shrink-0 -mr-2 -mt-1"
-              onClick={(e) => e.stopPropagation()}
+              className="p-1.5 hover:bg-[#F7F7F7] rounded-md transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(note.id);
+              }}
+              title="Delete"
             >
-              <MoreVertical className="size-4 text-[#666666]" strokeWidth={2} />
+              <Trash2 className="size-4 text-[#ff3b3b]" strokeWidth={2} />
             </button>
-          </Dropdown>
+          </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
-          {note.type === 'text' && note.content && (
-            <p className="font-['Inter:Regular',sans-serif] text-[13px] text-[#666666] line-clamp-[8] whitespace-pre-line leading-relaxed">
-              {note.content}
-            </p>
+        <div className="flex-1 overflow-hidden min-h-0">
+          {normalizeNoteType(note.type) === 'text' && note.content && (
+            <div 
+              className="font-['Inter:Regular',sans-serif] text-[13px] text-[#666666] line-clamp-[8] leading-relaxed prose prose-sm max-w-none [&>p]:mb-2 [&>p]:last:mb-0 h-full"
+              dangerouslySetInnerHTML={{ __html: note.content }}
+            />
           )}
 
-          {note.type === 'checklist' && note.items && (
-            <div className="flex flex-col gap-2.5">
-              {note.items.map((item, index) => (
-                <div key={index} className="flex items-start gap-2">
-                  <Checkbox
-                    checked={item.checked}
-                    onChange={() => onToggleItem(note.id, index)}
-                    className="mt-0.5 custom-checkbox-wrapper"
-                  />
-                  <span className={`font-['Inter:Regular',sans-serif] text-[13px] flex-1 leading-tight ${item.checked ? 'line-through text-[#999999]' : 'text-[#666666]'}`}>
-                    {item.text}
-                  </span>
-                </div>
-              ))}
+          {normalizeNoteType(note.type) === 'checklist' && note.items && isArray(note.items) && (
+            <div className="flex flex-col gap-2 h-full overflow-hidden">
+              {note.items
+                .filter((item) => {
+                  // Handle both backend format {checked} and frontend format {isChecked}
+                  const isBackendFormat = 'checked' in item && !('isChecked' in item);
+                  return isBackendFormat 
+                    ? !(item as { checked?: boolean }).checked
+                    : !(item as ChecklistItem).isChecked;
+                })
+                .slice(0, 5)
+                .map((item, index) => {
+                  const itemText = 'text' in item ? item.text : String(item);
+                  return (
+                    <div key={`unchecked-${item.id || index}`} className="flex items-start gap-2 flex-shrink-0">
+                      <Checkbox
+                        checked={false}
+                        disabled
+                        className="mt-0.5 custom-checkbox-wrapper"
+                      />
+                      <span className="font-['Inter:Regular',sans-serif] text-[13px] flex-1 leading-tight text-[#666666]">
+                        {itemText}
+                      </span>
+                    </div>
+                  );
+                })}
+              {(() => {
+                const completedItems = note.items.filter((item) => {
+                  const isBackendFormat = 'checked' in item && !('isChecked' in item);
+                  return isBackendFormat 
+                    ? (item as { checked?: boolean }).checked
+                    : (item as ChecklistItem).isChecked;
+                });
+                
+                if (completedItems.length === 0) return null;
+                
+                return (
+                  <div className="mt-2 pt-2 border-t border-[#EEEEEE] flex-shrink-0">
+                    <div className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999] mb-1 uppercase">
+                      Completed ({completedItems.length})
+                    </div>
+                    {completedItems.slice(0, 2).map((item, index) => {
+                      const itemText = 'text' in item ? item.text : String(item);
+                      return (
+                        <div key={`checked-${item.id || index}`} className="flex items-start gap-2 opacity-60 flex-shrink-0">
+                          <Checkbox
+                            checked={true}
+                            disabled
+                            className="mt-0.5 custom-checkbox-wrapper"
+                          />
+                          <span className="font-['Inter:Regular',sans-serif] text-[13px] flex-1 leading-tight line-through text-[#999999]">
+                            {itemText}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

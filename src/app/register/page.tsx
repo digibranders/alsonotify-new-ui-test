@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { Button, Input, Checkbox, message } from "antd";
+import { Button, Input, Checkbox, App } from "antd";
 import { LockOutlined } from "@ant-design/icons";
 import { useRegister } from "@/hooks/useAuth";
 import Link from "next/link";
@@ -12,6 +12,7 @@ import BrandLogo from "@/assets/images/logo.png";
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { message } = App.useApp();
   const registerMutation = useRegister();
 
   const inviteToken = searchParams.get("invite") ?? null;

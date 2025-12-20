@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Button, Input, Select, Checkbox, message, DatePicker } from 'antd';
+import { Button, Input, Select, Checkbox, DatePicker, App, Modal } from 'antd';
 import { CheckSquare, Calendar } from 'lucide-react';
 import dayjs from 'dayjs';
 
@@ -50,8 +50,8 @@ export function TaskForm({
   requirements = [],
   workspaces = [],
 }: TaskFormProps) {
+  const { message } = App.useApp();
   const [formData, setFormData] = useState<TaskFormData>(defaultFormData);
-  const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
     if (initialData) {
@@ -70,7 +70,7 @@ export function TaskForm({
     if (!formData.estimated_time || parseFloat(formData.estimated_time) <= 0) missingFields.push('Estimated Time');
 
     if (missingFields.length > 0) {
-      messageApi.error(`Please fill in required fields: ${missingFields.join(', ')}`);
+      message.error(`Please fill in required fields: ${missingFields.join(', ')}`);
       return;
     }
 
@@ -78,7 +78,7 @@ export function TaskForm({
     if (formData.start_date) {
       formattedStartDate = formData.start_date; // Assumed ISO string from state
     } else {
-      messageApi.error("Start Date is required");
+      message.error("Start Date is required");
       return;
     }
 
@@ -104,7 +104,6 @@ export function TaskForm({
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {contextHolder}
       {/* Fixed Header */}
       <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-6">
         <div className="flex items-center justify-between mb-2">

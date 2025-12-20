@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEmployee, useUpdateEmployee, useCompanyDepartments } from '@/hooks/useUser';
 import { PageLayout } from '../../layout/PageLayout';
 import { AccessBadge } from '../../ui/AccessBadge';
-import { Button, Tag, Divider, Modal, message } from 'antd';
+import { Button, Tag, Divider, Modal, App } from 'antd';
 import { Mail, Phone, Calendar, Briefcase, DollarSign, ArrowLeft, Edit, FileText } from 'lucide-react';
 import { EmployeeForm, EmployeeFormData } from '../../modals/EmployeesForm';
 import { DocumentCard } from '@/components/ui/DocumentCard';
@@ -16,6 +16,7 @@ export function EmployeeDetailsPage() {
   const params = useParams();
   const employeeId = params.employeeId as string;
   const router = useRouter();
+  const { message } = App.useApp();
   const { data: employeeData, isLoading } = useEmployee(parseInt(employeeId || '0'));
   const { data: departmentsData } = useCompanyDepartments();
   const updateEmployeeMutation = useUpdateEmployee();

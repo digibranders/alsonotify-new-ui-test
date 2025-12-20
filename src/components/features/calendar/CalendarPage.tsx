@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Info, Video, X } from 'lucide-react';
 import { PageLayout } from '../../layout/PageLayout';
-import { Popover, Spin, Tag, Badge, Avatar, Tooltip, Button, message, Modal, Input, Select, DatePicker } from 'antd';
+import { Popover, Spin, Tag, Badge, Avatar, Tooltip, Button, Modal, Input, Select, DatePicker, App } from 'antd';
 import dayjs from 'dayjs';
 import { useTasks } from '@/hooks/useTask';
 import { useMeetings } from '@/hooks/useMeeting';
@@ -37,6 +37,7 @@ interface CalendarEvent {
 }
 
 export function CalendarPage() {
+  const { message } = App.useApp();
   const [activeView, setActiveView] = useState<'month' | 'week' | 'day' | 'agenda'>('month');
   const [currentDate, setCurrentDate] = useState(dayjs());
   const [selectedDate, setSelectedDate] = useState<string | null>(dayjs().format('YYYY-MM-DD'));

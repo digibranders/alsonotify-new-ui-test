@@ -96,7 +96,7 @@ export function PageLayout({
                   >
                     {tab.label}
                     {tab.count !== undefined && (
-                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] ${
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-['Manrope:SemiBold',sans-serif] leading-none ${
                         activeTab === tab.id
                           ? 'bg-[#ff3b3b] text-white'
                           : 'bg-[#F7F7F7] text-[#666666]'

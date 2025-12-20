@@ -119,7 +119,7 @@ export function Sidebar({ userRole }: SidebarProps) {
     },
     {
       id: 'notes',
-      path: '/dashboard/todo',
+      path: '/dashboard/notes',
       label: 'Notes',
       icon: <Notepad24Filled />,
       allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']

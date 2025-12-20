@@ -4,10 +4,9 @@ import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FolderOpen, ChevronLeft, ChevronRight, Plus, UploadCloud, LayoutGrid, List, MoreVertical, Edit, Trash2, Archive, Users, RotateCcw } from 'lucide-react';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
-import { Modal, Button, Input, Select, Dropdown, MenuProps, Checkbox } from "antd";
+import { Modal, Button, Input, Select, Dropdown, MenuProps, Checkbox, App } from "antd";
 import { useWorkspaces, useCreateWorkspace, useClients } from '@/hooks/useWorkspace';
 import { useClients as useGetClients, useEmployees } from '@/hooks/useUser';
-import { message } from 'antd';
 import { useQueries } from '@tanstack/react-query';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
 
@@ -15,6 +14,7 @@ const { TextArea } = Input;
 const { Option } = Select;
 
 export function WorkspacePage() {
+  const { message } = App.useApp();
   const { data: workspacesData, isLoading } = useWorkspaces();
   const { data: clientsData } = useGetClients();
   const { data: employeesData } = useEmployees(); // Fetch employees for project lead dropdown

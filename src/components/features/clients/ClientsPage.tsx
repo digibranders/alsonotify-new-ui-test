@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Briefcase, Search, MoreVertical, Plus, Trash2, Edit } from 'lucide-react';
 import { PageLayout } from '../../layout/PageLayout';
-import { Modal, Button, Input, Select, Checkbox, Dropdown, MenuProps, message } from 'antd';
+import { Modal, Button, Input, Select, Checkbox, Dropdown, MenuProps, App } from 'antd';
 import { useClients, useInviteUser } from '@/hooks/useUser';
 
 const { Option } = Select;
 
 export function ClientsPage() {
   const router = useRouter();
+  const { message } = App.useApp();
   const { data: clientsData, isLoading } = useClients();
   const inviteUserMutation = useInviteUser();
 
