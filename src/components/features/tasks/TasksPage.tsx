@@ -76,10 +76,17 @@ const datesMatchHelper = (date1: Date | null, date2: Date | null): boolean => {
   return date1.getTime() === date2.getTime();
 };
 
+// Helper function to convert filter object to query params
+const toQueryParams = (params: Record<string, any>): string => {
+  return Object.entries(params)
+    .filter(([_, value]) => value !== null && value !== "" && value !== undefined && value !== 'All')
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join("&");
+};
+
 export function TasksPage() {
   const router = useRouter();
   const { message } = App.useApp();
-  const { data: tasksData, isLoading } = useTasks();
   const createTaskMutation = useCreateTask();
   const { data: workspacesData } = useWorkspaces();
   const [activeTab, setActiveTab] = useState<StatusTab>('all');
@@ -91,6 +98,14 @@ export function TasksPage() {
     status: 'All'
   });
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
+  
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    limit: 10,
+    skip: 0,
+  });
 
   // Date Picker State
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
@@ -107,6 +122,64 @@ export function TasksPage() {
   // Fetch users and requirements for form dropdowns
   const [usersDropdown, setUsersDropdown] = useState<Array<{ id: number; name: string }>>([]);
   const [requirementsDropdown, setRequirementsDropdown] = useState<Array<{ id: number; name: string }>>([]);
+
+  // Build query params for API call
+  const queryParams = useMemo(() => {
+    const params: Record<string, any> = {
+      limit: pagination.limit,
+      skip: pagination.skip,
+    };
+
+    // Add filters
+    if (filters.user !== 'All') {
+      // Need to find user ID from name - for now, we'll keep client-side filtering for user
+      // params.member_id = filters.user;
+    }
+    if (filters.company !== 'All') {
+      // Need to find company ID from name - for now, we'll keep client-side filtering for company
+      // params.client_company_id = filters.company;
+    }
+    if (filters.project !== 'All') {
+      // Need to find project ID from name - for now, we'll keep client-side filtering for project
+      // params.project_id = filters.project;
+    }
+    // Add tab filter (status-based) - only if status filter is not explicitly set
+    if (activeTab !== 'all' && filters.status === 'All') {
+      if (activeTab === 'In_Progress') {
+        params.status = 'In_Progress';
+      } else if (activeTab === 'Completed') {
+        params.status = 'Completed';
+      } else if (activeTab === 'Delayed') {
+        params.status = 'Delayed';
+      }
+    } else if (filters.status !== 'All') {
+      // Map UI status to backend status
+      const statusMap: Record<string, string> = {
+        'Assigned': 'Assigned',
+        'In Progress': 'In_Progress',
+        'Completed': 'Completed',
+        'Delayed': 'Delayed',
+        'Impediment': 'Impediment',
+        'Review': 'Review',
+        'Stuck': 'Stuck',
+      };
+      params.status = statusMap[filters.status] || filters.status;
+    }
+    if (searchQuery) {
+      params.name = searchQuery;
+    }
+
+    // Add date range filter if applicable
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      params.start_date = dateRange[0].format('YYYY-MM-DD');
+      params.end_date = dateRange[1].format('YYYY-MM-DD');
+    }
+
+    return toQueryParams(params);
+  }, [pagination.limit, pagination.skip, filters, searchQuery, dateRange, activeTab]);
+
+  // Fetch tasks with query params
+  const { data: tasksData, isLoading } = useTasks(queryParams);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -302,7 +375,14 @@ export function TasksPage() {
 
   const handleFilterChange = (filterId: string, value: string) => {
     setFilters(prev => ({ ...prev, [filterId]: value }));
+    // Reset to first page when filters change
+    setPagination(prev => ({ ...prev, current: 1, skip: 0 }));
   };
+
+  // Reset pagination when search query or active tab changes
+  useEffect(() => {
+    setPagination(prev => ({ ...prev, current: 1, skip: 0 }));
+  }, [searchQuery, activeTab]);
 
   const clearFilters = () => {
     setFilters({
@@ -312,6 +392,18 @@ export function TasksPage() {
       status: 'All'
     });
     setSearchQuery('');
+    // Reset to first page when clearing filters
+    setPagination(prev => ({ ...prev, current: 1, skip: 0 }));
+  };
+
+  // Handle pagination change
+  const handlePaginationChange = (page: number, pageSize: number) => {
+    setPagination({
+      current: page,
+      pageSize,
+      limit: pageSize,
+      skip: (page - 1) * pageSize,
+    });
   };
 
   const handleCreateTask = async (data: any) => {
@@ -335,32 +427,22 @@ export function TasksPage() {
     });
   };
 
+  // Get total count from API response
+  const totalTasks = useMemo(() => {
+    const firstTask = tasksData?.result?.[0] as any;
+    return firstTask?.total_count ?? tasks.length ?? 0;
+  }, [tasksData, tasks.length]);
+
+  // Apply client-side filters for user/company/project (since we can't easily map names to IDs)
+  // Most filtering is now done server-side via query params
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      // Tab filtering
-      const matchesTab = activeTab === 'all' || 
-        task.status === activeTab || 
-        (activeTab === 'In_Progress' && (task.status === 'In_Progress' || task.status === 'Review')) ||
-        (activeTab === 'Delayed' && ['Delayed', 'Impediment', 'Stuck'].includes(task.status));
-      
-      const matchesSearch = searchQuery === '' ||
-        task.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.taskId.includes(searchQuery) ||
-        task.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.project.toLowerCase().includes(searchQuery.toLowerCase());
+      // Client-side filtering for user, company, project (name-based)
       const matchesUser = filters.user === 'All' || task.assignedTo === filters.user;
       const matchesCompany = filters.company === 'All' || task.client === filters.company;
       const matchesProject = filters.project === 'All' || task.project === filters.project;
-      const matchesStatus =
-        filters.status === 'All' ||
-        (filters.status === 'Assigned' && task.status === 'Assigned') ||
-        (filters.status === 'In Progress' && task.status === 'In_Progress') ||
-        (filters.status === 'Completed' && task.status === 'Completed') ||
-        (filters.status === 'Delayed' && task.status === 'Delayed') ||
-        (filters.status === 'Impediment' && task.status === 'Impediment') ||
-        (filters.status === 'Review' && task.status === 'Review') ||
-        (filters.status === 'Stuck' && task.status === 'Stuck');
 
+      // Date filtering (client-side since API might not support it exactly as we need)
       let matchesDate = true;
       if (dateRange && dateRange[0] && dateRange[1]) {
         const from = dateRange[0].startOf('day').toDate().getTime();
@@ -373,28 +455,22 @@ export function TasksPage() {
         }
       }
 
-      return (
-        matchesTab &&
-        matchesSearch &&
-        matchesUser &&
-        matchesCompany &&
-        matchesProject &&
-        matchesStatus &&
-        matchesDate
-      );
+      return matchesUser && matchesCompany && matchesProject && matchesDate;
     });
-  }, [tasks, activeTab, searchQuery, filters, dateRange]);
+  }, [tasks, filters, dateRange]);
 
   useEffect(() => {
     // side-effects after filters, search, or date label change (currently none)
   }, [tasks.length, filteredTasks.length, activeTab, searchQuery, filters, dateLabel]);
 
+  // Note: Stats are now based on total count from API, not just current page
+  // For accurate stats, we'd need separate API calls per status, but for now we'll use current page data
   const stats = useMemo(() => ({
-    all: tasks.length,
+    all: totalTasks,
     'In_Progress': tasks.filter(t => t.status === 'In_Progress').length,
     'Completed': tasks.filter(t => t.status === 'Completed').length,
     'Delayed': tasks.filter(t => ['Delayed', 'Impediment', 'Stuck'].includes(t.status)).length,
-  }), [tasks]);
+  }), [tasks, totalTasks]);
 
   const toggleSelectAll = () => {
     if (selectedTasks.length === filteredTasks.length) {
@@ -762,7 +838,7 @@ export function TasksPage() {
       </div>
 
       {/* Tasks List */}
-      <div className="flex-1 overflow-y-auto pb-24 relative">
+      <div className="flex-1 overflow-y-auto relative">
         {/* Table Header */}
         <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2.5fr_1.2fr_1.1fr_1fr_1fr_1.4fr_0.6fr_0.3fr] gap-4 px-4 py-3 mb-2 items-center">
           <div className="flex justify-center">
@@ -853,6 +929,73 @@ export function TasksPage() {
           </div>
         )}
       </div>
+
+      {/* Pagination - Fixed at bottom */}
+      {!isLoading && totalTasks > 0 && (
+        <div className="mt-6 flex items-center justify-between border-t border-[#EEEEEE] pt-6">
+          <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+            {pagination.skip + 1}-{Math.min(pagination.skip + pagination.pageSize, totalTasks)} of {totalTasks} tasks
+          </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handlePaginationChange(pagination.current - 1, pagination.pageSize)}
+              disabled={pagination.current === 1}
+              className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4 text-[#666666]" />
+            </button>
+
+            {Array.from({ length: Math.min(5, Math.ceil(totalTasks / pagination.pageSize)) }, (_, i) => {
+              const totalPages = Math.ceil(totalTasks / pagination.pageSize);
+              let pageNum: number;
+              
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (pagination.current <= 3) {
+                pageNum = i + 1;
+              } else if (pagination.current >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = pagination.current - 2 + i;
+              }
+              
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => handlePaginationChange(pageNum, pagination.pageSize)}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all font-['Manrope:SemiBold',sans-serif] text-[13px] ${
+                    pagination.current === pageNum
+                      ? 'bg-[#ff3b3b] text-white'
+                      : 'border border-[#EEEEEE] text-[#666666] hover:bg-[#F7F7F7]'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+
+            <button
+              onClick={() => handlePaginationChange(pagination.current + 1, pagination.pageSize)}
+              disabled={pagination.current >= Math.ceil(totalTasks / pagination.pageSize)}
+              className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-4 h-4 text-[#666666]" />
+            </button>
+
+            <select
+              value={pagination.pageSize}
+              onChange={(e) => handlePaginationChange(1, Number(e.target.value))}
+              className="ml-2 px-2 py-1 rounded-lg border border-[#EEEEEE] text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666] bg-white hover:bg-[#F7F7F7] hover:border-[#EEEEEE] focus:outline-none focus:border-[#ff3b3b] transition-colors cursor-pointer"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
