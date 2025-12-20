@@ -7,7 +7,7 @@ import { TaskRow } from './rows/TaskRow';
 import { useTasks, useCreateTask } from '@/hooks/useTask';
 import { useWorkspaces } from '@/hooks/useWorkspace';
 import { searchUsersByName } from '@/services/user';
-import { useUserDetails } from '@/hooks/useUser';
+import { useUserDetails, useCurrentUserCompany } from '@/hooks/useUser';
 import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dayjs, { Dayjs } from 'dayjs';
@@ -92,6 +92,28 @@ export function TasksPage() {
   const createTaskMutation = useCreateTask();
   const { data: workspacesData } = useWorkspaces();
   const { data: userDetailsData } = useUserDetails();
+  const { data: companyData } = useCurrentUserCompany();
+  
+  // Get current user's company name as fallback for in-house tasks
+  const currentUserCompanyName = useMemo(() => {
+    // First try the company API endpoint
+    if (companyData?.result?.name) {
+      return companyData.result.name;
+    }
+    // Fallback to user details
+    try {
+      if (typeof window !== 'undefined') {
+        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+        if (localUser?.company?.name) {
+          return localUser.company.name;
+        }
+      }
+    } catch (error) {
+      console.error("Error reading company from localStorage:", error);
+    }
+    const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
+    return apiUser?.company?.name || null;
+  }, [companyData, userDetailsData]);
   
   // Get current user name
   const currentUserName = useMemo(() => {
@@ -365,11 +387,29 @@ export function TasksPage() {
             ? 'Delayed'
             : baseStatus;
 
+      // Determine company/client name: if client exists, it's client work, otherwise show company name for in-house
+      // Client company comes from task_project.client_user.company.name
+      const clientCompanyName = (t as any).task_project?.client_user?.company?.name || 
+                                t.client?.name || 
+                                t.client_company_name || 
+                                null;
+      
+      // For in-house tasks, get company name from task's company relation, project's company, or current user's company
+      const inHouseCompanyName = t.company?.name || 
+                                  t.company_name || 
+                                  (t as any).task_project?.company?.name ||
+                                  (t as any).task_project?.company_name ||
+                                  currentUserCompanyName ||
+                                  null;
+      
+      // If there's a client company, it's client work; otherwise show in-house company name
+      const displayCompanyName = clientCompanyName || inHouseCompanyName || 'In-House';
+
       return {
         id: String(t.id),
         name: t.name || t.title || '',
         taskId: String(t.id),
-        client: t.client?.name || t.client_company_name || 'In-House',
+        client: displayCompanyName,
         project:
           t.requirement?.name
             ? t.requirement.name
@@ -409,7 +449,7 @@ export function TasksPage() {
   }, [tasks]);
 
   const companies = useMemo(() => {
-    const companyNames = tasks.map(t => t.client).filter((name): name is string => name !== 'In-House');
+    const companyNames = tasks.map(t => t.client).filter((name): name is string => typeof name === 'string' && name !== 'In-House');
     return ['All', ...Array.from(new Set(companyNames))];
   }, [tasks]);
 
