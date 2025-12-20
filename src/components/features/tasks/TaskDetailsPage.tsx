@@ -45,12 +45,13 @@ export function TaskDetailsPage() {
         (backendTask.assigned_to as any)?.name ||
         'Unassigned';
 
-    const detailedTaskProject =
-        (backendTask as any).requirement?.name
-            ? (backendTask as any).requirement.name
-            : backendTask.requirement_id
-                ? `Requirement ${backendTask.requirement_id}`
-                : 'General';
+    // Get workspace/project name - workspace and project are the same in backend
+    const detailedTaskWorkspace =
+        (backendTask as any).task_project?.name ||
+        (backendTask as any).requirement?.name ||
+        (backendTask.requirement_id
+            ? `Requirement ${backendTask.requirement_id}`
+            : 'General');
 
     const estTime = (backendTask as any).estimated_time || 0;
     const timeSpent = (backendTask as any).time_spent || 0;
@@ -70,7 +71,7 @@ export function TaskDetailsPage() {
         name: (backendTask as any).name || backendTask.title || '',
         taskId: String(backendTask.id),
         client: (backendTask as any).client?.name || (backendTask as any).client_company_name || 'In-House',
-        project: detailedTaskProject,
+        project: detailedTaskWorkspace,
         leader: (backendTask as any).leader_user?.name || (backendTask as any).leader?.name || 'Unassigned',
         assignedTo: assignedToName,
         startDate: (backendTask as any).start_date ? new Date((backendTask as any).start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
@@ -134,9 +135,9 @@ export function TaskDetailsPage() {
                     ← Back to Tasks
                 </Button>
 
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${statusConfig.bg} ${statusConfig.border}`}>
+                <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${statusConfig.bg} ${statusConfig.border}`}>
                     <StatusIcon className={`w-4 h-4 ${statusConfig.color}`} />
-                    <span className={`text-sm font-medium ${statusConfig.color}`}>{statusConfig.label}</span>
+                    <span className={`text-sm font-['Manrope:SemiBold',sans-serif] ${statusConfig.color}`}>{statusConfig.label}</span>
                 </div>
             </div>
 
@@ -172,9 +173,12 @@ export function TaskDetailsPage() {
                     <div className="md:col-span-2 space-y-8">
                         <div>
                             <h3 className="text-sm font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide mb-4">Description</h3>
-                            <p className="text-[#111111] leading-relaxed">
-                                {backendTask.description || 'No description provided for this task yet.'}
-                            </p>
+                            <div 
+                                className="text-[#111111] leading-relaxed prose prose-sm max-w-none [&>p]:mb-2 [&>p]:last:mb-0"
+                                dangerouslySetInnerHTML={{ 
+                                    __html: backendTask.description || '<p class="text-[#999999]">No description provided for this task yet.</p>' 
+                                }}
+                            />
                         </div>
 
                         <div>
@@ -236,7 +240,7 @@ export function TaskDetailsPage() {
                             <div className="flex items-start gap-3">
                                 <FileText className="w-5 h-5 text-[#999999] mt-0.5" />
                                 <div>
-                                    <p className="text-xs text-[#999999] mb-1 m-0">Project</p>
+                                    <p className="text-xs text-[#999999] mb-1 m-0">Workspace</p>
                                     <p className="text-sm font-medium text-[#111111] m-0">{task.project}</p>
                                 </div>
                             </div>

@@ -94,7 +94,7 @@ export function TasksPage() {
   const [filters, setFilters] = useState<Record<string, string>>({
     user: 'All',
     company: 'All',
-    project: 'All',
+    workspace: 'All',
     status: 'All'
   });
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
@@ -139,9 +139,14 @@ export function TasksPage() {
       // Need to find company ID from name - for now, we'll keep client-side filtering for company
       // params.client_company_id = filters.company;
     }
-    if (filters.project !== 'All') {
-      // Need to find project ID from name - for now, we'll keep client-side filtering for project
-      // params.project_id = filters.project;
+    if (filters.workspace !== 'All') {
+      // Find workspace ID from name
+      const selectedWorkspace = workspacesData?.result?.projects?.find(
+        (p: any) => p.name === filters.workspace
+      );
+      if (selectedWorkspace?.id) {
+        params.project_id = selectedWorkspace.id;
+      }
     }
     // Add tab filter (status-based) - only if status filter is not explicitly set
     if (activeTab !== 'all' && filters.status === 'All') {
@@ -176,7 +181,7 @@ export function TasksPage() {
     }
 
     return toQueryParams(params);
-  }, [pagination.limit, pagination.skip, filters, searchQuery, dateRange, activeTab]);
+  }, [pagination.limit, pagination.skip, filters, searchQuery, dateRange, activeTab, workspacesData]);
 
   // Fetch tasks with query params
   const { data: tasksData, isLoading } = useTasks(queryParams);
@@ -360,16 +365,17 @@ export function TasksPage() {
     return ['All', ...Array.from(new Set(companyNames))];
   }, [tasks]);
 
-  const projects = useMemo(() => {
-    return ['All', ...Array.from(new Set(tasks.map(t => t.project)))];
-  }, [tasks]);
+  const workspaces = useMemo(() => {
+    if (!workspacesData?.result?.projects) return ['All'];
+    return ['All', ...workspacesData.result.projects.map((p: any) => p.name)];
+  }, [workspacesData]);
 
   const statuses = useMemo(() => ['All', 'Assigned', 'In Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'], []);
 
   const filterOptions: FilterOption[] = [
     { id: 'user', label: 'User', options: users, defaultValue: 'All' },
     { id: 'company', label: 'Company', options: companies, placeholder: 'Company' },
-    { id: 'project', label: 'Project', options: projects, placeholder: 'Project' },
+    { id: 'workspace', label: 'Workspace', options: workspaces, placeholder: 'Workspace' },
     { id: 'status', label: 'Status', options: statuses, placeholder: 'Status' }
   ];
 
@@ -388,7 +394,7 @@ export function TasksPage() {
     setFilters({
       user: 'All',
       company: 'All',
-      project: 'All',
+      workspace: 'All',
       status: 'All'
     });
     setSearchQuery('');
@@ -433,14 +439,13 @@ export function TasksPage() {
     return firstTask?.total_count ?? tasks.length ?? 0;
   }, [tasksData, tasks.length]);
 
-  // Apply client-side filters for user/company/project (since we can't easily map names to IDs)
-  // Most filtering is now done server-side via query params
+  // Apply client-side filters for user/company (since we can't easily map names to IDs)
+  // Workspace filtering is now done server-side via query params
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      // Client-side filtering for user, company, project (name-based)
+      // Client-side filtering for user, company (name-based)
       const matchesUser = filters.user === 'All' || task.assignedTo === filters.user;
       const matchesCompany = filters.company === 'All' || task.client === filters.company;
-      const matchesProject = filters.project === 'All' || task.project === filters.project;
 
       // Date filtering (client-side since API might not support it exactly as we need)
       let matchesDate = true;
@@ -455,7 +460,7 @@ export function TasksPage() {
         }
       }
 
-      return matchesUser && matchesCompany && matchesProject && matchesDate;
+      return matchesUser && matchesCompany && matchesDate;
     });
   }, [tasks, filters, dateRange]);
 
