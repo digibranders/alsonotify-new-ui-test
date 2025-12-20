@@ -735,11 +735,11 @@ export function ProductivityWidget() {
         )}
 
         {/* Fixed Input & Timer Controls at Bottom */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 h-full flex items-center">
+        <div className={`absolute bottom-0 left-0 right-0 p-4 flex ${showChatPopup ? 'h-auto items-end' : 'h-full items-center'}`}>
           {/* Grid Layout: 3 columns matching dashboard layout with same gap-5 */}
-          <div className="grid grid-cols-3 gap-5 w-full items-center h-full">
+          <div className={`grid grid-cols-3 gap-5 w-full ${showChatPopup ? 'items-end' : 'items-center h-full'}`}>
             {/* Left Section: Input Box (col-span-2 - aligned with Notes and Progress) */}
-            <div className="col-span-2 flex items-center h-full">
+            <div className={`col-span-2 flex items-center ${showChatPopup ? 'h-auto' : 'h-full'}`}>
               <div className="flex items-center gap-3 px-6 py-2.5 bg-[#F7F7F7] rounded-full border border-[#EEEEEE] hover:bg-[#EEEEEE] hover:border-[#D3D2D2] transition-all w-full">
                 <button className="text-[#666666] hover:text-[#ff3b3b] flex items-center justify-center transition-all active:scale-90 flex-shrink-0">
                   <Mic24Filled className="w-[18px] h-[18px]" />
@@ -769,9 +769,9 @@ export function ProductivityWidget() {
             </div>
 
             {/* Right Section: Timer & Controls (col-span-1 - aligned with Meetings and Leaves left start) */}
-            <div className="col-span-1 flex items-center gap-3 justify-between h-full overflow-hidden">
+            <div className={`col-span-1 flex items-center gap-3 justify-between overflow-hidden ${showChatPopup ? 'h-auto' : 'h-full'}`}>
               {/* Left: Vertical Separator and Timer Section */}
-              <div className="flex items-center gap-3 flex-1 min-w-0 h-full">
+              <div className={`flex items-center gap-3 flex-1 min-w-0 ${showChatPopup ? 'h-auto' : 'h-full'}`}>
                 {/* Vertical Separator - Small line at the start */}
                 <div className="h-8 w-px bg-[#EEEEEE] flex-shrink-0" />
 

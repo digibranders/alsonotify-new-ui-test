@@ -74,11 +74,28 @@ export function TaskDetailsPage() {
                 ? 'Delayed'
                 : baseStatus;
 
+    // Determine company/client name: if client exists, it's client work, otherwise show company name for in-house
+    // Client company comes from task_project.client_user.company.name
+    const clientCompanyName = (backendTask as any).task_project?.client_user?.company?.name || 
+                               (backendTask as any).client?.name || 
+                               (backendTask as any).client_company_name || 
+                               null;
+    
+    // For in-house tasks, get company name from task's company relation or project's company
+    const inHouseCompanyName = (backendTask as any).company?.name || 
+                                (backendTask as any).company_name || 
+                                (backendTask as any).task_project?.company?.name ||
+                                (backendTask as any).task_project?.company_name ||
+                                null;
+    
+    // If there's a client company, it's client work; otherwise show in-house company name
+    const displayCompanyName = clientCompanyName || inHouseCompanyName || 'In-House';
+
     const task = {
         id: String(backendTask.id),
         name: (backendTask as any).name || backendTask.title || '',
         taskId: String(backendTask.id),
-        client: (backendTask as any).client?.name || (backendTask as any).client_company_name || 'In-House',
+        client: displayCompanyName,
         project: detailedTaskWorkspace,
         leader: (backendTask as any).leader_user?.name || (backendTask as any).leader?.name || 'Unassigned',
         assignedTo: assignedToName,
