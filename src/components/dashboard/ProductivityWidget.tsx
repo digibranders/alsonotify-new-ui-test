@@ -568,16 +568,6 @@ export function ProductivityWidget() {
     }
   }, [isRunning, selectedTaskId, refetchTaskDetail]);
 
-  // Debug: Log task button border styles
-  useEffect(() => {
-    // #region agent log
-    if (taskButtonRef.current) {
-      const el = taskButtonRef.current;
-      const computed = window.getComputedStyle(el);
-      fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ProductivityWidget.tsx:useEffect',message:'Task button border debug',data:{selectedTask:!!selectedTask,selectedTaskValue:selectedTask,className:el.className,borderWidth:computed.borderWidth,borderColor:computed.borderColor,borderStyle:computed.borderStyle,backgroundColor:computed.backgroundColor,allClasses:Array.from(el.classList)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,C,D,E'})}).catch(()=>{});
-    }
-    // #endregion
-  }, [selectedTask]);
 
   const markdownComponents = useMemo<Components>(
     () => ({
