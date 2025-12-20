@@ -81,7 +81,7 @@ export function TaskRow({
         {/* Task Info */}
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111] group-hover:text-[#ff3b3b] transition-colors">
+            <span className="font-['Manrope:Bold',sans-serif] text-[14px] !text-[#111111] group-hover:text-[#ff3b3b] transition-colors">
               {task.name}
             </span>
           </div>
@@ -92,7 +92,7 @@ export function TaskRow({
             <Link
               href="/dashboard/clients"
               onClick={(e) => e.stopPropagation()}
-              className="text-[11px] text-[#666666] font-['Manrope:Medium',sans-serif] hover:text-[#ff3b3b] hover:underline"
+              className="text-[11px] !text-[#111111] visited:!text-[#111111] font-['Manrope:Medium',sans-serif] hover:text-[#ff3b3b] hover:underline"
             >
               • {task.client}
             </Link>
@@ -104,7 +104,7 @@ export function TaskRow({
           <Link
             href="/dashboard/workspace"
             onClick={(e) => e.stopPropagation()}
-            className="text-[13px] text-[#111111] font-['Manrope:Medium',sans-serif] truncate hover:text-[#ff3b3b] hover:underline"
+            className="text-[13px] !text-[#111111] visited:!text-[#111111] font-['Manrope:Medium',sans-serif] truncate hover:text-[#ff3b3b] hover:underline"
           >
             {task.project}
           </Link>
