@@ -1,20 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Image from "next/image";
-import { Button, Input, App } from "antd";
-import { UserOutlined, LockOutlined } from "@ant-design/icons";
+import { App } from "antd";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 import { useLogin } from "@/hooks/useAuth";
 import Link from "next/link";
-import BrandLogo from "@/assets/images/logo.png";
+import { motion } from "framer-motion";
+import AuthLayout from "@/components/auth/AuthLayout";
 
 export default function LoginPage() {
-  const router = useRouter();
   const { message } = App.useApp();
   const loginMutation = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,96 +37,108 @@ export default function LoginPage() {
     );
   };
 
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
+    }
+  };
+
   return (
-    <div
-      className="min-h-screen w-full flex items-center justify-center relative px-4 py-14"
-      style={{
-        background: "linear-gradient(68deg, #f5f5f7 0%, #eaeaea 100.59%)"
-      }}
-    >
-      {/* Top-left brand */}
-      <div className="absolute left-4 top-4 sm:left-7 sm:top-7">
-        <Link href="/">
-          <Image
-            src={BrandLogo}
-            alt="Alsonotify"
-            width={120}
-            height={29}
-            className="h-7 sm:h-8 w-auto object-contain select-none"
-            draggable={false}
-            priority
-          />
-        </Link>
-      </div>
-
-      {/* Login Card Container */}
-      <div
-        className="w-full max-w-[700px] rounded-3xl px-4 sm:px-6"
-        style={{
-          background: "linear-gradient(100deg, rgba(255, 255, 255, 0.9) 0%, rgba(156, 163, 175, 0.5) 100%)"
-        }}
+    <AuthLayout>
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        className="w-full max-w-[420px] space-y-8"
       >
-        <div className="px-6 sm:px-10 py-10">
-          <h1
-            className="text-center font-semibold mb-8 leading-10"
-            style={{ color: "#ff3b30", fontSize: "2rem" }}
-          >
+        {/* Header */}
+        <motion.div variants={itemVariants} className="space-y-2">
+          <h2 className="text-3xl font-bold text-[#111111] tracking-tight">
             Welcome Back
-          </h1>
+          </h2>
+          <p className="text-[#666666]">
+            Enter your details to access your workspace
+          </p>
+        </motion.div>
 
-          <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-[460px] flex-col gap-4">
-            {/* Email */}
-            <Input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              prefix={<UserOutlined className="text-[#999999]" />}
-              className="h-10 rounded-full border border-white/60 bg-white/80 px-4 text-[15px] hover:bg-white focus:bg-white"
-              required
-            />
-
-            {/* Password */}
-            <Input.Password
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              prefix={<LockOutlined className="text-[#999999]" />}
-              className="h-10 rounded-full border border-white/60 bg-white/80 px-4 text-[15px] hover:bg-white focus:bg-white"
-              required
-            />
-
-            {/* Footer links */}
-            <div className="mb-2 mt-1 flex w-full items-center justify-between text-[13px] text-neutral-600">
-              <Link
-                href="/forgot-password"
-                className="cursor-pointer hover:text-neutral-900 underline-offset-2 hover:underline"
-              >
-                Forgot Password?
-              </Link>
-              <Link
-                href="/register"
-                className="cursor-pointer hover:text-neutral-900 underline-offset-2 hover:underline"
-              >
-                Create Account
-              </Link>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <motion.div variants={itemVariants} className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">Email Address</label>
+              <div className="relative">
+                <input
+                  type="email"
+                  placeholder="name@company.com"
+                  className="w-full h-12 pl-11 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+                <Mail className="w-5 h-5 text-[#999999] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              </div>
             </div>
 
-            {/* Sign In Button */}
-            <Button
-              htmlType="submit"
-              loading={loginMutation.isPending}
-              className="mx-auto block h-10 w-full rounded-full border-0 text-[13px] font-semibold text-white transition-all duration-300 hover:opacity-90 active:scale-95 shadow-lg shadow-[#ff3b3b]/30"
-              style={{
-                background: "linear-gradient(180deg, #ff5a52 0%, #ff3b2f 100%)",
-              }}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">Password</label>
+                <Link href="/forgot-password" className="text-[12px] font-semibold text-[#ff3b3b] hover:text-[#E63535]">
+                  Forgot password?
+                </Link>
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  className="w-full h-12 pl-11 pr-11 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <Lock className="w-5 h-5 text-[#999999] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#999999] hover:text-[#111111] p-1 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div variants={itemVariants} className="pt-2">
+            <button
+              type="submit"
+              disabled={loginMutation.isPending}
+              className="w-full h-12 bg-[#ff3b3b] hover:bg-[#E63535] text-white rounded-[16px] font-bold text-[15px] shadow-lg shadow-[#ff3b3b]/25 transition-all hover:shadow-[#ff3b3b]/40 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loginMutation.isPending ? "Signing in..." : "SIGN IN"}
-            </Button>
-          </form>
-        </div>
-      </div>
-    </div>
+              {loginMutation.isPending ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  Sign In
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </motion.div>
+        </form>
+
+        <motion.div variants={itemVariants} className="text-center">
+          <p className="text-[14px] text-[#666666]">
+            Don't have an account?{" "}
+            <Link
+              href="/register"
+              className="text-[#111111] font-bold hover:text-[#ff3b3b] transition-colors"
+            >
+              Sign Up
+            </Link>
+          </p>
+        </motion.div>
+      </motion.div>
+    </AuthLayout>
   );
 }
 

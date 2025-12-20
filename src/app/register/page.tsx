@@ -2,12 +2,12 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
-import { Button, Input, Checkbox, App } from "antd";
-import { LockOutlined } from "@ant-design/icons";
+import { App } from "antd";
+import { Lock, Eye, EyeOff, Mail, User, Building2, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
 import { useRegister } from "@/hooks/useAuth";
 import Link from "next/link";
-import BrandLogo from "@/assets/images/logo.png";
+import { motion } from "framer-motion";
+import AuthLayout from "@/components/auth/AuthLayout";
 
 function RegisterForm() {
   const router = useRouter();
@@ -22,30 +22,21 @@ function RegisterForm() {
     fullName: "",
     email: inviteEmail || "",
     password: "",
-    confirmPassword: "",
-    acceptTnC: false,
+    accountType: "Individual" as "Individual" | "Organization",
   });
+
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword) {
+    if (!formData.fullName || !formData.email || !formData.password) {
       message.error("Please fill in all fields");
       return;
     }
 
     if (formData.password.length < 10) {
       message.error("Password must be at least 10 characters long");
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      message.error("Passwords do not match");
-      return;
-    }
-
-    if (!formData.acceptTnC) {
-      message.error("Please accept the terms and conditions");
       return;
     }
 
@@ -64,7 +55,7 @@ function RegisterForm() {
               router.push(`/company-details?t=${data.result.token}`);
             } else {
               message.success("Please check your email to verify your account");
-              router.push("/register");
+              router.push("/login");
             }
           } else {
             message.error(data.message || "Registration failed");
@@ -78,129 +69,143 @@ function RegisterForm() {
     );
   };
 
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
+    }
+  };
+
   return (
-    <div
-      className="min-h-screen w-full flex items-center justify-center relative px-4 py-14"
-      style={{
-        background: "linear-gradient(68deg, #f5f5f7 0%, #eaeaea 100.59%)"
-      }}
-    >
-      {/* Top-left brand */}
-      <div className="absolute left-4 top-4 sm:left-7 sm:top-7">
-        <Link href="/">
-          <Image
-            src={BrandLogo}
-            alt="Alsonotify"
-            width={120}
-            height={29}
-            className="h-7 sm:h-8 w-auto object-contain select-none"
-            draggable={false}
-            priority
-          />
-        </Link>
-      </div>
-
-      {/* Register Card Container */}
-      <div
-        className="w-full max-w-[700px] rounded-3xl px-4 sm:px-6"
-        style={{
-          background: "linear-gradient(100deg, rgba(255, 255, 255, 0.9) 0%, rgba(156, 163, 175, 0.5) 100%)"
-        }}
+    <AuthLayout>
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        className="w-full max-w-[420px] space-y-8"
       >
-        <div className="px-6 sm:px-10 py-10">
-          <h1
-            className="text-center font-semibold mb-8 leading-10"
-            style={{ color: "#ff3b30", fontSize: "2rem" }}
-          >
-            Create an account
-          </h1>
+        <motion.div variants={itemVariants} className="space-y-2">
+          <h2 className="text-3xl font-bold text-[#111111] tracking-tight">
+            Create Account
+          </h2>
+          <p className="text-[#666666]">
+            Get started with your 14-day free trial
+          </p>
+        </motion.div>
 
-          <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-[460px] flex-col gap-4">
-            {/* Full Name */}
-            <Input
-              type="text"
-              placeholder="Full Name*"
-              value={formData.fullName}
-              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              className="h-10 rounded-full border border-white/60 bg-white/80 px-4 text-[15px] hover:bg-white focus:bg-white"
-              required
-            />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Account Type Selector */}
+          <motion.div variants={itemVariants} className="space-y-3">
+            <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">Account Type</label>
+            <div className="grid grid-cols-2 gap-3">
+              {(['Individual', 'Organization'] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, accountType: type })}
+                  className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all duration-200 ${formData.accountType === type
+                    ? 'border-[#ff3b3b] bg-[#FFF5F5]/50'
+                    : 'border-transparent bg-[#FAFAFA] hover:bg-[#F0F0F0]'
+                    }`}
+                >
+                  <div className={`p-2 rounded-full ${formData.accountType === type ? 'bg-[#ff3b3b] text-white' : 'bg-white text-[#999999]'}`}>
+                    {type === 'Individual' ? <User className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
+                  </div>
+                  <span className={`text-[13px] font-bold ${formData.accountType === type ? 'text-[#ff3b3b]' : 'text-[#666666]'}`}>{type}</span>
+                  {formData.accountType === type && (
+                    <div className="absolute top-3 right-3 text-[#ff3b3b]">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </motion.div>
 
-            {/* Email */}
-            <Input
-              type="email"
-              placeholder="Email*"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              disabled={!!inviteEmail}
-              className="h-10 rounded-full border border-white/60 bg-white/80 px-4 text-[15px] hover:bg-white focus:bg-white disabled:bg-white/40 disabled:text-black/75"
-              required
-            />
-
-            {/* Password */}
-            <Input.Password
-              placeholder="Password*"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              prefix={<LockOutlined className="text-[#999999]" />}
-              className="h-10 rounded-full border border-white/60 bg-white/80 px-4 text-[15px] hover:bg-white focus:bg-white"
-              required
-            />
-
-            {/* Confirm Password */}
-            <Input.Password
-              placeholder="Confirm password*"
-              value={formData.confirmPassword}
-              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-              prefix={<LockOutlined className="text-[#999999]" />}
-              className="h-10 rounded-full border border-white/60 bg-white/80 px-4 text-[15px] hover:bg-white focus:bg-white"
-              required
-            />
-
-            {/* Terms & Conditions */}
-            <div className="flex justify-center items-center my-2">
-              <Checkbox
-                id="acceptTnC"
-                checked={formData.acceptTnC}
-                onChange={(e) =>
-                  setFormData({ ...formData, acceptTnC: e.target.checked })
-                }
-                className="mr-2"
+          <motion.div variants={itemVariants} className="space-y-5">
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">Full Name</label>
+              <input
+                type="text"
+                placeholder="John Doe"
+                className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
+                value={formData.fullName}
+                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                required
               />
-              <label htmlFor="acceptTnC" className="text-[13px] text-neutral-700 cursor-pointer">
-                I accept the{" "}
-                <Link href="/terms" className="underline underline-offset-2 hover:text-neutral-900">
-                  terms & conditions
-                </Link>
-              </label>
             </div>
 
-            {/* Create Account Button */}
-            <Button
-              htmlType="submit"
-              loading={registerMutation.isPending}
-              className="mx-auto block h-10 w-56 rounded-full border-0 text-[13px] font-semibold text-white transition-all duration-300 hover:opacity-90 active:scale-95 shadow-lg shadow-[#ff3b3b]/30"
-              style={{
-                background: "linear-gradient(180deg, #ff5a52 0%, #ff3b2f 100%)",
-              }}
-            >
-              {registerMutation.isPending ? "Creating account..." : "CREATE AN ACCOUNT"}
-            </Button>
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">Email Address</label>
+              <div className="relative">
+                <input
+                  type="email"
+                  placeholder="name@company.com"
+                  className="w-full h-12 pl-11 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black disabled:opacity-60 disabled:cursor-not-allowed"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  disabled={!!inviteEmail}
+                  required
+                />
+                <Mail className="w-5 h-5 text-[#999999] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              </div>
+            </div>
 
-            {/* Login Link */}
-            <p className="text-center mt-5 text-[13px] text-neutral-700">
-              Already have an account?{" "}
-              <Link href="/login" className="underline underline-offset-2 hover:text-neutral-900">
-                Log in
-              </Link>
-            </p>
-            <p className="text-center mt-2 text-[12px] text-neutral-600">
-              No credit card | Cancel Anytime
-            </p>
-          </form>
-        </div>
-      </div>
-    </div>
+            <div className="space-y-2">
+              <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  className="w-full h-12 pl-11 pr-11 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                />
+                <Lock className="w-5 h-5 text-[#999999] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#999999] hover:text-[#111111] p-1 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div variants={itemVariants} className="pt-2">
+            <button
+              type="submit"
+              disabled={registerMutation.isPending}
+              className="w-full h-12 bg-[#ff3b3b] hover:bg-[#E63535] text-white rounded-[16px] font-bold text-[15px] shadow-lg shadow-[#ff3b3b]/25 transition-all hover:shadow-[#ff3b3b]/40 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {registerMutation.isPending ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  Create Account
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </motion.div>
+        </form>
+
+        <motion.div variants={itemVariants} className="text-center">
+          <p className="text-[14px] text-[#666666]">
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              className="text-[#111111] font-bold hover:text-[#ff3b3b] transition-colors"
+            >
+              Sign In
+            </Link>
+          </p>
+        </motion.div>
+      </motion.div>
+    </AuthLayout>
   );
 }
 

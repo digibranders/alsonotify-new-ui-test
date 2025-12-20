@@ -100,8 +100,8 @@ export function NotesWidget({ onNavigate }: { onNavigate?: (page: string) => voi
                             <Plus className="size-5 text-[#ff3b3b]" strokeWidth={2} />
                         </button>
                     </div>
-                    <Link 
-                        href="/dashboard/notes" 
+                    <Link
+                        href="/dashboard/notes"
                         className="flex items-center gap-1 text-[#666666] hover:text-[#ff3b3b] text-[14px] font-['Manrope:SemiBold',sans-serif] transition-colors no-underline [&>span]:text-current [&>svg]:text-current"
                         style={{ color: '#666666' }}
                     >
@@ -177,9 +177,9 @@ export function NotesWidget({ onNavigate }: { onNavigate?: (page: string) => voi
     );
 }
 
-function NoteCard({ note, onArchive, onDelete, onClick }: { 
-    note: Note; 
-    onArchive: (id: number) => void; 
+function NoteCard({ note, onArchive, onDelete, onClick }: {
+    note: Note;
+    onArchive: (id: number) => void;
     onDelete: (id: number) => void;
     onClick?: (note: Note) => void;
 }) {
@@ -188,12 +188,12 @@ function NoteCard({ note, onArchive, onDelete, onClick }: {
     const hexToRgba = (hex: string, opacity: number): string => {
         // Remove # if present
         let cleanHex = hex.replace('#', '');
-        
+
         // Handle 3-digit hex
         if (cleanHex.length === 3) {
             cleanHex = cleanHex.split('').map(char => char + char).join('');
         }
-        
+
         // Handle 6-digit hex
         if (cleanHex.length === 6) {
             const r = parseInt(cleanHex.slice(0, 2), 16);
@@ -201,7 +201,7 @@ function NoteCard({ note, onArchive, onDelete, onClick }: {
             const b = parseInt(cleanHex.slice(4, 6), 16);
             return `rgba(${r}, ${g}, ${b}, ${opacity})`;
         }
-        
+
         // Fallback to default color
         return `rgba(255, 59, 59, ${opacity})`;
     };
@@ -214,7 +214,7 @@ function NoteCard({ note, onArchive, onDelete, onClick }: {
         <div className="relative group aspect-square">
             <div
                 className="relative h-full w-full bg-white rounded-xl border transition-all duration-300 cursor-pointer p-4 flex flex-col hover:shadow-lg"
-                style={{ 
+                style={{
                     borderColor: borderColorNormal,
                     borderWidth: '1px'
                 }}
@@ -228,7 +228,7 @@ function NoteCard({ note, onArchive, onDelete, onClick }: {
                     // Only trigger if click is not on action buttons
                     const target = e.target as HTMLElement;
                     const isActionButton = target.closest('button');
-                    
+
                     if (!isActionButton) {
                         onClick && onClick(note);
                     }
@@ -265,7 +265,7 @@ function NoteCard({ note, onArchive, onDelete, onClick }: {
 
                 <div className="flex-1 overflow-hidden min-h-0">
                     {(note.type === 'TEXT_NOTE' || (note.type as any) === 'text') && note.content && (
-                        <div 
+                        <div
                             className="font-['Inter:Regular',sans-serif] text-[12px] text-[#666666] line-clamp-4 leading-normal prose prose-sm max-w-none [&>p]:m-0 h-full"
                             dangerouslySetInnerHTML={{ __html: note.content }}
                         />
