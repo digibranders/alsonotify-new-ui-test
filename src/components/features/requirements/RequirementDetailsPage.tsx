@@ -4,7 +4,7 @@ import {
   Plus, RotateCcw, Clock, MoreVertical,
   Paperclip, X, Send, MessageSquare, Calendar,
   TrendingUp, TrendingDown, DollarSign, Briefcase,
-  CheckCircle2, Loader2, AlertCircle
+  CheckCircle2, Loader2, AlertCircle, Eye, XCircle, Ban
 } from 'lucide-react';
 import {
   AreaChart,
@@ -1380,6 +1380,7 @@ function SubTaskRow({
 }
 
 function StatusBadge({ status, showLabel }: { status: string, showLabel?: boolean }) {
+  // Map backend statuses to UI configuration with icons and colors matching tasks page
   const config: Record<
     string,
     {
@@ -1391,46 +1392,96 @@ function StatusBadge({ status, showLabel }: { status: string, showLabel?: boolea
       animate?: boolean;
     }
   > = {
-    completed: {
+    'Assigned': {
+      icon: Clock,
+      bgColor: 'bg-transparent',
+      iconColor: 'text-[#0284c7]', // Blue from tasks page
+      label: 'Assigned',
+      showCircle: false
+    },
+    'In_Progress': {
+      icon: Loader2,
+      bgColor: 'bg-transparent',
+      iconColor: 'text-[#0284c7]', // Blue from tasks page
+      label: 'In Progress',
+      showCircle: false,
+      animate: true
+    },
+    'Completed': {
       icon: CheckCircle2,
-      bgColor: 'bg-[#0F9D58]',
+      bgColor: 'bg-[#16a34a]', // Green from tasks page
       iconColor: 'text-white',
       label: 'Completed',
-      showCircle: true,
+      showCircle: true
+    },
+    'Delayed': {
+      icon: AlertCircle,
+      bgColor: 'bg-[#dc2626]', // Red from tasks page
+      iconColor: 'text-white',
+      label: 'Delayed',
+      showCircle: true
+    },
+    'Impediment': {
+      icon: XCircle,
+      bgColor: 'bg-[#9e36ff]', // Purple from tasks page
+      iconColor: 'text-white',
+      label: 'Impediment',
+      showCircle: true
+    },
+    'Review': {
+      icon: Eye,
+      bgColor: 'bg-transparent',
+      iconColor: 'text-[#fbbf24]', // Yellow/Orange from tasks page
+      label: 'Review',
+      showCircle: false
+    },
+    'Stuck': {
+      icon: Ban,
+      bgColor: 'bg-[#9e36ff]', // Purple (similar to Impediment)
+      iconColor: 'text-white',
+      label: 'Stuck',
+      showCircle: true
+    },
+    // Legacy status names for backward compatibility
+    'completed': {
+      icon: CheckCircle2,
+      bgColor: 'bg-[#16a34a]',
+      iconColor: 'text-white',
+      label: 'Completed',
+      showCircle: true
     },
     'in-progress': {
       icon: Loader2,
       bgColor: 'bg-transparent',
-      iconColor: 'text-[#2F80ED]',
+      iconColor: 'text-[#0284c7]',
       label: 'In Progress',
       showCircle: false,
-      animate: true,
+      animate: true
     },
-    delayed: {
+    'delayed': {
       icon: AlertCircle,
-      bgColor: 'bg-[#EB5757]',
+      bgColor: 'bg-[#dc2626]',
       iconColor: 'text-white',
       label: 'Delayed',
-      showCircle: true,
+      showCircle: true
     },
-    review: {
-      icon: Loader2,
+    'review': {
+      icon: Eye,
       bgColor: 'bg-transparent',
-      iconColor: 'text-[#2F80ED]',
+      iconColor: 'text-[#fbbf24]',
       label: 'Review',
-      showCircle: false,
-      animate: true,
+      showCircle: false
     },
-    todo: {
+    'todo': {
       icon: Clock,
       bgColor: 'bg-transparent',
-      iconColor: 'text-[#555555]',
+      iconColor: 'text-[#0284c7]',
       label: 'Assigned',
-      showCircle: false,
+      showCircle: false
     },
   };
 
-  const style = config[status] || config['todo'];
+  const style = config[status] || config['Assigned'];
   const Icon = style.icon;
 
   if (style.showCircle) {
@@ -1453,9 +1504,7 @@ function StatusBadge({ status, showLabel }: { status: string, showLabel?: boolea
   return (
     <Tooltip title={style.label}>
       <div className="flex items-center gap-1.5">
-        <Icon
-          className={`w-5 h-5 ${style.iconColor} ${style.animate ? 'animate-spin' : ''}`}
-        />
+        <Icon className={`w-4 h-4 ${style.iconColor} ${style.animate ? 'animate-spin' : ''}`} />
         {showLabel && (
           <span className="text-[11px] font-['Manrope:Bold',sans-serif] uppercase tracking-wide">
             {style.label}

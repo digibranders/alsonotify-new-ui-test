@@ -467,7 +467,7 @@ export function WorkspaceRequirementsPage() {
                             ? '#EB5757'
                             : '#2F80ED'
                         }
-                        trailColor="#F7F7F7"
+                        railColor="#F7F7F7"
                         size="small"
                       />
                     </div>
