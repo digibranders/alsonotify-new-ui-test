@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Calendar, User, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { PageLayout } from '../../layout/PageLayout';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
-import { Spin, message, Modal, Form, DatePicker, Select, Input, Button } from 'antd';
+import { Spin, Modal, Form, DatePicker, Select, Input, Button, App } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { useCompanyLeaves, useUpdateLeaveStatus, useApplyForLeave } from '../../../hooks/useLeave';
@@ -52,6 +52,7 @@ interface ApplyLeaveFormValues {
 }
 
 export function LeavesPage() {
+  const { message } = App.useApp();
   const [activeTab, setActiveTab] = useState<'requests' | 'balance'>('requests');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [searchQuery, setSearchQuery] = useState('');

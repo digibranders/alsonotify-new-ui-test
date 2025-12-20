@@ -1,5 +1,5 @@
 import { Checkbox, Tooltip } from "antd";
-import { AlertCircle, CheckCircle2, Clock, Loader2, MoreVertical, ArrowRightCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Loader2, MoreVertical, ArrowRightCircle, Eye, XCircle, Ban } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -16,7 +16,7 @@ export interface Task {
   estTime: number;
   timeSpent: number;
   activities: number;
-  status: 'in-progress' | 'completed' | 'delayed' | 'todo' | 'review';
+  status: 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck';
   priority: 'high' | 'medium' | 'low';
   timelineDate: string;
   timelineLabel: string;
@@ -40,6 +40,16 @@ export function TaskRow({
 
   const isOverEstimate = task.estTime > 0 && task.timeSpent > task.estTime;
   const extraHours = isOverEstimate ? task.timeSpent - task.estTime : 0;
+  
+  // For delayed tasks, cap percentage at 100% and show overtime separately
+  const displayProgress = isOverEstimate ? 100 : Math.round(progress);
+  
+  // Format duration: show "1" for 1 hour, "0.5" for half hour, etc. (no "HR" suffix)
+  const formatDuration = (hours: number | string | null | undefined) => {
+    const numHours = Number(hours || 0);
+    // If it's a whole number, show without decimal. Otherwise show 1 decimal place
+    return numHours % 1 === 0 ? numHours.toString() : numHours.toFixed(1);
+  };
 
   return (
     <div
@@ -109,7 +119,11 @@ export function TaskRow({
           </div>
           <span
             className={`text-[11px] font-['Manrope:Regular',sans-serif] ${
-              task.status === 'delayed' ? 'text-[#EB5757]' : 'text-[#999999]'
+              task.status === 'Delayed' || task.status === 'Impediment' || task.status === 'Stuck' 
+                ? 'text-[#dc2626]' 
+                : task.status === 'Review'
+                  ? 'text-[#fbbf24]'
+                  : 'text-[#999999]'
             }`}
           >
             {task.timelineLabel}
@@ -131,7 +145,7 @@ export function TaskRow({
         <div className="flex justify-center">
           <div className="w-9 h-9 rounded-full bg-[#F7F7F7] flex items-center justify-center">
             <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-              {formatHours(task.estTime)} HR
+              {formatDuration(task.estTime)}
             </span>
           </div>
         </div>
@@ -142,18 +156,32 @@ export function TaskRow({
             <span className="text-[11px] text-[#666666] font-['Manrope:Medium',sans-serif]">
               {formatHours(task.timeSpent)}h / {formatHours(task.estTime)}h
             </span>
-            <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
-              {Math.round(progress)}%
+            <span className="text-[11px] font-['Manrope:Regular',sans-serif]">
+              {isOverEstimate ? (
+                <span className="text-[#dc2626]">100%</span>
+              ) : task.status === 'Completed' ? (
+                <span className="text-[#16a34a]">100%</span>
+              ) : task.status === 'Delayed' || task.status === 'Impediment' || task.status === 'Stuck' ? (
+                <span className="text-[#dc2626]">{displayProgress}%</span>
+              ) : task.status === 'Review' ? (
+                <span className="text-[#fbbf24]">{displayProgress}%</span>
+              ) : (
+                <span className="text-[#999999]">{displayProgress}%</span>
+              )}
             </span>
           </div>
           <div className="w-full h-1.5 bg-[#F7F7F7] rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${
-                task.status === 'completed'
-                  ? 'bg-[#0F9D58]'
-                  : task.status === 'delayed'
-                    ? 'bg-[#EB5757]'
-                    : 'bg-[#3B82F6]'
+                isOverEstimate
+                  ? 'bg-[#dc2626]'  // Red for any task with overtime (matches old frontend)
+                  : task.status === 'Completed'
+                    ? 'bg-[#16a34a]'  // Green for completed tasks without overtime (matches old frontend)
+                    : task.status === 'Delayed' || task.status === 'Impediment' || task.status === 'Stuck'
+                      ? 'bg-[#dc2626]'  // Red for delayed/impediment/stuck (matches old frontend)
+                      : task.status === 'Review'
+                        ? 'bg-[#fbbf24]'  // Yellow/Orange for review (matches old frontend)
+                        : 'bg-[#0284c7]'  // Blue for Assigned/In_Progress (matches old frontend)
               }`}
               style={{ width: `${Math.min(progress, 100)}%` }}
             />
@@ -182,6 +210,7 @@ export function TaskRow({
 }
 
 function StatusBadge({ status }: { status: string }) {
+  // Map backend statuses to UI configuration with icons and colors matching old frontend
   const config: Record<string, {
     icon: any;
     bgColor: string;
@@ -190,42 +219,55 @@ function StatusBadge({ status }: { status: string }) {
     showCircle: boolean;
     animate?: boolean;
   }> = {
-    'completed': {
-      icon: CheckCircle2,
-      bgColor: 'bg-[#0F9D58]',
-      iconColor: 'text-white',
-      label: 'Completed',
-      showCircle: true
+    'Assigned': {
+      icon: Clock,
+      bgColor: 'bg-transparent',
+      iconColor: 'text-[#0284c7]', // Blue from old frontend
+      label: 'Assigned',
+      showCircle: false
     },
-    'in-progress': {
+    'In_Progress': {
       icon: Loader2,
       bgColor: 'bg-transparent',
-      iconColor: 'text-[#2F80ED]',
+      iconColor: 'text-[#0284c7]', // Blue from old frontend
       label: 'In Progress',
       showCircle: false,
       animate: true
     },
-    'delayed': {
+    'Completed': {
+      icon: CheckCircle2,
+      bgColor: 'bg-[#16a34a]', // Green from old frontend
+      iconColor: 'text-white',
+      label: 'Completed',
+      showCircle: true
+    },
+    'Delayed': {
       icon: AlertCircle,
-      bgColor: 'bg-[#EB5757]',
+      bgColor: 'bg-[#dc2626]', // Red from old frontend
       iconColor: 'text-white',
       label: 'Delayed',
       showCircle: true
     },
-    'review': {
-      icon: Loader2,
-      bgColor: 'bg-transparent',
-      iconColor: 'text-[#2F80ED]',
-      label: 'Review',
-      showCircle: false,
-      animate: true
+    'Impediment': {
+      icon: XCircle,
+      bgColor: 'bg-[#9e36ff]', // Purple from old frontend
+      iconColor: 'text-white',
+      label: 'Impediment',
+      showCircle: true
     },
-    'todo': {
-      icon: Clock,
+    'Review': {
+      icon: Eye,
       bgColor: 'bg-transparent',
-      iconColor: 'text-[#555555]',
-      label: 'Assigned',
+      iconColor: 'text-[#fbbf24]', // Yellow/Orange from old frontend
+      label: 'Review',
       showCircle: false
+    },
+    'Stuck': {
+      icon: Ban,
+      bgColor: 'bg-[#9e36ff]', // Purple (similar to Impediment)
+      iconColor: 'text-white',
+      label: 'Stuck',
+      showCircle: true
     }
   };
 
@@ -234,13 +276,13 @@ function StatusBadge({ status }: { status: string }) {
 
   return (
     <Tooltip title={style.label}>
-      <div className="cursor-help p-1">
+      <div className="cursor-help flex items-center justify-center">
         {style.showCircle ? (
           <div className={`w-5 h-5 rounded-full ${style.bgColor} flex items-center justify-center`}>
             <Icon className={`w-3 h-3 ${style.iconColor}`} />
           </div>
         ) : (
-          <Icon className={`w-5 h-5 ${style.iconColor} ${(style as any).animate ? 'animate-spin' : ''}`} />
+          <Icon className={`w-4 h-4 ${style.iconColor} ${(style as any).animate ? 'animate-spin' : ''}`} />
         )}
       </div>
     </Tooltip>

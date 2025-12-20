@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getLeaves, getLeaveById, getCompanyLeaves, getLeaveBalance, updateLeaveStatus, applyForLeave, ApplyLeaveDto } from "../services/leave";
-import { message } from "antd";
+import { App } from "antd";
 
 export const useLeaves = (options: string = "") => {
     return useQuery({
@@ -33,6 +33,7 @@ export const useLeaveBalance = () => {
 
 export const useUpdateLeaveStatus = () => {
     const queryClient = useQueryClient();
+    const { message } = App.useApp();
     
     return useMutation({
         mutationFn: ({ id, status }: { id: number; status: "APPROVED" | "REJECTED" }) => 
@@ -50,6 +51,7 @@ export const useUpdateLeaveStatus = () => {
 
 export const useApplyForLeave = () => {
     const queryClient = useQueryClient();
+    const { message } = App.useApp();
     
     return useMutation({
         mutationFn: (payload: ApplyLeaveDto) => applyForLeave(payload),

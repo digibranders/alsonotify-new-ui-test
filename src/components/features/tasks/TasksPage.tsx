@@ -1,14 +1,13 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, CheckSquare, Trash2, Users, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
-import { Modal, Checkbox, Popover } from "antd";
+import { Modal, Checkbox, Popover, App } from "antd";
 import { TaskForm } from '../../modals/TaskForm';
 import { TaskRow } from './rows/TaskRow';
 import { useTasks, useCreateTask } from '@/hooks/useTask';
 import { useWorkspaces } from '@/hooks/useWorkspace';
 import { searchUsersByName } from '@/services/user';
 import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
-import { message } from 'antd';
 import { useRouter } from 'next/navigation';
 import dayjs, { Dayjs } from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
@@ -20,7 +19,7 @@ dayjs.extend(isoWeek);
 dayjs.extend(isSameOrBefore);
 dayjs.extend(isSameOrAfter);
 
-type ITaskStatus = 'in-progress' | 'completed' | 'delayed' | 'todo' | 'review';
+type ITaskStatus = 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck';
 
 type UITask = {
   id: string;
@@ -43,7 +42,7 @@ type UITask = {
   dueDateValue: number | null;
 };
 
-type StatusTab = 'all' | 'in-progress' | 'completed' | 'delayed';
+type StatusTab = 'all' | 'In_Progress' | 'Completed' | 'Delayed';
 
 // Helper functions for date presets
 const getPresetDateRangeHelper = (preset: string, now: Date): [Date, Date] | null => {
@@ -79,6 +78,7 @@ const datesMatchHelper = (date1: Date | null, date2: Date | null): boolean => {
 
 export function TasksPage() {
   const router = useRouter();
+  const { message } = App.useApp();
   const { data: tasksData, isLoading } = useTasks();
   const createTaskMutation = useCreateTask();
   const { data: workspacesData } = useWorkspaces();
@@ -152,38 +152,18 @@ export function TasksPage() {
 
   // Transform backend data to UI format
   // Backend statuses: 'Assigned', 'In_Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'
-  const mapBackendStatusToUI = (status: string): 'in-progress' | 'completed' | 'delayed' | 'todo' | 'review' => {
-    if (!status) return 'todo';
+  // Use backend statuses directly - no mapping needed
+  const normalizeBackendStatus = (status: string): ITaskStatus => {
+    if (!status) return 'Assigned';
     
     // Normalize status (handle both 'In_Progress' and 'In Progress')
     const normalizedStatus = status.replace(/\s+/g, '_');
     
-    // Map exact backend statuses to UI statuses
-    switch (normalizedStatus) {
-      case 'Assigned':
-        return 'todo'; // Not started yet - shows clock icon
-      case 'In_Progress':
-        return 'in-progress'; // Active work - shows blue rotating ring
-      case 'Completed':
-        return 'completed'; // Done - shows green circle with checkmark
-      case 'Delayed':
-        return 'delayed'; // Delayed - shows red circle with exclamation
-      case 'Impediment':
-        return 'delayed'; // Blocked/Impediment - shows red circle with exclamation
-      case 'Stuck':
-        return 'delayed'; // Stuck - shows red circle with exclamation
-      case 'Review':
-        return 'review'; // Under review - can be treated as in-progress
-      default:
-        // Fallback: try to match by lowercase
-        const statusLower = normalizedStatus.toLowerCase();
-        if (statusLower === 'completed' || statusLower === 'done') return 'completed';
-        if (statusLower === 'delayed' || statusLower === 'impediment' || statusLower === 'stuck') return 'delayed';
-        if (statusLower === 'in_progress' || statusLower === 'in-progress' || statusLower.includes('progress')) return 'in-progress';
-        if (statusLower === 'review') return 'review';
-        if (statusLower === 'assigned') return 'todo';
-        return 'todo'; // Default to todo for unknown statuses
-    }
+    // Map to backend enum values
+    const validStatuses: ITaskStatus[] = ['Assigned', 'In_Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'];
+    const matchedStatus = validStatuses.find(s => s === normalizedStatus || s.toLowerCase() === normalizedStatus.toLowerCase());
+    
+    return matchedStatus || 'Assigned'; // Default to Assigned
   };
 
   const tasks: UITask[] = useMemo(() => {
@@ -249,13 +229,14 @@ export function TasksPage() {
       const timeSpent = t.time_spent || 0;
       const isOverEstimate = estTime > 0 && timeSpent > estTime;
 
-      const baseStatus = mapBackendStatusToUI(t.status);
+      const baseStatus = normalizeBackendStatus(t.status);
       const isDelayedByTime = isTimeOverdue || isOverEstimate;
+      // If task is delayed by time but status is not already Delayed/Impediment/Stuck, mark as Delayed
       const uiStatus: ITaskStatus =
-        baseStatus === 'completed'
-          ? 'completed'
-          : isDelayedByTime
-            ? 'delayed'
+        baseStatus === 'Completed'
+          ? 'Completed'
+          : isDelayedByTime && !['Delayed', 'Impediment', 'Stuck'].includes(baseStatus)
+            ? 'Delayed'
             : baseStatus;
 
       return {
@@ -310,7 +291,7 @@ export function TasksPage() {
     return ['All', ...Array.from(new Set(tasks.map(t => t.project)))];
   }, [tasks]);
 
-  const statuses = useMemo(() => ['All', 'In Progress', 'Completed', 'Delayed'], []);
+  const statuses = useMemo(() => ['All', 'Assigned', 'In Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'], []);
 
   const filterOptions: FilterOption[] = [
     { id: 'user', label: 'User', options: users, defaultValue: 'All' },
@@ -356,10 +337,11 @@ export function TasksPage() {
 
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      // Tab filtering: 'review' should show in 'in-progress' tab
+      // Tab filtering
       const matchesTab = activeTab === 'all' || 
         task.status === activeTab || 
-        (activeTab === 'in-progress' && task.status === 'review');
+        (activeTab === 'In_Progress' && (task.status === 'In_Progress' || task.status === 'Review')) ||
+        (activeTab === 'Delayed' && ['Delayed', 'Impediment', 'Stuck'].includes(task.status));
       
       const matchesSearch = searchQuery === '' ||
         task.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -371,10 +353,13 @@ export function TasksPage() {
       const matchesProject = filters.project === 'All' || task.project === filters.project;
       const matchesStatus =
         filters.status === 'All' ||
-        (filters.status === 'In Progress' &&
-          (task.status === 'in-progress' || task.status === 'review')) ||
-        (filters.status === 'Completed' && task.status === 'completed') ||
-        (filters.status === 'Delayed' && task.status === 'delayed');
+        (filters.status === 'Assigned' && task.status === 'Assigned') ||
+        (filters.status === 'In Progress' && task.status === 'In_Progress') ||
+        (filters.status === 'Completed' && task.status === 'Completed') ||
+        (filters.status === 'Delayed' && task.status === 'Delayed') ||
+        (filters.status === 'Impediment' && task.status === 'Impediment') ||
+        (filters.status === 'Review' && task.status === 'Review') ||
+        (filters.status === 'Stuck' && task.status === 'Stuck');
 
       let matchesDate = true;
       if (dateRange && dateRange[0] && dateRange[1]) {
@@ -406,9 +391,9 @@ export function TasksPage() {
 
   const stats = useMemo(() => ({
     all: tasks.length,
-    'in-progress': tasks.filter(t => t.status === 'in-progress' || t.status === 'review').length,
-    completed: tasks.filter(t => t.status === 'completed').length,
-    delayed: tasks.filter(t => t.status === 'delayed').length,
+    'In_Progress': tasks.filter(t => t.status === 'In_Progress').length,
+    'Completed': tasks.filter(t => t.status === 'Completed').length,
+    'Delayed': tasks.filter(t => ['Delayed', 'Impediment', 'Stuck'].includes(t.status)).length,
   }), [tasks]);
 
   const toggleSelectAll = () => {
@@ -734,7 +719,7 @@ export function TasksPage() {
         {/* Status Tabs */}
         <div className="flex items-center">
           <div className="flex items-center gap-6 border-b border-[#EEEEEE]">
-            {(['all', 'in-progress', 'completed', 'delayed'] as const).map((tab) => (
+            {(['all', 'In_Progress', 'Completed', 'Delayed'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -743,12 +728,12 @@ export function TasksPage() {
                   : 'text-[#666666] hover:text-[#111111]'
                   }`}
               >
-                {tab === 'all' ? 'All Tasks' : tab === 'in-progress' ? 'In Progress' : tab === 'completed' ? 'Completed' : 'Delayed'}
+                {tab === 'all' ? 'All Tasks' : tab === 'In_Progress' ? 'In Progress' : tab === 'Completed' ? 'Completed' : 'Delayed'}
                 <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === tab
                   ? 'bg-[#ff3b3b] text-white'
                   : 'bg-[#F7F7F7] text-[#666666]'
                   }`}>
-                  {stats[tab]}
+                  {tab === 'all' ? stats.all : stats[tab]}
                 </span>
                 {activeTab === tab && (
                   <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />

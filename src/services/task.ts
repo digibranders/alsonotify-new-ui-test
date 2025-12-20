@@ -1,5 +1,6 @@
 import axiosApi from "../config/axios";
 import { ApiResponse } from "../constants/constants";
+import { ApiError, NetworkError, getErrorMessage, isAxiosError } from "../types/errors";
 
 export interface TaskType {
   id: number;
@@ -11,96 +12,297 @@ export interface TaskType {
   requirement_id?: number;
   assigned_to?: number;
   due_date?: string;
-  [key: string]: any;
+}
+
+export interface Worklog {
+  id: number;
+  task_id: number;
+  user_id: number;
+  hours: number;
+  description?: string;
+  date: string;
+  created_at?: string;
+}
+
+export interface Comment {
+  id: number;
+  task_id: number;
+  user_id: number;
+  content: string;
+  created_at: string;
+  updated_at?: string;
 }
 
 export interface TaskDetailType extends TaskType {
-  worklogs?: any[];
-  comments?: any[];
-  [key: string]: any;
+  worklogs?: Worklog[];
+  comments?: Comment[];
 }
 
-// Create task
-export const createTask = async (params: TaskType | any): Promise<ApiResponse<TaskType>> => {
+/**
+ * Validate task ID
+ */
+function validateTaskId(id: number): void {
+  if (!Number.isInteger(id) || id <= 0) {
+    throw new ApiError(`Invalid task ID: ${id}`, 400);
+  }
+}
+
+/**
+ * Validate pagination parameters
+ */
+function validatePagination(limit: number, skip: number): void {
+  if (!Number.isInteger(skip) || skip < 0) {
+    throw new ApiError(`Invalid skip parameter: ${skip}`, 400);
+  }
+  if (!Number.isInteger(limit) || limit <= 0 || limit > 1000) {
+    throw new ApiError(`Invalid limit parameter: ${limit}. Must be between 1 and 1000`, 400);
+  }
+}
+
+/**
+ * Create a new task
+ */
+export const createTask = async (params: Partial<TaskType>): Promise<ApiResponse<TaskType>> => {
   try {
+    if (!params.title || params.title.trim().length === 0) {
+      throw new ApiError('Task title is required', 400);
+    }
+    
     const { data } = await axiosApi.post<ApiResponse<TaskType>>("/task/create", params);
+    
+    if (!data || typeof data !== 'object') {
+      throw new ApiError('Invalid response format from server', 500);
+    }
+    
     return data;
   } catch (error) {
-    throw error;
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    if (isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const message = getErrorMessage(error);
+      throw new ApiError(message, statusCode, error.response?.data);
+    }
+    
+    throw new NetworkError(getErrorMessage(error));
   }
 };
 
-// Update task
+/**
+ * Update an existing task
+ */
 export const updateTask = async (params: TaskType): Promise<ApiResponse<TaskType>> => {
   try {
+    validateTaskId(params.id);
+    
     const { data } = await axiosApi.put<ApiResponse<TaskType>>(`/task/update/${params.id}`, params);
+    
+    if (!data || typeof data !== 'object') {
+      throw new ApiError('Invalid response format from server', 500);
+    }
+    
     return data;
   } catch (error) {
-    throw error;
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    if (isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const message = getErrorMessage(error);
+      throw new ApiError(message, statusCode, error.response?.data);
+    }
+    
+    throw new NetworkError(getErrorMessage(error));
   }
 };
 
-// Update task status
-export const updateTaskStatusById = async (id: number, status: string) => {
+/**
+ * Update task status
+ */
+export const updateTaskStatusById = async (id: number, status: string): Promise<ApiResponse<TaskType>> => {
   try {
+    validateTaskId(id);
+    
+    if (!status || status.trim().length === 0) {
+      throw new ApiError('Task status is required', 400);
+    }
+    
     const { data } = await axiosApi.post<ApiResponse<TaskType>>(`/task/${id}/update/${status}`);
+    
+    if (!data || typeof data !== 'object') {
+      throw new ApiError('Invalid response format from server', 500);
+    }
+    
     return data;
   } catch (error) {
-    throw error;
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    if (isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const message = getErrorMessage(error);
+      throw new ApiError(message, statusCode, error.response?.data);
+    }
+    
+    throw new NetworkError(getErrorMessage(error));
   }
 };
 
-// Delete task
+/**
+ * Delete a task
+ */
 export const deleteTaskById = async (id: number): Promise<ApiResponse<TaskType>> => {
   try {
+    validateTaskId(id);
+    
     const { data } = await axiosApi.delete<ApiResponse<TaskType>>(`/task/delete/${id}`);
+    
+    if (!data || typeof data !== 'object') {
+      throw new ApiError('Invalid response format from server', 500);
+    }
+    
     return data;
   } catch (error) {
-    throw error;
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    if (isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const message = getErrorMessage(error);
+      throw new ApiError(message, statusCode, error.response?.data);
+    }
+    
+    throw new NetworkError(getErrorMessage(error));
   }
 };
 
-// Get tasks
+/**
+ * Get tasks with optional query parameters
+ */
 export const getTasks = async (options: string = ""): Promise<ApiResponse<TaskType[]>> => {
   try {
     const { data } = await axiosApi.get<ApiResponse<TaskType[]>>(`/task?${options}`);
+    
+    if (!data || typeof data !== 'object') {
+      throw new ApiError('Invalid response format from server', 500);
+    }
+    
     return data;
   } catch (error) {
-    throw error;
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    if (isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const message = getErrorMessage(error);
+      throw new ApiError(message, statusCode, error.response?.data);
+    }
+    
+    throw new NetworkError(getErrorMessage(error));
   }
 };
 
-// Get task by id
+/**
+ * Get task by ID
+ */
 export const getTaskById = async (id: number): Promise<ApiResponse<TaskDetailType>> => {
   try {
+    validateTaskId(id);
+    
     const { data } = await axiosApi.get<ApiResponse<TaskDetailType>>(`/task/${id}`);
+    
+    if (!data || typeof data !== 'object') {
+      throw new ApiError('Invalid response format from server', 500);
+    }
+    
     return data;
   } catch (error) {
-    throw error;
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    if (isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const message = getErrorMessage(error);
+      throw new ApiError(message, statusCode, error.response?.data);
+    }
+    
+    throw new NetworkError(getErrorMessage(error));
   }
 };
 
-// Create worklog/activity
-export const createActivity = async (params: TaskType): Promise<ApiResponse<TaskType>> => {
+/**
+ * Create a worklog/activity for a task
+ */
+export const createActivity = async (params: Partial<TaskType>): Promise<ApiResponse<TaskType>> => {
   try {
+    if (!params.id) {
+      throw new ApiError('Task ID is required', 400);
+    }
+    
+    validateTaskId(params.id);
+    
     const { data } = await axiosApi.post<ApiResponse<TaskType>>("/task/worklog/create", params);
+    
+    if (!data || typeof data !== 'object') {
+      throw new ApiError('Invalid response format from server', 500);
+    }
+    
     return data;
   } catch (error) {
-    throw error;
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    if (isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const message = getErrorMessage(error);
+      throw new ApiError(message, statusCode, error.response?.data);
+    }
+    
+    throw new NetworkError(getErrorMessage(error));
   }
 };
 
-// Get worklog by task id
+/**
+ * Get worklogs for a task
+ */
 export const getWorkLogByTaskId = async (
   taskId: number,
   limit = 25,
   skip = 0
-): Promise<ApiResponse<any[]>> => {
+): Promise<ApiResponse<Worklog[]>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<any[]>>(`/task/${taskId}/worklog?limit=${limit}&skip=${skip}`);
+    validateTaskId(taskId);
+    validatePagination(limit, skip);
+    
+    const { data } = await axiosApi.get<ApiResponse<Worklog[]>>(
+      `/task/${taskId}/worklog?limit=${limit}&skip=${skip}`
+    );
+    
+    if (!data || typeof data !== 'object') {
+      throw new ApiError('Invalid response format from server', 500);
+    }
+    
     return data;
   } catch (error) {
-    throw error;
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    if (isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const message = getErrorMessage(error);
+      throw new ApiError(message, statusCode, error.response?.data);
+    }
+    
+    throw new NetworkError(getErrorMessage(error));
   }
 };
 

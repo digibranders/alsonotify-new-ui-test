@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Button, Input, Select, message } from "antd";
+import { Button, Input, Select, App } from "antd";
 import { Briefcase } from "lucide-react";
 
 const { Option } = Select;
@@ -43,6 +43,7 @@ export function ClientForm({
   onCancel,
   isEditing = false,
 }: ClientFormProps) {
+  const { message } = App.useApp();
   const [formData, setFormData] = useState<ClientFormData>(defaultFormData);
 
   useEffect(() => {

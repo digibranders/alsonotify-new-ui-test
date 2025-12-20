@@ -172,7 +172,7 @@ export function InvoicesPage() {
       onSearchChange={setSearchQuery}
       showExport
       titleAction={{
-        onClick: () => console.log('Create invoice')
+        onClick: () => {}
       }}
     >
       {/* Summary Cards */}

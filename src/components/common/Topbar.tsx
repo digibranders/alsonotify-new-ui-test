@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { AccessBadge } from '../ui/AccessBadge';
 import Image from 'next/image';
-import { Button, Dropdown, Modal, Input, Select, Popover, Avatar, Badge, Typography, message } from 'antd';
+import { Button, Dropdown, Modal, Input, Select, Popover, Avatar, Badge, Typography, App } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   Alert24Filled,
@@ -55,7 +55,7 @@ const getGreeting = (): string => {
 export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
   const router = useRouter();
   const handleLogout = useLogout();
-  const [messageApi, contextHolder] = message.useMessage();
+  const { message } = App.useApp();
 
   // Fetch user details
   const { data: userDetailsData } = useUserDetails();
@@ -178,11 +178,11 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
           setUsersDropdown(transformed);
         }
       } catch (error) {
-        messageApi.error('Failed to fetch users');
+        message.error('Failed to fetch users');
       }
     };
     fetchUsers();
-  }, [messageApi]);
+  }, [message]);
 
   useEffect(() => {
     const fetchRequirements = async () => {
@@ -202,11 +202,11 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
         }
         setRequirementsDropdown(allRequirements);
       } catch (error) {
-        messageApi.error('Failed to fetch requirements');
+        message.error('Failed to fetch requirements');
       }
     };
     fetchRequirements();
-  }, [workspacesData, messageApi]);
+  }, [workspacesData, message]);
 
   // Transform notifications
   const notifications = useMemo(() => {
@@ -236,7 +236,7 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
   // Handle workspace creation
   const handleCreateWorkspace = async () => {
     if (!newWorkspace.name) {
-      messageApi.error("Workspace name is required");
+      message.error("Workspace name is required");
       return;
     }
 
@@ -260,13 +260,13 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
       } as any,
       {
         onSuccess: () => {
-          messageApi.success("Workspace created successfully!");
+          message.success("Workspace created successfully!");
           setShowWorkspaceDialog(false);
           setNewWorkspace({ name: '', client: '', description: '', lead: '' });
         },
         onError: (error: any) => {
           const errorMessage = error?.response?.data?.message || "Failed to create workspace";
-          messageApi.error(errorMessage);
+          message.error(errorMessage);
         },
       }
     );
@@ -275,7 +275,7 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
   // Handle requirement creation
   const handleCreateRequirement = async () => {
     if (!newRequirement.title) {
-      messageApi.error("Requirement title is required");
+      message.error("Requirement title is required");
       return;
     }
 
@@ -284,7 +284,7 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
     );
 
     if (!selectedWorkspace) {
-      messageApi.error("Please select a workspace");
+      message.error("Please select a workspace");
       return;
     }
 
@@ -301,13 +301,13 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
       } as any,
       {
         onSuccess: () => {
-          messageApi.success("Requirement created successfully!");
+          message.success("Requirement created successfully!");
           setShowRequirementDialog(false);
           setNewRequirement({ title: '', workspace: '', type: '', priority: '', category: '', dueDate: '', description: '' });
         },
         onError: (error: any) => {
           const errorMessage = error?.response?.data?.message || "Failed to create requirement";
-          messageApi.error(errorMessage);
+          message.error(errorMessage);
         },
       }
     );
@@ -459,7 +459,6 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
 
   return (
     <>
-      {contextHolder}
       <div className="bg-white rounded-full p-4 w-full">
         <div className="flex flex-row items-center justify-between w-full">
           {/* Left: Greeting text */}
@@ -662,7 +661,7 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
         <TaskForm
           onSubmit={(data) => {
             if (!data.start_date) {
-              messageApi.error("Start Date is required");
+              message.error("Start Date is required");
               return;
             }
             const formattedData = {
@@ -672,11 +671,11 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
             createTaskMutation.mutate(formattedData as any, {
               onSuccess: () => {
                 setShowTaskDialog(false);
-                messageApi.success("Task created successfully");
+                message.success("Task created successfully");
               },
               onError: (error: any) => {
                 const errorMessage = error?.response?.data?.message || error?.message || "Failed to create task";
-                messageApi.error(errorMessage);
+                message.error(errorMessage);
               }
             });
           }}

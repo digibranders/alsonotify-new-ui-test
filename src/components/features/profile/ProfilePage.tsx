@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Button, Input, Select, Divider, message, Upload } from "antd";
-import { Camera, Pencil, Upload as UploadIcon, FileText } from "lucide-react";
+import { Button, Input, Select, Divider, Upload, Switch, Progress, App } from "antd";
+import { Camera, Pencil, Upload as UploadIcon, FileText, Bell, Shield } from "lucide-react";
 import Image from "next/image";
 import { useUserDetails, useUpdateProfile } from "@/hooks/useUser";
 import { DocumentCard } from "@/components/ui/DocumentCard";
@@ -14,6 +14,7 @@ import {
 const { Option } = Select;
 
 export function ProfilePage() {
+    const { message } = App.useApp();
     const [isEditing, setIsEditing] = useState(false);
     const { data: userDetailsData } = useUserDetails();
     const updateProfileMutation = useUpdateProfile();
@@ -93,6 +94,12 @@ export function ProfilePage() {
     }, [user]);
 
     const [profile, setProfile] = useState(initialProfile);
+    
+    // Notification preferences state
+    const [notificationPreferences, setNotificationPreferences] = useState({
+        emailNotifications: true,
+        securityAlerts: true,
+    });
     const [selectedDocument, setSelectedDocument] =
         useState<UserDocument | null>(null);
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
@@ -328,14 +335,77 @@ export function ProfilePage() {
         setIsEditing(true);
     };
 
+    // Calculate profile completion percentage
+    const profileCompletion = useMemo(() => {
+        const requiredFields = [
+            profile.firstName,
+            profile.lastName,
+            profile.designation,
+            profile.email,
+            profile.dob,
+            profile.gender,
+            profile.employeeId,
+            profile.country,
+            profile.addressLine1,
+            profile.city,
+            profile.state,
+            profile.zipCode,
+            profile.emergencyContactName,
+            profile.emergencyContactNumber,
+        ];
+
+        const filledFields = requiredFields.filter(
+            (field) => field && field.toString().trim() !== ""
+        ).length;
+
+        const totalFields = requiredFields.length;
+        const percentage = Math.round((filledFields / totalFields) * 100);
+        return percentage;
+    }, [profile]);
+
     return (
         <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] p-8 flex flex-col overflow-hidden relative font-['Manrope',sans-serif]">
             {/* Header Section */}
             <div className="flex-none mb-6">
-                <div className="flex items-center justify-between mb-1">
-                    <h1 className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
-                        My Profile
-                    </h1>
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4 flex-1">
+                        <h1 className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
+                            My Profile
+                        </h1>
+                        {/* Profile Completion Progress Bar */}
+                        <div className="flex-1 max-w-xs bg-[#FAFAFA] rounded-lg px-4 py-2.5 border border-[#EEEEEE]">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666]">
+                                    Profile Completion
+                                </span>
+                                <span className={`text-[12px] font-['Manrope:SemiBold',sans-serif] ${
+                                    profileCompletion === 100 
+                                        ? 'text-[#2ecc71]' 
+                                        : profileCompletion >= 50 
+                                        ? 'text-[#3b8eff]' 
+                                        : 'text-[#ff3b3b]'
+                                }`}>
+                                    {profileCompletion}%
+                                </span>
+                            </div>
+                            <Progress
+                                percent={profileCompletion}
+                                showInfo={false}
+                                strokeColor={
+                                    profileCompletion === 100 
+                                        ? "#2ecc71" 
+                                        : profileCompletion >= 50 
+                                        ? "#3b8eff" 
+                                        : "#ff3b3b"
+                                }
+                                trailColor="#E5E5E5"
+                                className="profile-completion-progress"
+                                style={{
+                                    height: '6px',
+                                }}
+                            />
+                        </div>
+                    </div>
                     {!isEditing ? (
                         <Button
                             onClick={handleEdit}
@@ -566,7 +636,7 @@ export function ProfilePage() {
                 <Divider className="my-8 bg-[#EEEEEE]" />
 
                 {/* Password */}
-                <section className="mb-6">
+                <section className="mb-10">
                     <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
                         Change Password
                     </h2>
@@ -583,6 +653,84 @@ export function ProfilePage() {
                             "confirmPassword",
                             "password"
                         )}
+                    </div>
+                </section>
+
+                <Divider className="my-8 bg-[#EEEEEE]" />
+
+                {/* Notification Preferences */}
+                <section className="mb-6">
+                    <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
+                        Notification Preferences
+                    </h2>
+                    <div className="space-y-6">
+                        {/* Email Notifications */}
+                        <div className="flex items-center justify-between p-4 bg-[#FAFAFA] rounded-lg border border-[#EEEEEE]">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-[#FFF4F4] rounded-lg flex items-center justify-center">
+                                    <Bell className="w-5 h-5 text-[#ff3b3b]" />
+                                </div>
+                                <div>
+                                    <div className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-1">
+                                        Email Notifications
+                                    </div>
+                                    <div className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                                        Receive updates via email for important activities.
+                                    </div>
+                                </div>
+                            </div>
+                            <Switch
+                                checked={notificationPreferences.emailNotifications}
+                                onChange={(checked) =>
+                                    setNotificationPreferences({
+                                        ...notificationPreferences,
+                                        emailNotifications: checked,
+                                    })
+                                }
+                                className="bg-[#CCCCCC]"
+                                checkedChildren="ON"
+                                unCheckedChildren="OFF"
+                                style={{
+                                    backgroundColor: notificationPreferences.emailNotifications
+                                        ? "#ff3b3b"
+                                        : undefined,
+                                }}
+                            />
+                        </div>
+
+                        {/* Security Alerts */}
+                        <div className="flex items-center justify-between p-4 bg-[#FAFAFA] rounded-lg border border-[#EEEEEE]">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-[#FFF4F4] rounded-lg flex items-center justify-center">
+                                    <Shield className="w-5 h-5 text-[#ff3b3b]" />
+                                </div>
+                                <div>
+                                    <div className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-1">
+                                        Security Alerts
+                                    </div>
+                                    <div className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                                        Get notified about new sign-ins and suspicious activity.
+                                    </div>
+                                </div>
+                            </div>
+                            <Switch
+                                checked={notificationPreferences.securityAlerts}
+                                onChange={(checked) =>
+                                    setNotificationPreferences({
+                                        ...notificationPreferences,
+                                        securityAlerts: checked,
+                                    })
+                                }
+                                className="bg-[#CCCCCC]"
+                                checkedChildren="ON"
+                                unCheckedChildren="OFF"
+                                style={{
+                                    backgroundColor: notificationPreferences.securityAlerts
+                                        ? "#ff3b3b"
+                                        : undefined,
+                                }}
+                            />
+                        </div>
                     </div>
                 </section>
             </div>

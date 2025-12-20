@@ -103,7 +103,7 @@ export function CalendarPage() {
       activeTab={activeView}
       onTabChange={(tabId) => setActiveView(tabId as any)}
       titleAction={{
-        onClick: () => console.log('New event')
+        onClick: () => {}
       }}
     >
       {/* Month Navigation */}

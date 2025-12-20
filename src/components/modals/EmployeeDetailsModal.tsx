@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Modal, Button, message } from 'antd';
+import { Modal, Button, App } from 'antd';
 import { Briefcase, Mail, Phone, Calendar, DollarSign, Clock, CalendarDays, X, FileText } from 'lucide-react';
 import { AccessBadge } from '../ui/AccessBadge';
 import { Employee, UserDocument } from '@/types/genericTypes';
@@ -19,6 +19,7 @@ export function EmployeeDetailsModal({
   employee,
   onEdit,
 }: EmployeeDetailsModalProps) {
+  const { message } = App.useApp();
   // Documents state
   const [selectedDocument, setSelectedDocument] = useState<UserDocument | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);

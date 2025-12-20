@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Button, Input, message } from "antd";
+import { Button, Input, App } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { useLogin } from "@/hooks/useAuth";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import BrandLogo from "@/assets/images/logo.png";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { message } = App.useApp();
   const loginMutation = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

@@ -18,7 +18,7 @@ import {
 import ReactMarkdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { generateAgentResponse } from "@/services/assistant";
-import { message as antdMessage, Tooltip } from "antd";
+import { Tooltip, App } from "antd";
 import { useUserDetails } from "@/hooks/useUser";
 import { useTasks, useUpdateTaskStatus } from "@/hooks/useTask";
 import { useWorkspaces } from "@/hooks/useWorkspace";
@@ -34,6 +34,7 @@ interface Message {
 }
 
 export function ProductivityWidget() {
+  const { message: antdMessage } = App.useApp();
   const [isRunning, setIsRunning] = useState(false);
   const [time, setTime] = useState(0);
   const [message, setMessage] = useState("");

@@ -6,7 +6,10 @@ import { ProgressWidget } from '../../components/dashboard/ProgressWidget';
 import { MeetingsWidget } from '../../components/dashboard/MeetingsWidget';
 import { TodoWidget } from '../../components/dashboard/TodoWidget';
 import { LeavesWidget } from '../../components/dashboard/LeavesWidget';
+import { NotesWidget } from '../../components/dashboard/NotesWidget';
 import { ProductivityWidget } from '../../components/dashboard/ProductivityWidget';
+
+// ... (imports)
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -34,7 +37,7 @@ export default function DashboardPage() {
         {/* Row 3: Notes & Leaves */}
         <div className="grid grid-cols-3 gap-5 flex-1">
           <div className="col-span-2 h-full">
-            <TodoWidget onNavigate={() => router.push('/dashboard/tasks')} />
+            <NotesWidget />
           </div>
           <div className="col-span-1 h-full">
             <LeavesWidget onNavigate={() => router.push('/dashboard/leaves')} />

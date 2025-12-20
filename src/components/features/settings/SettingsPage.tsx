@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Plus, Edit, Trash2, X, Pencil } from 'lucide-react';
-import { Button, Input, Select, Switch, Divider } from "antd";
-import { message } from "antd";
+import { Button, Input, Select, Switch, Divider, App } from "antd";
 import { useUpdateCompany, useCurrentUserCompany } from '@/hooks/useUser';
 import { DEFAULT_DOCUMENT_TYPES, DOCUMENT_TYPES_STORAGE_KEY } from '@/constants/documentTypes';
 
@@ -217,6 +216,7 @@ interface DocumentTypeLocal {
 }
 
 export function SettingsPage() {
+  const { message } = App.useApp();
   const [activeTab, setActiveTab] = useState<'company' | 'leaves' | 'working-hours' | 'integrations'>('company');
   const [isEditing, setIsEditing] = useState(false);
   const updateCompanyMutation = useUpdateCompany();

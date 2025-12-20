@@ -3,15 +3,16 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useTask } from '@/hooks/useTask';
 import { Button, Tag, Divider, Tooltip } from 'antd';
-import { CheckCircle2, Loader2, AlertCircle, Clock, Calendar, User, Briefcase, FileText } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertCircle, Clock, Calendar, User, Briefcase, FileText, Eye, XCircle, Ban } from 'lucide-react';
 
-const mapBackendStatusToUI = (status: string): 'impediment' | 'in-progress' | 'completed' | 'todo' | 'delayed' => {
-    const statusLower = status?.toLowerCase() || '';
-    if (statusLower.includes('completed') || statusLower === 'done') return 'completed';
-    if (statusLower.includes('blocked') || statusLower === 'impediment') return 'impediment';
-    if (statusLower.includes('progress') || statusLower === 'in_progress') return 'in-progress';
-    if (statusLower.includes('delayed')) return 'delayed';
-    return 'todo';
+// Normalize backend status to match backend enum
+const normalizeBackendStatus = (status: string): 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck' => {
+    if (!status) return 'Assigned';
+    const normalizedStatus = status.replace(/\s+/g, '_');
+    const validStatuses: Array<'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck'> = 
+        ['Assigned', 'In_Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'];
+    const matchedStatus = validStatuses.find(s => s === normalizedStatus || s.toLowerCase() === normalizedStatus.toLowerCase());
+    return matchedStatus || 'Assigned';
 };
 
 export function TaskDetailsPage() {
@@ -42,38 +43,38 @@ export function TaskDetailsPage() {
     const assignedToName =
         (backendTask as any).member_user?.name ||
         (backendTask.assigned_to as any)?.name ||
-        (backendTask.assigned_to_user as any)?.name ||
         'Unassigned';
 
     const detailedTaskProject =
-        backendTask.requirement?.name
-            ? backendTask.requirement.name
+        (backendTask as any).requirement?.name
+            ? (backendTask as any).requirement.name
             : backendTask.requirement_id
                 ? `Requirement ${backendTask.requirement_id}`
                 : 'General';
 
-    const estTime = backendTask.estimated_time || 0;
-    const timeSpent = backendTask.time_spent || 0;
+    const estTime = (backendTask as any).estimated_time || 0;
+    const timeSpent = (backendTask as any).time_spent || 0;
     const isOverEstimate = estTime > 0 && timeSpent > estTime;
 
-    const baseStatus = mapBackendStatusToUI(backendTask.status || '');
-    const effectiveStatus =
-        baseStatus === 'completed'
-            ? 'completed'
-            : isOverEstimate
-                ? 'delayed'
+    const baseStatus = normalizeBackendStatus(backendTask.status || '');
+    // If task is delayed by time but status is not already Delayed/Impediment/Stuck, mark as Delayed
+    const effectiveStatus: 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck' =
+        baseStatus === 'Completed'
+            ? 'Completed'
+            : isOverEstimate && !['Delayed', 'Impediment', 'Stuck'].includes(baseStatus)
+                ? 'Delayed'
                 : baseStatus;
 
     const task = {
         id: String(backendTask.id),
-        name: backendTask.name || backendTask.title || '',
+        name: (backendTask as any).name || backendTask.title || '',
         taskId: String(backendTask.id),
-        client: backendTask.client?.name || backendTask.client_company_name || 'In-House',
+        client: (backendTask as any).client?.name || (backendTask as any).client_company_name || 'In-House',
         project: detailedTaskProject,
-        leader: (backendTask as any).leader_user?.name || backendTask.leader?.name || 'Unassigned',
+        leader: (backendTask as any).leader_user?.name || (backendTask as any).leader?.name || 'Unassigned',
         assignedTo: assignedToName,
-        startDate: backendTask.start_date ? new Date(backendTask.start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
-        dueDate: backendTask.due_date ? new Date(backendTask.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
+        startDate: (backendTask as any).start_date ? new Date((backendTask as any).start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
+        dueDate: (backendTask as any).due_date ? new Date((backendTask as any).due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
         estTime,
         timeSpent,
         activities: backendTask.worklogs?.length || 0,
@@ -82,12 +83,24 @@ export function TaskDetailsPage() {
     };
 
     const getStatusConfig = (status: string) => {
+        // Match backend statuses with icons and colors from old frontend
         switch (status) {
-            case 'completed': return { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', label: 'Completed' };
-            case 'in-progress': return { icon: Loader2, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', label: 'In Progress' };
-            case 'delayed': return { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Delayed' };
-            case 'impediment': return { icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', label: 'Blocked' };
-            default: return { icon: Clock, color: 'text-gray-600', bg: 'bg-gray-50', border: 'border-gray-200', label: 'To Do' };
+            case 'Assigned': 
+                return { icon: Clock, color: 'text-[#0284c7]', bg: 'bg-[#f0f9ff]', border: 'border-[#0284c7]', label: 'Assigned' };
+            case 'In_Progress': 
+                return { icon: Loader2, color: 'text-[#0284c7]', bg: 'bg-[#f0f9ff]', border: 'border-[#0284c7]', label: 'In Progress' };
+            case 'Completed': 
+                return { icon: CheckCircle2, color: 'text-[#16a34a]', bg: 'bg-[#f0fdf4]', border: 'border-[#16a34a]', label: 'Completed' };
+            case 'Delayed': 
+                return { icon: AlertCircle, color: 'text-[#dc2626]', bg: 'bg-[#fef2f2]', border: 'border-[#dc2626]', label: 'Delayed' };
+            case 'Impediment': 
+                return { icon: XCircle, color: 'text-[#9e36ff]', bg: 'bg-[#f5ebff]', border: 'border-[#9e36ff]', label: 'Impediment' };
+            case 'Review': 
+                return { icon: Eye, color: 'text-[#fbbf24]', bg: 'bg-[#fffbeb]', border: 'border-[#fbbf24]', label: 'Review' };
+            case 'Stuck': 
+                return { icon: Ban, color: 'text-[#9e36ff]', bg: 'bg-[#f5ebff]', border: 'border-[#9e36ff]', label: 'Stuck' };
+            default: 
+                return { icon: Clock, color: 'text-[#0284c7]', bg: 'bg-[#f0f9ff]', border: 'border-[#0284c7]', label: 'Assigned' };
         }
     };
 
@@ -97,16 +110,21 @@ export function TaskDetailsPage() {
     const formatHours = (hours: number | string | null | undefined) =>
         Number(Number(hours || 0).toFixed(1));
     const overtimeHours = isOverEstimate ? timeSpent - estTime : 0;
+    // For delayed tasks, cap percentage at 100% and show overtime separately
+    const displayProgress = isOverEstimate ? 100 : Math.round(progress);
     const progressLabel = isOverEstimate
-        ? `${Math.round(progress)}% of estimate`
-        : `${Math.round(progress)}% Complete`;
+        ? `100% of estimate`
+        : `${displayProgress}% Complete`;
+    // Show colors matching old frontend
     const progressBarColor = isOverEstimate
-        ? 'bg-red-500'
-        : progress >= 100
-            ? 'bg-green-500'
-            : progress >= 75
-                ? 'bg-orange-500'
-                : 'bg-blue-500';
+        ? 'bg-[#dc2626]'  // Red for tasks with overtime (matches old frontend)
+        : task.status === 'Completed'
+            ? 'bg-[#16a34a]'  // Green for completed tasks without overtime (matches old frontend)
+            : task.status === 'Delayed' || task.status === 'Impediment' || task.status === 'Stuck'
+                ? 'bg-[#dc2626]'  // Red for delayed/impediment/stuck (matches old frontend)
+                : task.status === 'Review'
+                    ? 'bg-[#fbbf24]'  // Yellow/Orange for review (matches old frontend)
+                    : 'bg-[#0284c7]';  // Blue for Assigned/In_Progress (matches old frontend)
 
     return (
         <div className="w-full h-full flex flex-col p-6 overflow-y-auto">
@@ -163,7 +181,9 @@ export function TaskDetailsPage() {
                             <h3 className="text-sm font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide mb-4">Progress</h3>
                             <div className="bg-[#F7F7F7] rounded-xl p-6">
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium text-[#111111]">{progressLabel}</span>
+                                    <span className={`text-sm font-medium ${isOverEstimate ? 'text-[#EB5757]' : 'text-[#111111]'}`}>
+                                        {progressLabel}
+                                    </span>
                                     <span className="text-sm text-[#666666]">
                                         {formatHours(task.timeSpent)}h of {formatHours(task.estTime)}h
                                         {isOverEstimate && (

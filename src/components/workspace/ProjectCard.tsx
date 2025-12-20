@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle, Plus, Filter, MoreHorizontal, MessageSquare, Paperclip, ChevronRight, LayoutGrid, List, UserPlus, FileText, ChevronDown, Check, FolderOpen, ArrowLeft, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { PageLayout } from '../layout/PageLayout';
 import { FilterBar, FilterOption } from '../ui/FilterBar';
-import { Modal, Button, Input, Select, Checkbox, Dropdown, MenuProps, Breadcrumb, DatePicker, Avatar, Tooltip, Progress, Tabs, message } from 'antd';
+import { Button, Input, Select, Checkbox, Dropdown, MenuProps, Breadcrumb, DatePicker, Avatar, Tooltip, Progress, Tabs, App, Modal } from 'antd';
 import { useWorkspaces, useWorkspaceTasks } from '@/hooks/useWorkspace';
 import { useCreateTask, useDeleteTask } from '@/hooks/useTask';
 import { useEmployees } from '@/hooks/useUser';
@@ -33,6 +33,7 @@ interface Task {
 
 export function WorkspaceDetailsPage({ id }: { id: string }) {
   const router = useRouter();
+  const { modal, message } = App.useApp();
   const { data: workspacesData } = useWorkspaces();
   const { data: tasksData, isLoading: tasksLoading } = useWorkspaceTasks(Number(id));
   const { data: employeesData } = useEmployees();
@@ -142,7 +143,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
   };
 
   const handleDeleteTask = (taskId: string) => {
-    Modal.confirm({
+    modal.confirm({
       title: 'Delete Task',
       content: 'Are you sure you want to delete this task?',
       okText: 'Delete',

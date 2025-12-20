@@ -7,7 +7,7 @@ import {
   Check, X, Calendar as CalendarIcon, Clock, CheckCircle, CheckSquare, Users, Trash2, 
   ChevronDown, ChevronLeft, ChevronRight, FilePlus, Edit, Receipt, MoreHorizontal, Play, XCircle, RotateCcw 
 } from 'lucide-react';
-import { Modal, Button, Input, Select, Tooltip, message, Popover, DatePicker, Checkbox } from 'antd';
+import { Modal, Button, Input, Select, Tooltip, Popover, DatePicker, Checkbox, App } from 'antd';
 import { useWorkspaces, useCreateRequirement, useUpdateRequirement, useDeleteRequirement, useApproveRequirement } from '@/hooks/useWorkspace';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
@@ -106,6 +106,7 @@ function QuotationDialog({
   onConfirm: (data: { cost?: number, rate?: number, hours?: number }) => void;
   pricingModel?: 'hourly' | 'project';
 }) {
+  const { message: messageApi } = App.useApp();
   const [amount, setAmount] = useState('');
   const [rate, setRate] = useState('');
   const [hours, setHours] = useState('');
@@ -121,7 +122,7 @@ function QuotationDialog({
   const handleConfirm = () => {
     if (pricingModel === 'hourly') {
       if (!rate || !hours) {
-        message.error("Please enter rate and hours");
+        messageApi.error("Please enter rate and hours");
         return;
       }
       onConfirm({ 
@@ -131,7 +132,7 @@ function QuotationDialog({
       });
     } else {
       if (!amount) {
-        message.error("Please enter an amount");
+        messageApi.error("Please enter an amount");
         return;
       }
       onConfirm({ cost: parseFloat(amount) });
@@ -211,11 +212,12 @@ function RejectDialog({
   onOpenChange: (open: boolean) => void; 
   onConfirm: (reason: string) => void;
 }) {
+  const { message: messageApi } = App.useApp();
   const [reason, setReason] = useState('');
 
   const handleConfirm = () => {
     if (!reason) {
-      message.error("Please enter a reason");
+      messageApi.error("Please enter a reason");
       return;
     }
     onConfirm(reason);
@@ -255,6 +257,7 @@ function RejectDialog({
 }
 
 export function RequirementsPage() {
+  const { message: messageApi } = App.useApp();
   const router = useRouter();
   const queryClient = useQueryClient();
   const createRequirementMutation = useCreateRequirement();
@@ -480,7 +483,7 @@ export function RequirementsPage() {
 
   const handleCreateRequirement = async () => {
     if (!newReq.title) {
-      message.error("Requirement title is required");
+      messageApi.error("Requirement title is required");
       return;
     }
 
@@ -489,12 +492,12 @@ export function RequirementsPage() {
     );
 
     if (!selectedWorkspace && newReq.workspace) {
-      message.error("Selected workspace not found");
+      messageApi.error("Selected workspace not found");
       return;
     }
 
     if (!selectedWorkspace && workspaceIds.length === 0) {
-      message.error("No workspace available");
+      messageApi.error("No workspace available");
       return;
     }
 
@@ -514,7 +517,7 @@ export function RequirementsPage() {
         } as any,
         {
           onSuccess: () => {
-            message.success("Requirement updated successfully!");
+            messageApi.success("Requirement updated successfully!");
             setIsDialogOpen(false);
             setEditingReq(undefined);
             setNewReq({
@@ -527,7 +530,7 @@ export function RequirementsPage() {
           },
           onError: (error: any) => {
             const errorMessage = error?.response?.data?.message || "Failed to update requirement";
-            message.error(errorMessage);
+            messageApi.error(errorMessage);
           },
         }
       );
@@ -546,7 +549,7 @@ export function RequirementsPage() {
         } as any,
         {
           onSuccess: () => {
-            message.success("Requirement created successfully!");
+            messageApi.success("Requirement created successfully!");
             setIsDialogOpen(false);
             setNewReq({
               title: '',
@@ -558,7 +561,7 @@ export function RequirementsPage() {
           },
           onError: (error: any) => {
             const errorMessage = error?.response?.data?.message || "Failed to create requirement";
-            message.error(errorMessage);
+            messageApi.error(errorMessage);
           },
         }
       );
@@ -878,10 +881,10 @@ export function RequirementsPage() {
         return deleteRequirementMutation.mutateAsync({ id, project_id: req.workspaceId });
       });
       await Promise.all(deletePromises);
-      message.success(`Deleted ${selectedReqs.length} requirement(s)`);
+      messageApi.success(`Deleted ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to delete requirements");
+      messageApi.error(error?.response?.data?.message || "Failed to delete requirements");
     }
   };
 
@@ -897,10 +900,10 @@ export function RequirementsPage() {
         } as any);
       });
       await Promise.all(updatePromises);
-      message.success(`Marked ${selectedReqs.length} requirement(s) as completed`);
+      messageApi.success(`Marked ${selectedReqs.length} requirement(s) as completed`);
       setSelectedReqs([]);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to update requirements");
+      messageApi.error(error?.response?.data?.message || "Failed to update requirements");
     }
   };
 
@@ -910,10 +913,10 @@ export function RequirementsPage() {
         approveRequirementMutation.mutateAsync({ requirement_id: id, status: "Assigned" })
       );
       await Promise.all(approvePromises);
-      message.success(`Approved ${selectedReqs.length} requirement(s)`);
+      messageApi.success(`Approved ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to approve requirements");
+      messageApi.error(error?.response?.data?.message || "Failed to approve requirements");
     }
   };
 
@@ -923,10 +926,10 @@ export function RequirementsPage() {
         approveRequirementMutation.mutateAsync({ requirement_id: id, status: "Rejected" })
       );
       await Promise.all(rejectPromises);
-      message.success(`Rejected ${selectedReqs.length} requirement(s)`);
+      messageApi.success(`Rejected ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to reject requirements");
+      messageApi.error(error?.response?.data?.message || "Failed to reject requirements");
     }
   };
 
@@ -943,10 +946,10 @@ export function RequirementsPage() {
         } as any);
       });
       await Promise.all(updatePromises);
-      message.success(`Submitted ${selectedReqs.length} requirement(s) for approval`);
+      messageApi.success(`Submitted ${selectedReqs.length} requirement(s) for approval`);
       setSelectedReqs([]);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to submit requirements");
+      messageApi.error(error?.response?.data?.message || "Failed to submit requirements");
     }
   };
 
@@ -962,10 +965,10 @@ export function RequirementsPage() {
         } as any);
       });
       await Promise.all(updatePromises);
-      message.success(`Reopened ${selectedReqs.length} requirement(s)`);
+      messageApi.success(`Reopened ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to reopen requirements");
+      messageApi.error(error?.response?.data?.message || "Failed to reopen requirements");
     }
   };
 
@@ -985,10 +988,10 @@ export function RequirementsPage() {
         } as any);
       });
       await Promise.all(updatePromises);
-      message.success(`Assigned ${employee?.name || 'selected user'} to ${selectedReqs.length} requirement(s)`);
+      messageApi.success(`Assigned ${employee?.name || 'selected user'} to ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to assign requirements");
+      messageApi.error(error?.response?.data?.message || "Failed to assign requirements");
     }
   };
 
@@ -1008,7 +1011,7 @@ export function RequirementsPage() {
     try {
       const req = requirements.find(r => r.id === pendingReqId);
       if (!req) {
-        message.error("Requirement not found");
+        messageApi.error("Requirement not found");
         return;
       }
 
@@ -1027,10 +1030,10 @@ export function RequirementsPage() {
         status: "Assigned"
       });
 
-      message.success("Requirement accepted and quotation sent");
+      messageApi.success("Requirement accepted and quotation sent");
       setPendingReqId(null);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to accept requirement");
+      messageApi.error(error?.response?.data?.message || "Failed to accept requirement");
     }
   };
 
@@ -1043,10 +1046,10 @@ export function RequirementsPage() {
         status: "Rejected"
       });
       
-      message.success("Requirement rejected and moved to drafts");
+      messageApi.success("Requirement rejected and moved to drafts");
       setPendingReqId(null);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || "Failed to reject requirement");
+      messageApi.error(error?.response?.data?.message || "Failed to reject requirement");
     }
   };
 

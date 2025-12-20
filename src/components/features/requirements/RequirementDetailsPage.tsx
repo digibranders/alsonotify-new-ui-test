@@ -16,7 +16,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { Checkbox, Breadcrumb, Button, Tooltip, Dropdown, MenuProps, message } from "antd";
+import { Checkbox, Breadcrumb, Button, Tooltip, Dropdown, MenuProps, App } from "antd";
 import { TabBar } from '../../layout/TabBar';
 import { useParams, useRouter } from 'next/navigation';
 import { useWorkspace, useRequirements } from '@/hooks/useWorkspace';
@@ -26,6 +26,7 @@ import Image from "next/image";
 import { GanttChart } from './GanttChart';
 
 export function RequirementDetailsPage() {
+  const { message } = App.useApp();
   const params = useParams();
   const workspaceId = Number(params.workspaceId);
   const reqId = Number(params.reqId);
@@ -130,24 +131,42 @@ export function RequirementDetailsPage() {
       contactPerson: mockContactPerson,
       rejectionReason: mockRejectionReason,
       subTasks: (tasksData?.result || [])
-        .filter((t: any) => t.requirement_id === reqId)
-        .map((t: any) => ({
-          id: String(t.id),
-          name: t.name || t.title || '',
-          taskId: String(t.id),
-          assignedTo: t.assigned_to?.name || 'Unassigned',
-          dueDate: t.due_date
-            ? new Date(t.due_date)
-                .toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric',
-                })
-                .replace(/ /g, '-')
-            : 'TBD',
-          status: mapTaskStatus(t.status || ''),
-          type: 'task' as 'task' | 'revision',
-        })),
+        .filter((t: any) => {
+          // Filter tasks by requirement_id - handle both number and string comparison
+          const taskReqId = t.requirement_id || t.requirementId;
+          return taskReqId && Number(taskReqId) === Number(reqId);
+        })
+        .map((t: any) => {
+          // Handle assigned_to in different formats
+          let assignedToName = 'Unassigned';
+          if (t.assigned_to) {
+            if (typeof t.assigned_to === 'object') {
+              assignedToName = t.assigned_to.name || t.assigned_to.full_name || 'Unassigned';
+            }
+          } else if (t.assigned_to_user) {
+            if (typeof t.assigned_to_user === 'object') {
+              assignedToName = t.assigned_to_user.name || t.assigned_to_user.full_name || 'Unassigned';
+            }
+          }
+
+          return {
+            id: String(t.id),
+            name: t.name || t.title || '',
+            taskId: String(t.id),
+            assignedTo: assignedToName,
+            dueDate: t.due_date
+              ? new Date(t.due_date)
+                  .toLocaleDateString('en-GB', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  })
+                  .replace(/ /g, '-')
+              : 'TBD',
+            status: mapTaskStatus(t.status || ''),
+            type: (t.type === 'revision' ? 'revision' : 'task') as 'task' | 'revision',
+          };
+        }),
     };
   }, [requirementsData, reqId, workspace, tasksData, workspaceId]);
 
@@ -180,7 +199,6 @@ export function RequirementDetailsPage() {
 
   const handleSendMessage = () => {
     if (messageText.trim() || attachments.length > 0) {
-      console.log('Sending message:', messageText, attachments);
       setMessageText('');
       setAttachments([]);
       message.success('Message sent');
@@ -215,31 +233,54 @@ export function RequirementDetailsPage() {
     if (!description) return { overview: '', deliverables: [], technical: [] };
     
     let overview = description;
+    let deliverables: string[] = [];
+    let technical: string[] = [];
     
     // Try to extract structured content if it's HTML (only in browser)
     if (typeof window !== 'undefined') {
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = description;
       overview = tempDiv.textContent || description;
+      
+      // Try to parse structured sections from HTML
+      const deliverablesSection = tempDiv.querySelector('[data-section="deliverables"], .deliverables, #deliverables');
+      const technicalSection = tempDiv.querySelector('[data-section="technical"], .technical, #technical');
+      
+      if (deliverablesSection) {
+        const items = deliverablesSection.querySelectorAll('li, p');
+        deliverables = Array.from(items).map(item => item.textContent?.trim() || '').filter(Boolean);
+      }
+      
+      if (technicalSection) {
+        const items = technicalSection.querySelectorAll('li, p');
+        technical = Array.from(items).map(item => item.textContent?.trim() || '').filter(Boolean);
+      }
     } else {
       // Server-side: strip HTML tags
       overview = description.replace(/<[^>]*>/g, '');
     }
     
+    // If no structured sections found, try to parse from plain text
+    if (deliverables.length === 0 && technical.length === 0) {
+      // Look for common patterns like "Key Deliverables:" or "Technical Requirements:"
+      const deliverablesMatch = description.match(/(?:Key Deliverables?|Deliverables?)[:\-]?\s*([\s\S]*?)(?=Technical|$)/i);
+      const technicalMatch = description.match(/(?:Technical Requirements?|Tech Stack|Technologies?)[:\-]?\s*([\s\S]*?)$/i);
+      
+      if (deliverablesMatch) {
+        const content = deliverablesMatch[1].trim();
+        deliverables = content.split(/[•\-\n]/).map(item => item.trim()).filter(Boolean);
+      }
+      
+      if (technicalMatch) {
+        const content = technicalMatch[1].trim();
+        technical = content.split(/[•\-\n,]/).map(item => item.trim()).filter(Boolean);
+      }
+    }
+    
     return {
-      overview: overview.substring(0, 500) || 'Complete overhaul of the client portal to create a modern, responsive, and intuitive interface that enhances user experience and improves overall functionality.',
-      deliverables: [
-        'Dashboard Redesign',
-        'User Management Module',
-        'Reporting System',
-        'UI/UX Improvements'
-      ],
-      technical: [
-        'React 18 with TypeScript',
-        'Tailwind CSS for styling',
-        'Recharts for data visualization',
-        'Shadcn/ui for component library'
-      ]
+      overview: overview || '',
+      deliverables,
+      technical
     };
   };
 
@@ -338,48 +379,50 @@ export function RequirementDetailsPage() {
                 
                 {/* Overview */}
                 <div className="mb-6">
-                  <p className="text-[14px] text-[#444444] font-['Manrope:Regular',sans-serif] leading-relaxed">
-                    {descriptionContent.overview ||
-                      requirement.description ||
-                      'Complete overhaul of the client portal to create a modern, responsive, and intuitive interface that enhances user experience and improves overall functionality.'}
+                  <p className="text-[14px] text-[#444444] font-['Manrope:Regular',sans-serif] leading-relaxed whitespace-pre-wrap">
+                    {requirement.description || 'No description provided.'}
                   </p>
                 </div>
 
-                {/* Key Deliverables */}
-                <div className="mb-6">
-                  <h4 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-3">
-                    Key Deliverables
-                  </h4>
-                  <ul className="space-y-2">
-                    {descriptionContent.deliverables.map((item, idx) => (
-                      <li
-                        key={idx}
-                        className="flex items-start gap-2 text-[14px] text-[#444444] font-['Manrope:Regular',sans-serif]"
-                      >
-                        <span className="text-[#ff3b3b] mt-1">•</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {/* Key Deliverables - Only show if parsed from description */}
+                {descriptionContent.deliverables.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-3">
+                      Key Deliverables
+                    </h4>
+                    <ul className="space-y-2">
+                      {descriptionContent.deliverables.map((item, idx) => (
+                        <li
+                          key={idx}
+                          className="flex items-start gap-2 text-[14px] text-[#444444] font-['Manrope:Regular',sans-serif]"
+                        >
+                          <span className="text-[#ff3b3b] mt-1">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-                {/* Technical Requirements */}
-                <div>
-                  <h4 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-3">
-                    Technical Requirements
-                  </h4>
-                  <ul className="space-y-2">
-                    {descriptionContent.technical.map((item, idx) => (
-                      <li
-                        key={idx}
-                        className="flex items-start gap-2 text-[14px] text-[#444444] font-['Manrope:Regular',sans-serif]"
-                      >
-                        <span className="text-[#ff3b3b] mt-1">•</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                {/* Technical Requirements - Only show if parsed from description */}
+                {descriptionContent.technical.length > 0 && (
+                  <div>
+                    <h4 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-3">
+                      Technical Requirements
+                    </h4>
+                    <ul className="space-y-2">
+                      {descriptionContent.technical.map((item, idx) => (
+                        <li
+                          key={idx}
+                          className="flex items-start gap-2 text-[14px] text-[#444444] font-['Manrope:Regular',sans-serif]"
+                        >
+                          <span className="text-[#ff3b3b] mt-1">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
 
               {/* Requirement Details Card (copied from AlsoNotify_Satyam_V3) */}

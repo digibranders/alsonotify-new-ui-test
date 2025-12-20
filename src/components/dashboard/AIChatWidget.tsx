@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { MessageCircle, X, Send, Sparkles, Loader2 } from "lucide-react";
 import { generateAgentResponse } from "@/services/assistant";
-import { message } from "antd";
+import { App } from "antd";
 
 // Note: Install react-markdown and remark-gfm if not already installed:
 // npm install react-markdown remark-gfm
@@ -26,6 +26,7 @@ const SUGGESTED_PROMPTS = [
 ];
 
 export function AIChatWidget() {
+  const { message } = App.useApp();
   const [isOpen, setIsOpen] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([
