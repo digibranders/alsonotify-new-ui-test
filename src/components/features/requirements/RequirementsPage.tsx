@@ -12,7 +12,7 @@ import { useWorkspaces, useCreateRequirement, useUpdateRequirement, useDeleteReq
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { format, differenceInDays, isPast, isToday, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear } from 'date-fns';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dayjs, { Dayjs } from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
@@ -420,7 +420,23 @@ export function RequirementsPage() {
     });
   }, [allRequirements, workspaceMap]);
 
-  const [activeStatusTab, setActiveStatusTab] = useState<string>('active');
+  // Read tab from URL params
+  const searchParams = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const initialTab = (tabFromUrl === 'draft' || tabFromUrl === 'pending' || tabFromUrl === 'active' || tabFromUrl === 'completed') 
+    ? tabFromUrl 
+    : 'active';
+  const [activeStatusTab, setActiveStatusTab] = useState<string>(initialTab);
+  
+  // Update tab when URL changes
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl === 'draft' || tabFromUrl === 'pending' || tabFromUrl === 'active' || tabFromUrl === 'completed') {
+      setActiveStatusTab(tabFromUrl);
+    } else if (tabFromUrl === null) {
+      setActiveStatusTab('active');
+    }
+  }, [searchParams]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReqs, setSelectedReqs] = useState<number[]>([]);
   

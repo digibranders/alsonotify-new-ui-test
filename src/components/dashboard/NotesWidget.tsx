@@ -100,7 +100,11 @@ export function NotesWidget({ onNavigate }: { onNavigate?: (page: string) => voi
                             <Plus className="size-5 text-[#ff3b3b]" strokeWidth={2} />
                         </button>
                     </div>
-                    <Link href="/dashboard/notes" className="flex items-center gap-1 text-[#666666] text-[14px] font-['Manrope:SemiBold',sans-serif] hover:text-[#111111] transition-colors">
+                    <Link 
+                        href="/dashboard/notes" 
+                        className="flex items-center gap-1 text-[#666666] hover:text-[#ff3b3b] text-[14px] font-['Manrope:SemiBold',sans-serif] transition-colors no-underline [&>span]:text-current [&>svg]:text-current"
+                        style={{ color: '#666666' }}
+                    >
                         <span>View All</span>
                         <svg className="size-[17px]" fill="none" viewBox="0 0 17 17">
                             <path d={svgPaths.p3ac7a560} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />

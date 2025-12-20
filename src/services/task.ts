@@ -306,3 +306,147 @@ export const getWorkLogByTaskId = async (
   }
 };
 
+/**
+ * Get tasks assigned to the current logged-in user
+ */
+export const getAssignedTasks = async (): Promise<ApiResponse<TaskType[]>> => {
+  try {
+    const { data } = await axiosApi.get<ApiResponse<TaskType[]>>(`/task/assigned`);
+    
+    if (!data || typeof data !== 'object') {
+      throw new ApiError('Invalid response format from server', 500);
+    }
+    
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    if (isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const message = getErrorMessage(error);
+      throw new ApiError(message, statusCode, error.response?.data);
+    }
+    
+    throw new NetworkError(getErrorMessage(error));
+  }
+};
+
+/**
+ * Get assigned task detail with timer information
+ * Returns: estimated_time, worked_time, active worklog, etc.
+ */
+export interface AssignedTaskDetailType {
+  estimated_time: number; // in hours
+  worked_time: number; // in seconds
+  status: string;
+  worked_sessions: number;
+  task_worklog?: {
+    id: number | null;
+    task_id: number;
+    description: string;
+    end_datetime: string | null;
+    start_datetime: string;
+    time_in_seconds: number | null;
+  } | null;
+}
+
+export const getAssignedTaskDetail = async (taskId: number): Promise<ApiResponse<AssignedTaskDetailType>> => {
+  try {
+    validateTaskId(taskId);
+    
+    const { data } = await axiosApi.get<ApiResponse<AssignedTaskDetailType>>(`/task/${taskId}/timer`);
+    
+    if (!data || typeof data !== 'object') {
+      throw new ApiError('Invalid response format from server', 500);
+    }
+    
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    if (isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const message = getErrorMessage(error);
+      throw new ApiError(message, statusCode, error.response?.data);
+    }
+    
+    throw new NetworkError(getErrorMessage(error));
+  }
+};
+
+/**
+ * Start a worklog/timer for a task
+ */
+export const startWorkLog = async (task_id: number, start_datetime: string): Promise<ApiResponse<Worklog>> => {
+  try {
+    validateTaskId(task_id);
+    
+    const { data } = await axiosApi.post<ApiResponse<Worklog>>(`/task/worklog/create`, {
+      task_id,
+      start_datetime
+    });
+    
+    if (!data || typeof data !== 'object') {
+      throw new ApiError('Invalid response format from server', 500);
+    }
+    
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    if (isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const message = getErrorMessage(error);
+      throw new ApiError(message, statusCode, error.response?.data);
+    }
+    
+    throw new NetworkError(getErrorMessage(error));
+  }
+};
+
+/**
+ * Update a worklog
+ */
+export interface UpdateWorklogPayload {
+  task_id: number;
+  start_datetime: string;
+  end_datetime: string;
+  description: string;
+}
+
+export const updateWorklog = async (params: UpdateWorklogPayload, worklogId: number): Promise<ApiResponse<Worklog>> => {
+  try {
+    validateTaskId(params.task_id);
+    
+    if (!worklogId || worklogId <= 0) {
+      throw new ApiError(`Invalid worklog ID: ${worklogId}`, 400);
+    }
+    
+    const { data } = await axiosApi.put<ApiResponse<Worklog>>(`/task/worklog/update/${worklogId}`, params);
+    
+    if (!data || typeof data !== 'object') {
+      throw new ApiError('Invalid response format from server', 500);
+    }
+    
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    if (isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const message = getErrorMessage(error);
+      throw new ApiError(message, statusCode, error.response?.data);
+    }
+    
+    throw new NetworkError(getErrorMessage(error));
+  }
+};
+
