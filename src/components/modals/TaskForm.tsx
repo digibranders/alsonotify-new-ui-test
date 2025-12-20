@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button, Input, Select, Checkbox, DatePicker, App, Modal } from 'antd';
 import { CheckSquare, Calendar } from 'lucide-react';
 import dayjs from 'dayjs';
+import { useUserDetails } from '@/hooks/useUser';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -27,6 +28,10 @@ interface TaskFormProps {
   users?: Array<{ id: number; name: string }>;
   requirements?: Array<{ id: number; name: string }>;
   workspaces?: Array<{ id: number; name: string }>;
+  disabledFields?: {
+    workspace?: boolean;
+    requirement?: boolean;
+  };
 }
 
 const defaultFormData: TaskFormData = {
@@ -49,17 +54,41 @@ export function TaskForm({
   users = [],
   requirements = [],
   workspaces = [],
+  disabledFields = {},
 }: TaskFormProps) {
   const { message } = App.useApp();
+  const { data: userDetailsData } = useUserDetails();
   const [formData, setFormData] = useState<TaskFormData>(defaultFormData);
+
+  // Get current logged-in user ID
+  const currentUserId = useMemo(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+        if (localUser && localUser.id) {
+          return String(localUser.id);
+        }
+      }
+    } catch (error) {
+      console.error("Error reading user from localStorage:", error);
+    }
+    const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
+    return apiUser.id ? String(apiUser.id) : '';
+  }, [userDetailsData]);
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      setFormData({
+        ...initialData,
+        leader_id: currentUserId || initialData.leader_id, // Auto-set leader to current user
+      });
     } else {
-      setFormData(defaultFormData);
+      setFormData({
+        ...defaultFormData,
+        leader_id: currentUserId, // Auto-set leader to current user
+      });
     }
-  }, [initialData]);
+  }, [initialData, currentUserId]);
 
   const handleSubmit = () => {
     // Validate required fields
@@ -99,7 +128,10 @@ export function TaskForm({
   };
 
   const handleReset = () => {
-    setFormData(defaultFormData);
+    setFormData({
+      ...defaultFormData,
+      leader_id: currentUserId, // Keep leader set to current user on reset
+    });
   };
 
   return (
@@ -136,6 +168,7 @@ export function TaskForm({
                 onChange={(val) => {
                   setFormData({ ...formData, project_id: String(val) });
                 }}
+                disabled={disabledFields.workspace}
                 suffixIcon={<div className="text-gray-400">⌄</div>}
               >
                 {workspaces.length > 0 ? (
@@ -195,6 +228,7 @@ export function TaskForm({
                 onChange={(val) => {
                   setFormData({ ...formData, requirement_id: String(val) });
                 }}
+                disabled={disabledFields.requirement}
                 suffixIcon={<div className="text-gray-400">⌄</div>}
               >
                 {requirements.length > 0 ? (
@@ -248,36 +282,13 @@ export function TaskForm({
           </div>
         </div>
 
-        {/* Leader and Member - Two columns below */}
-        <div className="grid grid-cols-2 gap-6 mb-6">
+        {/* Assigned To - Single field */}
+        <div className="mb-6">
           <div className="space-y-2">
-            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Leader</span>
-            <Select
-              className={`w-full h-11 employee-form-select ${formData.leader_id ? 'employee-form-select-filled' : ''}`}
-              placeholder="Select leader"
-              value={formData.leader_id || undefined}
-              onChange={(val) => {
-                setFormData({ ...formData, leader_id: String(val) });
-              }}
-              suffixIcon={<div className="text-gray-400">⌄</div>}
-            >
-              {users.length > 0 ? (
-                users.map((user) => (
-                  <Option key={user.id} value={user.id.toString()}>
-                    {user.name}
-                  </Option>
-                ))
-              ) : (
-                <Option value="none" disabled>No users available</Option>
-              )}
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Member</span>
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Assign To</span>
             <Select
               className={`w-full h-11 employee-form-select ${formData.member_id ? 'employee-form-select-filled' : ''}`}
-              placeholder="Select member"
+              placeholder="Select assigned to"
               value={formData.member_id || undefined}
               onChange={(val) => {
                 setFormData({ ...formData, member_id: String(val) });

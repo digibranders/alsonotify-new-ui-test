@@ -4,7 +4,7 @@ import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { Modal, Checkbox, Popover, App } from "antd";
 import { TaskForm } from '../../modals/TaskForm';
 import { TaskRow } from './rows/TaskRow';
-import { useTasks, useCreateTask } from '@/hooks/useTask';
+import { useTasks, useCreateTask, useDeleteTask, useUpdateTask } from '@/hooks/useTask';
 import { useWorkspaces } from '@/hooks/useWorkspace';
 import { searchUsersByName } from '@/services/user';
 import { useUserDetails, useCurrentUserCompany } from '@/hooks/useUser';
@@ -41,6 +41,12 @@ type UITask = {
   timelineLabel: string;
   // For date-range filtering
   dueDateValue: number | null;
+  // For editing
+  project_id?: number;
+  requirement_id?: number;
+  member_id?: number;
+  leader_id?: number;
+  description?: string;
 };
 
 type StatusTab = 'all' | 'In_Progress' | 'Completed' | 'Delayed';
@@ -90,6 +96,8 @@ export function TasksPage() {
   const searchParams = useSearchParams();
   const { message } = App.useApp();
   const createTaskMutation = useCreateTask();
+  const deleteTaskMutation = useDeleteTask();
+  const updateTaskMutation = useUpdateTask();
   const { data: workspacesData } = useWorkspaces();
   const { data: userDetailsData } = useUserDetails();
   const { data: companyData } = useCurrentUserCompany();
@@ -154,7 +162,8 @@ export function TasksPage() {
     user: 'All',
     company: 'All',
     workspace: 'All',
-    status: 'All'
+    status: 'All',
+    requirement: 'All'
   });
   
   // Track if filter has been initialized to avoid resetting user's manual changes
@@ -314,6 +323,15 @@ export function TasksPage() {
     return matchedStatus || 'Assigned'; // Default to Assigned
   };
 
+  // Create a map of requirement IDs to names for quick lookup
+  const requirementMap = useMemo(() => {
+    const map = new Map<number, string>();
+    requirementsDropdown.forEach(req => {
+      map.set(req.id, req.name);
+    });
+    return map;
+  }, [requirementsDropdown]);
+
   const tasks: UITask[] = useMemo(() => {
     if (!tasksData?.result) return [];
 
@@ -405,17 +423,32 @@ export function TasksPage() {
       // If there's a client company, it's client work; otherwise show in-house company name
       const displayCompanyName = clientCompanyName || inHouseCompanyName || 'In-House';
 
+      // Get requirement name - check multiple possible paths
+      // First try from API response (nested relation)
+      let requirementName = 
+        (t as any).requirement?.name ||
+        (t as any).task_requirement?.name ||
+        (t as any).requirement_relation?.name ||
+        (t as any).requirement_name ||
+        null;
+
+      // If not found in API response, look it up from the requirements dropdown map
+      if (!requirementName && t.requirement_id) {
+        requirementName = requirementMap.get(t.requirement_id) || null;
+      }
+
+      const requirementDisplay = requirementName
+        ? requirementName
+        : t.requirement_id
+          ? `Requirement ${t.requirement_id}`
+          : 'General';
+
       return {
         id: String(t.id),
         name: t.name || t.title || '',
         taskId: String(t.id),
         client: displayCompanyName,
-        project:
-          t.requirement?.name
-            ? t.requirement.name
-            : t.requirement_id
-              ? `Requirement ${t.requirement_id}`
-              : 'General',
+        project: requirementDisplay,
         leader:
           t.leader?.name ||
           (t as any).leader_user?.name ||
@@ -435,9 +468,15 @@ export function TasksPage() {
         timelineDate,
         timelineLabel,
         dueDateValue,
+        // Store IDs for editing
+        project_id: t.project_id,
+        requirement_id: t.requirement_id,
+        member_id: (t as any).member_user?.id || t.member_id,
+        leader_id: (t as any).leader_user?.id || t.leader_id,
+        description: t.description || '',
       };
     });
-  }, [tasksData]);
+  }, [tasksData, requirementMap, currentUserCompanyName]);
 
   useEffect(() => {
     // side-effects after tasks change (currently none)
@@ -460,10 +499,16 @@ export function TasksPage() {
 
   const statuses = useMemo(() => ['All', 'Assigned', 'In Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'], []);
 
+  const requirements = useMemo(() => {
+    const requirementNames = tasks.map(t => t.project).filter((name): name is string => typeof name === 'string' && name !== 'General');
+    return ['All', ...Array.from(new Set(requirementNames))];
+  }, [tasks]);
+
   const filterOptions: FilterOption[] = [
     { id: 'user', label: 'User', options: users, defaultValue: 'All' },
     { id: 'company', label: 'Company', options: companies, placeholder: 'Company' },
     { id: 'workspace', label: 'Workspace', options: workspaces, placeholder: 'Workspace' },
+    { id: 'requirement', label: 'Requirement', options: requirements, placeholder: 'Requirement' },
     { id: 'status', label: 'Status', options: statuses, placeholder: 'Status' }
   ];
 
@@ -483,7 +528,8 @@ export function TasksPage() {
       user: 'All',
       company: 'All',
       workspace: 'All',
-      status: 'All'
+      status: 'All',
+      requirement: 'All'
     });
     setSearchQuery('');
     // Reset to first page when clearing filters
@@ -521,6 +567,36 @@ export function TasksPage() {
     });
   };
 
+  // Handle edit task
+  const [editingTask, setEditingTask] = useState<any>(null);
+  const handleEditTask = (task: UITask) => {
+    setEditingTask(task);
+    setIsDialogOpen(true);
+  };
+
+  // Handle delete task
+  const handleDeleteTask = (taskId: string) => {
+    Modal.confirm({
+      title: 'Delete Task',
+      content: 'Are you sure you want to delete this task? This action cannot be undone.',
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: () => {
+        deleteTaskMutation.mutate(parseInt(taskId), {
+          onSuccess: () => {
+            message.success("Task deleted successfully!");
+          },
+          onError: (error: any) => {
+            const errorMessage =
+              error?.response?.data?.message || error?.message || "Failed to delete task";
+            message.error(errorMessage);
+          },
+        });
+      },
+    });
+  };
+
   // Get total count from API response
   const totalTasks = useMemo(() => {
     const firstTask = tasksData?.result?.[0] as any;
@@ -531,9 +607,10 @@ export function TasksPage() {
   // Workspace filtering is now done server-side via query params
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
-      // Client-side filtering for user, company (name-based)
+      // Client-side filtering for user, company, requirement (name-based)
       const matchesUser = filters.user === 'All' || task.assignedTo === filters.user;
       const matchesCompany = filters.company === 'All' || task.client === filters.company;
+      const matchesRequirement = filters.requirement === 'All' || task.project === filters.requirement;
 
       // Date filtering (client-side since API might not support it exactly as we need)
       let matchesDate = true;
@@ -548,7 +625,7 @@ export function TasksPage() {
         }
       }
 
-      return matchesUser && matchesCompany && matchesDate;
+      return matchesUser && matchesCompany && matchesRequirement && matchesDate;
     });
   }, [tasks, filters, dateRange]);
 
@@ -857,7 +934,10 @@ export function TasksPage() {
 
             <Modal
               open={isDialogOpen}
-              onCancel={() => setIsDialogOpen(false)}
+              onCancel={() => {
+                setIsDialogOpen(false);
+                setEditingTask(null);
+              }}
               footer={null}
               width={600}
               centered
@@ -869,8 +949,45 @@ export function TasksPage() {
               }}
             >
               <TaskForm
-                onSubmit={handleCreateTask}
-                onCancel={() => setIsDialogOpen(false)}
+                initialData={editingTask ? {
+                  name: editingTask.name,
+                  project_id: String(editingTask.project_id || ''),
+                  requirement_id: String(editingTask.requirement_id || ''),
+                  member_id: String(editingTask.member_id || ''),
+                  leader_id: String(editingTask.leader_id || ''),
+                  start_date: editingTask.startDate || '',
+                  estimated_time: String(editingTask.estTime || ''),
+                  high_priority: editingTask.priority === 'high',
+                  description: editingTask.description || '',
+                } : undefined}
+                isEditing={!!editingTask}
+                onSubmit={(data) => {
+                  if (editingTask) {
+                    // Update task
+                    updateTaskMutation.mutate({
+                      id: parseInt(editingTask.id),
+                      ...data,
+                    } as any, {
+                      onSuccess: () => {
+                        message.success("Task updated successfully!");
+                        setIsDialogOpen(false);
+                        setEditingTask(null);
+                      },
+                      onError: (error: any) => {
+                        const errorMessage =
+                          error?.response?.data?.message || error?.message || "Failed to update task";
+                        message.error(errorMessage);
+                      },
+                    });
+                  } else {
+                    // Create task
+                    handleCreateTask(data);
+                  }
+                }}
+                onCancel={() => {
+                  setIsDialogOpen(false);
+                  setEditingTask(null);
+                }}
                 users={usersDropdown}
                 requirements={requirementsDropdown}
                 workspaces={workspacesData?.result?.projects?.map((p: any) => ({
@@ -978,6 +1095,8 @@ export function TasksPage() {
               task={task}
               selected={selectedTasks.includes(task.id)}
               onSelect={() => toggleSelect(task.id)}
+              onEdit={() => handleEditTask(task)}
+              onDelete={() => handleDeleteTask(task.id)}
             />
           ))}
         </div>

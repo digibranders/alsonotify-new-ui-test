@@ -62,16 +62,23 @@ export function ProductivityWidget() {
       generateAgentResponse(data.prompt, data.history),
   });
 
-  // Timer effect
+  // Timer effect - also check if task is completed
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isRunning) {
+    // Don't run timer if task is completed
+    const taskStatus = (taskDetail?.status || '').toLowerCase();
+    const isTaskCompleted = taskStatus.includes('completed') || taskStatus === 'done';
+    
+    if (isRunning && !isTaskCompleted) {
       interval = setInterval(() => {
         setTime((prevTime) => prevTime + 1);
       }, 1000);
+    } else if (isTaskCompleted) {
+      // If task is completed, stop the timer
+      setIsRunning(false);
     }
     return () => clearInterval(interval);
-  }, [isRunning]);
+  }, [isRunning, taskDetail]);
 
   // Animate popup on open
   useEffect(() => {
@@ -155,6 +162,18 @@ export function ProductivityWidget() {
     if (taskDetailData?.result) {
       setTaskDetail(taskDetailData.result);
       
+      // Don't restore timer if task is completed
+      const taskStatus = (taskDetailData.result.status || '').toLowerCase();
+      if (taskStatus.includes('completed') || taskStatus === 'done') {
+        // Task is completed, stop timer and clear state
+        setIsRunning(false);
+        setTime(0);
+        setStartTime("");
+        setWorklogId(null);
+        localStorage.removeItem("activeTimer");
+        return;
+      }
+      
       // Check if there's an active worklog (no end_datetime)
       const activeWorklog = taskDetailData.result.task_worklog;
       if (activeWorklog && !activeWorklog.end_datetime && activeWorklog.start_datetime) {
@@ -180,6 +199,9 @@ export function ProductivityWidget() {
             })
           );
         }
+      } else {
+        // No active worklog, ensure timer is stopped
+        setIsRunning(false);
       }
     }
   }, [taskDetailData, selectedTaskId, tasks]);
@@ -228,6 +250,33 @@ export function ProductivityWidget() {
 
     const task = tasks.find(t => t.name === selectedTask);
     if (!task) return;
+
+    // Check if task is completed - don't allow starting timer for completed tasks
+    const taskStatus = (task.status || '').toLowerCase();
+    if (taskStatus.includes('completed') || taskStatus === 'done') {
+      antdMessage.warning("Cannot start timer for a completed task");
+      setIsRunning(false);
+      return;
+    }
+
+    // Check if this is a rework task - only allow starting timer for rework tasks
+    // A rework task is one that has been worked on before (has completed worklogs)
+    // This is indicated by worked_sessions > 0 in the task detail
+    // OR if task is in "Review" status (was completed and is under review)
+    const isReviewStatus = taskStatus.includes('review');
+    const hasPreviousWork = taskDetail && taskDetail.worked_sessions > 0;
+    const isRework = isReviewStatus || hasPreviousWork;
+
+    if (!isRework && !isRunning) {
+      // Only allow starting timer if it's a rework task
+      // If task detail is not loaded yet, wait for it to check rework status
+      if (!taskDetail && selectedTaskId) {
+        antdMessage.warning("Loading task details... Please try again in a moment.");
+        return;
+      }
+      antdMessage.warning("Timer can only be started for rework tasks. Please complete the task first to enable rework.");
+      return;
+    }
 
     const newIsRunning = !isRunning;
     
@@ -338,6 +387,9 @@ export function ProductivityWidget() {
         { params: payload, worklogId },
         {
           onSuccess: () => {
+            // Stop timer immediately when worklog is closed
+            setIsRunning(false);
+            
             // Update task status based on action
             const newStatus = worklogAction === 'stuck' ? 'Stuck' : 'Completed';
             updateStatusMutation.mutate(
@@ -351,15 +403,17 @@ export function ProductivityWidget() {
                   );
                   
                   // Clear timer state
-                  if (worklogAction === 'complete') {
-                    setSelectedTask("");
-                    setTime(0);
-                  }
-                  
-                  // Clear localStorage
-                  localStorage.removeItem("activeTimer");
+                  setTime(0);
                   setStartTime("");
                   setWorklogId(null);
+                  localStorage.removeItem("activeTimer");
+                  
+                  // If completed, clear selection
+                  if (worklogAction === 'complete') {
+                    setSelectedTask("");
+                    setSelectedTaskId(null);
+                    setTaskDetail(null);
+                  }
                   
                   // Refetch task detail to update worked_time
                   if (selectedTaskId) {
@@ -369,13 +423,6 @@ export function ProductivityWidget() {
                   // Close modal
                   setShowWorklogModal(false);
                   setWorklogAction(null);
-                  
-                  // If completed, clear selection
-                  if (worklogAction === 'complete') {
-                    setSelectedTask("");
-                    setSelectedTaskId(null);
-                    setTaskDetail(null);
-                  }
                   
                   // Add AI message for stuck
                   if (worklogAction === 'stuck') {
@@ -403,31 +450,106 @@ export function ProductivityWidget() {
         }
       );
     } else {
-      // No active worklog, just update status
-      const newStatus = worklogAction === 'stuck' ? 'Stuck' : 'Completed';
-      updateStatusMutation.mutate(
-        { id: task.id, status: newStatus },
-        {
-          onSuccess: () => {
-            antdMessage.success(
-              worklogAction === 'stuck'
-                ? `Marked "${task.name}" as stuck`
-                : `Marked "${task.name}" as completed`
-            );
-            
-            if (worklogAction === 'complete') {
-              setSelectedTask("");
-              setTime(0);
+      // No active worklog, but check if there's an open worklog that needs to be closed
+      // First, check if there's an active worklog in task detail
+      if (taskDetail?.task_worklog && !taskDetail.task_worklog.end_datetime && taskDetail.task_worklog.id) {
+        // Close the active worklog first
+        const payload = {
+          task_id: task.id,
+          start_datetime: taskDetail.task_worklog.start_datetime,
+          end_datetime: new Date().toISOString(),
+          description,
+        };
+
+        updateWorklogMutation.mutate(
+          { params: payload, worklogId: taskDetail.task_worklog.id },
+          {
+            onSuccess: () => {
+              // Then update task status
+              const newStatus = worklogAction === 'stuck' ? 'Stuck' : 'Completed';
+              updateStatusMutation.mutate(
+                { id: task.id, status: newStatus },
+                {
+                  onSuccess: () => {
+                    antdMessage.success(
+                      worklogAction === 'stuck'
+                        ? `Marked "${task.name}" as stuck`
+                        : `Marked "${task.name}" as completed`
+                    );
+                    
+                    // Clear timer state
+                    setIsRunning(false);
+                    setTime(0);
+                    setStartTime("");
+                    setWorklogId(null);
+                    localStorage.removeItem("activeTimer");
+                    
+                    if (worklogAction === 'complete') {
+                      setSelectedTask("");
+                      setSelectedTaskId(null);
+                      setTaskDetail(null);
+                    }
+                    
+                    // Refetch task detail
+                    if (selectedTaskId) {
+                      refetchTaskDetail();
+                    }
+                    
+                    setShowWorklogModal(false);
+                    setWorklogAction(null);
+                  },
+                  onError: () => {
+                    antdMessage.error("Failed to update task status");
+                  }
+                }
+              );
+            },
+            onError: (error: any) => {
+              antdMessage.error("Failed to close worklog");
+              console.error("Update worklog error:", error);
             }
-            
-            setShowWorklogModal(false);
-            setWorklogAction(null);
-          },
-          onError: () => {
-            antdMessage.error("Failed to update task status");
           }
-        }
-      );
+        );
+      } else {
+        // No active worklog, just update status
+        const newStatus = worklogAction === 'stuck' ? 'Stuck' : 'Completed';
+        updateStatusMutation.mutate(
+          { id: task.id, status: newStatus },
+          {
+            onSuccess: () => {
+              antdMessage.success(
+                worklogAction === 'stuck'
+                  ? `Marked "${task.name}" as stuck`
+                  : `Marked "${task.name}" as completed`
+              );
+              
+              // Clear timer state
+              setIsRunning(false);
+              setTime(0);
+              setStartTime("");
+              setWorklogId(null);
+              localStorage.removeItem("activeTimer");
+              
+              if (worklogAction === 'complete') {
+                setSelectedTask("");
+                setSelectedTaskId(null);
+                setTaskDetail(null);
+              }
+              
+              // Refetch task detail
+              if (selectedTaskId) {
+                refetchTaskDetail();
+              }
+              
+              setShowWorklogModal(false);
+              setWorklogAction(null);
+            },
+            onError: () => {
+              antdMessage.error("Failed to update task status");
+            }
+          }
+        );
+      }
     }
   };
 
@@ -547,6 +669,9 @@ export function ProductivityWidget() {
       setStartTime("");
       setWorklogId(null);
       localStorage.removeItem("activeTimer");
+      
+      // Task detail will be fetched automatically via the useQuery hook when selectedTaskId changes
+      // This will allow us to check if it's a rework task (worked_sessions > 0)
     }
   };
 

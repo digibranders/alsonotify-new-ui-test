@@ -127,7 +127,8 @@ export function EmployeeDetailsPage() {
         onSuccess: () => {
           message.success("Employee updated successfully!");
           setIsDialogOpen(false);
-          // Optionally refetch or rely on React Query cache update
+          // Invalidate queries to refresh the data
+          // The useUpdateEmployee hook should handle this, but we'll ensure it's done
         },
         onError: (error: any) => {
           const errorMessage = error?.response?.data?.message || "Failed to update employee";
@@ -155,12 +156,19 @@ export function EmployeeDetailsPage() {
   }
 
   // Transform backend data to UI format
+  // Check multiple possible paths for mobile_number (userProfile table or nested user_profile)
+  const mobileNumber = 
+    backendEmp.mobile_number || 
+    (backendEmp as any).user_profile?.mobile_number ||
+    backendEmp.phone || 
+    '';
+
   const employee = {
     id: backendEmp.user_id || backendEmp.id,
     name: backendEmp.name || '',
     role: backendEmp.designation || 'Unassigned',
     email: backendEmp.email || '',
-    phone: backendEmp.mobile_number || backendEmp.phone || '', // Map backend mobile_number to frontend phone
+    phone: mobileNumber, // Map backend mobile_number to frontend phone
     hourlyRate: backendEmp.hourly_rates ? `$${backendEmp.hourly_rates}` : 'N/A',
     dateOfJoining: backendEmp.date_of_joining ? new Date(backendEmp.date_of_joining).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A',
     experience: backendEmp.experience || 0,

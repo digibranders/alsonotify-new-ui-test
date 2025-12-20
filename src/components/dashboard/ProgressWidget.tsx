@@ -265,6 +265,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
     let completed = 0;
     let inProgress = 0;
     let delayed = 0;
+    let total = 0;
 
     allRequirements.forEach((req: any) => {
       // Filter by date if range is selected
@@ -275,6 +276,9 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
           return;
         }
       }
+
+      // Count this requirement in the total
+      total++;
 
       const status = req.status?.toLowerCase() || '';
       // Requirement statuses: Assigned, In_Progress, On_Hold, Submitted, Completed, Waiting, Rejected, Review, Revision, Impediment, Stuck
@@ -288,7 +292,6 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
       }
     });
 
-    const total = allRequirements.length;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     return { completed, total, percentage, inProgress, delayed };
@@ -422,6 +425,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
           title="Requirements"
           data={requirementsData}
           isLoading={isLoading}
+          dateRangeLabel={getRangeLabel()}
           onClick={() => onNavigate && onNavigate('requirements')}
           onStatusClick={(status: string) => {
             if (onNavigate) {
@@ -443,6 +447,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
           title="Tasks"
           data={taskData}
           isLoading={isLoading}
+          dateRangeLabel={getRangeLabel()}
           onClick={() => onNavigate && onNavigate('tasks')}
           onStatusClick={(status: string) => {
             if (onNavigate) {
@@ -474,11 +479,12 @@ interface ProgressCardProps {
     delayed: number;
   };
   isLoading?: boolean;
+  dateRangeLabel?: string;
   onClick?: () => void;
   onStatusClick?: (status: string) => void;
 }
 
-function ProgressCard({ title, data, isLoading = false, onClick, onStatusClick }: ProgressCardProps) {
+function ProgressCard({ title, data, isLoading = false, dateRangeLabel = 'this period', onClick, onStatusClick }: ProgressCardProps) {
   const chartData = [
     { name: 'Completed', value: data.completed, color: '#FF3B3B' },
     { name: 'In Progress', value: data.inProgress, color: '#FF6B6B' },
@@ -538,6 +544,41 @@ function ProgressCard({ title, data, isLoading = false, onClick, onStatusClick }
                 <Label
                   content={({ viewBox }) => {
                     if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                      // If total is 0, show a message instead of "0 Total"
+                      if (data.total === 0) {
+                        const itemType = title.toLowerCase();
+                        // Create a more readable message based on date range
+                        let periodText = (dateRangeLabel || 'this period').toLowerCase();
+                        // Handle custom date ranges (format: "MMM D - MMM D")
+                        if (periodText.includes(' - ')) {
+                          periodText = 'this period';
+                        }
+                        return (
+                          <text
+                            x={viewBox.cx}
+                            y={viewBox.cy}
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                          >
+                            <tspan
+                              x={viewBox.cx}
+                              y={(viewBox.cy || 0) - 8}
+                              className="fill-[#666666] text-[10px] font-medium font-['Manrope',sans-serif]"
+                            >
+                              No {itemType}
+                            </tspan>
+                            <tspan
+                              x={viewBox.cx}
+                              y={(viewBox.cy || 0) + 8}
+                              className="fill-[#666666] text-[10px] font-medium font-['Manrope',sans-serif]"
+                            >
+                              {periodText}
+                            </tspan>
+                          </text>
+                        );
+                      }
+                      
+                      // Otherwise show the total number
                       return (
                         <text
                           x={viewBox.cx}
@@ -550,7 +591,7 @@ function ProgressCard({ title, data, isLoading = false, onClick, onStatusClick }
                             y={viewBox.cy}
                             className="fill-[#111111] text-3xl font-extrabold font-['Manrope',sans-serif] tracking-tight"
                           >
-                            {data.total}
+                            {data.total || 0}
                           </tspan>
                           <tspan
                             x={viewBox.cx}
@@ -589,12 +630,16 @@ function ProgressCard({ title, data, isLoading = false, onClick, onStatusClick }
             >
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full shrink-0 ring-2 ring-white shadow-sm" style={{ backgroundColor: item.color }} />
-                <span className="text-[13px] text-[#666666] font-medium font-['Manrope',sans-serif] whitespace-nowrap group-hover/item:text-[#111111] transition-colors">
+                <span className={`text-[13px] font-medium font-['Manrope',sans-serif] whitespace-nowrap group-hover/item:text-[#111111] transition-colors ${
+                  item.value > 0 ? 'text-[#111111]' : 'text-[#666666]'
+                }`}>
                   {item.name === 'In Progress' ? 'In Progress' : item.name}
                 </span>
               </div>
-              <span className="text-[16px] font-bold text-[#111111] font-['Manrope',sans-serif]">
-                {item.value}
+              <span className={`text-[16px] font-bold font-['Manrope',sans-serif] ${
+                item.value > 0 ? 'text-[#111111]' : 'text-[#666666]'
+              }`}>
+                {item.value || 0}
               </span>
             </div>
           ))}

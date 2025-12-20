@@ -134,11 +134,17 @@ export const updateCurrentUserProfile = async (params: {
   name: string;
   email: string;
   phone?: string;
+  mobile_number?: string;
   designation?: string;
   [key: string]: any;
 }): Promise<ApiResponse<UserType>> => {
   try {
-    const { data } = await axiosApi.post<ApiResponse<UserType>>(`/user/profile`, params);
+    // Ensure mobile_number is sent if phone is provided
+    const payload = {
+      ...params,
+      mobile_number: params.mobile_number || params.phone,
+    };
+    const { data } = await axiosApi.post<ApiResponse<UserType>>(`/user/profile`, payload);
     return data;
   } catch (error) {
     throw error;
