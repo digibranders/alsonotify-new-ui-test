@@ -800,6 +800,18 @@ function MeetingItem({
       .slice(0, 2);
   };
 
+  // Truncate organizer name to 12 characters (to fit before attendees section)
+  const truncateOrganizer = (name: string, maxLength: number = 12) => {
+    if (name.length <= maxLength) return name;
+    return name.slice(0, maxLength) + '...';
+  };
+
+  // Truncate meeting title to 27 characters (to align with red line position)
+  const truncateTitle = (title: string, maxLength: number = 27) => {
+    if (title.length <= maxLength) return title;
+    return title.slice(0, maxLength) + '...';
+  };
+
   // Platform colors
   const getPlatformColor = (platform: string) => {
     switch (platform.toLowerCase()) {
@@ -927,7 +939,7 @@ function MeetingItem({
             {/* Title & Platform Tag */}
             <div className="flex items-start justify-between gap-2 mb-1">
               <h4 className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] line-clamp-1 flex-1">
-                {title}
+                {truncateTitle(title)}
               </h4>
               {joinUrl ? (
                 <button
@@ -962,7 +974,7 @@ function MeetingItem({
                   <span>{time}</span>
                 </div>
                 <div className="w-1 h-1 rounded-full bg-[#CCCCCC]" />
-                <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">Host: {organizer}</span>
+                <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">Host: {truncateOrganizer(organizer)}</span>
               </div>
 
               {/* Attendees - Aligned to the right on same line */}
