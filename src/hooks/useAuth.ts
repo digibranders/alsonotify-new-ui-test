@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { doLogin, doSignup } from "../services/auth";
+import { doLogin, doSignup, forgetPassword } from "../services/auth";
 import { setToken, deleteToken, getToken } from "../services/cookies";
 import axiosApi from "../config/axios";
 import { getUserDetails } from "../services/user";
@@ -29,6 +29,12 @@ export const useRegister = () => {
   });
 };
 
+export const useForgotPassword = () => {
+  return useMutation({
+    mutationFn: (email: string) => forgetPassword(email),
+  });
+};
+
 export const useLogout = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -43,7 +49,7 @@ export const useLogout = () => {
 
 export const useUser = () => {
   const token = getToken();
-  
+
   return useQuery({
     queryKey: ["user"],
     queryFn: getUserDetails,
