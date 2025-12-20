@@ -423,6 +423,20 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
           data={requirementsData}
           isLoading={isLoading}
           onClick={() => onNavigate && onNavigate('requirements')}
+          onStatusClick={(status: string) => {
+            if (onNavigate) {
+              // Map status to requirements page tab
+              let tab = 'active'; // Default to active tab
+              if (status === 'Completed') {
+                tab = 'completed';
+              } else if (status === 'In Progress') {
+                tab = 'active';
+              } else if (status === 'Delayed') {
+                tab = 'active'; // Delayed is part of active tab
+              }
+              onNavigate(`requirements?tab=${tab}`);
+            }
+          }}
         />
 
         <ProgressCard
@@ -430,6 +444,20 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
           data={taskData}
           isLoading={isLoading}
           onClick={() => onNavigate && onNavigate('tasks')}
+          onStatusClick={(status: string) => {
+            if (onNavigate) {
+              // Map status to tasks page tab
+              let tab = 'all';
+              if (status === 'In Progress') {
+                tab = 'In_Progress';
+              } else if (status === 'Completed') {
+                tab = 'Completed';
+              } else if (status === 'Delayed') {
+                tab = 'Delayed';
+              }
+              onNavigate(`tasks?tab=${tab}`);
+            }
+          }}
         />
       </div>
     </div>
@@ -447,9 +475,10 @@ interface ProgressCardProps {
   };
   isLoading?: boolean;
   onClick?: () => void;
+  onStatusClick?: (status: string) => void;
 }
 
-function ProgressCard({ title, data, isLoading = false, onClick }: ProgressCardProps) {
+function ProgressCard({ title, data, isLoading = false, onClick, onStatusClick }: ProgressCardProps) {
   const chartData = [
     { name: 'Completed', value: data.completed, color: '#FF3B3B' },
     { name: 'In Progress', value: data.inProgress, color: '#FF6B6B' },
@@ -546,7 +575,17 @@ function ProgressCard({ title, data, isLoading = false, onClick }: ProgressCardP
           {chartData.map((item) => (
             <div
               key={item.name}
-              className="flex items-center justify-between w-full py-2 border-b border-gray-50 last:border-0 group/item transition-colors hover:bg-gray-50/50 rounded-lg px-2 -mx-2"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onStatusClick) {
+                  onStatusClick(item.name);
+                }
+              }}
+              className={`flex items-center justify-between w-full py-2 border-b border-gray-50 last:border-0 group/item transition-colors rounded-lg px-2 -mx-2 ${
+                onStatusClick
+                  ? 'hover:bg-gray-50/50 cursor-pointer'
+                  : 'cursor-default'
+              } ${item.value === 0 ? 'opacity-60' : ''}`}
             >
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full shrink-0 ring-2 ring-white shadow-sm" style={{ backgroundColor: item.color }} />

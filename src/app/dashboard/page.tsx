@@ -22,10 +22,15 @@ export default function DashboardPage() {
         <div className="grid grid-cols-3 gap-5 flex-1">
           <div className="col-span-2 h-full">
             <ProgressWidget onNavigate={(page: string) => {
-              if (page === 'requirements') {
-                router.push('/dashboard/kanban');
-              } else if (page === 'tasks') {
-                router.push('/dashboard/tasks');
+              // Handle filtered navigation with query params
+              if (page.startsWith('requirements')) {
+                // Extract query string if present (e.g., "requirements?tab=active")
+                const queryPart = page.includes('?') ? page.substring(page.indexOf('?')) : '';
+                router.push(`/dashboard/kanban${queryPart}`);
+              } else if (page.startsWith('tasks')) {
+                // Extract query string if present (e.g., "tasks?tab=In_Progress")
+                const queryPart = page.includes('?') ? page.substring(page.indexOf('?')) : '';
+                router.push(`/dashboard/tasks${queryPart}`);
               }
             }} />
           </div>

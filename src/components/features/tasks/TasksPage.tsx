@@ -7,8 +7,9 @@ import { TaskRow } from './rows/TaskRow';
 import { useTasks, useCreateTask } from '@/hooks/useTask';
 import { useWorkspaces } from '@/hooks/useWorkspace';
 import { searchUsersByName } from '@/services/user';
+import { useUserDetails } from '@/hooks/useUser';
 import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dayjs, { Dayjs } from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
@@ -86,17 +87,64 @@ const toQueryParams = (params: Record<string, any>): string => {
 
 export function TasksPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { message } = App.useApp();
   const createTaskMutation = useCreateTask();
   const { data: workspacesData } = useWorkspaces();
-  const [activeTab, setActiveTab] = useState<StatusTab>('all');
+  const { data: userDetailsData } = useUserDetails();
+  
+  // Get current user name
+  const currentUserName = useMemo(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
+        if (localUser && localUser.name) {
+          return localUser.name;
+        }
+      }
+    } catch (error) {
+      console.error("Error reading user from localStorage:", error);
+    }
+    const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
+    return apiUser.name || apiUser.user_profile?.first_name || null;
+  }, [userDetailsData]);
+  
+  // Read tab from URL params
+  const tabFromUrl = searchParams.get('tab');
+  const initialTab = (tabFromUrl === 'In_Progress' || tabFromUrl === 'Completed' || tabFromUrl === 'Delayed') 
+    ? tabFromUrl as StatusTab 
+    : 'all';
+  const [activeTab, setActiveTab] = useState<StatusTab>(initialTab);
+  
+  // Update tab when URL changes
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab');
+    if (tabFromUrl === 'In_Progress' || tabFromUrl === 'Completed' || tabFromUrl === 'Delayed') {
+      setActiveTab(tabFromUrl as StatusTab);
+    } else if (tabFromUrl === null) {
+      setActiveTab('all');
+    }
+  }, [searchParams]);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Initialize filters
   const [filters, setFilters] = useState<Record<string, string>>({
     user: 'All',
     company: 'All',
     workspace: 'All',
     status: 'All'
   });
+  
+  // Track if filter has been initialized to avoid resetting user's manual changes
+  const [filterInitialized, setFilterInitialized] = useState(false);
+  
+  // Set initial filter to current user when page loads (only once)
+  useEffect(() => {
+    if (currentUserName && !filterInitialized) {
+      setFilters(prev => ({ ...prev, user: currentUserName }));
+      setFilterInitialized(true);
+    }
+  }, [currentUserName, filterInitialized]);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   
   // Pagination state

@@ -6,6 +6,7 @@ import {
   updateTask,
   deleteTaskById,
   updateTaskStatusById,
+  getWorkLogByTaskId,
   type TaskType,
 } from "../services/task";
 
@@ -68,7 +69,16 @@ export const useUpdateTaskStatus = () => {
     mutationFn: ({ id, status }: { id: number; status: string }) => updateTaskStatusById(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["assignedTasks"] });
     },
+  });
+};
+
+export const useWorklogs = (taskId: number, limit = 50, skip = 0) => {
+  return useQuery({
+    queryKey: ["worklogs", taskId, limit, skip],
+    queryFn: () => getWorkLogByTaskId(taskId, limit, skip),
+    enabled: !!taskId,
   });
 };
 
