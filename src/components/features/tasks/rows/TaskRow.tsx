@@ -1,7 +1,8 @@
-import { Checkbox, Tooltip } from "antd";
-import { AlertCircle, CheckCircle2, Clock, Loader2, MoreVertical, ArrowRightCircle, Eye, XCircle, Ban } from "lucide-react";
+import { Checkbox, Tooltip, Dropdown } from "antd";
+import { AlertCircle, CheckCircle2, Clock, Loader2, MoreVertical, ArrowRightCircle, Eye, XCircle, Ban, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { MenuProps } from "antd";
 
 export interface Task {
   id: string;
@@ -26,12 +27,16 @@ interface TaskRowProps {
   task: Task;
   selected: boolean;
   onSelect: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export function TaskRow({
   task,
   selected,
-  onSelect
+  onSelect,
+  onEdit,
+  onDelete
 }: TaskRowProps) {
   const router = useRouter();
   const progress = task.estTime > 0 ? (task.timeSpent / task.estTime) * 100 : 0;
@@ -200,9 +205,33 @@ export function TaskRow({
 
         {/* Actions */}
         <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-          <button className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F7F7F7] transition-colors">
-            <MoreVertical className="w-4 h-4 text-[#666666]" />
-          </button>
+          <Dropdown
+            menu={{
+              items: [
+                {
+                  key: 'edit',
+                  label: 'Edit',
+                  icon: <Edit className="w-3.5 h-3.5" />,
+                  onClick: () => onEdit?.(),
+                  className: "text-[13px] font-['Manrope:Medium',sans-serif]"
+                },
+                {
+                  key: 'delete',
+                  label: 'Delete',
+                  icon: <Trash2 className="w-3.5 h-3.5" />,
+                  onClick: () => onDelete?.(),
+                  danger: true,
+                  className: "text-[13px] font-['Manrope:Medium',sans-serif]"
+                }
+              ] as MenuProps['items']
+            }}
+            trigger={['click']}
+            placement="bottomRight"
+          >
+            <button className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F7F7F7] transition-colors">
+              <MoreVertical className="w-4 h-4 text-[#666666]" />
+            </button>
+          </Dropdown>
         </div>
       </div>
     </div>

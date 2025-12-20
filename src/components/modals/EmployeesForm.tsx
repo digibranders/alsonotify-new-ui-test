@@ -208,7 +208,7 @@ export function EmployeeForm({
                 value={formData.access}
                 onChange={(v) => setFormData({ ...formData, access: v as "Admin" | "Manager" | "Leader" | "Employee" })}
                 suffixIcon={<div className="text-gray-400">⌄</div>}
-                dropdownRender={(menu) => (
+                popupRender={(menu) => (
                   <div className="bg-white overflow-hidden access-level-dropdown">
                     {menu}
                   </div>

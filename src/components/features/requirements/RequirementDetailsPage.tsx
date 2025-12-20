@@ -16,14 +16,17 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { Checkbox, Breadcrumb, Button, Tooltip, Dropdown, MenuProps, App } from "antd";
+import { Checkbox, Breadcrumb, Button, Tooltip, Dropdown, MenuProps, App, Modal } from "antd";
 import { TabBar } from '../../layout/TabBar';
 import { useParams, useRouter } from 'next/navigation';
 import { useWorkspace, useRequirements } from '@/hooks/useWorkspace';
-import { useTasks } from '@/hooks/useTask';
+import { useTasks, useCreateTask } from '@/hooks/useTask';
 import { SubTask } from '@/types/genericTypes';
 import Image from "next/image";
 import { GanttChart } from './GanttChart';
+import { TaskForm } from '../../modals/TaskForm';
+import { searchUsersByName } from '@/services/user';
+import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
 
 export function RequirementDetailsPage() {
   const { message } = App.useApp();
@@ -176,6 +179,12 @@ export function RequirementDetailsPage() {
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [messageText, setMessageText] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
+  
+  // Task form modal state
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [usersDropdown, setUsersDropdown] = useState<Array<{ id: number; name: string }>>([]);
+  const [requirementsDropdown, setRequirementsDropdown] = useState<Array<{ id: number; name: string }>>([]);
+  const createTaskMutation = useCreateTask();
 
   if (isLoadingWorkspace || isLoadingRequirements) {
     return <div className="p-8">Loading requirement details...</div>;
@@ -286,6 +295,71 @@ export function RequirementDetailsPage() {
 
   const descriptionContent = parseDescription(requirement.description);
 
+  // Fetch users and requirements for form dropdowns
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await searchUsersByName();
+        if (response.success) {
+          const transformed = (response.result || []).map((item: any) => ({
+            id: item.value || item.id,
+            name: item.label || item.name,
+          }));
+          setUsersDropdown(transformed);
+        }
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    const fetchRequirements = async () => {
+      try {
+        if (!workspaceData?.result) return;
+        try {
+          const response = await getRequirementsDropdownByWorkspaceId(workspaceId);
+          if (response.success && response.result) {
+            setRequirementsDropdown(response.result);
+          }
+        } catch (error) {
+          console.error(`Failed to fetch requirements for workspace ${workspaceId}:`, error);
+        }
+      } catch (error) {
+        console.error('Failed to fetch requirements:', error);
+      }
+    };
+    fetchRequirements();
+  }, [workspaceData, workspaceId]);
+
+  // Handle create task
+  const handleCreateTask = async (data: any) => {
+    if (!data?.start_date) {
+      message.error("Start Date is required");
+      return;
+    }
+
+    // Pre-fill requirement_id and project_id from current requirement
+    const taskData = {
+      ...data,
+      requirement_id: String(reqId),
+      project_id: String(workspaceId),
+    };
+
+    createTaskMutation.mutate(taskData as any, {
+      onSuccess: () => {
+        message.success("Task created successfully!");
+        setIsDialogOpen(false);
+      },
+      onError: (error: any) => {
+        const errorMessage =
+          error?.response?.data?.message || error?.message || "Failed to create task";
+        message.error(errorMessage);
+      },
+    });
+  };
+
   return (
     <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] flex overflow-hidden">
       {/* Main Content */}
@@ -379,9 +453,12 @@ export function RequirementDetailsPage() {
                 
                 {/* Overview */}
                 <div className="mb-6">
-                  <p className="text-[14px] text-[#444444] font-['Manrope:Regular',sans-serif] leading-relaxed whitespace-pre-wrap">
-                    {requirement.description || 'No description provided.'}
-                  </p>
+                  <div 
+                    className="text-[14px] text-[#444444] font-['Manrope:Regular',sans-serif] leading-relaxed prose prose-sm max-w-none [&>p]:mb-3 [&>p]:last:mb-0 [&>p]:text-[#444444]"
+                    dangerouslySetInnerHTML={{ 
+                      __html: requirement.description || '<p class="text-[#999999]">No description provided.</p>' 
+                    }}
+                  />
                 </div>
 
                 {/* Key Deliverables - Only show if parsed from description */}
@@ -537,7 +614,12 @@ export function RequirementDetailsPage() {
                     <ListTodo className="w-5 h-5 text-[#ff3b3b]" />
                     Tasks Breakdown
                   </h3>
-                  <Button icon={<Plus className="w-4 h-4" />} size="small" className="text-[12px] flex items-center">
+                  <Button 
+                    icon={<Plus className="w-4 h-4" />} 
+                    size="small" 
+                    className="text-[12px] flex items-center"
+                    onClick={() => setIsDialogOpen(true)}
+                  >
                     Add Task
                   </Button>
                 </div>
@@ -1280,6 +1362,47 @@ export function RequirementDetailsPage() {
           </div>
         </div>
       </div>
+
+      {/* Task Form Modal */}
+      <Modal
+        open={isDialogOpen}
+        onCancel={() => setIsDialogOpen(false)}
+        footer={null}
+        width={600}
+        centered
+        className="rounded-[16px] overflow-hidden"
+        styles={{
+          body: {
+            padding: 0,
+          },
+        }}
+      >
+        <TaskForm
+          initialData={{
+            project_id: String(workspaceId),
+            requirement_id: String(reqId),
+            name: '',
+            member_id: '',
+            leader_id: '',
+            start_date: '',
+            estimated_time: '',
+            high_priority: false,
+            description: '',
+          }}
+          onSubmit={handleCreateTask}
+          onCancel={() => setIsDialogOpen(false)}
+          users={usersDropdown}
+          requirements={requirementsDropdown}
+          workspaces={workspaceData?.result ? [{
+            id: workspaceData.result.id,
+            name: workspaceData.result.name,
+          }] : []}
+          disabledFields={{
+            workspace: true,
+            requirement: true,
+          }}
+        />
+      </Modal>
     </div>
   );
 }
