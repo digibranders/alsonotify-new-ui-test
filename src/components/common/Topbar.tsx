@@ -58,7 +58,7 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
   const { message } = App.useApp();
 
   // Fetch user details
-  const { data: userDetailsData } = useUserDetails();
+  const { data: userDetailsData, error: userDetailsError, isLoading: isLoadingUserDetails } = useUserDetails();
 
   // Fetch notifications
   const { data: notificationsData, isLoading: isLoadingNotifications } = useNotifications();

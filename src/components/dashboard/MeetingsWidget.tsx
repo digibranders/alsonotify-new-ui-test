@@ -341,8 +341,8 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
             </div>
           ) : isError && !eventsData ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-red-500">
-                Failed to load meetings
+              <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                Unable to load meetings at the moment. Please connect to Teams.
               </p>
             </div>
           ) : processedMeetings.length === 0 ? (
