@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { doLogin, doSignup, forgetPassword } from "../services/auth";
+import { doLogin, doSignup, forgetPassword, doCompleteSignup } from "../services/auth";
 import { setToken, deleteToken, getToken } from "../services/cookies";
 import axiosApi from "../config/axios";
 import { getUserDetails } from "../services/user";
@@ -55,6 +55,40 @@ export const useUser = () => {
     queryFn: getUserDetails,
     enabled: !!token,
     retry: false,
+  });
+};
+
+export const useCompleteSignup = () => {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: {
+      registerToken: string | null;
+      companyName: string;
+      businessType: string;
+      country: string;
+      timezone: string;
+    }) =>
+      doCompleteSignup(
+        params.registerToken,
+        params.companyName,
+        params.businessType,
+        params.country,
+        params.timezone
+      ),
+    onSuccess: (data) => {
+      if (data.success && data.result.token) {
+        setToken(data.result.token);
+        axiosApi.defaults.headers.common["authorization"] = data.result.token;
+        if (data.result.user) {
+          queryClient.setQueryData(["user"], data.result.user);
+          localStorage.setItem("user", JSON.stringify(data.result.user));
+        }
+        // Redirect to dashboard after successful signup
+        router.push("/dashboard");
+      }
+    },
   });
 };
 
