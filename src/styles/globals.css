@@ -329,3 +329,32 @@
   display: block !important;
   opacity: 1 !important;
 }
+
+/* Override Ant Design and global link colors in auth pages */
+/* Prevent Ant Design from applying blue colors to links in auth layout */
+[data-auth-layout] a {
+  /* Override Ant Design's default link color (#1677ff or colorInfo) */
+  color: inherit;
+}
+
+/* Specific color overrides for auth page links using attribute selectors */
+[data-auth-layout] a[class*="text-[#ff3b3b]"] {
+  color: #ff3b3b !important;
+}
+
+[data-auth-layout] a[class*="text-[#111111]"] {
+  color: #111111 !important;
+}
+
+[data-auth-layout] a[class*="text-[#666666]"] {
+  color: #666666 !important;
+}
+
+[data-auth-layout] a[class*="text-[#999999]"] {
+  color: #999999 !important;
+}
+
+/* Override Ant Design Typography link styles */
+[data-auth-layout] a.ant-typography {
+  color: inherit !important;
+}

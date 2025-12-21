@@ -1,0 +1,519 @@
+"use client";
+
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { UploadCloud, User, Check, ArrowRight, Loader2 } from "lucide-react";
+import { Select, App } from "antd";
+import { useCompleteSignup } from "@/hooks/useAuth";
+import { industryToBusinessType, commonCountries, commonTimezones } from "@/data/defaultData";
+import AuthLayout from "@/components/auth/AuthLayout";
+
+const { Option } = Select;
+
+function CompanyDetailsForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { message } = App.useApp();
+  const token = searchParams.get("t");
+  const completeSignupMutation = useCompleteSignup();
+
+  const [currentStep, setCurrentStep] = useState<"company" | "admin">("company");
+
+  const [companyData, setCompanyData] = useState({
+    companyName: "",
+    website: "", // Optional - not sent to API
+    industry: "",
+    companySize: "", // Optional - not sent to API
+    country: "",
+    timezone: "",
+    logo: null as File | null, // Optional - not sent to API
+  });
+
+  const [adminData, setAdminData] = useState({
+    firstName: "",
+    lastName: "",
+    country: "",
+    phone: "", // Optional - not sent to API
+    photo: null as File | null, // Optional - not sent to API
+  });
+
+  // Map country name to country code
+  const getCountryCode = (countryName: string): string => {
+    const countryMap: Record<string, string> = {
+      india: "IN",
+      usa: "US",
+      "united states": "US",
+      uk: "GB",
+      "united kingdom": "GB",
+      canada: "CA",
+      australia: "AU",
+      germany: "DE",
+      france: "FR",
+    };
+    return countryMap[countryName.toLowerCase()] || countryName.toUpperCase();
+  };
+
+  const formVariants = {
+    hidden: { opacity: 0, x: 20 },
+    visible: { opacity: 1, x: 0, transition: { duration: 0.4 } },
+    exit: { opacity: 0, x: -20, transition: { duration: 0.3 } },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const },
+    },
+  };
+
+  const handleCompanyNext = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // Validation
+    if (
+      !companyData.companyName ||
+      !companyData.industry ||
+      !companyData.country ||
+      !companyData.timezone
+    ) {
+      message.error("Please fill in all required fields");
+      return;
+    }
+
+    // Map industry to businessType
+    const businessType = industryToBusinessType[companyData.industry] || 21; // Default to "Others"
+    const countryCode = getCountryCode(companyData.country);
+
+    // Call API to complete signup
+    try {
+      await completeSignupMutation.mutateAsync({
+        registerToken: token,
+        companyName: companyData.companyName,
+        businessType: String(businessType),
+        country: countryCode,
+        timezone: companyData.timezone,
+      });
+      // On success, the hook will redirect to dashboard automatically
+      // Note: Step 2 (admin details) is optional and won't be shown if API succeeds
+      // as the hook redirects immediately to dashboard
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.message || "Failed to complete signup. Please try again.";
+      message.error(errorMessage);
+    }
+  };
+
+  const handleComplete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // Admin details are optional - backend doesn't support them yet
+    // Just show a message and redirect
+    message.success("Profile completed successfully!");
+    // The API call was already done in step 1, so just redirect
+    router.push("/dashboard");
+  };
+
+  return (
+    <AuthLayout>
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        className="w-full max-w-[680px] space-y-8"
+      >
+        {/* Header */}
+        <motion.div variants={itemVariants} className="space-y-2">
+          <h2 className="text-3xl font-bold text-[#111111] tracking-tight">
+            Complete your profile
+          </h2>
+          <p className="text-[#666666]">
+            Tell us more about your company to get started.
+          </p>
+        </motion.div>
+
+        {/* Progress Indicator */}
+        <motion.div variants={itemVariants} className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                currentStep === "company"
+                  ? "bg-[#ff3b3b] text-white"
+                  : "bg-[#ff3b3b] text-white"
+              }`}
+            >
+              {currentStep === "admin" ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                "1"
+              )}
+            </div>
+            <span
+              className={`text-sm font-medium ${
+                currentStep === "company" ? "text-[#111111]" : "text-[#111111]"
+              }`}
+            >
+              Company Details
+            </span>
+          </div>
+          <div className="h-[1px] flex-1 bg-gray-200">
+            <div
+              className="h-full bg-[#ff3b3b] transition-all duration-500"
+              style={{ width: currentStep === "admin" ? "100%" : "0%" }}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                currentStep === "admin"
+                  ? "bg-[#ff3b3b] text-white"
+                  : "bg-gray-100 text-gray-400"
+              }`}
+            >
+              2
+            </div>
+            <span
+              className={`text-sm font-medium ${
+                currentStep === "admin" ? "text-[#111111]" : "text-gray-400"
+              }`}
+            >
+              Admin Details
+            </span>
+          </div>
+        </motion.div>
+
+        <form
+          onSubmit={currentStep === "company" ? handleCompanyNext : handleComplete}
+        >
+          <AnimatePresence mode="wait">
+            {/* COMPANY DETAILS STEP */}
+            {currentStep === "company" && (
+              <motion.div
+                key="company"
+                variants={formVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="space-y-8"
+              >
+                <motion.div variants={itemVariants}>
+                  {/* Company Logo Upload */}
+                  <div className="flex items-center gap-6">
+                    <div className="w-24 h-24 rounded-full bg-[#F5F5F5] flex items-center justify-center border-2 border-dashed border-gray-300 cursor-pointer hover:border-[#ff3b3b] hover:bg-[#FFF5F5] transition-colors group relative overflow-hidden">
+                      <UploadCloud className="w-8 h-8 text-gray-400 group-hover:text-[#ff3b3b] transition-colors" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setCompanyData({ ...companyData, logo: file });
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-bold text-[#111111]">Company Logo</h3>
+                      <p className="text-sm text-[#666666]">
+                        Upload your company logo. Recommended size: 400x400px.
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <motion.div variants={itemVariants} className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                      Company Name <span className="text-[#ff3b3b]">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Acme Inc."
+                      value={companyData.companyName}
+                      onChange={(e) =>
+                        setCompanyData({ ...companyData, companyName: e.target.value })
+                      }
+                      className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                      Website
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://acme.com"
+                      value={companyData.website}
+                      onChange={(e) =>
+                        setCompanyData({ ...companyData, website: e.target.value })
+                      }
+                      className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
+                    />
+                  </div>
+                </motion.div>
+
+                <motion.div variants={itemVariants} className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                      Industry <span className="text-[#ff3b3b]">*</span>
+                    </label>
+                    <Select
+                      value={companyData.industry}
+                      onChange={(v) =>
+                        setCompanyData({ ...companyData, industry: String(v) })
+                      }
+                      placeholder="Select Industry"
+                      className="w-full h-12 company-details-select"
+                      suffixIcon={<div className="text-gray-400">⌄</div>}
+                    >
+                      <Option value="technology">Technology</Option>
+                      <Option value="marketing">Marketing</Option>
+                      <Option value="finance">Finance</Option>
+                      <Option value="retail">Retail</Option>
+                      <Option value="healthcare">Healthcare</Option>
+                      <Option value="education">Education</Option>
+                      <Option value="other">Other</Option>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                      Company Size
+                    </label>
+                    <Select
+                      value={companyData.companySize}
+                      onChange={(v) =>
+                        setCompanyData({ ...companyData, companySize: String(v) })
+                      }
+                      placeholder="Select Size"
+                      className="w-full h-12 company-details-select"
+                      suffixIcon={<div className="text-gray-400">⌄</div>}
+                    >
+                      <Option value="1-10">1-10 Employees</Option>
+                      <Option value="11-50">11-50 Employees</Option>
+                      <Option value="51-200">51-200 Employees</Option>
+                      <Option value="201-500">201-500 Employees</Option>
+                      <Option value="500+">500+ Employees</Option>
+                    </Select>
+                  </div>
+                </motion.div>
+
+                <motion.div variants={itemVariants} className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                      Country <span className="text-[#ff3b3b]">*</span>
+                    </label>
+                    <Select
+                      value={companyData.country}
+                      onChange={(v) =>
+                        setCompanyData({ ...companyData, country: String(v) })
+                      }
+                      placeholder="Select Country"
+                      className="w-full h-12 company-details-select"
+                      suffixIcon={<div className="text-gray-400">⌄</div>}
+                    >
+                      {commonCountries.map((country) => (
+                        <Option key={country.code} value={country.name.toLowerCase()}>
+                          {country.name}
+                        </Option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                      Timezone <span className="text-[#ff3b3b]">*</span>
+                    </label>
+                    <Select
+                      value={companyData.timezone}
+                      onChange={(v) =>
+                        setCompanyData({ ...companyData, timezone: String(v) })
+                      }
+                      placeholder="Select Timezone"
+                      className="w-full h-12 company-details-select"
+                      suffixIcon={<div className="text-gray-400">⌄</div>}
+                    >
+                      {commonTimezones.map((tz) => (
+                        <Option key={tz} value={tz}>
+                          {tz}
+                        </Option>
+                      ))}
+                    </Select>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+
+            {/* ADMIN DETAILS STEP */}
+            {currentStep === "admin" && (
+              <motion.div
+                key="admin"
+                variants={formVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                className="space-y-8"
+              >
+                <motion.div variants={itemVariants}>
+                  {/* Admin Photo Upload */}
+                  <div className="flex items-start gap-6">
+                    <div className="w-32 h-32 rounded-full bg-[#F5F5F5] border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:border-[#ff3b3b] hover:text-[#ff3b3b] transition-colors group relative overflow-hidden">
+                      <User className="w-8 h-8 mb-2 group-hover:scale-110 transition-transform" />
+                      <span className="text-xs font-semibold">Upload Photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setAdminData({ ...adminData, photo: file });
+                        }}
+                      />
+                    </div>
+
+                    {/* Form Fields */}
+                    <div className="flex-1 space-y-6">
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                            First Name <span className="text-[#ff3b3b]">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="John"
+                            value={adminData.firstName}
+                            onChange={(e) =>
+                              setAdminData({ ...adminData, firstName: e.target.value })
+                            }
+                            className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                            Last Name <span className="text-[#ff3b3b]">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Doe"
+                            value={adminData.lastName}
+                            onChange={(e) =>
+                              setAdminData({ ...adminData, lastName: e.target.value })
+                            }
+                            className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                            Country <span className="text-[#ff3b3b]">*</span>
+                          </label>
+                          <Select
+                            value={adminData.country}
+                            onChange={(v) =>
+                              setAdminData({ ...adminData, country: String(v) })
+                            }
+                            placeholder="Select Country"
+                            className="w-full h-12 company-details-select"
+                            suffixIcon={<div className="text-gray-400">⌄</div>}
+                          >
+                            <Option value="india">India</Option>
+                            <Option value="usa">United States</Option>
+                            <Option value="uk">United Kingdom</Option>
+                            <Option value="canada">Canada</Option>
+                            <Option value="australia">Australia</Option>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                            Phone Number
+                          </label>
+                          <input
+                            type="tel"
+                            placeholder="+91 98765 43210"
+                            value={adminData.phone}
+                            onChange={(e) =>
+                              setAdminData({ ...adminData, phone: e.target.value })
+                            }
+                            className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Submit Button */}
+          <motion.div variants={itemVariants} className="mt-8 flex justify-end">
+            <button
+              type="submit"
+              disabled={
+                completeSignupMutation.isPending ||
+                (currentStep === "company" &&
+                  (!companyData.companyName ||
+                    !companyData.industry ||
+                    !companyData.country ||
+                    !companyData.timezone))
+              }
+              className="h-12 px-8 bg-[#ff3b3b] hover:bg-[#E63535] text-white rounded-[16px] font-bold text-[15px] shadow-lg shadow-[#ff3b3b]/25 transition-all hover:shadow-[#ff3b3b]/40 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {completeSignupMutation.isPending ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  {currentStep === "company" ? "Submitting..." : "Completing..."}
+                </>
+              ) : (
+                <>
+                  {currentStep === "company" ? "Next Step" : "Complete Setup"}
+                  {currentStep === "admin" && <ArrowRight className="w-4 h-4" />}
+                </>
+              )}
+            </button>
+          </motion.div>
+        </form>
+      </motion.div>
+
+      <style jsx global>{`
+        .company-details-select .ant-select-selector {
+          height: 48px !important;
+          background-color: #FAFAFA !important;
+          border-color: transparent !important;
+          border-radius: 12px !important;
+          padding: 0 16px !important;
+        }
+        .company-details-select .ant-select-selection-item {
+          line-height: 48px !important;
+          font-weight: 500 !important;
+          color: #111111 !important;
+        }
+        .company-details-select .ant-select-selection-placeholder {
+          line-height: 48px !important;
+          color: #999999 !important;
+        }
+        .company-details-select.ant-select-focused .ant-select-selector {
+          background-color: white !important;
+          border-color: #ff3b3b !important;
+          box-shadow: 0 0 0 4px rgba(255, 59, 59, 0.1) !important;
+        }
+        .company-details-select:hover .ant-select-selector {
+          background-color: white !important;
+        }
+        .company-details-select .ant-select-arrow {
+          display: none !important;
+        }
+      `}</style>
+    </AuthLayout>
+  );
+}
+
+export default function CompanyDetailsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <CompanyDetailsForm />
+    </Suspense>
+  );
+}
+

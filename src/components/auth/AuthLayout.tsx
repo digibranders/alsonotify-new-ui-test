@@ -19,7 +19,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
     const router = useRouter();
 
     return (
-        <div className="min-h-screen w-full flex bg-white font-['Manrope',sans-serif] overflow-hidden">
+        <div className="min-h-screen w-full flex bg-white font-['Manrope',sans-serif] overflow-hidden" data-auth-layout>
             {/* LEFT SIDE - Brand & Visuals (50% Width) */}
             <div className="hidden lg:flex flex-1 bg-[#111111] relative flex-col justify-between p-16 text-white isolate overflow-hidden">
 

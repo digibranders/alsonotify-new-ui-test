@@ -68,7 +68,7 @@ export function ProductivityWidget() {
     // Don't run timer if task is completed
     const taskStatus = (taskDetail?.status || '').toLowerCase();
     const isTaskCompleted = taskStatus.includes('completed') || taskStatus === 'done';
-    
+
     if (isRunning && !isTaskCompleted) {
       interval = setInterval(() => {
         setTime((prevTime) => prevTime + 1);
@@ -161,7 +161,7 @@ export function ProductivityWidget() {
   useEffect(() => {
     if (taskDetailData?.result) {
       setTaskDetail(taskDetailData.result);
-      
+
       // Don't restore timer if task is completed
       const taskStatus = (taskDetailData.result.status || '').toLowerCase();
       if (taskStatus.includes('completed') || taskStatus === 'done') {
@@ -173,7 +173,7 @@ export function ProductivityWidget() {
         localStorage.removeItem("activeTimer");
         return;
       }
-      
+
       // Check if there's an active worklog (no end_datetime)
       const activeWorklog = taskDetailData.result.task_worklog;
       if (activeWorklog && !activeWorklog.end_datetime && activeWorklog.start_datetime) {
@@ -181,11 +181,11 @@ export function ProductivityWidget() {
         setStartTime(activeWorklog.start_datetime);
         setWorklogId(activeWorklog.id || null);
         setIsRunning(true);
-        
+
         // Calculate elapsed time from start
         const elapsed = Math.floor((new Date().getTime() - new Date(activeWorklog.start_datetime).getTime()) / 1000);
         setTime(Math.max(0, elapsed));
-        
+
         // Save to localStorage for persistence
         const task = tasks.find(t => t.id === selectedTaskId);
         if (task) {
@@ -216,7 +216,7 @@ export function ProductivityWidget() {
           // Set selected task
           setSelectedTask(taskName);
           setSelectedTaskId(taskId);
-          
+
           // Fetch task detail to verify active worklog
           // This will restore the timer if worklog is still active
         }
@@ -279,12 +279,12 @@ export function ProductivityWidget() {
     }
 
     const newIsRunning = !isRunning;
-    
+
     if (newIsRunning) {
       // Start Timer -> Create worklog and set status to In Progress
       const startIso = new Date().toISOString();
       setStartTime(startIso);
-      
+
       startWorklogMutation.mutate(
         { task_id: task.id, start_datetime: startIso },
         {
@@ -292,7 +292,7 @@ export function ProductivityWidget() {
             const newWorklogId = data.result?.id || null;
             setWorklogId(newWorklogId);
             setIsRunning(true);
-            
+
             // Save to localStorage
             localStorage.setItem(
               "activeTimer",
@@ -303,17 +303,17 @@ export function ProductivityWidget() {
                 worklogId: newWorklogId,
               })
             );
-            
+
             // Update selected task ID if not set
             if (!selectedTaskId) {
               setSelectedTaskId(task.id);
             }
-            
+
             // Refetch task detail to get updated info
             if (selectedTaskId) {
               refetchTaskDetail();
             }
-            
+
             // Update task status
             updateStatusMutation.mutate(
               { id: task.id, status: 'In_Progress' },
@@ -334,8 +334,37 @@ export function ProductivityWidget() {
         }
       );
     } else {
-      // Pause Timer -> Just pause, no worklog needed
+      // Pause Timer -> Close worklog to save progress
       setIsRunning(false);
+
+      if (worklogId && startTime) {
+        const payload = {
+          task_id: task.id,
+          start_datetime: startTime,
+          end_datetime: new Date().toISOString(),
+          description: "",
+        };
+
+        updateWorklogMutation.mutate(
+          { params: payload, worklogId },
+          {
+            onSuccess: () => {
+              // Refetch to update worked_time in taskDetail, then reset local time
+              refetchTaskDetail().then(() => {
+                setTime(0);
+                setStartTime("");
+                setWorklogId(null);
+                localStorage.removeItem("activeTimer");
+              });
+            },
+            onError: (error: any) => {
+              console.error("Failed to close worklog on pause:", error);
+              antdMessage.error("Failed to save progress");
+            }
+          }
+        );
+      }
+
       antdMessage.info(`Paused timer for: ${task.name}`);
     }
   };
@@ -389,7 +418,7 @@ export function ProductivityWidget() {
           onSuccess: () => {
             // Stop timer immediately when worklog is closed
             setIsRunning(false);
-            
+
             // Update task status based on action
             const newStatus = worklogAction === 'stuck' ? 'Stuck' : 'Completed';
             updateStatusMutation.mutate(
@@ -401,29 +430,29 @@ export function ProductivityWidget() {
                       ? `Marked "${task.name}" as stuck`
                       : `Marked "${task.name}" as completed`
                   );
-                  
+
                   // Clear timer state
                   setTime(0);
                   setStartTime("");
                   setWorklogId(null);
                   localStorage.removeItem("activeTimer");
-                  
+
                   // If completed, clear selection
                   if (worklogAction === 'complete') {
                     setSelectedTask("");
                     setSelectedTaskId(null);
                     setTaskDetail(null);
                   }
-                  
+
                   // Refetch task detail to update worked_time
                   if (selectedTaskId) {
                     refetchTaskDetail();
                   }
-                  
+
                   // Close modal
                   setShowWorklogModal(false);
                   setWorklogAction(null);
-                  
+
                   // Add AI message for stuck
                   if (worklogAction === 'stuck') {
                     const stuckMessage: Message = {
@@ -476,25 +505,25 @@ export function ProductivityWidget() {
                         ? `Marked "${task.name}" as stuck`
                         : `Marked "${task.name}" as completed`
                     );
-                    
+
                     // Clear timer state
                     setIsRunning(false);
                     setTime(0);
                     setStartTime("");
                     setWorklogId(null);
                     localStorage.removeItem("activeTimer");
-                    
+
                     if (worklogAction === 'complete') {
                       setSelectedTask("");
                       setSelectedTaskId(null);
                       setTaskDetail(null);
                     }
-                    
+
                     // Refetch task detail
                     if (selectedTaskId) {
                       refetchTaskDetail();
                     }
-                    
+
                     setShowWorklogModal(false);
                     setWorklogAction(null);
                   },
@@ -522,25 +551,25 @@ export function ProductivityWidget() {
                   ? `Marked "${task.name}" as stuck`
                   : `Marked "${task.name}" as completed`
               );
-              
+
               // Clear timer state
               setIsRunning(false);
               setTime(0);
               setStartTime("");
               setWorklogId(null);
               localStorage.removeItem("activeTimer");
-              
+
               if (worklogAction === 'complete') {
                 setSelectedTask("");
                 setSelectedTaskId(null);
                 setTaskDetail(null);
               }
-              
+
               // Refetch task detail
               if (selectedTaskId) {
                 refetchTaskDetail();
               }
-              
+
               setShowWorklogModal(false);
               setWorklogAction(null);
             },
@@ -660,7 +689,7 @@ export function ProductivityWidget() {
       setSelectedTask(taskName);
       setSelectedTaskId(task.id);
       setShowTaskSelector(false);
-      
+
       // Reset timer when switching tasks
       if (isRunning) {
         setIsRunning(false);
@@ -669,7 +698,7 @@ export function ProductivityWidget() {
       setStartTime("");
       setWorklogId(null);
       localStorage.removeItem("activeTimer");
-      
+
       // Task detail will be fetched automatically via the useQuery hook when selectedTaskId changes
       // This will allow us to check if it's a rework task (worked_sessions > 0)
     }
@@ -688,7 +717,7 @@ export function ProductivityWidget() {
       const interval = setInterval(() => {
         refetchTaskDetail();
       }, 30000); // Refresh every 30 seconds to update worked_time
-      
+
       return () => clearInterval(interval);
     }
   }, [isRunning, selectedTaskId, refetchTaskDetail]);
@@ -907,55 +936,52 @@ export function ProductivityWidget() {
                     {/* Timer Display */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <div className="text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111] leading-none tracking-tight">
-                        {formatTime(time)}
+                        {selectedTask && taskDetail ? formatTime((taskDetail.worked_time || 0) + time) : formatTime(time)}
                       </div>
                       {isRunning && (
                         <div className="w-2 h-2 rounded-full bg-[#ff3b3b] animate-pulse flex-shrink-0" />
                       )}
                     </div>
-                    
+
                     {/* Task Selector Dropdown - Enhanced visibility */}
                     <button
                       ref={taskButtonRef}
                       onClick={() => setShowTaskSelector(!showTaskSelector)}
-                      className={`flex items-center gap-1.5 group rounded-md px-2.5 py-0.5 transition-all text-left flex-1 min-w-0 h-fit ${
-                        selectedTask 
-                          ? 'bg-[#FFF5F5] border border-[#ff3b3b]/30 hover:bg-[#FFEBEB] hover:border-[#ff3b3b]/50' 
+                      className={`flex items-center gap-1.5 group rounded-md px-2.5 py-0.5 transition-all text-left flex-1 min-w-0 h-fit ${selectedTask
+                          ? 'bg-[#FFF5F5] border border-[#ff3b3b]/30 hover:bg-[#FFEBEB] hover:border-[#ff3b3b]/50'
                           : 'hover:bg-[#F7F7F7] border-0'
-                      }`}
+                        }`}
                     >
-                      <p className={`text-[12px] font-['Manrope:SemiBold',sans-serif] transition-colors truncate ${
-                        selectedTask 
-                          ? 'text-[#ff3b3b]' 
+                      <p className={`text-[12px] font-['Manrope:SemiBold',sans-serif] transition-colors truncate ${selectedTask
+                          ? 'text-[#ff3b3b]'
                           : 'text-[#666666] group-hover:text-[#111111]'
-                      }`}>
+                        }`}>
                         {selectedTask || "Select Task"}
                       </p>
-                      <ChevronDown24Filled className={`w-3 h-3 transition-colors flex-shrink-0 ${
-                        selectedTask 
-                          ? 'text-[#ff3b3b]' 
+                      <ChevronDown24Filled className={`w-3 h-3 transition-colors flex-shrink-0 ${selectedTask
+                          ? 'text-[#ff3b3b]'
                           : 'text-[#666666] group-hover:text-[#111111]'
-                      }`} />
+                        }`} />
                     </button>
                   </div>
-                  
+
                   {/* Bottom Row: Estimated Time and Progress Bar - Below timer */}
                   {selectedTask && taskDetail && taskDetail.estimated_time > 0 && (() => {
                     // Calculate real-time progress including current timer
                     const estimatedSeconds = taskDetail.estimated_time * 3600;
                     const workedSeconds = taskDetail.worked_time || 0;
-                    const currentTimerSeconds = isRunning ? time : 0;
+                    const currentTimerSeconds = time;
                     const totalWorkedSeconds = workedSeconds + currentTimerSeconds;
-                    
+
                     const progress = (totalWorkedSeconds / estimatedSeconds) * 100;
                     const isOverEstimate = totalWorkedSeconds > estimatedSeconds;
                     const displayProgress = isOverEstimate ? 100 : Math.min(progress, 100);
-                    
+
                     // Get task status for color coding
                     const task = tasks.find(t => t.name === selectedTask);
                     const taskStatus = task?.status || taskDetail.status || '';
                     const statusLower = taskStatus.toLowerCase();
-                    
+
                     // Color logic matching TaskRow component exactly
                     const progressBarColor = isOverEstimate
                       ? 'bg-[#dc2626]'  // Red for overtime
@@ -966,19 +992,19 @@ export function ProductivityWidget() {
                           : statusLower.includes('review')
                             ? 'bg-[#fbbf24]'  // Yellow/Orange for review
                             : 'bg-[#0284c7]';  // Blue for Assigned/In_Progress
-                    
+
                     return (
                       <div className="flex flex-col gap-0.5">
                         {/* Estimated Time */}
                         <div className="text-[10px] text-[#999999] font-['Manrope:Regular',sans-serif]">
                           Estimated: <span className="font-['Manrope:SemiBold',sans-serif] text-[#111111]">{Math.round(taskDetail.estimated_time * 60)}m</span>
                         </div>
-                        
+
                         {/* Progress Bar with real-time animation - matching TaskRow style */}
                         <div className="h-1.5 bg-[#F7F7F7] rounded-full overflow-hidden w-full">
-                          <div 
+                          <div
                             className={`h-full rounded-full transition-all duration-300 ${progressBarColor}`}
-                            style={{ 
+                            style={{
                               width: `${displayProgress}%`
                             }}
                           />
