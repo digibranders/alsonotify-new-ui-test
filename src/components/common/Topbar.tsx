@@ -76,6 +76,7 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
   const [showWorkspaceDialog, setShowWorkspaceDialog] = useState(false);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showRequirementDialog, setShowRequirementDialog] = useState(false);
+  const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
 
   // Mutations
   const createWorkspaceMutation = useCreateWorkspace();
@@ -485,29 +486,28 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
             </Dropdown>
 
             {/* Notification icon */}
-            <Popover
-              content={
-                <NotificationPanel
-                  notifications={notifications}
-                  isLoading={isLoadingNotifications}
-                  onMarkAsRead={handleMarkAsRead}
-                  onMarkAllRead={handleClearAllNotifications}
-                />
-              }
-              trigger="click"
-              placement="bottomRight"
-              styles={{ root: { padding: 0 } }}
-              overlayClassName="notification-popover"
-            >
-              <Badge count={unreadCount} size="small" offset={[-5, 5]} color="#ff3b3b">
-                <Button
-                  type="text"
-                  shape="circle"
-                  icon={<Alert24Filled className="w-6 h-6 text-[#000000]" />}
-                  className="hover:bg-transparent"
-                />
-              </Badge>
-            </Popover>
+            <>
+              <button 
+                onClick={() => setNotificationDrawerOpen(true)}
+                className="relative hover:opacity-70 transition-opacity p-1"
+              >
+                <Alert24Filled className="w-6 h-6 text-[#000000]" strokeWidth={1.5} />
+                {/* Notification Badge */}
+                {unreadCount > 0 && (
+                  <span className="absolute top-0 right-0 w-4 h-4 bg-[#ff3b3b] rounded-full border border-white flex items-center justify-center">
+                    <span className="text-[9px] font-['Inter:Bold',sans-serif] text-white">{unreadCount}</span>
+                  </span>
+                )}
+              </button>
+              <NotificationPanel
+                open={notificationDrawerOpen}
+                onClose={() => setNotificationDrawerOpen(false)}
+                notifications={notifications}
+                isLoading={isLoadingNotifications}
+                onMarkAsRead={handleMarkAsRead}
+                onMarkAllRead={handleClearAllNotifications}
+              />
+            </>
 
             {/* Profile photo & Role Switcher */}
             <Dropdown menu={{ items: profileMenuItems }} placement="bottomRight" trigger={['click']}>

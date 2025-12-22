@@ -801,13 +801,13 @@ function MeetingItem({
   };
 
   // Truncate organizer name to 12 characters (to fit before attendees section)
-  const truncateOrganizer = (name: string, maxLength: number = 15) => {
+  const truncateOrganizer = (name: string, maxLength: number = 20) => {
     if (name.length <= maxLength) return name;
     return name.slice(0, maxLength) + '...';
   };
 
   // Truncate meeting title to 27 characters (to align with red line position)
-  const truncateTitle = (title: string, maxLength: number = 32) => {
+  const truncateTitle = (title: string, maxLength: number = 36) => {
     if (title.length <= maxLength) return title;
     return title.slice(0, maxLength) + '...';
   };

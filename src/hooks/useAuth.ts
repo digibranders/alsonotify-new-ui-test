@@ -43,6 +43,10 @@ export const useLogout = () => {
     deleteToken();
     delete axiosApi.defaults.headers.common["authorization"];
     queryClient.clear();
+    // Clear profile completion banner dismissal so it shows again on next login
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('profileCompletionBannerDismissed');
+    }
     router.push("/login");
   };
 };

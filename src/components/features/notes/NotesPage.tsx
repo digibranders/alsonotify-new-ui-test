@@ -1,5 +1,5 @@
 import { PageLayout } from '../../layout/PageLayout';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Archive, Trash2, FileText, ArchiveRestore } from 'lucide-react';
 import { Checkbox, App } from 'antd';
@@ -30,6 +30,8 @@ export function NotesPage() {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [viewingNote, setViewingNote] = useState<Note | null>(null);
   const [showViewModal, setShowViewModal] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [cardHeight, setCardHeight] = useState<number>(280);
 
   // Fetch all notes (both archived and non-archived) for accurate tab counts
   // Using separate queries for better cache management
@@ -263,6 +265,67 @@ export function NotesPage() {
     ];
   }, [notesList, normalizeNoteTypeForFilter]);
 
+  // Calculate card height to fit exactly 2 rows without scrolling
+  useEffect(() => {
+    const calculateCardHeight = () => {
+      if (!scrollContainerRef.current) return;
+      
+      const containerHeight = scrollContainerRef.current.clientHeight;
+      if (containerHeight <= 0) return;
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NotesPage.tsx:calculateCardHeight',message:'Calculating card height',data:{containerHeight,calculatedHeight:Math.floor((containerHeight - 48) / 2)},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+      
+      // 2 rows + 1 gap (24px) + bottom padding (24px) = containerHeight
+      // cardHeight * 2 + 24 + 24 = containerHeight
+      // cardHeight = (containerHeight - 48) / 2
+      const newCardHeight = Math.floor((containerHeight - 48) / 2);
+      
+      // Set minimum height of 200px and maximum of 350px for reasonable card sizes
+      if (newCardHeight >= 200 && newCardHeight <= 350) {
+        setCardHeight(newCardHeight);
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NotesPage.tsx:calculateCardHeight',message:'Card height set',data:{newCardHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
+      }
+    };
+
+    // Wait for container to be available, then calculate
+    const checkAndCalculate = () => {
+      if (scrollContainerRef.current && scrollContainerRef.current.clientHeight > 0) {
+        calculateCardHeight();
+      } else {
+        // Retry after a short delay if container not ready
+        setTimeout(checkAndCalculate, 50);
+      }
+    };
+
+    // Initial check
+    checkAndCalculate();
+
+    // Use ResizeObserver for more reliable size tracking
+    let resizeObserver: ResizeObserver | null = null;
+    if (scrollContainerRef.current) {
+      resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          calculateCardHeight();
+        }
+      });
+      resizeObserver.observe(scrollContainerRef.current);
+    }
+
+    // Also listen to window resize as fallback
+    window.addEventListener('resize', calculateCardHeight);
+    
+    return () => {
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      window.removeEventListener('resize', calculateCardHeight);
+    };
+  }, []);
+
   return (
     <>
       <PageLayout
@@ -280,7 +343,25 @@ export function NotesPage() {
         }}
       >
         {/* Notes Grid */}
-        <div className="flex-1 overflow-y-auto">
+        <div 
+          className="h-full overflow-y-auto"
+          ref={(el) => {
+            scrollContainerRef.current = el;
+            // #region agent log
+            if (el) {
+              fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NotesPage.tsx:283',message:'Scroll container dimensions',data:{scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,offsetHeight:el.offsetHeight,overflowY:window.getComputedStyle(el).overflowY},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'A'})}).catch(()=>{});
+              // Trigger calculation when ref is set
+              if (el.clientHeight > 0) {
+                const containerHeight = el.clientHeight;
+                const newCardHeight = Math.floor((containerHeight - 48) / 2);
+                if (newCardHeight >= 200 && newCardHeight <= 350) {
+                  setCardHeight(newCardHeight);
+                }
+              }
+            }
+            // #endregion
+          }}
+        >
           {isLoading ? (
             <div className="h-full flex items-center justify-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff3b3b]"></div>
@@ -298,7 +379,17 @@ export function NotesPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-6">
+            <div 
+              className="grid grid-cols-4 gap-6 pb-6" 
+              style={{ gridAutoRows: `${cardHeight}px` }}
+              ref={(el) => {
+                // #region agent log
+                if (el) {
+                  fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NotesPage.tsx:301',message:'Grid container dimensions',data:{scrollHeight:el.scrollHeight,offsetHeight:el.offsetHeight,childrenCount:el.children.length,gridAutoRows:window.getComputedStyle(el).gridAutoRows,cardHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'B'})}).catch(()=>{});
+                }
+                // #endregion
+              }}
+            >
               {filteredNotes.map((note) => (
                 <NoteCard
                   key={note.id}
@@ -390,7 +481,16 @@ function NoteCard({ note, onArchive, onUnarchive, onDelete, onEdit, onClick }: N
   const borderColorHover = noteColor;
 
   return (
-    <div className="relative group aspect-square">
+    <div 
+      className="relative group w-full h-full" 
+      ref={(el) => {
+        // #region agent log
+        if (el) {
+          fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NotesPage.tsx:393',message:'NoteCard dimensions',data:{offsetHeight:el.offsetHeight,offsetWidth:el.offsetWidth,computedHeight:window.getComputedStyle(el).height,computedWidth:window.getComputedStyle(el).width,aspectRatio:el.offsetWidth/el.offsetHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'C'})}).catch(()=>{});
+        }
+        // #endregion
+      }}
+    >
       {/* Card with white background */}
       <div
         className="relative h-full w-full bg-white rounded-xl border transition-all duration-300 p-4 flex flex-col cursor-pointer hover:shadow-lg"
