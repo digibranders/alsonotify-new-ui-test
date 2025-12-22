@@ -3,6 +3,7 @@
 import { useState, ReactNode } from 'react';
 import { Sidebar } from '../components/common/Sidebar';
 import { Header } from '../components/common/Topbar';
+import { ProfileCompletionBanner } from '../components/common/ProfileCompletionBanner';
 
 interface AlsonotifyLayoutWrapperProps {
   children: ReactNode;
@@ -25,6 +26,11 @@ export function AlsonotifyLayoutWrapper({ children }: AlsonotifyLayoutWrapperPro
           {/* Header/Taskbar - Fixed Height */}
           <div className="shrink-0">
             <Header userRole={userRole} setUserRole={setUserRole} />
+          </div>
+
+          {/* Profile Completion Banner */}
+          <div className="shrink-0">
+            <ProfileCompletionBanner />
           </div>
 
           {/* Page Content */}

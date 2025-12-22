@@ -39,7 +39,9 @@ interface Message {
 export function ProductivityWidget() {
   const { message: antdMessage } = App.useApp();
   const [isRunning, setIsRunning] = useState(false);
-  const [time, setTime] = useState(0);
+  const [time, setTime] = useState(0); // Current session elapsed seconds (for display)
+  const [pausedTime, setPausedTime] = useState(0); // Elapsed seconds when paused (preserved when paused)
+  const [resumeTime, setResumeTime] = useState<string>(""); // When timer was resumed (to calculate elapsed after resume)
   const [message, setMessage] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [conversations, setConversations] = useState<Message[]>([]);
@@ -49,7 +51,7 @@ export function ProductivityWidget() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [showWorklogModal, setShowWorklogModal] = useState(false);
   const [worklogAction, setWorklogAction] = useState<'stuck' | 'complete' | null>(null);
-  const [startTime, setStartTime] = useState<string>("");
+  const [startTime, setStartTime] = useState<string>(""); // ISO string of worklog start_datetime
   const [worklogId, setWorklogId] = useState<number | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [taskDetail, setTaskDetail] = useState<AssignedTaskDetailType | null>(null);
@@ -62,23 +64,36 @@ export function ProductivityWidget() {
       generateAgentResponse(data.prompt, data.history),
   });
 
-  // Timer effect - also check if task is completed
+  // Timer effect - calculate elapsed time correctly accounting for pauses
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    // Don't run timer if task is completed
     const taskStatus = (taskDetail?.status || '').toLowerCase();
     const isTaskCompleted = taskStatus.includes('completed') || taskStatus === 'done';
 
-    if (isRunning && !isTaskCompleted) {
+    if (isRunning && !isTaskCompleted && startTime) {
+      // Calculate elapsed time:
+      // - If we have pausedTime and resumeTime: pausedTime + (currentTime - resumeTime)
+      // - Otherwise: currentTime - startTime
       interval = setInterval(() => {
-        setTime((prevTime) => prevTime + 1);
+        let elapsed = 0;
+        if (pausedTime > 0 && resumeTime) {
+          // We resumed from a pause, calculate: paused time + time since resume
+          const timeSinceResume = Math.floor((new Date().getTime() - new Date(resumeTime).getTime()) / 1000);
+          elapsed = pausedTime + timeSinceResume;
+        } else if (pausedTime > 0) {
+          // We're paused (shouldn't happen here, but handle it)
+          elapsed = pausedTime;
+        } else {
+          // Normal running, calculate from startTime
+          elapsed = Math.floor((new Date().getTime() - new Date(startTime).getTime()) / 1000);
+        }
+        setTime(Math.max(0, elapsed));
       }, 1000);
     } else if (isTaskCompleted) {
-      // If task is completed, stop the timer
       setIsRunning(false);
     }
     return () => clearInterval(interval);
-  }, [isRunning, taskDetail]);
+  }, [isRunning, taskDetail, startTime, pausedTime, resumeTime]);
 
   // Animate popup on open
   useEffect(() => {
@@ -120,12 +135,21 @@ export function ProductivityWidget() {
     staleTime: 30 * 1000, // 30 seconds
   });
 
-  // Filter out completed tasks and map to UI format
+  // Filter tasks: show only "Assigned" and "In_Progress" tasks
+  // Do NOT show "Review" or "Completed" tasks
+  // "In_Progress" tasks that were previously in Review (rework) will also show since they're "In_Progress"
   const tasks = useMemo(() => {
     return (assignedTasksData?.result || [])
       .filter((t: any) => {
         const status = (t.status || '').toLowerCase();
-        return status !== 'completed' && status !== 'done';
+        // Show only Assigned and In_Progress tasks
+        // Hide Review and Completed tasks
+        const isAssigned = status === 'assigned';
+        const isInProgress = status.includes('in_progress') || status.includes('in progress');
+        const isReview = status.includes('review');
+        const isCompleted = status.includes('completed') || status === 'done';
+        
+        return (isAssigned || isInProgress) && !isReview && !isCompleted;
       })
       .map((t: any) => ({
         id: t.id,
@@ -168,6 +192,8 @@ export function ProductivityWidget() {
         // Task is completed, stop timer and clear state
         setIsRunning(false);
         setTime(0);
+        setPausedTime(0);
+        setResumeTime("");
         setStartTime("");
         setWorklogId(null);
         localStorage.removeItem("activeTimer");
@@ -177,14 +203,57 @@ export function ProductivityWidget() {
       // Check if there's an active worklog (no end_datetime)
       const activeWorklog = taskDetailData.result.task_worklog;
       if (activeWorklog && !activeWorklog.end_datetime && activeWorklog.start_datetime) {
-        // Restore timer from active worklog
+        // Restore timer from active worklog - task is running in database
+        // Only restore if the worklogId matches what we have in state/localStorage
+        // This prevents restoring from a different worklog when starting a new timer
+        const saved = localStorage.getItem("activeTimer");
+        let wasPaused = false;
+        let savedPausedTime = 0;
+        let savedResumeTime = "";
+        let savedWorklogId = null;
+        
+        if (saved) {
+          try {
+            const savedData = JSON.parse(saved);
+            savedWorklogId = savedData.worklogId;
+            // Only restore if worklogId matches (same worklog session)
+            if (savedData.taskId === selectedTaskId && savedData.worklogId === activeWorklog.id) {
+              if (savedData.pausedTime && !savedData.isRunning) {
+                // UI was paused but worklog is still open
+                wasPaused = true;
+                savedPausedTime = savedData.pausedTime;
+                savedResumeTime = savedData.resumeTime || "";
+              }
+            } else if (savedData.taskId === selectedTaskId && savedData.worklogId !== activeWorklog.id) {
+              // Different worklog - this means a new worklog was created (e.g., after stuck/complete)
+              // Don't restore paused state, start fresh
+              wasPaused = false;
+              savedPausedTime = 0;
+              savedResumeTime = "";
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+        
         setStartTime(activeWorklog.start_datetime);
         setWorklogId(activeWorklog.id || null);
-        setIsRunning(true);
-
-        // Calculate elapsed time from start
-        const elapsed = Math.floor((new Date().getTime() - new Date(activeWorklog.start_datetime).getTime()) / 1000);
-        setTime(Math.max(0, elapsed));
+        
+        if (wasPaused && savedPausedTime > 0 && savedWorklogId === activeWorklog.id) {
+          // UI was paused, restore paused state (same worklog)
+          setPausedTime(savedPausedTime);
+          setResumeTime(savedResumeTime);
+          setIsRunning(false);
+          setTime(savedPausedTime);
+        } else {
+          // Task is running, restore running state or start fresh for new worklog
+          setIsRunning(true);
+          setPausedTime(0);
+          setResumeTime("");
+          // Calculate elapsed time from start for current worklog session only
+          const elapsed = Math.floor((new Date().getTime() - new Date(activeWorklog.start_datetime).getTime()) / 1000);
+          setTime(Math.max(0, elapsed));
+        }
 
         // Save to localStorage for persistence
         const task = tasks.find(t => t.id === selectedTaskId);
@@ -196,12 +265,51 @@ export function ProductivityWidget() {
               taskName: task.name,
               startTime: activeWorklog.start_datetime,
               worklogId: activeWorklog.id,
+              isRunning: !wasPaused,
+              pausedTime: wasPaused ? savedPausedTime : 0,
+              resumeTime: savedResumeTime,
             })
           );
         }
       } else {
-        // No active worklog, ensure timer is stopped
-        setIsRunning(false);
+        // No active worklog, check if we have a paused state in localStorage
+        const saved = localStorage.getItem("activeTimer");
+        if (saved) {
+          try {
+            const savedData = JSON.parse(saved);
+            if (savedData.taskId === selectedTaskId && savedData.pausedTime) {
+              // Restore paused state
+              setPausedTime(savedData.pausedTime);
+              setTime(savedData.pausedTime);
+              setIsRunning(false);
+              setResumeTime(savedData.resumeTime || "");
+              // Keep worklogId and startTime if they exist (for resume)
+              if (savedData.worklogId) {
+                setWorklogId(savedData.worklogId);
+              }
+              if (savedData.startTime) {
+                setStartTime(savedData.startTime);
+              }
+            } else {
+              // No matching paused state, clear everything
+              setIsRunning(false);
+              setTime(0);
+              setPausedTime(0);
+              setResumeTime("");
+            }
+          } catch (e) {
+            setIsRunning(false);
+            setTime(0);
+            setPausedTime(0);
+            setResumeTime("");
+          }
+        } else {
+          // No active worklog and no saved state, ensure timer is stopped
+          setIsRunning(false);
+          setTime(0);
+          setPausedTime(0);
+          setResumeTime("");
+        }
       }
     }
   }, [taskDetailData, selectedTaskId, tasks]);
@@ -211,14 +319,32 @@ export function ProductivityWidget() {
     const saved = localStorage.getItem("activeTimer");
     if (saved) {
       try {
-        const { taskId, taskName, startTime: savedStart, worklogId: savedWorklogId } = JSON.parse(saved);
+        const savedData = JSON.parse(saved);
+          const { taskId, taskName, startTime: savedStart, worklogId: savedWorklogId, isRunning: savedIsRunning, pausedTime: savedPausedTime, resumeTime: savedResumeTime } = savedData;
         if (taskId && taskName) {
           // Set selected task
           setSelectedTask(taskName);
           setSelectedTaskId(taskId);
 
-          // Fetch task detail to verify active worklog
-          // This will restore the timer if worklog is still active
+          // If was running, set startTime and worklogId so taskDetail fetch can restore
+          if (savedIsRunning && savedStart) {
+            setStartTime(savedStart);
+            if (savedWorklogId) {
+              setWorklogId(savedWorklogId);
+            }
+          } else if (savedPausedTime) {
+            // If was paused, restore paused state
+            setPausedTime(savedPausedTime);
+            setTime(savedPausedTime);
+            setResumeTime(savedResumeTime || "");
+            if (savedStart) {
+              setStartTime(savedStart);
+            }
+            if (savedWorklogId) {
+              setWorklogId(savedWorklogId);
+            }
+          }
+          // Fetch task detail to verify active worklog - this will properly restore the timer
         }
       } catch (error) {
         console.error("Error loading saved timer:", error);
@@ -251,119 +377,154 @@ export function ProductivityWidget() {
     const task = tasks.find(t => t.name === selectedTask);
     if (!task) return;
 
-    // Check if task is completed - don't allow starting timer for completed tasks
+    // Allow starting timer for Assigned and In_Progress tasks
     const taskStatus = (task.status || '').toLowerCase();
-    if (taskStatus.includes('completed') || taskStatus === 'done') {
-      antdMessage.warning("Cannot start timer for a completed task");
-      setIsRunning(false);
-      return;
-    }
-
-    // Check if this is a rework task - only allow starting timer for rework tasks
-    // A rework task is one that has been worked on before (has completed worklogs)
-    // This is indicated by worked_sessions > 0 in the task detail
-    // OR if task is in "Review" status (was completed and is under review)
-    const isReviewStatus = taskStatus.includes('review');
-    const hasPreviousWork = taskDetail && taskDetail.worked_sessions > 0;
-    const isRework = isReviewStatus || hasPreviousWork;
-
-    if (!isRework && !isRunning) {
-      // Only allow starting timer if it's a rework task
-      // If task detail is not loaded yet, wait for it to check rework status
-      if (!taskDetail && selectedTaskId) {
-        antdMessage.warning("Loading task details... Please try again in a moment.");
-        return;
-      }
-      antdMessage.warning("Timer can only be started for rework tasks. Please complete the task first to enable rework.");
+    const isAssigned = taskStatus === 'assigned';
+    const isInProgress = taskStatus.includes('in_progress') || taskStatus.includes('in progress');
+    
+    if (!isAssigned && !isInProgress && !isRunning) {
+      antdMessage.warning("Cannot start timer for this task status");
       return;
     }
 
     const newIsRunning = !isRunning;
 
     if (newIsRunning) {
-      // Start Timer -> Create worklog and set status to In Progress
-      const startIso = new Date().toISOString();
-      setStartTime(startIso);
+      // Start/Resume Timer
+      if (worklogId && startTime && pausedTime > 0) {
+        // Resume from paused: worklog already exists and is still open
+        const resumeIso = new Date().toISOString();
+        setResumeTime(resumeIso);
+        setIsRunning(true);
+        setTime(pausedTime); // Start from paused time
+        localStorage.setItem(
+          "activeTimer",
+          JSON.stringify({
+            taskId: task.id,
+            taskName: selectedTask,
+            startTime: startTime, // Keep original startTime
+            worklogId: worklogId,
+            isRunning: true,
+            pausedTime: pausedTime, // Keep paused time
+            resumeTime: resumeIso,
+          })
+        );
+        antdMessage.success(`Resumed timer for: ${task.name}`);
+      } else if (worklogId && startTime) {
+        // Resume existing active worklog (page refresh scenario)
+        setIsRunning(true);
+        setPausedTime(0);
+        const elapsed = Math.floor((new Date().getTime() - new Date(startTime).getTime()) / 1000);
+        setTime(Math.max(0, elapsed));
+        localStorage.setItem(
+          "activeTimer",
+          JSON.stringify({
+            taskId: task.id,
+            taskName: selectedTask,
+            startTime: startTime,
+            worklogId: worklogId,
+            isRunning: true,
+          })
+        );
+        antdMessage.success(`Resumed timer for: ${task.name}`);
+      } else {
+        // Start new timer -> Create worklog
+        // IMPORTANT: Reset all timer state to ensure clean start
+        const startIso = new Date().toISOString();
+        setStartTime(startIso);
+        setPausedTime(0);
+        setResumeTime("");
+        setTime(0);
+        setWorklogId(null); // Clear any old worklogId
 
-      startWorklogMutation.mutate(
-        { task_id: task.id, start_datetime: startIso },
-        {
-          onSuccess: (data) => {
-            const newWorklogId = data.result?.id || null;
-            setWorklogId(newWorklogId);
-            setIsRunning(true);
-
-            // Save to localStorage
-            localStorage.setItem(
-              "activeTimer",
-              JSON.stringify({
-                taskId: task.id,
-                taskName: selectedTask,
-                startTime: startIso,
-                worklogId: newWorklogId,
-              })
-            );
-
-            // Update selected task ID if not set
-            if (!selectedTaskId) {
-              setSelectedTaskId(task.id);
-            }
-
-            // Refetch task detail to get updated info
-            if (selectedTaskId) {
-              refetchTaskDetail();
-            }
-
-            // Update task status
-            updateStatusMutation.mutate(
-              { id: task.id, status: 'In_Progress' },
-              {
-                onSuccess: () => {
-                  antdMessage.success(`Started working on: ${task.name}`);
-                },
-                onError: () => {
-                  antdMessage.error("Failed to update task status");
-                }
-              }
-            );
-          },
-          onError: (error: any) => {
-            antdMessage.error("Failed to start timer");
-            console.error("Start worklog error:", error);
-          }
-        }
-      );
-    } else {
-      // Pause Timer -> Close worklog to save progress
-      setIsRunning(false);
-
-      if (worklogId && startTime) {
-        const payload = {
-          task_id: task.id,
-          start_datetime: startTime,
-          end_datetime: new Date().toISOString(),
-          description: "",
-        };
-
-        updateWorklogMutation.mutate(
-          { params: payload, worklogId },
+        startWorklogMutation.mutate(
+          { task_id: task.id, start_datetime: startIso },
           {
-            onSuccess: () => {
-              // Refetch to update worked_time in taskDetail, then reset local time
+            onSuccess: (data) => {
+              const newWorklogId = data.result?.id || null;
+              setWorklogId(newWorklogId);
+              setIsRunning(true);
+              // Ensure time starts at 0 for new worklog
+              setTime(0);
+
+              // Save to localStorage
+              localStorage.setItem(
+                "activeTimer",
+                JSON.stringify({
+                  taskId: task.id,
+                  taskName: selectedTask,
+                  startTime: startIso,
+                  worklogId: newWorklogId,
+                  isRunning: true,
+                })
+              );
+
+              // Update selected task ID if not set
+              if (!selectedTaskId) {
+                setSelectedTaskId(task.id);
+              }
+
+              // Refetch task detail to get updated worked_time (includes previous closed worklogs)
+              // This ensures worked_time is up-to-date before timer starts counting
               refetchTaskDetail().then(() => {
-                setTime(0);
-                setStartTime("");
-                setWorklogId(null);
-                localStorage.removeItem("activeTimer");
+                // After refetch, timer will start from 0 and display: worked_time + 0
               });
+
+              // Update task status to In_Progress if currently Assigned
+              if (taskStatus === 'assigned') {
+                updateStatusMutation.mutate(
+                  { id: task.id, status: 'In_Progress' },
+                  {
+                    onSuccess: () => {
+                      antdMessage.success(`Started working on: ${task.name}`);
+                    },
+                    onError: () => {
+                      antdMessage.error("Failed to update task status");
+                    }
+                  }
+                );
+              } else {
+                antdMessage.success(`Started working on: ${task.name}`);
+              }
             },
             onError: (error: any) => {
-              console.error("Failed to close worklog on pause:", error);
-              antdMessage.error("Failed to save progress");
+              antdMessage.error("Failed to start timer");
+              console.error("Start worklog error:", error);
             }
           }
         );
       }
+    } else {
+      // Pause Timer -> DO NOT close worklog, just pause UI timer
+      setIsRunning(false);
+      setResumeTime(""); // Clear resume time
+      
+      // Calculate and save elapsed time at pause moment
+      let currentPausedTime = 0;
+      if (pausedTime > 0 && resumeTime) {
+        // We were resumed, calculate: pausedTime + (currentTime - resumeTime)
+        const timeSinceResume = Math.floor((new Date().getTime() - new Date(resumeTime).getTime()) / 1000);
+        currentPausedTime = pausedTime + timeSinceResume;
+      } else if (startTime) {
+        // Normal pause, calculate from startTime
+        const elapsed = Math.floor((new Date().getTime() - new Date(startTime).getTime()) / 1000);
+        currentPausedTime = Math.max(0, elapsed);
+      }
+      setPausedTime(currentPausedTime);
+      setTime(currentPausedTime);
+
+      // Save paused state to localStorage (worklog remains open)
+      localStorage.setItem(
+        "activeTimer",
+        JSON.stringify({
+          taskId: task.id,
+          taskName: selectedTask,
+          startTime: startTime,
+          worklogId: worklogId,
+          isRunning: false,
+          pausedTime: currentPausedTime,
+        })
+      );
 
       antdMessage.info(`Paused timer for: ${task.name}`);
     }
@@ -375,8 +536,15 @@ export function ProductivityWidget() {
       return;
     }
 
+    // Pause timer at this moment (but don't close worklog yet)
     if (isRunning) {
       setIsRunning(false);
+      if (startTime) {
+        const elapsed = Math.floor((new Date().getTime() - new Date(startTime).getTime()) / 1000);
+        const currentPausedTime = Math.max(0, elapsed);
+        setPausedTime(currentPausedTime);
+        setTime(currentPausedTime);
+      }
     }
 
     setWorklogAction('stuck');
@@ -389,8 +557,15 @@ export function ProductivityWidget() {
       return;
     }
 
+    // Stop timer at this moment (but don't close worklog yet - will close in modal submit)
     if (isRunning) {
       setIsRunning(false);
+      if (startTime) {
+        const elapsed = Math.floor((new Date().getTime() - new Date(startTime).getTime()) / 1000);
+        const currentPausedTime = Math.max(0, elapsed);
+        setPausedTime(currentPausedTime);
+        setTime(currentPausedTime);
+      }
     }
 
     setWorklogAction('complete');
@@ -403,12 +578,38 @@ export function ProductivityWidget() {
     const task = tasks.find(t => t.name === selectedTask);
     if (!task) return;
 
-    // If timer was running, we need to update the worklog
+    // Calculate end_datetime: use the actual elapsed time
+    // The backend calculates time_in_seconds as (end_datetime - start_datetime)
+    // So we need to send end_datetime = start_datetime + actual_elapsed_time
+    let endDatetime: string;
+    let actualElapsedTime = 0;
+    
+    if (pausedTime > 0 && resumeTime) {
+      // We were resumed, calculate total elapsed: pausedTime + (currentTime - resumeTime)
+      const timeSinceResume = Math.floor((new Date().getTime() - new Date(resumeTime).getTime()) / 1000);
+      actualElapsedTime = pausedTime + timeSinceResume;
+    } else if (pausedTime > 0) {
+      // We're paused, use paused time
+      actualElapsedTime = pausedTime;
+    } else if (startTime) {
+      // We're running normally, calculate from startTime
+      actualElapsedTime = Math.floor((new Date().getTime() - new Date(startTime).getTime()) / 1000);
+    }
+    
+    if (startTime && actualElapsedTime > 0) {
+      const start = new Date(startTime);
+      endDatetime = new Date(start.getTime() + actualElapsedTime * 1000).toISOString();
+    } else {
+      // Fallback to current time
+      endDatetime = new Date().toISOString();
+    }
+
+    // If we have an active worklog (open worklog), close it
     if (startTime && worklogId) {
       const payload = {
         task_id: task.id,
         start_datetime: startTime,
-        end_datetime: new Date().toISOString(),
+        end_datetime: endDatetime,
         description,
       };
 
@@ -420,7 +621,8 @@ export function ProductivityWidget() {
             setIsRunning(false);
 
             // Update task status based on action
-            const newStatus = worklogAction === 'stuck' ? 'Stuck' : 'Completed';
+            // Match old frontend: stuck -> "Impediment", complete -> "Review"
+            const newStatus = worklogAction === 'stuck' ? 'Impediment' : 'Review';
             updateStatusMutation.mutate(
               { id: task.id, status: newStatus },
               {
@@ -433,11 +635,13 @@ export function ProductivityWidget() {
 
                   // Clear timer state
                   setTime(0);
+                  setPausedTime(0);
+                  setResumeTime("");
                   setStartTime("");
                   setWorklogId(null);
                   localStorage.removeItem("activeTimer");
 
-                  // If completed, clear selection
+                  // If completed, clear selection and remove from task list
                   if (worklogAction === 'complete') {
                     setSelectedTask("");
                     setSelectedTaskId(null);
@@ -479,14 +683,32 @@ export function ProductivityWidget() {
         }
       );
     } else {
-      // No active worklog, but check if there's an open worklog that needs to be closed
-      // First, check if there's an active worklog in task detail
+      // No active worklog in state, but check if there's an open worklog in task detail
       if (taskDetail?.task_worklog && !taskDetail.task_worklog.end_datetime && taskDetail.task_worklog.id) {
-        // Close the active worklog first
+        // Close the active worklog - calculate actual elapsed time
+        let endDatetime: string;
+        let actualElapsedTime = 0;
+        
+        if (pausedTime > 0 && resumeTime) {
+          const timeSinceResume = Math.floor((new Date().getTime() - new Date(resumeTime).getTime()) / 1000);
+          actualElapsedTime = pausedTime + timeSinceResume;
+        } else if (pausedTime > 0) {
+          actualElapsedTime = pausedTime;
+        } else if (taskDetail.task_worklog.start_datetime) {
+          actualElapsedTime = Math.floor((new Date().getTime() - new Date(taskDetail.task_worklog.start_datetime).getTime()) / 1000);
+        }
+        
+        if (taskDetail.task_worklog.start_datetime && actualElapsedTime > 0) {
+          const start = new Date(taskDetail.task_worklog.start_datetime);
+          endDatetime = new Date(start.getTime() + actualElapsedTime * 1000).toISOString();
+        } else {
+          endDatetime = new Date().toISOString();
+        }
+
         const payload = {
           task_id: task.id,
           start_datetime: taskDetail.task_worklog.start_datetime,
-          end_datetime: new Date().toISOString(),
+          end_datetime: endDatetime,
           description,
         };
 
@@ -495,7 +717,8 @@ export function ProductivityWidget() {
           {
             onSuccess: () => {
               // Then update task status
-              const newStatus = worklogAction === 'stuck' ? 'Stuck' : 'Completed';
+              // Match old frontend: stuck -> "Impediment", complete -> "Review"
+              const newStatus = worklogAction === 'stuck' ? 'Impediment' : 'Review';
               updateStatusMutation.mutate(
                 { id: task.id, status: newStatus },
                 {
@@ -509,6 +732,8 @@ export function ProductivityWidget() {
                     // Clear timer state
                     setIsRunning(false);
                     setTime(0);
+                    setPausedTime(0);
+                    setResumeTime("");
                     setStartTime("");
                     setWorklogId(null);
                     localStorage.removeItem("activeTimer");
@@ -541,7 +766,8 @@ export function ProductivityWidget() {
         );
       } else {
         // No active worklog, just update status
-        const newStatus = worklogAction === 'stuck' ? 'Stuck' : 'Completed';
+        // Match old frontend: stuck -> "Impediment", complete -> "Review"
+        const newStatus = worklogAction === 'stuck' ? 'Impediment' : 'Review';
         updateStatusMutation.mutate(
           { id: task.id, status: newStatus },
           {
@@ -555,6 +781,8 @@ export function ProductivityWidget() {
               // Clear timer state
               setIsRunning(false);
               setTime(0);
+              setPausedTime(0);
+              setResumeTime("");
               setStartTime("");
               setWorklogId(null);
               localStorage.removeItem("activeTimer");
@@ -686,21 +914,13 @@ export function ProductivityWidget() {
   const handleTaskSelect = (taskName: string) => {
     const task = tasks.find(t => t.name === taskName);
     if (task) {
+      // Don't reset timer state here - let the taskDetail useEffect handle restoration
       setSelectedTask(taskName);
       setSelectedTaskId(task.id);
       setShowTaskSelector(false);
 
-      // Reset timer when switching tasks
-      if (isRunning) {
-        setIsRunning(false);
-      }
-      setTime(0);
-      setStartTime("");
-      setWorklogId(null);
-      localStorage.removeItem("activeTimer");
-
       // Task detail will be fetched automatically via the useQuery hook when selectedTaskId changes
-      // This will allow us to check if it's a rework task (worked_sessions > 0)
+      // This will properly restore the timer state if the task has an active worklog
     }
   };
 
@@ -1016,12 +1236,16 @@ export function ProductivityWidget() {
               </div>
 
               {/* Right: Control Buttons - Pushed to far right */}
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                 {/* Play/Pause Button */}
                 <Tooltip title={isRunning ? "Pause" : "Play"}>
                   <button
-                    onClick={handlePlayPause}
-                    className="w-10 h-10 bg-[#EAEAEA] hover:bg-[#DDDDDD] text-[#666666] rounded-full flex items-center justify-center transition-all active:scale-90"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePlayPause();
+                    }}
+                    className="w-10 h-10 bg-[#EAEAEA] hover:bg-[#DDDDDD] text-[#666666] rounded-full flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                    type="button"
                   >
                     {isRunning ? (
                       <Pause24Filled className="w-5 h-5" fill="currentColor" />
@@ -1034,8 +1258,12 @@ export function ProductivityWidget() {
                 {/* Stuck Button (Palm/Hand) */}
                 <Tooltip title="I'm stuck">
                   <button
-                    onClick={handleStuck}
-                    className="w-10 h-10 bg-[#EAEAEA] hover:bg-[#DDDDDD] rounded-full flex items-center justify-center transition-all active:scale-90"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStuck();
+                    }}
+                    className="w-10 h-10 bg-[#EAEAEA] hover:bg-[#DDDDDD] rounded-full flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                    type="button"
                   >
                     <span className="text-[18px]">✋</span>
                   </button>
@@ -1044,8 +1272,12 @@ export function ProductivityWidget() {
                 {/* Completed Button */}
                 <Tooltip title="Mark as Complete">
                   <button
-                    onClick={handleComplete}
-                    className="w-10 h-10 bg-[#EAEAEA] hover:bg-[#DDDDDD] text-[#666666] rounded-full flex items-center justify-center transition-all active:scale-90"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleComplete();
+                    }}
+                    className="w-10 h-10 bg-[#EAEAEA] hover:bg-[#DDDDDD] text-[#666666] rounded-full flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                    type="button"
                   >
                     <CheckmarkCircle24Filled className="w-5 h-5 text-[#666666]" />
                   </button>
@@ -1100,9 +1332,18 @@ export function ProductivityWidget() {
         onCancel={() => {
           setShowWorklogModal(false);
           setWorklogAction(null);
-          // Resume timer if it was running
-          if (startTime && worklogId) {
+          // Resume timer if we have an active worklog (was running before)
+          if (startTime && worklogId && !taskDetail?.task_worklog?.end_datetime) {
             setIsRunning(true);
+            // If we have pausedTime, restore resume state
+            if (pausedTime > 0) {
+              setResumeTime(new Date().toISOString());
+              setTime(pausedTime);
+            } else {
+              setResumeTime("");
+              const elapsed = Math.floor((new Date().getTime() - new Date(startTime).getTime()) / 1000);
+              setTime(Math.max(0, elapsed));
+            }
           }
         }}
         footer={null}
@@ -1117,9 +1358,14 @@ export function ProductivityWidget() {
           onCancel={() => {
             setShowWorklogModal(false);
             setWorklogAction(null);
-            // Resume timer if it was running
-            if (startTime && worklogId) {
+            // Resume timer if we have an active worklog (was running before)
+            if (startTime && worklogId && !taskDetail?.task_worklog?.end_datetime) {
               setIsRunning(true);
+              // Reset paused time since we're resuming
+              setPausedTime(0);
+              // Recalculate time from startTime
+              const elapsed = Math.floor((new Date().getTime() - new Date(startTime).getTime()) / 1000);
+              setTime(Math.max(0, elapsed));
             }
           }}
           actionType={worklogAction || 'complete'}

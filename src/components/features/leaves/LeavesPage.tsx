@@ -273,8 +273,8 @@ export function LeavesPage() {
               </div>
             ) : error ? (
               <div className="flex items-center justify-center py-12">
-                <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-red-500">
-                  Failed to load leave requests
+                <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                  Unable to load leave requests at the moment. Please try again later.
                 </p>
               </div>
             ) : filteredRequests.length === 0 ? (

@@ -320,16 +320,29 @@ export function CalendarPage() {
       });
     }
 
-    // Next month filler
-    const remainingSlots = 42 - days.length; // 6 rows * 7 days
-    const nextMonth = currentDate.add(1, 'month');
-    for (let i = 1; i <= remainingSlots; i++) {
-      const d = nextMonth.date(i);
-      days.push({
-        day: i,
-        isCurrentMonth: false,
-        date: d.format('YYYY-MM-DD')
-      });
+    // Next month filler - only fill to complete current row, not entire rows
+    const totalDays = days.length;
+    const remainingSlotsInLastRow = totalDays % 7;
+    if (remainingSlotsInLastRow > 0) {
+      // Only fill the remaining slots in the current row
+      const nextMonth = currentDate.add(1, 'month');
+      for (let i = 1; i <= (7 - remainingSlotsInLastRow); i++) {
+        const d = nextMonth.date(i);
+        days.push({
+          day: i,
+          isCurrentMonth: false,
+          date: d.format('YYYY-MM-DD')
+        });
+      }
+    }
+
+    // Remove last row if it contains only next month days
+    if (days.length >= 7) {
+      const lastRow = days.slice(-7);
+      const allNextMonth = lastRow.every(day => !day.isCurrentMonth);
+      if (allNextMonth) {
+        return days.slice(0, -7);
+      }
     }
 
     return days;
@@ -512,6 +525,23 @@ export function CalendarPage() {
       }}
       action={
         <div className="flex items-center gap-3">
+          {/* Month Navigation */}
+          <div className="flex items-center gap-2">
+            <button onClick={handlePrevMonth} className="w-9 h-9 rounded-[8px] border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors">
+              <ChevronLeft className="w-4 h-4 text-[#666666]" />
+            </button>
+            <div className="px-4 py-2 bg-[#F7F7F7] rounded-[8px] border border-[#EEEEEE]">
+              <span className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111]">
+                {currentDate.format('MMMM YYYY')}
+              </span>
+            </div>
+            <button onClick={handleNextMonth} className="w-9 h-9 rounded-[8px] border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors">
+              <ChevronRight className="w-4 h-4 text-[#666666]" />
+            </button>
+            <button onClick={handleToday} className="px-4 py-2 text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666] hover:text-[#111111] transition-colors">
+              Today
+            </button>
+          </div>
           {!isLoadingTeamsStatus && (
             <>
               {isConnected ? (
@@ -535,23 +565,6 @@ export function CalendarPage() {
       }
     >
       <div className="flex flex-col h-full">
-        {/* Month Navigation */}
-        <div className="flex items-center justify-center gap-3 mb-6 shrink-0">
-          <button onClick={handlePrevMonth} className="w-9 h-9 rounded-[8px] border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors">
-            <ChevronLeft className="w-4 h-4 text-[#666666]" />
-          </button>
-          <div className="px-4 py-2 bg-[#F7F7F7] rounded-[8px] border border-[#EEEEEE]">
-            <span className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111]">
-              {currentDate.format('MMMM YYYY')}
-            </span>
-          </div>
-          <button onClick={handleNextMonth} className="w-9 h-9 rounded-[8px] border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors">
-            <ChevronRight className="w-4 h-4 text-[#666666]" />
-          </button>
-          <button onClick={handleToday} className="px-4 py-2 text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666] hover:text-[#111111] transition-colors">
-            Today
-          </button>
-        </div>
 
         <div className="flex-1 grid grid-cols-[1fr_320px] gap-6 overflow-hidden min-h-0">
           {/* Calendar Grid */}

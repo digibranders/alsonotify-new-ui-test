@@ -163,13 +163,13 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
             </div>
           ) : error ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-red-500">
-                Failed to load leaves
+              <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                Unable to load leaves at the moment. Please try again later.
               </p>
             </div>
           ) : processedLeaves.length === 0 ? (
             <div className="bg-white rounded-[10px] border border-dashed border-[#CCCCCC] py-4 flex items-center justify-center">
-              <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#888888]">No more leaves</p>
+              <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">No leaves to display at the moment</p>
             </div>
           ) : (
             <>
