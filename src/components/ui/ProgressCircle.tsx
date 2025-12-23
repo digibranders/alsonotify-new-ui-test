@@ -39,7 +39,7 @@ export function ProgressCircle({ total, completed, inProgress, delayed, title, s
             cy="70"
             r="60"
             fill="none"
-            stroke="#FF7A7A"
+            stroke="#0F9D58"
             strokeWidth="20"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
@@ -68,7 +68,7 @@ export function ProgressCircle({ total, completed, inProgress, delayed, title, s
           <div className="flex gap-[4px] items-center">
             <div className="relative shrink-0 size-[10px]">
               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 10 10">
-                <circle cx="5" cy="5" fill="#FF7A7A" r="5" />
+                <circle cx="5" cy="5" fill="#0F9D58" r="5" />
               </svg>
             </div>
             <div className="flex flex-col font-['Manrope:Medium',sans-serif] font-medium justify-center leading-[0] not-italic text-[#666666] text-[14px] text-nowrap">
@@ -85,7 +85,7 @@ export function ProgressCircle({ total, completed, inProgress, delayed, title, s
           <div className="flex gap-[4px] items-center">
             <div className="relative shrink-0 size-[10px]">
               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 10 10">
-                <circle cx="5" cy="5" fill="#FFA726" r="5" />
+                <circle cx="5" cy="5" fill="#2F80ED" r="5" />
               </svg>
             </div>
             <div className="flex flex-col font-['Manrope:Medium',sans-serif] font-medium justify-center leading-[0] not-italic text-[#666666] text-[14px] text-nowrap">
@@ -102,7 +102,7 @@ export function ProgressCircle({ total, completed, inProgress, delayed, title, s
           <div className="flex gap-[4px] items-center">
             <div className="relative shrink-0 size-[10px]">
               <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 10 10">
-                <circle cx="5" cy="5" fill="#E5E5E5" r="5" />
+                <circle cx="5" cy="5" fill="#ff3b3b" r="5" />
               </svg>
             </div>
             <div className="flex flex-col font-['Manrope:Medium',sans-serif] font-medium justify-center leading-[0] not-italic text-[#666666] text-[14px] text-nowrap">
