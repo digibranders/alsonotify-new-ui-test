@@ -486,9 +486,9 @@ interface ProgressCardProps {
 
 function ProgressCard({ title, data, isLoading = false, dateRangeLabel = 'this period', onClick, onStatusClick }: ProgressCardProps) {
   const chartData = [
-    { name: 'Completed', value: data.completed, color: '#FF3B3B' },
-    { name: 'In Progress', value: data.inProgress, color: '#FF6B6B' },
-    { name: 'Delayed', value: data.delayed, color: '#FFCCCC' },
+    { name: 'Completed', value: data.completed, color: '#0F9D58' },   // Green - matches reference
+    { name: 'In Progress', value: data.inProgress, color: '#2F80ED' }, // Blue - matches reference
+    { name: 'Delayed', value: data.delayed, color: '#ff3b3b' },      // Red - matches reference
   ];
 
   // Filter out zero values for the chart only

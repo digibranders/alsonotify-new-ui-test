@@ -304,14 +304,20 @@ export function EmployeesPage() {
         }
       );
     } else {
+      // Validate role_id is present
+      if (!roleId) {
+        message.error("Please select an access level");
+        return;
+      }
+
       createEmployeeMutation.mutate(
-        // ... (data mapped above)
         {
           name: data.name,
           email: data.email,
           mobile_number: data.phone,
           designation: data.role,
           department_id: departmentId,
+          role_id: roleId,
           experience: parseInt(data.experience) || 0,
           skills: data.skillsets.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0),
           date_of_joining: dateOfJoining,

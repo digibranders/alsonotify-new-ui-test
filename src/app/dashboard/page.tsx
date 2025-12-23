@@ -26,7 +26,7 @@ export default function DashboardPage() {
               if (page.startsWith('requirements')) {
                 // Extract query string if present (e.g., "requirements?tab=active")
                 const queryPart = page.includes('?') ? page.substring(page.indexOf('?')) : '';
-                router.push(`/dashboard/kanban${queryPart}`);
+                router.push(`/dashboard/requirements${queryPart}`);
               } else if (page.startsWith('tasks')) {
                 // Extract query string if present (e.g., "tasks?tab=In_Progress")
                 const queryPart = page.includes('?') ? page.substring(page.indexOf('?')) : '';

@@ -854,12 +854,12 @@ export function RequirementsPage() {
   
   const filterOptions: FilterOption[] = [
     { id: 'type', label: 'Type', options: ['All', 'In-house', 'Outsourced', 'Client Work'], placeholder: 'Type' },
-    // Only show Billing filter when on Completed tab
-    ...(activeStatusTab === 'completed' ? [{ id: 'billing', label: 'Billing', options: ['All', 'Ready to Bill', 'Invoiced', 'Paid'], placeholder: 'Billing Status' }] : []),
     { id: 'priority', label: 'Priority', options: priorities, placeholder: 'Priority' },
     { id: 'client', label: 'Client', options: allClients, placeholder: 'Client' },
     { id: 'category', label: 'Department', options: allCategories, placeholder: 'Department' },
-    { id: 'assignee', label: 'Assigned To', options: allAssignees, placeholder: 'Assignee' }
+    { id: 'assignee', label: 'Assigned To', options: allAssignees, placeholder: 'Assignee' },
+    // Only show Billing filter when on Completed tab - moved to last position to prevent layout shift
+    ...(activeStatusTab === 'completed' ? [{ id: 'billing', label: 'Billing', options: ['All', 'Ready to Bill', 'Invoiced', 'Paid'], placeholder: 'Billing Status' }] : [])
   ];
 
   const handleFilterChange = (filterId: string, value: string) => {
