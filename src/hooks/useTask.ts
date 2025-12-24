@@ -35,6 +35,7 @@ export const useCreateTask = () => {
     mutationFn: (params: TaskType) => createTask(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["assignedTasks"] }); // Also invalidate assigned tasks so new tasks appear in dashboard selector
     },
   });
 };
@@ -67,9 +68,11 @@ export const useUpdateTaskStatus = () => {
 
   return useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) => updateTaskStatusById(id, status),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["assignedTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["task", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["taskDetail"] });
     },
   });
 };

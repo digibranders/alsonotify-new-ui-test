@@ -62,13 +62,24 @@ function validatePagination(limit: number, skip: number): void {
 /**
  * Create a new task
  */
-export const createTask = async (params: Partial<TaskType>): Promise<ApiResponse<TaskType>> => {
+export const createTask = async (params: Partial<TaskType> & { name?: string }): Promise<ApiResponse<TaskType>> => {
   try {
-    if (!params.title || params.title.trim().length === 0) {
+    // Handle both 'name' (from form) and 'title' (from TaskType interface) - backend expects 'name'
+    const taskName = (params as any).name || params.title;
+    
+    // Validate name/title field
+    if (!taskName || (typeof taskName === 'string' && taskName.trim().length === 0)) {
       throw new ApiError('Task title is required', 400);
     }
     
-    const { data } = await axiosApi.post<ApiResponse<TaskType>>("/task/create", params);
+    // Map to backend 'name' field (remove both title and name from params, then add name)
+    const { title, name, ...restParams } = params as any;
+    const payload = {
+      ...restParams,
+      name: taskName,
+    };
+    
+    const { data } = await axiosApi.post<ApiResponse<TaskType>>("/task/create", payload);
     
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -436,6 +447,7 @@ export const updateWorklog = async (params: UpdateWorklogPayload, worklogId: num
     
     return data;
   } catch (error) {
+    
     if (error instanceof ApiError) {
       throw error;
     }
