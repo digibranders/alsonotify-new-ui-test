@@ -220,12 +220,13 @@ export function ProductivityWidget() {
 
       if (activeWorklog && !activeWorklog.end_datetime && activeWorklog.start_datetime) {
         // RUNNING worklog exists in DB - timer should show real elapsed time
-        setStartTime(activeWorklog.start_datetime); // For API calls & timer calculation
+        const utcStart = parseAsUTC(activeWorklog.start_datetime).toISOString();
+        setStartTime(utcStart); // For API calls & timer calculation
         setWorklogId(activeWorklog.id || null);
         setIsRunning(true);
 
         // Calculate and set initial elapsed for immediate display
-        const initialElapsed = Math.floor((Date.now() - parseAsUTC(activeWorklog.start_datetime).getTime()) / 1000);
+        const initialElapsed = Math.floor((Date.now() - new Date(utcStart).getTime()) / 1000);
         setTime(Math.max(0, initialElapsed));
 
         // Save to localStorage for cross-tab sync
@@ -448,15 +449,18 @@ export function ProductivityWidget() {
         return;
       }
 
+      // Ensure normalized UTC start time for accurate diff
+      const utcStart = parseAsUTC(startTime).toISOString();
+
       // Calculate elapsed time and store for resume
-      const elapsed = Math.floor((Date.now() - parseAsUTC(startTime).getTime()) / 1000);
+      const elapsed = Math.floor((Date.now() - new Date(utcStart).getTime()) / 1000);
       pausedElapsedRef.current = elapsed;
 
       // Automatically save worklog with empty description and current timestamp
       const endDatetime = new Date().toISOString();
       const payload = {
         task_id: task.id,
-        start_datetime: startTime,
+        start_datetime: utcStart,
         end_datetime: endDatetime,
         description: '', // Empty description as per user requirement
       };

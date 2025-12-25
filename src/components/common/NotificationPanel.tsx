@@ -41,17 +41,17 @@ function EmptyState({ message = "No notifications" }: { message?: string }) {
   );
 }
 
-function NotificationItemComponent({ 
-  notification, 
-  markAsRead, 
-  navigate 
-}: { 
-  notification: NotificationItem; 
-  markAsRead: (id: number) => void; 
+function NotificationItemComponent({
+  notification,
+  markAsRead,
+  navigate
+}: {
+  notification: NotificationItem;
+  markAsRead: (id: number) => void;
   navigate: (path: string) => void;
 }) {
   const getIcon = (type?: string) => {
-    switch(type) {
+    switch (type) {
       case 'requirement': return <FileText className="w-5 h-5" />;
       case 'alert': return <AlertCircle className="w-5 h-5" />;
       case 'task': return <CheckSquare className="w-5 h-5" />;
@@ -75,21 +75,19 @@ function NotificationItemComponent({
   return (
     <div
       onClick={handleClick}
-      className={`group relative px-5 py-4 border-b border-[#EEEEEE] cursor-pointer transition-all duration-200 hover:bg-[#F9F9F9] ${
-        notification.unread ? 'bg-[#ff3b3b]/[0.02]' : 'bg-white'
-      }`}
+      className={`group relative px-5 py-4 border-b border-[#EEEEEE] cursor-pointer transition-all duration-200 hover:bg-[#F9F9F9] ${notification.unread ? 'bg-[#ff3b3b]/[0.02]' : 'bg-white'
+        }`}
     >
       {notification.unread && (
         <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-[#ff3b3b]" />
       )}
-      
+
       <div className="flex gap-4">
-        <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center border ${
-          notification.type === 'requirement' ? 'bg-blue-50 border-blue-100 text-blue-600' :
-          notification.type === 'alert' ? 'bg-red-50 border-red-100 text-red-600' :
-          notification.type === 'task' ? 'bg-orange-50 border-orange-100 text-orange-600' :
-          'bg-gray-50 border-gray-100 text-gray-600'
-        }`}>
+        <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center border ${notification.type === 'requirement' ? 'bg-blue-50 border-blue-100 text-blue-600' :
+            notification.type === 'alert' ? 'bg-red-50 border-red-100 text-red-600' :
+              notification.type === 'task' ? 'bg-orange-50 border-orange-100 text-orange-600' :
+                'bg-gray-50 border-gray-100 text-gray-600'
+          }`}>
           {getIcon(notification.type)}
         </div>
 
@@ -102,14 +100,14 @@ function NotificationItemComponent({
               {notification.time}
             </span>
           </div>
-          
+
           <p className="text-[13px] text-[#666666] font-['Inter:Regular',sans-serif] leading-relaxed mb-3 line-clamp-2">
             {notification.message}
           </p>
 
           {notification.type === 'requirement' && (
             <div className="flex justify-start gap-2 mt-2">
-              <button 
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   markAsRead(notification.id);
@@ -119,7 +117,7 @@ function NotificationItemComponent({
               >
                 <X className="w-4 h-4" />
               </button>
-              <button 
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   markAsRead(notification.id);
@@ -189,9 +187,10 @@ export function NotificationPanel({
       open={open}
       onClose={onClose}
       placement="right"
-      width={400}
-      closable={false}
       styles={{
+        wrapper: {
+          width: 400,
+        },
         body: {
           padding: 0,
           display: 'flex',
@@ -233,11 +232,10 @@ export function NotificationPanel({
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 rounded-md text-[12px] font-['Inter:Medium',sans-serif] transition-all ${
-                activeTab === tab.key
+              className={`flex-1 rounded-md text-[12px] font-['Inter:Medium',sans-serif] transition-all ${activeTab === tab.key
                   ? 'bg-white text-[#111111] shadow-sm'
                   : 'text-[#666666] hover:text-[#111111]'
-              }`}
+                }`}
             >
               {tab.label}
             </button>
@@ -254,14 +252,14 @@ export function NotificationPanel({
             <div className="h-3 w-40 bg-[#F3F4F6] rounded-full" />
           </div>
         ) : filteredNotifications.length === 0 ? (
-          <EmptyState 
+          <EmptyState
             message={
-              activeTab === 'unread' 
-                ? 'No unread notifications' 
+              activeTab === 'unread'
+                ? 'No unread notifications'
                 : activeTab === 'tasks'
-                ? 'No task notifications'
-                : 'No notifications'
-            } 
+                  ? 'No task notifications'
+                  : 'No notifications'
+            }
           />
         ) : (
           <div className="flex flex-col">

@@ -97,21 +97,21 @@ export function RequirementDetailsPage() {
       assignedTo: found.manager ? [found.manager.name] : found.leader ? [found.leader.name] : [],
       dueDate: found.end_date
         ? new Date(found.end_date)
-            .toLocaleDateString('en-GB', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-            })
-            .replace(/ /g, '-')
+          .toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })
+          .replace(/ /g, '-')
         : 'TBD',
       createdDate: found.start_date
         ? new Date(found.start_date)
-            .toLocaleDateString('en-GB', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-            })
-            .replace(/ /g, '-')
+          .toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })
+          .replace(/ /g, '-')
         : 'TBD',
       priority: (found.priority?.toLowerCase() as 'high' | 'medium' | 'low') || 'medium',
       type: found.type || 'inhouse',
@@ -159,12 +159,12 @@ export function RequirementDetailsPage() {
             assignedTo: assignedToName,
             dueDate: t.due_date
               ? new Date(t.due_date)
-                  .toLocaleDateString('en-GB', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                  })
-                  .replace(/ /g, '-')
+                .toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })
+                .replace(/ /g, '-')
               : 'TBD',
             status: mapTaskStatus(t.status || ''),
             type: (t.type === 'revision' ? 'revision' : 'task') as 'task' | 'revision',
@@ -179,12 +179,50 @@ export function RequirementDetailsPage() {
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [messageText, setMessageText] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
-  
+
   // Task form modal state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [usersDropdown, setUsersDropdown] = useState<Array<{ id: number; name: string }>>([]);
   const [requirementsDropdown, setRequirementsDropdown] = useState<Array<{ id: number; name: string }>>([]);
   const createTaskMutation = useCreateTask();
+
+  // Fetch users and requirements for form dropdowns
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await searchUsersByName();
+        if (response.success) {
+          const transformed = (response.result || []).map((item: any) => ({
+            id: item.value || item.id,
+            name: item.label || item.name,
+          }));
+          setUsersDropdown(transformed);
+        }
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    const fetchRequirements = async () => {
+      try {
+        if (!workspaceData?.result) return;
+        try {
+          const response = await getRequirementsDropdownByWorkspaceId(workspaceId);
+          if (response.success && response.result) {
+            setRequirementsDropdown(response.result);
+          }
+        } catch (error) {
+          console.error(`Failed to fetch requirements for workspace ${workspaceId}:`, error);
+        }
+      } catch (error) {
+        console.error('Failed to fetch requirements:', error);
+      }
+    };
+    fetchRequirements();
+  }, [workspaceData, workspaceId]);
 
   if (isLoadingWorkspace || isLoadingRequirements) {
     return <div className="p-8">Loading requirement details...</div>;
@@ -240,26 +278,26 @@ export function RequirementDetailsPage() {
   // Parse description to extract sections (if HTML or structured)
   const parseDescription = (description: string) => {
     if (!description) return { overview: '', deliverables: [], technical: [] };
-    
+
     let overview = description;
     let deliverables: string[] = [];
     let technical: string[] = [];
-    
+
     // Try to extract structured content if it's HTML (only in browser)
     if (typeof window !== 'undefined') {
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = description;
       overview = tempDiv.textContent || description;
-      
+
       // Try to parse structured sections from HTML
       const deliverablesSection = tempDiv.querySelector('[data-section="deliverables"], .deliverables, #deliverables');
       const technicalSection = tempDiv.querySelector('[data-section="technical"], .technical, #technical');
-      
+
       if (deliverablesSection) {
         const items = deliverablesSection.querySelectorAll('li, p');
         deliverables = Array.from(items).map(item => item.textContent?.trim() || '').filter(Boolean);
       }
-      
+
       if (technicalSection) {
         const items = technicalSection.querySelectorAll('li, p');
         technical = Array.from(items).map(item => item.textContent?.trim() || '').filter(Boolean);
@@ -268,24 +306,24 @@ export function RequirementDetailsPage() {
       // Server-side: strip HTML tags
       overview = description.replace(/<[^>]*>/g, '');
     }
-    
+
     // If no structured sections found, try to parse from plain text
     if (deliverables.length === 0 && technical.length === 0) {
       // Look for common patterns like "Key Deliverables:" or "Technical Requirements:"
       const deliverablesMatch = description.match(/(?:Key Deliverables?|Deliverables?)[:\-]?\s*([\s\S]*?)(?=Technical|$)/i);
       const technicalMatch = description.match(/(?:Technical Requirements?|Tech Stack|Technologies?)[:\-]?\s*([\s\S]*?)$/i);
-      
+
       if (deliverablesMatch) {
         const content = deliverablesMatch[1].trim();
         deliverables = content.split(/[•\-\n]/).map(item => item.trim()).filter(Boolean);
       }
-      
+
       if (technicalMatch) {
         const content = technicalMatch[1].trim();
         technical = content.split(/[•\-\n,]/).map(item => item.trim()).filter(Boolean);
       }
     }
-    
+
     return {
       overview: overview || '',
       deliverables,
@@ -295,43 +333,7 @@ export function RequirementDetailsPage() {
 
   const descriptionContent = parseDescription(requirement.description);
 
-  // Fetch users and requirements for form dropdowns
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await searchUsersByName();
-        if (response.success) {
-          const transformed = (response.result || []).map((item: any) => ({
-            id: item.value || item.id,
-            name: item.label || item.name,
-          }));
-          setUsersDropdown(transformed);
-        }
-      } catch (error) {
-        console.error('Failed to fetch users:', error);
-      }
-    };
-    fetchUsers();
-  }, []);
 
-  useEffect(() => {
-    const fetchRequirements = async () => {
-      try {
-        if (!workspaceData?.result) return;
-        try {
-          const response = await getRequirementsDropdownByWorkspaceId(workspaceId);
-          if (response.success && response.result) {
-            setRequirementsDropdown(response.result);
-          }
-        } catch (error) {
-          console.error(`Failed to fetch requirements for workspace ${workspaceId}:`, error);
-        }
-      } catch (error) {
-        console.error('Failed to fetch requirements:', error);
-      }
-    };
-    fetchRequirements();
-  }, [workspaceData, workspaceId]);
 
   // Handle create task
   const handleCreateTask = async (data: any) => {
@@ -440,6 +442,7 @@ export function RequirementDetailsPage() {
           </div>
         </div>
 
+
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-8 bg-[#FAFAFA]">
           {activeTab === 'details' && (
@@ -450,13 +453,13 @@ export function RequirementDetailsPage() {
                   <FileText className="w-5 h-5 text-[#ff3b3b]" />
                   Description
                 </h3>
-                
+
                 {/* Overview */}
                 <div className="mb-6">
-                  <div 
+                  <div
                     className="text-[14px] text-[#444444] font-['Manrope:Regular',sans-serif] leading-relaxed prose prose-sm max-w-none [&>p]:mb-3 [&>p]:last:mb-0 [&>p]:text-[#444444]"
-                    dangerouslySetInnerHTML={{ 
-                      __html: requirement.description || '<p class="text-[#999999]">No description provided.</p>' 
+                    dangerouslySetInnerHTML={{
+                      __html: requirement.description || '<p class="text-[#999999]">No description provided.</p>'
                     }}
                   />
                 </div>
@@ -614,9 +617,9 @@ export function RequirementDetailsPage() {
                     <ListTodo className="w-5 h-5 text-[#ff3b3b]" />
                     Tasks Breakdown
                   </h3>
-                  <Button 
-                    icon={<Plus className="w-4 h-4" />} 
-                    size="small" 
+                  <Button
+                    icon={<Plus className="w-4 h-4" />}
+                    size="small"
                     className="text-[12px] flex items-center"
                     onClick={() => setIsDialogOpen(true)}
                   >
@@ -764,11 +767,10 @@ export function RequirementDetailsPage() {
                       >
                         <div className="w-[250px] p-3 border-r border-[#EEEEEE] flex items-center gap-3 sticky left-0 bg-white group-hover:bg-[#FAFAFA] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
                           <span
-                            className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
-                              task.type === 'revision'
-                                ? 'bg-[#FFF5F5] text-[#ff3b3b]'
-                                : 'bg-[#F7F7F7] text-[#999999]'
-                            }`}
+                            className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${task.type === 'revision'
+                              ? 'bg-[#FFF5F5] text-[#ff3b3b]'
+                              : 'bg-[#F7F7F7] text-[#999999]'
+                              }`}
                           >
                             #{task.taskId}
                           </span>
@@ -789,14 +791,13 @@ export function RequirementDetailsPage() {
                           {/* Bar */}
                           <div
                             className={`absolute h-6 rounded-[4px] top-1/2 -translate-y-1/2 flex items-center px-2 shadow-sm
-                              ${
-                                task.status === 'completed'
-                                  ? 'bg-[#E8F5E9] border border-[#0F9D58] text-[#0F9D58]'
-                                  : task.status === 'delayed'
+                              ${task.status === 'completed'
+                                ? 'bg-[#E8F5E9] border border-[#0F9D58] text-[#0F9D58]'
+                                : task.status === 'delayed'
                                   ? 'bg-[#FDEDEC] border border-[#EB5757] text-[#EB5757]'
                                   : task.type === 'revision'
-                                  ? 'bg-[#FFF5F5] border border-[#ff3b3b] text-[#ff3b3b]'
-                                  : 'bg-[#E3F2FD] border border-[#2F80ED] text-[#2F80ED]'
+                                    ? 'bg-[#FFF5F5] border border-[#ff3b3b] text-[#ff3b3b]'
+                                    : 'bg-[#E3F2FD] border border-[#2F80ED] text-[#2F80ED]'
                               }
                             `}
                             style={{
@@ -1202,11 +1203,10 @@ export function RequirementDetailsPage() {
                             >
                               <div className="flex items-center justify-between mb-3">
                                 <span
-                                  className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
-                                    task.type === 'revision'
-                                      ? 'bg-[#FFF5F5] text-[#ff3b3b]'
-                                      : 'bg-[#F7F7F7] text-[#999999]'
-                                  }`}
+                                  className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${task.type === 'revision'
+                                    ? 'bg-[#FFF5F5] text-[#ff3b3b]'
+                                    : 'bg-[#F7F7F7] text-[#999999]'
+                                    }`}
                                 >
                                   #{task.taskId}
                                 </span>
@@ -1297,7 +1297,7 @@ export function RequirementDetailsPage() {
                   <p className="text-[13px] text-[#444444] font-['Manrope:Regular',sans-serif]">
                     {activity.message}
                   </p>
-                  
+
                   {/* File attachments */}
                   {activity.attachments && activity.attachments.length > 0 && (
                     <div className="mt-2 space-y-1">
@@ -1312,7 +1312,7 @@ export function RequirementDetailsPage() {
                       ))}
                     </div>
                   )}
-                  
+
                   {/* Worklog tags */}
                   {activity.type === 'worklog' && activity.time && activity.task && (
                     <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -1435,7 +1435,7 @@ function SubTaskRow({
   onSelect?: () => void;
 }) {
   const router = useRouter();
-  
+
   return (
     <div
       onClick={() => router.push(`/tasks/${task.id}`)}

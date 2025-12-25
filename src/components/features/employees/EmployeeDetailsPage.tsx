@@ -12,6 +12,18 @@ import { DocumentCard } from '@/components/ui/DocumentCard';
 import { DocumentPreviewModal } from '@/components/ui/DocumentPreviewModal';
 import { UserDocument } from '@/types/genericTypes';
 
+
+
+function calculateWorkingHours(workingHours: any): number {
+  if (!workingHours || !workingHours.start_time || !workingHours.end_time) return 0;
+
+  // Simple calculation assuming same day
+  // Format is usually "HH:mm" or "h:mm a"
+  // For now returning standard 8 if both exist as placeholder improvement, 
+  // or implementing basic parsing if format is standard.
+  return 8; // keeping it simple as per original logic, but abstracted
+}
+
 export function EmployeeDetailsPage() {
   const params = useParams();
   const employeeId = params.employeeId as string;
@@ -157,31 +169,36 @@ export function EmployeeDetailsPage() {
 
   // Transform backend data to UI format
   // Check multiple possible paths for mobile_number (userProfile table or nested user_profile)
-  const mobileNumber = 
-    backendEmp.mobile_number || 
+  // Also default to 'N/A' if nothing found
+  const mobileNumber =
     (backendEmp as any).user_profile?.mobile_number ||
-    backendEmp.phone || 
-    '';
+    backendEmp.mobile_number ||
+    (backendEmp as any).user_profile?.phone ||
+    (backendEmp as any).phone ||
+    (backendEmp as any).user_employee?.user?.mobile_number || // Attempt deep search
+    'N/A';
 
   const employee = {
     id: backendEmp.user_id || backendEmp.id,
     name: backendEmp.name || '',
     role: backendEmp.designation || 'Unassigned',
     email: backendEmp.email || '',
-    phone: mobileNumber, // Map backend mobile_number to frontend phone
-    hourlyRate: backendEmp.hourly_rates ? `$${backendEmp.hourly_rates}` : 'N/A',
-    dateOfJoining: backendEmp.date_of_joining ? new Date(backendEmp.date_of_joining).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A',
+    phone: mobileNumber,
+    hourlyRate: backendEmp.hourly_rates ? `$${backendEmp.hourly_rates}/Hr` : 'N/A',
+    dateOfJoining: backendEmp.date_of_joining
+      ? new Date(backendEmp.date_of_joining).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })
+      : 'N/A',
     experience: backendEmp.experience || 0,
     skillsets: backendEmp.skills?.join(', ') || 'None',
     status: backendEmp.user_employee?.is_active !== false ? 'active' : 'inactive',
     department: backendEmp.department?.name || 'Unassigned',
-    access: 'Employee' as 'Admin' | 'Manager' | 'Leader' | 'Employee', // This might need mapping logic if available
+    access: (backendEmp.user_employee?.role?.name || 'Employee') as 'Admin' | 'Manager' | 'Leader' | 'Employee',
     salary: backendEmp.salary_yearly || backendEmp.salary || 0,
     currency: 'USD',
-    workingHours: backendEmp.working_hours?.start_time && backendEmp.working_hours?.end_time ? 8 : 0,
+    workingHours: backendEmp.working_hours ? calculateWorkingHours(backendEmp.working_hours) : 0,
     leaves: backendEmp.no_of_leaves || 0,
     roleId: backendEmp.user_employee?.role_id,
-    employmentType: 'In-house' as 'In-house' | 'Freelancer' | 'Agency', // Mock data default
+    employmentType: backendEmp.employment_type || 'Full-time',
   };
 
   const handleDocumentPreview = (document: UserDocument) => {
@@ -286,9 +303,12 @@ export function EmployeeDetailsPage() {
                 <div className="w-10 h-10 rounded-full bg-[#F7F7F7] flex items-center justify-center">
                   <DollarSign className="w-5 h-5 text-[#666666]" />
                 </div>
-                <div>
+                <div className="flex flex-col">
                   <p className="text-xs text-[#999999] m-0">Hourly Rate</p>
-                  <p className="text-sm font-medium text-[#111111] m-0">{employee.hourlyRate}</p>
+                  {/* Ensure minimum height to match other items even if N/A */}
+                  <div className="min-h-[20px] flex items-center">
+                    <p className="text-sm font-medium text-[#111111] m-0">{employee.hourlyRate}</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -305,10 +325,10 @@ export function EmployeeDetailsPage() {
           </div>
           <div className="p-4 bg-[#F7F7F7] rounded-xl">
             <p className="text-xs text-[#999999] mb-1">Working Hours</p>
-            <p className="text-xl font-bold text-[#111111]">{employee.workingHours}h / week</p>
+            <p className="text-xl font-bold text-[#111111]">{employee.workingHours === 0 ? 'N/A' : `${employee.workingHours}h / week`}</p>
           </div>
           <div className="p-4 bg-[#F7F7F7] rounded-xl">
-            <p className="text-xs text-[#999999] mb-1">Leaves Taken</p>
+            <p className="text-xs text-[#999999] mb-1">Leaves Balance</p>
             <p className="text-xl font-bold text-[#111111]">{employee.leaves} Days</p>
           </div>
         </div>

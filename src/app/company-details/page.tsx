@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { UploadCloud, User, Check, ArrowRight, Loader2 } from "lucide-react";
@@ -20,6 +20,9 @@ function CompanyDetailsForm() {
 
   const [currentStep, setCurrentStep] = useState<"company" | "admin">("company");
 
+  const accountType = searchParams.get("type") || "organization";
+  const isIndividual = accountType === "individual";
+
   const [companyData, setCompanyData] = useState({
     companyName: "",
     website: "", // Optional - not sent to API
@@ -37,6 +40,19 @@ function CompanyDetailsForm() {
     phone: "", // Optional - not sent to API
     photo: null as File | null, // Optional - not sent to API
   });
+
+  // Auto-fill for Individual
+  useEffect(() => {
+    if (isIndividual) {
+      setCompanyData((prev) => ({
+        ...prev,
+        companyName: "My Workspace",
+        industry: "other",
+        companySize: "1-10",
+      }));
+    }
+  }, [isIndividual]);
+
 
   // Map country name to country code
   const getCountryCode = (countryName: string): string => {
@@ -92,6 +108,7 @@ function CompanyDetailsForm() {
         registerToken: token,
         companyName: companyData.companyName,
         businessType: String(businessType),
+        accountType: isIndividual ? "INDIVIDUAL" : "ORGANIZATION",
         country: countryCode,
         timezone: companyData.timezone,
       });
@@ -131,55 +148,53 @@ function CompanyDetailsForm() {
           </p>
         </motion.div>
 
-        {/* Progress Indicator */}
-        <motion.div variants={itemVariants} className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                currentStep === "company"
+        {/* Progress Indicator - Only show for Organization */}
+        {!isIndividual && (
+          <motion.div variants={itemVariants} className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${currentStep === "company"
                   ? "bg-[#ff3b3b] text-white"
                   : "bg-[#ff3b3b] text-white"
-              }`}
-            >
-              {currentStep === "admin" ? (
-                <Check className="w-4 h-4" />
-              ) : (
-                "1"
-              )}
+                  }`}
+              >
+                {currentStep === "admin" ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  "1"
+                )}
+              </div>
+              <span
+                className={`text-sm font-medium ${currentStep === "company" ? "text-[#111111]" : "text-[#111111]"
+                  }`}
+              >
+                Company Details
+              </span>
             </div>
-            <span
-              className={`text-sm font-medium ${
-                currentStep === "company" ? "text-[#111111]" : "text-[#111111]"
-              }`}
-            >
-              Company Details
-            </span>
-          </div>
-          <div className="h-[1px] flex-1 bg-gray-200">
-            <div
-              className="h-full bg-[#ff3b3b] transition-all duration-500"
-              style={{ width: currentStep === "admin" ? "100%" : "0%" }}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                currentStep === "admin"
+            <div className="h-[1px] flex-1 bg-gray-200">
+              <div
+                className="h-full bg-[#ff3b3b] transition-all duration-500"
+                style={{ width: currentStep === "admin" ? "100%" : "0%" }}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${currentStep === "admin"
                   ? "bg-[#ff3b3b] text-white"
                   : "bg-gray-100 text-gray-400"
-              }`}
-            >
-              2
+                  }`}
+              >
+                2
+              </div>
+              <span
+                className={`text-sm font-medium ${currentStep === "admin" ? "text-[#111111]" : "text-gray-400"
+                  }`}
+              >
+                Admin Details
+              </span>
             </div>
-            <span
-              className={`text-sm font-medium ${
-                currentStep === "admin" ? "text-[#111111]" : "text-gray-400"
-              }`}
-            >
-              Admin Details
-            </span>
-          </div>
-        </motion.div>
+          </motion.div>
+        )}
 
         <form
           onSubmit={currentStep === "company" ? handleCompanyNext : handleComplete}
@@ -195,106 +210,110 @@ function CompanyDetailsForm() {
                 exit="exit"
                 className="space-y-8"
               >
-                <motion.div variants={itemVariants}>
-                  {/* Company Logo Upload */}
-                  <div className="flex items-center gap-6">
-                    <div className="w-24 h-24 rounded-full bg-[#F5F5F5] flex items-center justify-center border-2 border-dashed border-gray-300 cursor-pointer hover:border-[#ff3b3b] hover:bg-[#FFF5F5] transition-colors group relative overflow-hidden">
-                      <UploadCloud className="w-8 h-8 text-gray-400 group-hover:text-[#ff3b3b] transition-colors" />
+                {!isIndividual && (
+                  <motion.div variants={itemVariants}>
+                    {/* Company Logo Upload */}
+                    <div className="flex items-center gap-6">
+                      <div className="w-24 h-24 rounded-full bg-[#F5F5F5] flex items-center justify-center border-2 border-dashed border-gray-300 cursor-pointer hover:border-[#ff3b3b] hover:bg-[#FFF5F5] transition-colors group relative overflow-hidden">
+                        <UploadCloud className="w-8 h-8 text-gray-400 group-hover:text-[#ff3b3b] transition-colors" />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) setCompanyData({ ...companyData, logo: file });
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="font-bold text-[#111111]">Company Logo</h3>
+                        <p className="text-sm text-[#666666]">
+                          Upload your company logo. Recommended size: 400x400px.
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {!isIndividual && (
+                  <motion.div variants={itemVariants} className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                        Company Name <span className="text-[#ff3b3b]">*</span>
+                      </label>
                       <input
-                        type="file"
-                        accept="image/*"
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) setCompanyData({ ...companyData, logo: file });
-                        }}
+                        type="text"
+                        placeholder="Acme Inc."
+                        value={companyData.companyName}
+                        onChange={(e) =>
+                          setCompanyData({ ...companyData, companyName: e.target.value })
+                        }
+                        className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
+                        required
                       />
                     </div>
-                    <div className="space-y-1">
-                      <h3 className="font-bold text-[#111111]">Company Logo</h3>
-                      <p className="text-sm text-[#666666]">
-                        Upload your company logo. Recommended size: 400x400px.
-                      </p>
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                        Website
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="https://acme.com"
+                        value={companyData.website}
+                        onChange={(e) =>
+                          setCompanyData({ ...companyData, website: e.target.value })
+                        }
+                        className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
+                      />
                     </div>
-                  </div>
-                </motion.div>
+                  </motion.div>
+                )}
 
-                <motion.div variants={itemVariants} className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
-                      Company Name <span className="text-[#ff3b3b]">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Acme Inc."
-                      value={companyData.companyName}
-                      onChange={(e) =>
-                        setCompanyData({ ...companyData, companyName: e.target.value })
-                      }
-                      className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
-                      Website
-                    </label>
-                    <input
-                      type="url"
-                      placeholder="https://acme.com"
-                      value={companyData.website}
-                      onChange={(e) =>
-                        setCompanyData({ ...companyData, website: e.target.value })
-                      }
-                      className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
-                    />
-                  </div>
-                </motion.div>
-
-                <motion.div variants={itemVariants} className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
-                      Industry <span className="text-[#ff3b3b]">*</span>
-                    </label>
-                    <Select
-                      value={companyData.industry}
-                      onChange={(v) =>
-                        setCompanyData({ ...companyData, industry: String(v) })
-                      }
-                      placeholder="Select Industry"
-                      className="w-full h-12 company-details-select"
-                      suffixIcon={<div className="text-gray-400">⌄</div>}
-                    >
-                      <Option value="technology">Technology</Option>
-                      <Option value="marketing">Marketing</Option>
-                      <Option value="finance">Finance</Option>
-                      <Option value="retail">Retail</Option>
-                      <Option value="healthcare">Healthcare</Option>
-                      <Option value="education">Education</Option>
-                      <Option value="other">Other</Option>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
-                      Company Size
-                    </label>
-                    <Select
-                      value={companyData.companySize}
-                      onChange={(v) =>
-                        setCompanyData({ ...companyData, companySize: String(v) })
-                      }
-                      placeholder="Select Size"
-                      className="w-full h-12 company-details-select"
-                      suffixIcon={<div className="text-gray-400">⌄</div>}
-                    >
-                      <Option value="1-10">1-10 Employees</Option>
-                      <Option value="11-50">11-50 Employees</Option>
-                      <Option value="51-200">51-200 Employees</Option>
-                      <Option value="201-500">201-500 Employees</Option>
-                      <Option value="500+">500+ Employees</Option>
-                    </Select>
-                  </div>
-                </motion.div>
+                {!isIndividual && (
+                  <motion.div variants={itemVariants} className="grid grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                        Industry <span className="text-[#ff3b3b]">*</span>
+                      </label>
+                      <Select
+                        value={companyData.industry}
+                        onChange={(v) =>
+                          setCompanyData({ ...companyData, industry: String(v) })
+                        }
+                        placeholder="Select Industry"
+                        className="w-full h-12 company-details-select"
+                        suffixIcon={<div className="text-gray-400">⌄</div>}
+                      >
+                        {Object.keys(industryToBusinessType).map((industry) => (
+                          <Option key={industry} value={industry}>
+                            {industry.charAt(0).toUpperCase() + industry.slice(1)}
+                          </Option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                        Company Size
+                      </label>
+                      <Select
+                        value={companyData.companySize}
+                        onChange={(v) =>
+                          setCompanyData({ ...companyData, companySize: String(v) })
+                        }
+                        placeholder="Select Size"
+                        className="w-full h-12 company-details-select"
+                        suffixIcon={<div className="text-gray-400">⌄</div>}
+                      >
+                        <Option value="1-10">1-10 Employees</Option>
+                        <Option value="11-50">11-50 Employees</Option>
+                        <Option value="51-200">51-200 Employees</Option>
+                        <Option value="201-500">201-500 Employees</Option>
+                        <Option value="500+">500+ Employees</Option>
+                      </Select>
+                    </div>
+                  </motion.div>
+                )}
 
                 <motion.div variants={itemVariants} className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -341,7 +360,7 @@ function CompanyDetailsForm() {
               </motion.div>
             )}
 
-            {/* ADMIN DETAILS STEP */}
+            {/* ADMIN DETAILS STEP - Only for Organization (conceptually, or if specific fields needed later) */}
             {currentStep === "admin" && (
               <motion.div
                 key="admin"
@@ -467,8 +486,8 @@ function CompanyDetailsForm() {
                 </>
               ) : (
                 <>
-                  {currentStep === "company" ? "Next Step" : "Complete Setup"}
-                  {currentStep === "admin" && <ArrowRight className="w-4 h-4" />}
+                  {currentStep === "company" ? (isIndividual ? "Complete Setup" : "Next Step") : "Complete Setup"}
+                  {!isIndividual && currentStep === "admin" && <ArrowRight className="w-4 h-4" />}
                 </>
               )}
             </button>

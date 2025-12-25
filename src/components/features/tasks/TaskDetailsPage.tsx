@@ -2,17 +2,31 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useTask, useWorklogs } from '@/hooks/useTask';
-import { Button, Tag, Divider, Tooltip } from 'antd';
-import { CheckCircle2, Loader2, AlertCircle, Clock, Calendar, User, Briefcase, FileText, Eye, XCircle, Ban, Activity, ClipboardList } from 'lucide-react';
+import { Button, Tag, Avatar, Input, Tooltip } from 'antd';
+import {
+    Clock,
+    Loader2,
+    CheckCircle2,
+    AlertCircle,
+    Briefcase,
+    Folder,
+    Calendar,
+    Paperclip,
+    Send,
+    User
+} from 'lucide-react';
+import { useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { PageLayout } from '../../layout/PageLayout';
 
-// Normalize backend status to match backend enum
-const normalizeBackendStatus = (status: string): 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck' => {
-    if (!status) return 'Assigned';
-    const normalizedStatus = status.replace(/\s+/g, '_');
-    const validStatuses: Array<'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck'> = 
-        ['Assigned', 'In_Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'];
-    const matchedStatus = validStatuses.find(s => s === normalizedStatus || s.toLowerCase() === normalizedStatus.toLowerCase());
-    return matchedStatus || 'Assigned';
+// Helper to get initials
+const getInitials = (name: string) => {
+    return name
+        .split(' ')
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase();
 };
 
 export function TaskDetailsPage() {
@@ -21,10 +35,12 @@ export function TaskDetailsPage() {
     const router = useRouter();
     const { data: taskData, isLoading } = useTask(parseInt(taskId || '0'));
     const { data: worklogsData, isLoading: isLoadingWorklogs } = useWorklogs(parseInt(taskId || '0'), 50, 0);
+    const [activeTab, setActiveTab] = useState('details');
 
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center h-full">
+                <Loader2 className="w-8 h-8 text-[#ff3b3b] animate-spin mb-2" />
                 <p className="text-[#999999]">Loading task...</p>
             </div>
         );
@@ -40,366 +56,348 @@ export function TaskDetailsPage() {
         );
     }
 
-    // Transform backend data to UI format
-    const assignedToName =
-        (backendTask as any).member_user?.name ||
-        (backendTask.assigned_to as any)?.name ||
-        'Unassigned';
+    // --- Data Transformation ---
 
-    // Get workspace/project name - workspace and project are the same in backend
-    const detailedTaskWorkspace =
-        (backendTask as any).task_project?.name ||
-        (backendTask as any).requirement?.name ||
-        (backendTask.requirement_id
-            ? `Requirement ${backendTask.requirement_id}`
-            : 'General');
+    const assignedToName = (backendTask as any).member_user?.name || (backendTask.assigned_to as any)?.name || 'Unassigned';
+    const leaderName = (backendTask as any).leader_user?.name || (backendTask as any).leader?.name || 'Unassigned';
 
-    // Get requirement name
-    const requirementName =
-        (backendTask as any).requirement?.name ||
-        (backendTask.requirement_id
-            ? `Requirement ${backendTask.requirement_id}`
-            : 'No Requirement');
+    // Client / Company Logistics
+    const clientCompanyName = (backendTask as any).task_project?.client_user?.company?.name ||
+        (backendTask as any).client?.name ||
+        (backendTask as any).client_company_name;
+    const inHouseCompanyName = (backendTask as any).company?.name ||
+        (backendTask as any).company_name ||
+        (backendTask as any).task_project?.company?.name ||
+        (backendTask as any).task_project?.company_name;
+    const displayClientName = clientCompanyName || inHouseCompanyName || 'In-House';
+    const isClientWork = !!clientCompanyName;
+
+    const requirementName = (backendTask as any).requirement?.name ||
+        (backendTask.requirement_id ? `Requirement ${backendTask.requirement_id}` : 'No Requirement');
 
     const estTime = (backendTask as any).estimated_time || 0;
     const timeSpent = (backendTask as any).time_spent || 0;
     const isOverEstimate = estTime > 0 && timeSpent > estTime;
-
-    const baseStatus = normalizeBackendStatus(backendTask.status || '');
-    // If task is delayed by time but status is not already Delayed/Impediment/Stuck, mark as Delayed
-    const effectiveStatus: 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck' =
-        baseStatus === 'Completed'
-            ? 'Completed'
-            : isOverEstimate && !['Delayed', 'Impediment', 'Stuck'].includes(baseStatus)
-                ? 'Delayed'
-                : baseStatus;
-
-    // Determine company/client name: if client exists, it's client work, otherwise show company name for in-house
-    // Client company comes from task_project.client_user.company.name
-    const clientCompanyName = (backendTask as any).task_project?.client_user?.company?.name || 
-                               (backendTask as any).client?.name || 
-                               (backendTask as any).client_company_name || 
-                               null;
-    
-    // For in-house tasks, get company name from task's company relation or project's company
-    const inHouseCompanyName = (backendTask as any).company?.name || 
-                                (backendTask as any).company_name || 
-                                (backendTask as any).task_project?.company?.name ||
-                                (backendTask as any).task_project?.company_name ||
-                                null;
-    
-    // If there's a client company, it's client work; otherwise show in-house company name
-    const displayCompanyName = clientCompanyName || inHouseCompanyName || 'In-House';
+    const progressPercent = estTime > 0 ? Math.min(Math.round((timeSpent / estTime) * 100), 100) : 0;
 
     const task = {
         id: String(backendTask.id),
         name: (backendTask as any).name || backendTask.title || '',
-        taskId: String(backendTask.id),
-        client: displayCompanyName,
-        project: detailedTaskWorkspace,
-        leader: (backendTask as any).leader_user?.name || (backendTask as any).leader?.name || 'Unassigned',
-        assignedTo: assignedToName,
+        description: backendTask.description,
+        status: backendTask.status || 'Assigned',
+        priority: (backendTask.priority || 'medium').toLowerCase(),
         startDate: (backendTask as any).start_date ? new Date((backendTask as any).start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
         dueDate: (backendTask as any).due_date ? new Date((backendTask as any).due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
         estTime,
         timeSpent,
-        activities: backendTask.worklogs?.length || 0,
-        status: effectiveStatus,
-        priority: (typeof backendTask.priority === 'string' ? backendTask.priority.toLowerCase() : 'medium') as 'high' | 'medium' | 'low',
     };
 
-    const getStatusConfig = (status: string) => {
-        // Match backend statuses with icons and colors from old frontend
-        switch (status) {
-            case 'Assigned': 
-                return { icon: Clock, color: 'text-[#0284c7]', bg: 'bg-[#f0f9ff]', border: 'border-[#0284c7]', label: 'Assigned' };
-            case 'In_Progress': 
-                return { icon: Loader2, color: 'text-[#0284c7]', bg: 'bg-[#f0f9ff]', border: 'border-[#0284c7]', label: 'In Progress' };
-            case 'Completed': 
-                return { icon: CheckCircle2, color: 'text-[#16a34a]', bg: 'bg-[#f0fdf4]', border: 'border-[#16a34a]', label: 'Completed' };
-            case 'Delayed': 
-                return { icon: AlertCircle, color: 'text-[#dc2626]', bg: 'bg-[#fef2f2]', border: 'border-[#dc2626]', label: 'Delayed' };
-            case 'Impediment': 
-                return { icon: XCircle, color: 'text-[#9e36ff]', bg: 'bg-[#f5ebff]', border: 'border-[#9e36ff]', label: 'Impediment' };
-            case 'Review': 
-                return { icon: Eye, color: 'text-[#fbbf24]', bg: 'bg-[#fffbeb]', border: 'border-[#fbbf24]', label: 'Review' };
-            case 'Stuck': 
-                return { icon: Ban, color: 'text-[#9e36ff]', bg: 'bg-[#f5ebff]', border: 'border-[#9e36ff]', label: 'Stuck' };
-            default: 
-                return { icon: Clock, color: 'text-[#0284c7]', bg: 'bg-[#f0f9ff]', border: 'border-[#0284c7]', label: 'Assigned' };
-        }
-    };
-
-    const statusConfig = getStatusConfig(task.status);
-    const StatusIcon = statusConfig.icon;
-    const progress = task.estTime > 0 ? (task.timeSpent / task.estTime) * 100 : 0;
-    const formatHours = (hours: number | string | null | undefined) =>
-        Number(Number(hours || 0).toFixed(1));
-    const overtimeHours = isOverEstimate ? timeSpent - estTime : 0;
-    // For delayed tasks, cap percentage at 100% and show overtime separately
-    const displayProgress = isOverEstimate ? 100 : Math.round(progress);
-    const progressLabel = isOverEstimate
-        ? `100% of estimate`
-        : `${displayProgress}% Complete`;
-    // Show colors matching old frontend
-    const progressBarColor = isOverEstimate
-        ? 'bg-[#dc2626]'  // Red for tasks with overtime (matches old frontend)
-        : task.status === 'Completed'
-            ? 'bg-[#16a34a]'  // Green for completed tasks without overtime (matches old frontend)
-            : task.status === 'Delayed' || task.status === 'Impediment' || task.status === 'Stuck'
-                ? 'bg-[#dc2626]'  // Red for delayed/impediment/stuck (matches old frontend)
-                : task.status === 'Review'
-                    ? 'bg-[#fbbf24]'  // Yellow/Orange for review (matches old frontend)
-                    : 'bg-[#0284c7]';  // Blue for Assigned/In_Progress (matches old frontend)
-
-    return (
-        <div className="w-full h-full flex flex-col p-6 overflow-y-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <Button type="text" onClick={() => router.push('/dashboard/tasks')} className="pl-0 hover:bg-transparent hover:text-[#ff3b3b]">
-                    ← Back to Tasks
-                </Button>
-
-                <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${statusConfig.bg} ${statusConfig.border}`}>
-                    <StatusIcon className={`w-4 h-4 ${statusConfig.color}`} />
-                    <span className={`text-sm font-['Manrope:SemiBold',sans-serif] ${statusConfig.color}`}>{statusConfig.label}</span>
-                </div>
+    // --- Title Action Component ---
+    const TitleSection = (
+        <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+                <span className="text-[#999999] cursor-pointer hover:text-[#111111] text-sm font-['Manrope:Medium',sans-serif]" onClick={() => router.push('/dashboard/tasks')}>Tasks</span>
+                <span className="text-[#999999] text-sm">/</span>
+                <span className="text-[#111111] text-sm font-['Manrope:SemiBold',sans-serif]">{task.name}</span>
             </div>
 
-            <div className="bg-white rounded-[24px] border border-[#EEEEEE] p-8 max-w-6xl mx-auto w-full">
-                {/* Task Header */}
-                <div className="flex items-start justify-between mb-8">
-                    <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-3">
-                            <span className="text-sm font-mono text-[#999999]">#{task.taskId}</span>
-                            <Tag className={`
-                                ${task.priority === 'high' ? 'text-red-600 border-red-200 bg-red-50' :
-                                    task.priority === 'medium' ? 'text-orange-600 border-orange-200 bg-orange-50' :
-                                        'text-blue-600 border-blue-200 bg-blue-50'}
-                            `}>
-                                {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
-                            </Tag>
-                        </div>
-                        <h1 className="text-3xl font-['Manrope:Bold',sans-serif] text-[#111111] mb-3 leading-tight">
-                            {task.name}
-                        </h1>
-                        <div className="flex items-center gap-2 text-[#666666]">
-                            <Briefcase className="w-4 h-4" />
-                            <span className="text-sm font-['Manrope:Medium',sans-serif]">
-                                {task.client} • {task.project}
-                            </span>
-                        </div>
+            <div className="flex items-center gap-3">
+                {/* Status/Timer Icon - Dynamic based on status */}
+                {task.status.toLowerCase() === 'completed' || task.status.toLowerCase() === 'done' ? (
+                    <div className="w-8 h-8 rounded-full border border-[#DCFCE7] flex items-center justify-center cursor-pointer hover:bg-[#F0FDF4]">
+                        <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
                     </div>
+                ) : (
+                    <div className="w-8 h-8 rounded-full border border-[#FFE4E6] flex items-center justify-center cursor-pointer hover:bg-[#FFF1F2]">
+                        <Clock className="w-4 h-4 text-[#E11D48]" />
+                    </div>
+                )}
+
+                {/* Priority Badge */}
+                <div className={`px-3 py-1 rounded-full text-[10px] font-['Manrope:Bold',sans-serif] uppercase tracking-wider ${task.priority === 'high' ? 'bg-[#FEF2F2] text-[#DC2626]' :
+                        task.priority === 'medium' ? 'bg-[#FFF7ED] text-[#EA580C]' :
+                            'bg-[#EFF6FF] text-[#2563EB]'
+                    }`}>
+                    {task.priority}
                 </div>
 
-                <Divider className="my-6" />
-
-                {/* Main Layout: Grid with better organization */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Left Column: Description and Progress (8 columns) */}
-                    <div className="lg:col-span-8 space-y-6">
-                        {/* Description Section - Scrollable for large content */}
-                        <div className="border border-[#EEEEEE] rounded-xl p-6">
-                            <h3 className="text-sm font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide mb-4">Description</h3>
-                            <div 
-                                className="text-[#111111] leading-relaxed prose prose-sm max-w-none [&>p]:mb-3 [&>p]:last:mb-0 max-h-[400px] overflow-y-auto pr-2"
-                                dangerouslySetInnerHTML={{ 
-                                    __html: backendTask.description || '<p class="text-[#999999]">No description provided for this task yet.</p>' 
-                                }}
-                            />
-                        </div>
-
-                        {/* Progress Section */}
-                        <div className="border border-[#EEEEEE] rounded-xl p-6">
-                            <h3 className="text-sm font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide mb-4">Progress</h3>
-                            <div className="bg-[#F7F7F7] rounded-lg p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <span className={`text-sm font-medium ${isOverEstimate ? 'text-[#EB5757]' : 'text-[#111111]'}`}>
-                                        {progressLabel}
-                                    </span>
-                                    <span className="text-sm text-[#666666]">
-                                        {formatHours(task.timeSpent)}h of {formatHours(task.estTime)}h
-                                        {isOverEstimate && (
-                                            <span className="ml-1 text-[#EB5757] font-['Manrope:Medium',sans-serif]">
-                                                (+{formatHours(overtimeHours)}h overtime)
-                                            </span>
-                                        )}
-                                    </span>
-                                </div>
-                                <div className="w-full h-2.5 bg-[#EEEEEE] rounded-full overflow-hidden">
-                                    <div
-                                        className={`h-full rounded-full transition-all ${progressBarColor}`}
-                                        style={{ width: `${Math.min(progress, 100)}%` }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Activity / Worklogs Section - Better organized */}
-                        <div className="border border-[#EEEEEE] rounded-xl p-6">
-                            <h3 className="text-sm font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide mb-4">Activity / Worklogs</h3>
-                            {isLoadingWorklogs ? (
-                                <div className="bg-[#F7F7F7] rounded-lg p-6 text-center">
-                                    <p className="text-[#999999] text-sm">Loading activities...</p>
-                                </div>
-                            ) : worklogsData?.result && worklogsData.result.length > 0 ? (
-                                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                                    {worklogsData.result.map((worklog: any, index: number) => {
-                                        // Calculate duration
-                                        let duration = '';
-                                        if (worklog.time_in_seconds) {
-                                            const hours = Math.floor(worklog.time_in_seconds / 3600);
-                                            const minutes = Math.floor((worklog.time_in_seconds % 3600) / 60);
-                                            if (hours > 0) {
-                                                duration = `${hours}h ${minutes}m`;
-                                            } else {
-                                                duration = `${minutes}m`;
-                                            }
-                                        } else if (worklog.hours) {
-                                            const hours = Math.floor(worklog.hours);
-                                            const minutes = Math.floor((worklog.hours - hours) * 60);
-                                            if (hours > 0) {
-                                                duration = `${hours}h ${minutes}m`;
-                                            } else {
-                                                duration = `${minutes}m`;
-                                            }
-                                        } else if (worklog.start_datetime && worklog.end_datetime) {
-                                            const start = new Date(worklog.start_datetime);
-                                            const end = new Date(worklog.end_datetime);
-                                            const diffMs = end.getTime() - start.getTime();
-                                            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                                            const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                                            if (diffHours > 0) {
-                                                duration = `${diffHours}h ${diffMinutes}m`;
-                                            } else {
-                                                duration = `${diffMinutes}m`;
-                                            }
-                                        }
-
-                                        // Format date - separate date and time
-                                        const worklogDate = worklog.date || worklog.start_datetime || worklog.created_at;
-                                        let dateStr = '';
-                                        let timeStr = '';
-                                        if (worklogDate) {
-                                            const date = new Date(worklogDate);
-                                            dateStr = date.toLocaleDateString('en-GB', { 
-                                                day: '2-digit', 
-                                                month: 'short', 
-                                                year: 'numeric'
-                                            });
-                                            timeStr = date.toLocaleTimeString('en-GB', { 
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            });
-                                        }
-
-                                        return (
-                                            <div key={worklog.id} className="flex gap-4 pb-4 border-b border-[#EEEEEE] last:border-0 last:pb-0">
-                                                {/* Timeline indicator */}
-                                                <div className="flex flex-col items-center flex-shrink-0">
-                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center">
-                                                        <Activity className="w-4 h-4 text-white" />
-                                                    </div>
-                                                    {index < worklogsData.result.length - 1 && (
-                                                        <div className="w-0.5 h-full bg-[#EEEEEE] mt-2 flex-1 min-h-[40px]" />
-                                                    )}
-                                                </div>
-                                                
-                                                {/* Content */}
-                                                <div className="flex-1 min-w-0 pb-2">
-                                                    {/* Header: Date, Time, Duration */}
-                                                    <div className="flex items-center gap-3 mb-2 flex-wrap">
-                                                        {dateStr && (
-                                                            <span className="text-[12px] text-[#666666] font-['Manrope:SemiBold',sans-serif]">
-                                                                {dateStr}
-                                                            </span>
-                                                        )}
-                                                        {timeStr && (
-                                                            <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
-                                                                {timeStr}
-                                                            </span>
-                                                        )}
-                                                        {duration && (
-                                                            <span className="px-2.5 py-1 rounded-full bg-[#FEF3F2] border border-[#FECACA] text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#ff3b3b]">
-                                                                {duration}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    
-                                                    {/* Description - Handles large text */}
-                                                    {worklog.description ? (
-                                                        <div className="text-[13px] text-[#111111] font-['Manrope:Regular',sans-serif] leading-relaxed break-words">
-                                                            {worklog.description}
-                                                        </div>
-                                                    ) : (
-                                                        <p className="text-[13px] text-[#999999] font-['Manrope:Regular',sans-serif] italic">
-                                                            No description provided
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="bg-[#F7F7F7] rounded-lg p-6 text-center">
-                                    <p className="text-[#999999] text-sm">No worklogs or activities recorded yet.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Right Sidebar: Task Metadata (4 columns) */}
-                    <div className="lg:col-span-4 space-y-6">
-                        <div className="border border-[#EEEEEE] rounded-xl p-5 space-y-4 sticky top-6">
-                            <div className="flex items-start gap-3">
-                                <User className="w-5 h-5 text-[#999999] mt-0.5 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs text-[#999999] mb-1.5 m-0 font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide">Assigned To</p>
-                                    <div className="flex items-center gap-2">
-                                        <Tooltip title={task.assignedTo}>
-                                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
-                                                {task.assignedTo.charAt(0)}
-                                            </div>
-                                        </Tooltip>
-                                        <p className="text-sm font-medium text-[#111111] m-0 truncate">{task.assignedTo}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <Divider className="my-3" />
-
-                            <div className="flex items-start gap-3">
-                                <Calendar className="w-5 h-5 text-[#999999] mt-0.5 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs text-[#999999] mb-1.5 m-0 font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide">Due Date</p>
-                                    <p className="text-sm font-medium text-[#111111] m-0">{task.dueDate}</p>
-                                </div>
-                            </div>
-
-                            <Divider className="my-3" />
-
-                            <div className="flex items-start gap-3">
-                                <FileText className="w-5 h-5 text-[#999999] mt-0.5 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs text-[#999999] mb-1.5 m-0 font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide">Workspace</p>
-                                    <p className="text-sm font-medium text-[#111111] m-0 truncate">{task.project}</p>
-                                </div>
-                            </div>
-
-                            <Divider className="my-3" />
-
-                            <div className="flex items-start gap-3">
-                                <ClipboardList className="w-5 h-5 text-[#999999] mt-0.5 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs text-[#999999] mb-1.5 m-0 font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide">Requirement</p>
-                                    <p className="text-sm font-medium text-[#111111] m-0 truncate">{requirementName}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                {/* Assigned User Avatar (Single) */}
+                <div className="w-8 h-8 rounded-full bg-[#E11D48] flex items-center justify-center text-xs font-bold text-white uppercase">
+                    {getInitials(assignedToName).charAt(0)}
                 </div>
             </div>
         </div>
+    );
+
+    const formatHourValue = (val: any) => {
+        const num = Number(val);
+        if (isNaN(num)) return '0';
+        return Number.isInteger(num) ? num.toString() : num.toFixed(1);
+    }
+
+    return (
+        <PageLayout
+            title={TitleSection}
+            // tabs props removed to implement custom layout
+            searchPlaceholder=""
+            hideFilters={true}
+        >
+            <div className="w-full h-full flex gap-8 pt-4">
+
+                {/* LEFT COLUMN: Tabs + Content (Scrollable) */}
+                <div className="flex-1 flex flex-col h-full overflow-hidden">
+
+                    {/* Custom Tabs Header */}
+                    <div className="flex items-center gap-6 border-b border-transparent mb-6 shrink-0 h-[40px] px-1">
+                        <button
+                            onClick={() => setActiveTab('details')}
+                            className={`pb-2 text-sm font-['Manrope:SemiBold',sans-serif] relative transition-colors ${activeTab === 'details' ? 'text-[#EF4444]' : 'text-[#666666] hover:text-[#111111]'
+                                }`}
+                        >
+                            Details
+                            {activeTab === 'details' && (
+                                <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#EF4444] rounded-t-full" />
+                            )}
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('steps')}
+                            className={`pb-2 text-sm font-['Manrope:SemiBold',sans-serif] relative transition-colors ${activeTab === 'steps' ? 'text-[#EF4444]' : 'text-[#666666] hover:text-[#111111]'
+                                }`}
+                        >
+                            Steps <span className="text-[#999999] font-normal">(3)</span>
+                            {activeTab === 'steps' && (
+                                <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#EF4444] rounded-t-full" />
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Scrollable Content Area */}
+                    <div className="flex-1 overflow-y-auto pr-2 pb-6 space-y-6 opacity-100">
+                        {activeTab === 'details' && (
+                            <>
+                                {/* Description Card */}
+                                <div className="bg-white border border-[#EEEEEE] rounded-[16px] p-6">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="w-5 h-5 flex items-center justify-center">
+                                            {/* Red Document Icon - Exact Path */}
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d="M14 2V8H20" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d="M16 13H8" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d="M16 17H8" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d="M10 9H8" stroke="#EF4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                        </div>
+                                        <h3 className="text-base font-['Manrope:Bold',sans-serif] text-[#111111]">Description</h3>
+                                    </div>
+                                    <div
+                                        className="text-[#666666] text-sm leading-relaxed"
+                                        dangerouslySetInnerHTML={{ __html: task.description || 'No description provided.' }}
+                                    />
+                                </div>
+
+                                {/* Task Overview Card */}
+                                <div className="bg-white border border-[#EEEEEE] rounded-[16px] p-6">
+                                    <div className="flex items-center gap-2 mb-6">
+                                        <Briefcase className="w-5 h-5 text-[#EF4444]" />
+                                        <h3 className="text-base font-['Manrope:Bold',sans-serif] text-[#111111]">Task Overview</h3>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                                        {/* Assigned To */}
+                                        <div className="bg-[#F9FAFB] rounded-xl p-4">
+                                            <p className="text-[10px] text-[#999999] uppercase tracking-wider font-['Manrope:Bold',sans-serif] mb-3">ASSIGNED TO</p>
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="bg-[#EF4444] text-xs font-bold text-white">{getInitials(assignedToName)}</Avatar>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-['Manrope:Bold',sans-serif] text-[#111111] leading-tight truncate" title={assignedToName}>{assignedToName}</p>
+                                                    <p className="text-xs text-[#666666]">Assignee</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Leader */}
+                                        <div className="bg-[#F9FAFB] rounded-xl p-4">
+                                            <p className="text-[10px] text-[#999999] uppercase tracking-wider font-['Manrope:Bold',sans-serif] mb-3">LEADER</p>
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="bg-[#E5E7EB] text-[#111111] text-xs font-bold">{getInitials(leaderName)}</Avatar>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-['Manrope:Bold',sans-serif] text-[#111111] leading-tight truncate" title={leaderName}>{leaderName}</p>
+                                                    <p className="text-xs text-[#666666]">Supervisor</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Client */}
+                                        <div className="bg-[#F9FAFB] rounded-xl p-4">
+                                            <p className="text-[10px] text-[#999999] uppercase tracking-wider font-['Manrope:Bold',sans-serif] mb-3">CLIENT</p>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center text-[#111111] shrink-0">
+                                                    <Briefcase className="w-3.5 h-3.5" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-['Manrope:Bold',sans-serif] text-[#111111] leading-tight truncate" title={displayClientName}>{displayClientName}</p>
+                                                    <p className="text-xs text-[#666666]">{isClientWork ? 'Partner' : 'Internal'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Requirement */}
+                                        <div className="bg-[#F9FAFB] rounded-xl p-4">
+                                            <p className="text-[10px] text-[#999999] uppercase tracking-wider font-['Manrope:Bold',sans-serif] mb-3">REQUIREMENT</p>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center text-[#111111] shrink-0">
+                                                    <Folder className="w-3.5 h-3.5" />
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-['Manrope:Bold',sans-serif] text-[#111111] leading-tight truncate" title={requirementName}>{requirementName}</p>
+                                                    <p className="text-xs text-[#666666]">Scope</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Timeline & Progress Row */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        {/* Timeline */}
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <Calendar className="w-4 h-4 text-[#666666]" />
+                                                <span className="text-sm font-['Manrope:SemiBold',sans-serif] text-[#111111]">Timeline</span>
+                                            </div>
+                                            <div className="flex items-center justify-between bg-[#F9FAFB] rounded-lg p-5 h-[88px]">
+                                                <div>
+                                                    <p className="text-[10px] text-[#999999] mb-1 uppercase tracking-wide">Start Date</p>
+                                                    <p className="text-sm font-['Manrope:Bold',sans-serif] text-[#111111]">{task.startDate}</p>
+                                                </div>
+                                                <div className="flex-1 flex items-center justify-center px-4">
+                                                    <div className="w-full h-[1px] bg-[#E5E7EB] relative">
+                                                        <div className="absolute right-0 top-1/2 -translate-y-1/2">
+                                                            <svg width="6" height="10" viewBox="0 0 6 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                <path d="M1 1L5 5L1 9" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                                            </svg>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[10px] text-[#999999] mb-1 uppercase tracking-wide">Due Date</p>
+                                                    <p className="text-sm font-['Manrope:Bold',sans-serif] text-[#111111]">{task.dueDate}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Progress Tracking */}
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <Clock className="w-4 h-4 text-[#666666]" />
+                                                <span className="text-sm font-['Manrope:SemiBold',sans-serif] text-[#111111]">Progress Tracking</span>
+                                            </div>
+                                            <div className="bg-[#F9FAFB] rounded-lg p-5 h-[88px] flex flex-col justify-between">
+                                                <div className="flex items-end justify-between">
+                                                    <p className="text-lg font-['Manrope:Bold',sans-serif] text-[#111111] leading-none">
+                                                        {formatHourValue(task.estTime)} <span className="text-xs font-normal text-[#666666] font-['Manrope:Medium',sans-serif]">hrs estimated</span>
+                                                    </p>
+                                                    <span className={`text-lg font-bold ${progressPercent >= 100 ? 'text-[#16A34A]' : 'text-[#3B82F6]'}`}>{progressPercent}%</span>
+                                                </div>
+                                                <div>
+                                                    <div className="w-full h-1.5 bg-[#E5E7EB] rounded-full overflow-hidden mb-2">
+                                                        <div
+                                                            className={`h-full rounded-full ${isOverEstimate ? 'bg-[#DC2626]' : progressPercent >= 100 ? 'bg-[#16A34A]' : 'bg-[#3B82F6]'}`}
+                                                            style={{ width: `${progressPercent}%` }}
+                                                        />
+                                                    </div>
+                                                    <div className="flex justify-between text-[10px] font-['Manrope:SemiBold',sans-serif]">
+                                                        <span className="text-[#999999]">0H</span>
+                                                        <span className="text-[#666666] uppercase">{formatHourValue(task.timeSpent)}H LOGGED</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {activeTab === 'steps' && (
+                            <div className="flex flex-col items-center justify-center py-20 bg-white border border-[#EEEEEE] rounded-[16px]">
+                                <p className="text-[#999999] mb-4">No steps added yet.</p>
+                                <Button>Add First Step</Button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* RIGHT COLUMN: Activity & Chat */}
+                <div className="w-[380px] shrink-0 h-full flex flex-col border-l border-[#EEEEEE] -my-4 -mr-0 pl-6 py-4 overflow-hidden bg-white/50">
+                    {/* Header - Aligned with the custom Tabs */}
+                    <div className="mb-6 h-[40px] flex flex-col justify-center">
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="w-4 h-4 text-[#ff3b3b]">
+                                {/* Activity/Chat Icon - Message Bubble */}
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M21 15C21 16.1046 20.1046 17 19 17H7L3 21V5C3 3.89543 3.89543 3 5 3H19C20.1046 3 21 3.89543 21 5V15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </div>
+                            <h3 className="text-base font-['Manrope:Bold',sans-serif] text-[#111111]">Activity & Chat</h3>
+                        </div>
+                        <p className="text-xs text-[#999999]">Task updates and comments</p>
+                    </div>
+
+                    {/* Messages List (Scrollable) */}
+                    <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+                        {isLoadingWorklogs ? (
+                            <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-[#999999]" /></div>
+                        ) : worklogsData?.result?.length ? (
+                            worklogsData.result.map((log: any, index: number) => {
+                                const isSystem = !log.member_id;
+                                const name = log.member_user?.name || log.created_by_user?.name || 'System';
+                                const initials = getInitials(name);
+                                const time = log.created_at ? formatDistanceToNow(new Date(log.created_at), { addSuffix: true }) : '';
+
+                                return (
+                                    <div key={log.id || index} className="flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                        <Avatar
+                                            size="small"
+                                            className={`${isSystem ? 'bg-[#F3F4F6] text-[#666666]' : 'bg-[#666666] text-white'} text-[10px] font-bold shrink-0 mt-1`}
+                                        >
+                                            {initials}
+                                        </Avatar>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-baseline justify-between mb-1">
+                                                <span className="text-sm font-['Manrope:Bold',sans-serif] text-[#111111] truncate">{name}</span>
+                                                <span className="text-[10px] text-[#999999] whitespace-nowrap ml-2">{time}</span>
+                                            </div>
+                                            <div className={`p-3 rounded-xl text-sm ${isSystem ? 'bg-[#F9FAFB] text-[#666666] italic' : 'bg-[#F3F4F6] text-[#111111]'}`}>
+                                                {log.description || 'No content'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-40 text-[#999999]">
+                                <p className="text-xs">No activity yet.</p>
+                                <p className="text-[10px] opacity-70">Be the first to comment</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Input Area (Sticky Bottom) */}
+                    <div className="pt-4 mt-2 border-t border-[#EEEEEE]">
+                        <div className="bg-[#F9FAFB] rounded-xl p-2 border border-[#E5E7EB] flex items-center gap-2 focus-within:ring-2 focus-within:ring-[#ff3b3b]/10 focus-within:border-[#ff3b3b] transition-all">
+                            <Input
+                                placeholder="Type a message..."
+                                className="border-none bg-transparent shadow-none text-sm focus:shadow-none placeholder:text-[#999999] !px-2"
+                            />
+                            <div className="flex items-center gap-1 pr-1 shrink-0">
+                                <Button type="text" shape="circle" size="small" icon={<Paperclip className="w-4 h-4 text-[#999999]" />} />
+                                <Button className="!flex items-center justify-center !bg-transparent hover:!bg-[#FEE2E2] !text-[#ff3b3b] border-none !shadow-none" shape="circle" size="small" icon={<Send className="w-4 h-4" />} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </PageLayout>
     );
 }

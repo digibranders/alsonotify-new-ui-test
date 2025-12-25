@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Edit, Trash2, X, Pencil } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Pencil, CreditCard, Bell, Lock, Database, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import { Button, Input, Select, Switch, Divider, App } from "antd";
 import { useUpdateCompany, useCurrentUserCompany } from '@/hooks/useUser';
 import { DEFAULT_DOCUMENT_TYPES, DOCUMENT_TYPES_STORAGE_KEY } from '@/constants/documentTypes';
@@ -61,27 +61,27 @@ const getTimezones = (): Array<{ value: string; label: string }> => {
     // Use native Intl API if available (modern browsers)
     if (typeof Intl !== 'undefined' && 'supportedValuesOf' in Intl) {
       const timezones = Intl.supportedValuesOf('timeZone');
-      
+
       // Convert deprecated timezones to canonical names
       const canonicalTimezones = timezones.map(tz => deprecatedToCanonical[tz] || tz);
-      
+
       // Create a Set to remove duplicates and ensure uniqueness
       const uniqueTimezonesSet = new Set(canonicalTimezones);
-      
+
       // CRITICAL: Always ensure Asia/Kolkata is included (important for Indian users)
       // This handles cases where the browser might not include it or it might be filtered out
       uniqueTimezonesSet.add('Asia/Kolkata');
-      
+
       // Convert Set to sorted array
       const uniqueTimezones = Array.from(uniqueTimezonesSet).sort();
-      
+
       return uniqueTimezones.map(tz => ({ value: tz, label: tz }));
     }
   } catch (e) {
     // Fallback if Intl.supportedValuesOf is not available
     console.warn('Intl.supportedValuesOf not available, using fallback timezone list');
   }
-  
+
   // Fallback: Comprehensive list of IANA timezones (canonical names only, no deprecated aliases)
   // This ensures compatibility with older browsers
   // Note: Only latest/canonical timezone names are included
@@ -177,17 +177,17 @@ const getTimezones = (): Array<{ value: string; label: string }> => {
     'Pacific/Wake', 'Pacific/Wallis',
     'UTC'
   ];
-  
+
   // Remove duplicates using Set (ensures uniqueness)
   // Note: The hardcoded list already contains only canonical names, no deprecated aliases
   const uniqueTimezonesSet = new Set(commonTimezones);
-  
+
   // CRITICAL: Always ensure Asia/Kolkata is included (important for Indian users)
   uniqueTimezonesSet.add('Asia/Kolkata');
-  
+
   // Convert Set to sorted array
   const uniqueTimezones = Array.from(uniqueTimezonesSet).sort();
-  
+
   return uniqueTimezones.map(tz => ({ value: tz, label: tz }));
 };
 
@@ -217,11 +217,17 @@ interface DocumentTypeLocal {
 
 export function SettingsPage() {
   const { message } = App.useApp();
-  const [activeTab, setActiveTab] = useState<'company' | 'leaves' | 'working-hours' | 'integrations'>('company');
+  const [activeTab, setActiveTab] = useState<'company' | 'leaves' | 'working-hours' | 'integrations' | 'financials' | 'notifications' | 'security' | 'data'>('company');
   const [isEditing, setIsEditing] = useState(false);
+
+  // State for new tabs
+  const [bankDetails, setBankDetails] = useState({ accountName: '', bankName: '', accountNumber: '', ifscCode: '' });
+  const [notifications, setNotifications] = useState({ email: true, push: false, reports: true });
+  const [security, setSecurity] = useState({ currentPassword: '', newPassword: '', confirmPassword: '', twoFactor: false });
+  const [showPassword, setShowPassword] = useState({ current: false, new: false, confirm: false });
   const updateCompanyMutation = useUpdateCompany();
   const { data: companyData } = useCurrentUserCompany();
-  
+
   // Get timezones list (memoized to avoid regenerating on every render)
   const timezones = useMemo(() => getTimezones(), []);
 
@@ -231,7 +237,7 @@ export function SettingsPage() {
   const [timeZone, setTimeZone] = useState(companyData?.result?.timezone || 'Asia/Kolkata');
   const [currency, setCurrency] = useState(companyData?.result?.currency || 'USD');
   const [address, setAddress] = useState(companyData?.result?.address || '');
-  
+
   // Update state when company data loads
   useEffect(() => {
     if (companyData?.result) {
@@ -351,7 +357,7 @@ export function SettingsPage() {
     try {
       // Prepare company update payload based on active tab
       const payload: any = {};
-      
+
       if (activeTab === 'company') {
         payload.name = companyName;
         payload.tax_id = taxId;
@@ -361,7 +367,7 @@ export function SettingsPage() {
       }
       // Note: Departments, leaves, and working hours might need separate API endpoints
       // For now, we'll save company basic info
-      
+
       await updateCompanyMutation.mutateAsync(payload);
       message.success('Settings saved successfully!');
       setIsEditing(false);
@@ -381,74 +387,118 @@ export function SettingsPage() {
     setIsEditing(true);
   };
 
+  const accountType = companyData?.result?.account_type || 'ORGANIZATION';
+  const isIndividual = accountType === 'INDIVIDUAL';
+
   return (
     <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] p-8 flex flex-col overflow-hidden relative font-['Manrope',sans-serif]">
       {/* Header Section */}
       <div className="flex-none mb-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Global Settings</h1>
-          {!isEditing ? (
-            <Button
-              onClick={handleEdit}
-              className="bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px] flex items-center gap-2 border-none"
-            >
-              <Pencil className="w-4 h-4" />
-              Edit
-            </Button>
-          ) : (
-            <div className="flex items-center gap-3">
+          <h1 className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
+            {isIndividual ? 'Settings' : 'Company Settings'}
+          </h1>
+          {activeTab === 'company' && (
+            !isEditing ? (
               <Button
-                onClick={handleCancelEdit}
-                type="text"
-                className="text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px]"
+                onClick={handleEdit}
+                className="bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px] flex items-center gap-2 border-none"
               >
-                Cancel
+                <Pencil className="w-4 h-4" />
+                Edit
               </Button>
-              <Button
-                onClick={handleSaveChanges}
-                loading={updateCompanyMutation.isPending}
-                className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-8 h-10 rounded-full shadow-lg shadow-[#ff3b3b]/20 text-[13px] border-none"
-              >
-                Save Changes
-              </Button>
-            </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={handleCancelEdit}
+                  type="text"
+                  className="text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px]"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveChanges}
+                  loading={updateCompanyMutation.isPending}
+                  className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-8 h-10 rounded-full shadow-lg shadow-[#ff3b3b]/20 text-[13px] border-none"
+                >
+                  Save Changes
+                </Button>
+              </div>
+            )
           )}
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-8 border-b border-[#EEEEEE]">
+        <div className="flex items-center gap-8 border-b border-[#EEEEEE] overflow-x-auto">
           <button
             onClick={() => setActiveTab('company')}
-            className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === 'company' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
+            className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'company' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
               }`}
           >
-            Company Details
+            {isIndividual ? 'Details' : 'Company Details'}
             {activeTab === 'company' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
           </button>
-          <button
-            onClick={() => setActiveTab('leaves')}
-            className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === 'leaves' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
-              }`}
-          >
-            Leaves
-            {activeTab === 'leaves' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
-          </button>
-          <button
-            onClick={() => setActiveTab('working-hours')}
-            className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === 'working-hours' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
-              }`}
-          >
-            Working Hours
-            {activeTab === 'working-hours' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
-          </button>
-          <button
-            onClick={() => setActiveTab('integrations')}
-            className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === 'integrations' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
-              }`}
-          >
-            Integrations
-            {activeTab === 'integrations' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
-          </button>
+
+          {!isIndividual && (
+            <>
+              <button
+                onClick={() => setActiveTab('financials')}
+                className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'financials' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
+                  }`}
+              >
+                Financials
+                {activeTab === 'financials' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
+              </button>
+              <button
+                onClick={() => setActiveTab('notifications')}
+                className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'notifications' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
+                  }`}
+              >
+                Notifications
+                {activeTab === 'notifications' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
+              </button>
+              <button
+                onClick={() => setActiveTab('security')}
+                className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'security' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
+                  }`}
+              >
+                Security
+                {activeTab === 'security' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
+              </button>
+              <button
+                onClick={() => setActiveTab('data')}
+                className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'data' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
+                  }`}
+              >
+                Data
+                {activeTab === 'data' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
+              </button>
+              <button
+                onClick={() => setActiveTab('leaves')}
+                className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'leaves' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
+                  }`}
+              >
+                Leaves
+                {activeTab === 'leaves' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
+              </button>
+              <button
+                onClick={() => setActiveTab('working-hours')}
+                className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'working-hours' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
+                  }`}
+              >
+                Working Hours
+                {activeTab === 'working-hours' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
+              </button>
+              <button
+                onClick={() => setActiveTab('integrations')}
+                className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'integrations' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
+                  }`}
+              >
+                Integrations
+                {activeTab === 'integrations' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -494,34 +544,34 @@ export function SettingsPage() {
                     showSearch
                     filterOption={(input, option) => {
                       const searchText = input.toLowerCase().trim();
-                      
+
                       // If no search text, show all options
                       if (!searchText) {
                         return true;
                       }
-                      
+
                       // Get the label text
                       const label = String(option?.label ?? option?.children ?? '').toLowerCase();
                       const value = String(option?.value ?? '').toLowerCase();
-                      
+
                       // Direct match in label or value
                       if (label.includes(searchText) || value.includes(searchText)) {
                         return true;
                       }
-                      
+
                       // Special handling for Indian timezone searches
                       // "kol", "cal", "calcutta", "kolkata" should match "Asia/Kolkata"
                       if (label.includes('kolkata')) {
-                        if (searchText.includes('kol') || 
-                            searchText.includes('cal') || 
-                            searchText.includes('kolkata') || 
-                            searchText.includes('calcutta') ||
-                            searchText.includes('india') ||
-                            searchText.includes('ist')) {
+                        if (searchText.includes('kol') ||
+                          searchText.includes('cal') ||
+                          searchText.includes('kolkata') ||
+                          searchText.includes('calcutta') ||
+                          searchText.includes('india') ||
+                          searchText.includes('ist')) {
                           return true;
                         }
                       }
-                      
+
                       return false;
                     }}
                     placeholder="Select timezone"
@@ -574,192 +624,195 @@ export function SettingsPage() {
               </div>
             </section>
 
-            <Divider className="my-8 bg-[#EEEEEE]" />
-
-            {/* Departments & Required Documents side‑by‑side */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-              {/* Departments Column */}
-              <section>
-                <div className="flex items-center gap-2 mb-6">
-                  <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
-                    Departments
-                  </h2>
-                  {!isAddingDept && (
-                    <button
-                      onClick={() => setIsAddingDept(true)}
-                      className="hover:scale-110 active:scale-95 transition-transform"
-                    >
-                      <Plus className="w-5 h-5 text-[#ff3b3b]" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="space-y-6">
-                  {departments.map((dept) => (
-                    <div key={dept.id} className="flex items-end gap-6 group">
-                      <div className="space-y-2 flex-1">
-                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                          Department Name
-                        </span>
-                        <Input
-                          value={dept.name}
-                          readOnly
-                          className="h-11 rounded-lg border-[#EEEEEE] bg-[#FAFAFA] text-[#666666] font-['Manrope:Medium',sans-serif] text-[13px]"
-                        />
-                      </div>
-                      <div className="flex items-center gap-4 pb-3 h-11">
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-[11px] text-[#666666] font-['Manrope:Bold',sans-serif]">
-                            Active
-                          </span>
-                          <Switch
-                            checked={dept.active}
-                            onChange={() => toggleDepartmentStatus(dept.id)}
-                            className="bg-gray-200 hover:bg-gray-300"
-                            style={{
-                              backgroundColor: dept.active ? "#ff3b3b" : undefined,
-                            }}
-                          />
-                        </div>
-                        <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
-                          <Edit className="w-4 h-4" />
-                        </button>
+            {/* Departments & Required Documents - Only for Organizations */}
+            {!isIndividual && (
+              <>
+                <Divider className="my-8 bg-[#EEEEEE]" />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                  {/* Departments Column */}
+                  <section>
+                    <div className="flex items-center gap-2 mb-6">
+                      <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
+                        Departments
+                      </h2>
+                      {!isAddingDept && (
                         <button
-                          onClick={() => handleDeleteDepartment(dept.id)}
-                          className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#ff3b3b]"
+                          onClick={() => setIsAddingDept(true)}
+                          className="hover:scale-110 active:scale-95 transition-transform"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Plus className="w-5 h-5 text-[#ff3b3b]" />
                         </button>
-                      </div>
+                      )}
                     </div>
-                  ))}
 
-                  {isAddingDept && (
-                    <div className="flex items-end gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
-                      <div className="space-y-2 flex-1">
-                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                          New Department Name
-                        </span>
-                        <Input
-                          value={newDeptName}
-                          onChange={(e) => setNewDeptName(e.target.value)}
-                          placeholder="e.g. Marketing"
-                          autoFocus
-                          className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
-                          onKeyDown={(e) => e.key === "Enter" && handleAddDepartment()}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 pb-1 h-11">
-                        <Button
-                          onClick={handleAddDepartment}
-                          className="h-9 px-4 bg-[#111111] hover:bg-[#000000]/90 text-white text-[12px] font-['Manrope:SemiBold',sans-serif] rounded-full border-none"
-                        >
-                          Add
-                        </Button>
-                        <Button
-                          type="text"
-                          onClick={() => setIsAddingDept(false)}
-                          className="h-9 px-4 text-[#666666] hover:text-[#111111] text-[12px] font-['Manrope:SemiBold',sans-serif] hover:bg-[#F7F7F7] rounded-full"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              {/* Required Documents Column */}
-              <section className="lg:border-l lg:border-[#EEEEEE] lg:pl-12">
-                <div className="flex items-center gap-2 mb-6">
-                  <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
-                    Required Documents
-                  </h2>
-                  {!isAddingDoc && (
-                    <button
-                      onClick={() => setIsAddingDoc(true)}
-                      className="hover:scale-110 active:scale-95 transition-transform"
-                    >
-                      <Plus className="w-5 h-5 text-[#ff3b3b]" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="space-y-6">
-                  {requiredDocuments.map((doc) => (
-                    <div key={doc.id} className="flex items-end gap-6 group">
-                      <div className="space-y-2 flex-1">
-                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                          Document Name
-                        </span>
-                        <Input
-                          value={doc.name}
-                          readOnly
-                          className="h-11 rounded-lg border-[#EEEEEE] bg-[#FAFAFA] text-[#666666] font-['Manrope:Medium',sans-serif] text-[13px]"
-                        />
-                      </div>
-                      <div className="flex items-center gap-4 pb-3 h-11">
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="text-[11px] text-[#666666] font-['Manrope:Bold',sans-serif]">
-                            Required
-                          </span>
-                          <Switch
-                            checked={doc.required}
-                            onChange={() => toggleDocumentRequired(doc.id)}
-                            className="bg-gray-200 hover:bg-gray-300"
-                            style={{
-                              backgroundColor: doc.required ? "#ff3b3b" : undefined,
-                            }}
-                          />
+                    <div className="space-y-6">
+                      {departments.map((dept) => (
+                        <div key={dept.id} className="flex items-end gap-6 group">
+                          <div className="space-y-2 flex-1">
+                            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                              Department Name
+                            </span>
+                            <Input
+                              value={dept.name}
+                              readOnly
+                              className="h-11 rounded-lg border-[#EEEEEE] bg-[#FAFAFA] text-[#666666] font-['Manrope:Medium',sans-serif] text-[13px]"
+                            />
+                          </div>
+                          <div className="flex items-center gap-4 pb-3 h-11">
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-[11px] text-[#666666] font-['Manrope:Bold',sans-serif]">
+                                Active
+                              </span>
+                              <Switch
+                                checked={dept.active}
+                                onChange={() => toggleDepartmentStatus(dept.id)}
+                                className="bg-gray-200 hover:bg-gray-300"
+                                style={{
+                                  backgroundColor: dept.active ? "#ff3b3b" : undefined,
+                                }}
+                              />
+                            </div>
+                            <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteDepartment(dept.id)}
+                              className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#ff3b3b]"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                        <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteDocument(doc.id)}
-                          className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#ff3b3b]"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                      ))}
 
-                  {isAddingDoc && (
-                    <div className="flex items-end gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
-                      <div className="space-y-2 flex-1">
-                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                          New Document Name
-                        </span>
-                        <Input
-                          value={newDocName}
-                          onChange={(e) => setNewDocName(e.target.value)}
-                          placeholder="e.g. Passport"
-                          autoFocus
-                          className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
-                          onKeyDown={(e) => e.key === "Enter" && handleAddDocument()}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 pb-1 h-11">
-                        <Button
-                          onClick={handleAddDocument}
-                          className="h-9 px-4 bg-[#111111] hover:bg-[#000000]/90 text-white text-[12px] font-['Manrope:SemiBold',sans-serif] rounded-full border-none"
-                        >
-                          Add
-                        </Button>
-                        <Button
-                          type="text"
-                          onClick={() => setIsAddingDoc(false)}
-                          className="h-9 px-4 text-[#666666] hover:text-[#111111] text-[12px] font-['Manrope:SemiBold',sans-serif] hover:bg-[#F7F7F7] rounded-full"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
+                      {isAddingDept && (
+                        <div className="flex items-end gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div className="space-y-2 flex-1">
+                            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                              New Department Name
+                            </span>
+                            <Input
+                              value={newDeptName}
+                              onChange={(e) => setNewDeptName(e.target.value)}
+                              placeholder="e.g. Marketing"
+                              autoFocus
+                              className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
+                              onKeyDown={(e) => e.key === "Enter" && handleAddDepartment()}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 pb-1 h-11">
+                            <Button
+                              onClick={handleAddDepartment}
+                              className="h-9 px-4 bg-[#111111] hover:bg-[#000000]/90 text-white text-[12px] font-['Manrope:SemiBold',sans-serif] rounded-full border-none"
+                            >
+                              Add
+                            </Button>
+                            <Button
+                              type="text"
+                              onClick={() => setIsAddingDept(false)}
+                              className="h-9 px-4 text-[#666666] hover:text-[#111111] text-[12px] font-['Manrope:SemiBold',sans-serif] hover:bg-[#F7F7F7] rounded-full"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </section>
+
+                  {/* Required Documents Column */}
+                  <section className="lg:border-l lg:border-[#EEEEEE] lg:pl-12">
+                    <div className="flex items-center gap-2 mb-6">
+                      <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
+                        Required Documents
+                      </h2>
+                      {!isAddingDoc && (
+                        <button
+                          onClick={() => setIsAddingDoc(true)}
+                          className="hover:scale-110 active:scale-95 transition-transform"
+                        >
+                          <Plus className="w-5 h-5 text-[#ff3b3b]" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="space-y-6">
+                      {requiredDocuments.map((doc) => (
+                        <div key={doc.id} className="flex items-end gap-6 group">
+                          <div className="space-y-2 flex-1">
+                            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                              Document Name
+                            </span>
+                            <Input
+                              value={doc.name}
+                              readOnly
+                              className="h-11 rounded-lg border-[#EEEEEE] bg-[#FAFAFA] text-[#666666] font-['Manrope:Medium',sans-serif] text-[13px]"
+                            />
+                          </div>
+                          <div className="flex items-center gap-4 pb-3 h-11">
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-[11px] text-[#666666] font-['Manrope:Bold',sans-serif]">
+                                Required
+                              </span>
+                              <Switch
+                                checked={doc.required}
+                                onChange={() => toggleDocumentRequired(doc.id)}
+                                className="bg-gray-200 hover:bg-gray-300"
+                                style={{
+                                  backgroundColor: doc.required ? "#ff3b3b" : undefined,
+                                }}
+                              />
+                            </div>
+                            <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteDocument(doc.id)}
+                              className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#ff3b3b]"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {isAddingDoc && (
+                        <div className="flex items-end gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div className="space-y-2 flex-1">
+                            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                              New Document Name
+                            </span>
+                            <Input
+                              value={newDocName}
+                              onChange={(e) => setNewDocName(e.target.value)}
+                              placeholder="e.g. Passport"
+                              autoFocus
+                              className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
+                              onKeyDown={(e) => e.key === "Enter" && handleAddDocument()}
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 pb-1 h-11">
+                            <Button
+                              onClick={handleAddDocument}
+                              className="h-9 px-4 bg-[#111111] hover:bg-[#000000]/90 text-white text-[12px] font-['Manrope:SemiBold',sans-serif] rounded-full border-none"
+                            >
+                              Add
+                            </Button>
+                            <Button
+                              type="text"
+                              onClick={() => setIsAddingDoc(false)}
+                              className="h-9 px-4 text-[#666666] hover:text-[#111111] text-[12px] font-['Manrope:SemiBold',sans-serif] hover:bg-[#F7F7F7] rounded-full"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </section>
                 </div>
-              </section>
-            </div>
+              </>
+            )}
           </div>
         )}
 
@@ -935,6 +988,156 @@ export function SettingsPage() {
             <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] max-w-sm">
               Connect your favorite tools and services to streamline your workflow.
             </p>
+          </div>
+        )}
+
+        {/* Financials Tab */}
+        {activeTab === 'financials' && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-2xl">
+            <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">Financial Information</h2>
+            <div className="grid grid-cols-2 gap-6 mb-6">
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Account Holder Name</span>
+                <Input
+                  placeholder="Enter name"
+                  value={bankDetails.accountName}
+                  onChange={(e) => setBankDetails({ ...bankDetails, accountName: e.target.value })}
+                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
+                />
+              </div>
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Bank Name</span>
+                <Input
+                  placeholder="Enter bank name"
+                  value={bankDetails.bankName}
+                  onChange={(e) => setBankDetails({ ...bankDetails, bankName: e.target.value })}
+                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
+                />
+              </div>
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Account Number</span>
+                <Input
+                  placeholder="Enter account number"
+                  value={bankDetails.accountNumber}
+                  onChange={(e) => setBankDetails({ ...bankDetails, accountNumber: e.target.value })}
+                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
+                />
+              </div>
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">IFSC / Sort Code</span>
+                <Input
+                  placeholder="Enter code"
+                  value={bankDetails.ifscCode}
+                  onChange={(e) => setBankDetails({ ...bankDetails, ifscCode: e.target.value })}
+                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button type="primary" className="bg-[#111111] h-10 px-6 rounded-lg font-['Manrope:SemiBold',sans-serif]">Save Details</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Notifications Tab */}
+        {activeTab === 'notifications' && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-2xl">
+            <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">Notification Preferences</h2>
+            <div className="space-y-6">
+              <div className="flex items-center justify-between p-4 border border-[#EEEEEE] rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-[#F7F7F7] rounded-full"><Bell className="w-5 h-5 text-[#666666]" /></div>
+                  <div>
+                    <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">Email Notifications</h3>
+                    <p className="text-[12px] text-[#666666]">Receive updates about leaves, payload, and announcements.</p>
+                  </div>
+                </div>
+                <Switch checked={notifications.email} onChange={(v) => setNotifications({ ...notifications, email: v })} />
+              </div>
+              <div className="flex items-center justify-between p-4 border border-[#EEEEEE] rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-[#F7F7F7] rounded-full"><Bell className="w-5 h-5 text-[#666666]" /></div>
+                  <div>
+                    <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">Push Notifications</h3>
+                    <p className="text-[12px] text-[#666666]">Receive real-time alerts on your device.</p>
+                  </div>
+                </div>
+                <Switch checked={notifications.push} onChange={(v) => setNotifications({ ...notifications, push: v })} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Security Tab */}
+        {activeTab === 'security' && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-2xl">
+            <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">Security Settings</h2>
+
+            <div className="mb-8">
+              <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4 flex items-center gap-2"><Lock className="w-4 h-4" /> Change Password</h3>
+              <div className="space-y-4 max-w-md">
+                <Input.Password
+                  placeholder="Current Password"
+                  value={security.currentPassword}
+                  onChange={(e) => setSecurity({ ...security, currentPassword: e.target.value })}
+                  className="h-11 rounded-lg"
+                />
+                <Input.Password
+                  placeholder="New Password"
+                  value={security.newPassword}
+                  onChange={(e) => setSecurity({ ...security, newPassword: e.target.value })}
+                  className="h-11 rounded-lg"
+                />
+                <Input.Password
+                  placeholder="Confirm New Password"
+                  value={security.confirmPassword}
+                  onChange={(e) => setSecurity({ ...security, confirmPassword: e.target.value })}
+                  className="h-11 rounded-lg"
+                />
+                <Button type="primary" className="bg-[#111111] h-10 px-6 rounded-lg font-['Manrope:SemiBold',sans-serif]">Update Password</Button>
+              </div>
+            </div>
+
+            <Divider />
+
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">Two-Factor Authentication</h3>
+                <p className="text-[12px] text-[#666666]">Add an extra layer of security to your account.</p>
+              </div>
+              <Switch checked={security.twoFactor} onChange={(v) => setSecurity({ ...security, twoFactor: v })} />
+            </div>
+          </div>
+        )}
+
+        {/* Data Tab */}
+        {activeTab === 'data' && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-2xl">
+            <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">Data Management</h2>
+
+            <div className="space-y-4">
+              <div className="p-4 border border-[#EEEEEE] rounded-xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-[#F7F7F7] rounded-full"><Database className="w-5 h-5 text-[#666666]" /></div>
+                  <div>
+                    <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">Export Data</h3>
+                    <p className="text-[12px] text-[#666666]">Download a copy of your company data.</p>
+                  </div>
+                </div>
+                <Button icon={<Database className="w-4 h-4" />}>Export CSV</Button>
+              </div>
+
+              <div className="p-4 border border-[#ff3b3b]/20 bg-[#FFF5F5] rounded-xl flex items-center justify-between mt-8">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-[#ff3b3b]/10 rounded-full"><AlertTriangle className="w-5 h-5 text-[#ff3b3b]" /></div>
+                  <div>
+                    <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#ff3b3b]">Delete Account</h3>
+                    <p className="text-[12px] text-[#ff3b3b]/80">Permanently delete your account and all data.</p>
+                  </div>
+                </div>
+                <Button danger type="primary">Delete Account</Button>
+              </div>
+            </div>
           </div>
         )}
       </div>

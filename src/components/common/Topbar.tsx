@@ -20,6 +20,8 @@ import {
 } from '@fluentui/react-icons';
 import { UserCog, Settings, LogOut, FolderOpen, CheckSquare, FileText } from 'lucide-react';
 import { TaskForm } from '../modals/TaskForm';
+import { RequirementsForm, RequirementFormData } from '../modals/RequirementsForm';
+import { WorkspaceForm } from '../modals/WorkspaceForm';
 import { NotificationPanel } from './NotificationPanel';
 import { useUserDetails } from '@/hooks/useUser';
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/useNotification';
@@ -84,24 +86,44 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
   const createRequirementMutation = useCreateRequirement();
 
   // Form States
-  const [newWorkspace, setNewWorkspace] = useState({ name: '', client: '', description: '', lead: '' });
+
   const [newRequirement, setNewRequirement] = useState({ title: '', workspace: '', type: '', priority: '', category: '', dueDate: '', description: '' });
 
-  // Get user data from localStorage or backend
-  const user = useMemo(() => {
+  // Get greeting based on local time - client side only
+  const [greeting, setGreeting] = useState('');
+
+  useEffect(() => {
+    setGreeting(getGreeting());
+
+    // Periodically update greeting
+    const interval = setInterval(() => {
+      setGreeting(getGreeting());
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Sync user from local storage on mount to avoid hydration mismatch
+  const [localUser, setLocalUser] = useState<any>(null);
+
+  useEffect(() => {
     try {
-      if (typeof window !== 'undefined') {
-        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
-        if (localUser && localUser.name) {
-          return localUser;
-        }
+      const stored = localStorage.getItem("user");
+      if (stored) {
+        setLocalUser(JSON.parse(stored));
       }
-    } catch (error) {
-      console.error("Error reading user from localStorage:", error);
+    } catch (e) {
+      console.error(e);
     }
+  }, []);
+
+  const user = useMemo(() => {
+    if (localUser && localUser.name) return localUser;
+
+    // Fallback to API data
     const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
     return apiUser;
-  }, [userDetailsData]);
+  }, [localUser, userDetailsData]);
 
   // Extract first name from user data
   const firstName = useMemo(() => {
@@ -118,53 +140,8 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
     return 'User';
   }, [user, userDetailsData]);
 
-  // Helper to map role_id to access level (same as EmployeesPage)
-  const mapRoleIdToAccess = (roleId: number | null | undefined): UserRole => {
-    if (!roleId) return 'Employee';
-
-    // Reverse mapping: role_id -> access level
-    // Based on seed data order: Super Admin (1), Employee (2), HR (3), Admin (4), Leader (5), Finance (6), Manager (7)
-    const roleIdMapping: Record<number, UserRole> = {
-      1: 'Admin',   // Super Admin -> Admin
-      2: 'Employee', // Employee -> Employee
-      3: 'Employee', // HR -> Employee
-      4: 'Admin',   // Admin -> Admin
-      5: 'Leader', // Leader -> Leader
-      6: 'Employee', // Finance -> Employee
-      7: 'Manager', // Manager -> Manager
-    };
-
-    return roleIdMapping[roleId] || 'Employee';
-  };
-
-  // Map role from backend to UI role
-  const mappedRole: UserRole = useMemo(() => {
-    // First try to get role_id from various sources
-    const roleId = user?.role_id ||
-      user?.user_employee?.role_id ||
-      userDetailsData?.result?.user?.role_id ||
-      userDetailsData?.result?.user?.user_employee?.role_id ||
-      null;
-
-    // If we have role_id, use it for mapping
-    if (roleId) {
-      return mapRoleIdToAccess(roleId);
-    }
-
-    // Fallback to role name if available
-    const roleName = user?.role?.name || user?.user_employee?.role?.name;
-    if (roleName) {
-      const roleLower = roleName.toLowerCase();
-      if (roleLower.includes('admin')) return 'Admin';
-      if (roleLower.includes('manager')) return 'Manager';
-      if (roleLower.includes('leader')) return 'Leader';
-    }
-
-    return 'Employee';
-  }, [user, userDetailsData]);
-
-  // Get greeting based on local time
-  const greeting = useMemo(() => getGreeting(), []);
+  // Determine role for UI - prefer prop if passed from authoritative Layout
+  const mappedRole = userRole;
 
   // Fetch users and requirements for dropdowns
   useEffect(() => {
@@ -234,77 +211,39 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
     markAllReadMutation.mutate();
   };
 
-  // Handle workspace creation
-  const handleCreateWorkspace = async () => {
-    if (!newWorkspace.name) {
-      message.error("Workspace name is required");
-      return;
-    }
 
-    const selectedClient = clientsData?.result?.find((c: any) => c.name === newWorkspace.client || c.company === newWorkspace.client);
-    const selectedLead = employeesData?.result?.find((emp: any) =>
-      String(emp.user_id || emp.id) === newWorkspace.lead
-    );
-
-    createWorkspaceMutation.mutate(
-      {
-        name: newWorkspace.name,
-        description: newWorkspace.description || '',
-        client_id: selectedClient?.id || selectedClient?.association_id || null,
-        manager_id: selectedLead?.user_id || selectedLead?.id || null,
-        leader_id: selectedLead?.user_id || selectedLead?.id || null,
-        start_date: new Date().toISOString(),
-        end_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
-        document_link: '',
-        high_priority: false,
-        in_house: true,
-      } as any,
-      {
-        onSuccess: () => {
-          message.success("Workspace created successfully!");
-          setShowWorkspaceDialog(false);
-          setNewWorkspace({ name: '', client: '', description: '', lead: '' });
-        },
-        onError: (error: any) => {
-          const errorMessage = error?.response?.data?.message || "Failed to create workspace";
-          message.error(errorMessage);
-        },
-      }
-    );
-  };
 
   // Handle requirement creation
-  const handleCreateRequirement = async () => {
-    if (!newRequirement.title) {
+  const handleCreateRequirement = async (data: RequirementFormData) => {
+    if (!data.title) {
       message.error("Requirement title is required");
       return;
     }
 
-    const selectedWorkspace = workspacesData?.result?.projects?.find(
-      (w: any) => w.name === newRequirement.workspace || String(w.id) === newRequirement.workspace
-    );
-
-    if (!selectedWorkspace) {
+    if (!data.workspace) {
       message.error("Please select a workspace");
       return;
     }
 
     createRequirementMutation.mutate(
       {
-        project_id: selectedWorkspace.id,
-        name: newRequirement.title,
-        description: newRequirement.description || '',
+        project_id: Number(data.workspace),
+        name: data.title,
+        description: data.description || '',
         start_date: new Date().toISOString(),
-        end_date: newRequirement.dueDate ? new Date(newRequirement.dueDate).toISOString() : undefined,
+        end_date: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
         status: 'Assigned',
-        priority: newRequirement.priority?.toUpperCase() || 'MEDIUM',
-        high_priority: newRequirement.priority === 'high',
+        priority: data.priority?.toUpperCase() || 'MEDIUM',
+        high_priority: data.priority === 'high',
+        type: data.type,
+        contact_person: data.contactPerson,
+        budget: Number(data.budget) || 0,
       } as any,
       {
         onSuccess: () => {
           message.success("Requirement created successfully!");
           setShowRequirementDialog(false);
-          setNewRequirement({ title: '', workspace: '', type: '', priority: '', category: '', dueDate: '', description: '' });
+          // Reset form handled by component unmount/remount usually, but here we might need to reset state if we kept it
         },
         onError: (error: any) => {
           const errorMessage = error?.response?.data?.message || "Failed to create requirement";
@@ -405,54 +344,47 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
     },
   ];
 
+  const accountType = user?.company?.account_type || 'ORGANIZATION';
+  const isIndividual = accountType === 'INDIVIDUAL';
+
   const profileMenuItems: MenuProps['items'] = [
     {
       key: 'account',
       type: 'group',
-      label: <span className="text-[#111111] font-bold font-['Manrope:Bold',sans-serif] text-[14px]">My Account</span>,
+      label: (
+        <span className="text-[#111111] font-bold font-['Manrope:Bold',sans-serif] text-[14px]">
+          {isIndividual ? 'Personal Account' : 'Organization Account'}
+        </span>
+      ),
       children: [
         {
           key: 'settings',
-          label: 'Settings',
+          label: isIndividual ? 'Settings' : 'Company Settings',
           icon: <Settings className="w-4 h-4" />,
           onClick: () => router.push('/dashboard/settings'),
         },
-        {
-          key: 'profile',
-          label: 'Profile',
-          icon: <UserCog className="w-4 h-4" />,
-          onClick: () => router.push('/dashboard/profile'),
-        },
+        ...(isIndividual ? [
+          {
+            key: 'create-org',
+            label: <span className="text-[#ff3b3b]">Create Organization</span>,
+            icon: <PeopleTeam24Filled className="w-4 h-4 text-[#ff3b3b]" />,
+            onClick: () => message.info('Create Organization Flow Coming Soon'), // Placeholder for now
+          }
+        ] : [
+          {
+            key: 'profile',
+            label: 'Profile',
+            icon: <UserCog className="w-4 h-4" />,
+            onClick: () => router.push('/dashboard/profile'),
+          }
+        ]),
       ],
     },
     { type: 'divider' },
     {
-      key: 'switch',
-      type: 'group',
-      label: 'Switch View (Demo)',
-      children: (['Admin', 'Manager', 'Leader', 'Employee'] as const).map((role) => ({
-        key: role.toLowerCase(),
-        label: (
-          <div className="flex justify-between items-center w-full min-w-[100px] gap-3">
-            <span>{role}</span>
-            <div className="h-5 flex items-center justify-center">
-              {(mappedRole || userRole) === role ? (
-                <CheckSquare className="w-4 h-4 text-[#ff3b3b]" />
-              ) : (
-                <div className="w-4 h-4" />
-              )}
-            </div>
-          </div>
-        ),
-        onClick: () => setUserRole?.(role),
-      })),
-    },
-    { type: 'divider' },
-    {
       key: 'logout',
-      label: 'Log out',
-      icon: <LogOut className="w-4 h-4" />,
-      danger: true,
+      label: <span className="text-[#ff3b3b]">Log out</span>,
+      icon: <LogOut className="w-4 h-4 text-[#ff3b3b]" />,
       onClick: handleLogout,
     },
   ];
@@ -487,7 +419,7 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
 
             {/* Notification icon */}
             <>
-              <button 
+              <button
                 onClick={() => setNotificationDrawerOpen(true)}
                 className="relative hover:opacity-70 transition-opacity p-1"
               >
@@ -525,124 +457,11 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
       </div>
 
       {/* Workspace Modal */}
-      <Modal
+      <WorkspaceForm
         open={showWorkspaceDialog}
         onCancel={() => setShowWorkspaceDialog(false)}
-        footer={null}
-        width={600}
-        centered
-        className="rounded-[16px] overflow-hidden"
-        styles={{
-          body: {
-            padding: 0,
-          }
-        }}
-      >
-        <div className="flex flex-col h-full bg-white">
-          {/* Fixed Header */}
-          <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-6">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                <div className="p-2 rounded-full bg-[#F7F7F7]">
-                  <FolderOpen className="w-5 h-5 text-[#666666]" />
-                </div>
-                Create Workspace
-              </div>
-            </div>
-            <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
-              Create a new workspace to organize tasks and requirements.
-            </p>
-          </div>
-
-          {/* Scrollable Body */}
-          <div className="flex-1 overflow-y-auto px-6 py-6">
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              <div className="space-y-2">
-                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Workspace Name</span>
-                <Input
-                  placeholder="e.g. Website Redesign"
-                  className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${newWorkspace.name ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                  value={newWorkspace.name}
-                  onChange={(e) => setNewWorkspace({ ...newWorkspace, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Client</span>
-                <Select
-                  className={`w-full h-11 employee-form-select ${newWorkspace.client ? 'employee-form-select-filled' : ''}`}
-                  placeholder="Select client"
-                  value={newWorkspace.client || undefined}
-                  onChange={(v) => setNewWorkspace({ ...newWorkspace, client: String(v) })}
-                  suffixIcon={<div className="text-gray-400">⌄</div>}
-                >
-                  {clientsData?.result && clientsData.result.length > 0 ? (
-                    clientsData.result.map((client: any) => (
-                      <Option key={String(client.id || client.association_id || '')} value={String(client.name || client.company || '')}>
-                        {client.name || client.company}
-                      </Option>
-                    ))
-                  ) : (
-                    <Option value="none" disabled>No clients available</Option>
-                  )}
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              <div className="space-y-2">
-                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Project Lead</span>
-                <Select
-                  className={`w-full h-11 employee-form-select ${newWorkspace.lead ? 'employee-form-select-filled' : ''}`}
-                  placeholder="Select lead"
-                  value={newWorkspace.lead || undefined}
-                  onChange={(v) => setNewWorkspace({ ...newWorkspace, lead: String(v) })}
-                  suffixIcon={<div className="text-gray-400">⌄</div>}
-                >
-                  {employeesData?.result && employeesData.result.length > 0 ? (
-                    employeesData.result.map((emp: any) => (
-                      <Option key={String(emp.user_id || emp.id || '')} value={String(emp.user_id || emp.id || '')}>
-                        {emp.name}
-                      </Option>
-                    ))
-                  ) : (
-                    <Option value="none" disabled>No employees available</Option>
-                  )}
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2 mb-6">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</span>
-              <TextArea
-                placeholder="Describe your workspace..."
-                className={`font-['Manrope:Regular',sans-serif] rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${newWorkspace.description ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                rows={4}
-                value={newWorkspace.description}
-                onChange={(e) => setNewWorkspace({ ...newWorkspace, description: e.target.value })}
-              />
-            </div>
-          </div>
-
-          {/* Fixed Footer */}
-          <div className="flex-shrink-0 border-t border-[#EEEEEE] px-6 py-6 flex items-center justify-end bg-white gap-3">
-            <Button
-              type="text"
-              onClick={() => setNewWorkspace({ name: '', client: '', description: '', lead: '' })}
-              className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666]"
-            >
-              Reset Data
-            </Button>
-            <Button
-              type="primary"
-              onClick={handleCreateWorkspace}
-              loading={createWorkspaceMutation.isPending}
-              className="h-10 px-6 rounded-lg bg-[#111111] hover:bg-[#000000] text-white font-['Manrope:SemiBold',sans-serif] border-none"
-            >
-              Create Workspace
-            </Button>
-          </div>
-        </div>
-      </Modal>
+        onSuccess={() => setShowWorkspaceDialog(false)}
+      />
 
       {/* Task Modal */}
       <Modal
@@ -697,116 +516,16 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
         styles={{
           body: {
             padding: 0,
+            height: '80vh',
           }
         }}
       >
-        <div className="flex flex-col h-full bg-white">
-          {/* Fixed Header */}
-          <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-6">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                <div className="p-2 rounded-full bg-[#F7F7F7]">
-                  <FileText className="w-5 h-5 text-[#666666]" />
-                </div>
-                Create New Requirement
-              </div>
-            </div>
-            <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
-              Requirements helps you grouping tasks better
-            </p>
-          </div>
-
-          {/* Scrollable Body */}
-          <div className="flex-1 overflow-y-auto px-6 py-6">
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              <div className="space-y-2">
-                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Requirement Title</span>
-                <Input
-                  placeholder="e.g. Navigation Bar"
-                  className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${newRequirement.title ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                  value={newRequirement.title}
-                  onChange={(e) => setNewRequirement({ ...newRequirement, title: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Workspace</span>
-                <Select
-                  className={`w-full h-11 employee-form-select ${newRequirement.workspace ? 'employee-form-select-filled' : ''}`}
-                  placeholder="Select workspace"
-                  value={newRequirement.workspace || undefined}
-                  onChange={(v) => setNewRequirement({ ...newRequirement, workspace: String(v) })}
-                  suffixIcon={<div className="text-gray-400">⌄</div>}
-                >
-                  {workspacesData?.result?.projects && workspacesData.result.projects.length > 0 ? (
-                    workspacesData.result.projects.map((w: any) => (
-                      <Option key={String(w.id)} value={String(w.id)}>
-                        {w.name}
-                      </Option>
-                    ))
-                  ) : (
-                    <Option value="none" disabled>No workspaces available</Option>
-                  )}
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              <div className="space-y-2">
-                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Due Date</span>
-                <Input
-                  type="date"
-                  className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${newRequirement.dueDate ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                  value={newRequirement.dueDate ? new Date(newRequirement.dueDate).toISOString().split('T')[0] : ''}
-                  onChange={(e) => setNewRequirement({ ...newRequirement, dueDate: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Priority</span>
-                <Select
-                  className={`w-full h-11 employee-form-select ${newRequirement.priority ? 'employee-form-select-filled' : ''}`}
-                  placeholder="Select priority"
-                  value={newRequirement.priority || undefined}
-                  onChange={(v) => setNewRequirement({ ...newRequirement, priority: String(v) })}
-                  suffixIcon={<div className="text-gray-400">⌄</div>}
-                >
-                  <Option value="low">Low</Option>
-                  <Option value="medium">Medium</Option>
-                  <Option value="high">High</Option>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2 mb-6">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</span>
-              <TextArea
-                placeholder="Describe the requirement..."
-                className={`font-['Manrope:Regular',sans-serif] rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${newRequirement.description ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                rows={4}
-                value={newRequirement.description}
-                onChange={(e) => setNewRequirement({ ...newRequirement, description: e.target.value })}
-              />
-            </div>
-          </div>
-
-          {/* Fixed Footer */}
-          <div className="flex-shrink-0 border-t border-[#EEEEEE] px-6 py-6 flex items-center justify-end bg-white gap-4">
-            <Button
-              type="text"
-              onClick={() => setNewRequirement({ title: '', workspace: '', type: '', priority: '', category: '', dueDate: '', description: '' })}
-              className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
-            >
-              Reset Data
-            </Button>
-            <Button
-              type="primary"
-              onClick={handleCreateRequirement}
-              loading={createRequirementMutation.isPending}
-              className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
-            >
-              Save Requirement
-            </Button>
-          </div>
-        </div>
+        <RequirementsForm
+          onSubmit={handleCreateRequirement}
+          onCancel={() => setShowRequirementDialog(false)}
+          workspaces={workspacesData?.result?.projects?.map((w: any) => ({ id: w.id, name: w.name })) || []}
+          isLoading={createRequirementMutation.isPending}
+        />
       </Modal>
       <style jsx global>{`
         /* Gray background for all Select dropdowns (default) */

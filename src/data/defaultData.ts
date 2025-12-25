@@ -18,10 +18,8 @@ export const businessTypes = [
   { label: "Warehousing", value: 17 },
   { label: "Retail Services", value: 18 },
   { label: "Travel Agencies", value: 19 },
-  { label: "Event Planning", value: 20 },
   { label: "Others", value: 21 },
 ];
-
 // Map industry string to businessType value
 export const industryToBusinessType: Record<string, number> = {
   technology: 1,

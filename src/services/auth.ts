@@ -33,6 +33,7 @@ export const doCompleteSignup = async (
   registerToken: string | null,
   companyName: string,
   businessType: string,
+  accountType: string,
   country: string,
   timezone: string
 ) => {
@@ -41,6 +42,7 @@ export const doCompleteSignup = async (
       registerToken,
       companyName,
       businessType,
+      accountType,
       country,
       timezone,
     });

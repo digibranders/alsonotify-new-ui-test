@@ -6,17 +6,18 @@ import { ShieldCheck, Briefcase, Download, Trash2, User as UserIcon, Users } fro
 import { EmployeeForm, EmployeeFormData } from '../../modals/EmployeesForm';
 import { EmployeeDetailsModal } from '../../modals/EmployeeDetailsModal';
 import { EmployeeRow } from './rows/EmployeeRow';
-import { useEmployees, useCreateEmployee, useUpdateEmployee, useCompanyDepartments, useUpdateEmployeeStatus, useUserDetails } from '@/hooks/useUser';
+import { useEmployees, useCreateEmployee, useUpdateEmployee, useCompanyDepartments, useUpdateEmployeeStatus, useUserDetails, useCurrentUserCompany } from '@/hooks/useUser';
 import { useRouter } from 'next/navigation';
 import { Employee } from '@/types/genericTypes';
 import { useQueryClient } from '@tanstack/react-query';
+import { getRoleFromUser } from '@/utils/roleUtils';
 
 export function EmployeesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { modal, message } = App.useApp();
   const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
-  
+
   // Build query parameters based on active tab
   const queryParams = useMemo(() => {
     const params = new URLSearchParams();
@@ -31,9 +32,11 @@ export function EmployeesPage() {
   const { data: employeesData, isLoading } = useEmployees(queryParams);
   const { data: departmentsData } = useCompanyDepartments();
   const { data: currentUserData } = useUserDetails();
+  const { data: companyData } = useCurrentUserCompany();
   const createEmployeeMutation = useCreateEmployee();
   const updateEmployeeMutation = useUpdateEmployee();
   const updateEmployeeStatusMutation = useUpdateEmployeeStatus();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({
     role: 'All',
@@ -53,47 +56,6 @@ export function EmployeesPage() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedEmployeeForDetails, setSelectedEmployeeForDetails] = useState<Employee | null>(null);
 
-  // Helper function to map role_id to access level
-  const mapRoleIdToAccess = (roleId: number | null | undefined): 'Admin' | 'Manager' | 'Leader' | 'Employee' => {
-    if (!roleId) return 'Employee';
-    
-    // Reverse mapping: role_id -> access level
-    // Based on the seed data order: Super Admin (1), Employee (2), HR (3), Admin (4), Leader (5), Finance (6), Manager (7)
-    // Map to our UI access levels: Admin, Manager, Leader, Employee
-    const roleIdMapping: Record<number, 'Admin' | 'Manager' | 'Leader' | 'Employee'> = {
-      1: 'Admin',   // Super Admin -> Admin
-      2: 'Employee', // Employee -> Employee
-      3: 'Employee', // HR -> Employee
-      4: 'Admin',   // Admin -> Admin
-      5: 'Leader', // Leader -> Leader
-      6: 'Employee', // Finance -> Employee
-      7: 'Manager', // Manager -> Manager
-    };
-    
-    return roleIdMapping[roleId] || 'Employee';
-  };
-
-  // Helper function to map role to access level - wrapped in useCallback to avoid dependency warning
-  const mapRoleToAccess = useCallback((roleId: any, roleName?: string): 'Admin' | 'Manager' | 'Leader' | 'Employee' => {
-    // First try to map by role_id if available
-    if (roleId) {
-      const mapped = mapRoleIdToAccess(roleId);
-      if (mapped !== 'Employee' || !roleName) {
-        return mapped;
-      }
-    }
-    
-    // Fallback to role name mapping if role_id mapping didn't work
-    if (roleName) {
-      const roleLower = roleName.toLowerCase();
-      if (roleLower.includes('admin')) return 'Admin';
-      if (roleLower.includes('manager')) return 'Manager';
-      if (roleLower.includes('leader')) return 'Leader';
-    }
-    
-    // Default mapping
-    return 'Employee';
-  }, []);
 
   // Transform backend data to UI format
   const employees = useMemo(() => {
@@ -103,25 +65,20 @@ export function EmployeesPage() {
       name: emp.name || '',
       role: emp.designation || 'Unassigned',
       email: emp.email || '',
-      phone: emp.mobile_number || emp.phone || '',
+      phone: emp.mobile_number || emp.phone || emp.user_profile?.mobile_number || emp.user_profile?.phone || emp.user?.mobile_number || '',
       hourlyRate: emp.hourly_rates ? `${emp.hourly_rates}/Hr` : 'N/A',
-      dateOfJoining: emp.date_of_joining ? (() => {
-        const date = new Date(emp.date_of_joining);
-        const day = date.getDate().toString().padStart(2, '0');
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const month = monthNames[date.getMonth()];
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
-      })() : 'N/A',
+      dateOfJoining: emp.date_of_joining ? new Date(emp.date_of_joining).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'N/A',
       experience: emp.experience || 0,
       skillsets: emp.skills?.join(', ') || 'None',
+
       status: (emp.user_employee?.is_active !== false ? 'active' : 'inactive') as 'active' | 'inactive',
       department: emp.department?.name || 'Unassigned',
-      access: mapRoleToAccess(emp.user_employee?.role_id, emp.user_employee?.role?.name) || 'Employee',
+      access: getRoleFromUser(emp.user_employee),
       roleId: emp.user_employee?.role_id,
       salary: emp.salary_yearly || emp.salary || 0,
       currency: 'USD',
       workingHours: emp.working_hours?.start_time && emp.working_hours?.end_time ? 8 : 0,
+      rawWorkingHours: emp.working_hours,
       leaves: emp.no_of_leaves || 0,
       // Map employment type - convert old values to new format
       employmentType: (() => {
@@ -130,10 +87,10 @@ export function EmployeesPage() {
         if (type === 'In-house') return 'Full-time';
         if (type === 'Freelancer' || type === 'Agency') return 'Contract';
         if (type === 'Full-time' || type === 'Contract' || type === 'Part-time') return type;
-        return ['Full-time', 'Contract', 'Part-time'][Math.floor(Math.random() * 3)] as 'Full-time' | 'Contract' | 'Part-time';
+        return 'Full-time';
       })(),
     }));
-  }, [employeesData, mapRoleToAccess]);
+  }, [employeesData]);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => {
@@ -151,7 +108,7 @@ export function EmployeesPage() {
           ? (emp.access === 'Employee')
           : emp.access === filters.access);
 
-      const matchesType = filters.employmentType === 'All' || 
+      const matchesType = filters.employmentType === 'All' ||
         (filters.employmentType === 'Full-time' && (emp.employmentType === 'Full-time' || emp.employmentType === 'In-house')) ||
         (filters.employmentType === 'Contract' && (emp.employmentType === 'Contract' || emp.employmentType === 'Freelancer' || emp.employmentType === 'Agency')) ||
         (filters.employmentType === 'Part-time' && emp.employmentType === 'Part-time') ||
@@ -274,13 +231,28 @@ export function EmployeesPage() {
       }
     }
 
+    // Construct working hours object
+    const workingHours = {
+      start_time: data.workingHoursStart || "09:00 AM",
+      end_time: data.workingHoursEnd || "05:00 PM"
+    };
+
+    // Construct full mobile number with country code
+    const countryCode = data.countryCode || "+91";
+    // Ensure phone number doesn't already have the code if user typed it
+    let phoneNumber = data.phone;
+    if (phoneNumber.startsWith(countryCode)) {
+      phoneNumber = phoneNumber.replace(countryCode, "").trim();
+    }
+    const fullMobileNumber = `${countryCode} ${phoneNumber}`.trim();
+
     if (editingEmployee) {
       updateEmployeeMutation.mutate(
         {
           id: editingEmployee.id,
           name: data.name,
           email: data.email,
-          mobile_number: data.phone,
+          mobile_number: fullMobileNumber,
           designation: data.role,
           department_id: departmentId,
           role_id: roleId,
@@ -290,6 +262,8 @@ export function EmployeesPage() {
           salary_yearly: parseFloat(data.salary) || 0,
           hourly_rates: hourlyRate,
           no_of_leaves: parseFloat(data.leaves) || 0,
+          working_hours: workingHours,
+          employment_type: data.employmentType,
         } as any,
         {
           onSuccess: () => {
@@ -314,16 +288,19 @@ export function EmployeesPage() {
         {
           name: data.name,
           email: data.email,
-          mobile_number: data.phone,
+          mobile_number: fullMobileNumber,
           designation: data.role,
           department_id: departmentId,
           role_id: roleId,
           experience: parseInt(data.experience) || 0,
           skills: data.skillsets.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0),
           date_of_joining: dateOfJoining,
+
           salary_yearly: parseFloat(data.salary) || 0,
           hourly_rates: hourlyRate,
           no_of_leaves: parseFloat(data.leaves) || 0,
+          working_hours: workingHours,
+          employment_type: data.employmentType,
         } as any,
         {
           onSuccess: () => {
@@ -341,9 +318,9 @@ export function EmployeesPage() {
 
   const toggleSelectAll = () => {
     // Check if all filtered employees are selected
-    const allFilteredSelected = filteredEmployees.length > 0 && 
+    const allFilteredSelected = filteredEmployees.length > 0 &&
       filteredEmployees.every(emp => selectedEmployees.includes(emp.id));
-    
+
     if (allFilteredSelected) {
       // Deselect all filtered employees (but keep selections from other filters)
       const filteredIds = new Set(filteredEmployees.map(e => e.id));
@@ -380,13 +357,13 @@ export function EmployeesPage() {
   }, [currentUserData]);
 
   // Helper to map access level to role_id
-  // Based on seed data order: Super Admin (1), Employee (2), HR (3), Admin (4), Leader (5), Finance (6), Manager (7)
+  // Based on seed data order: Employee (1), HR (2), Admin (3), Leader (4), Finance (5), Manager (6)
   const getRoleIdByAccess = (access: 'Admin' | 'Manager' | 'Leader' | 'Employee'): number | null => {
     const roleMapping: Record<string, number> = {
-      'Admin': 4,      // Admin role (id: 4)
-      'Manager': 7,    // Manager role (id: 7)
-      'Leader': 5,     // Leader role (id: 5)
-      'Employee': 2,   // Employee role (id: 2)
+      'Admin': 3,      // Admin role (id: 3)
+      'Manager': 6,    // Manager role (id: 6)
+      'Leader': 4,     // Leader role (id: 4)
+      'Employee': 1,   // Employee role (id: 1)
     };
     return roleMapping[access] || null;
   };
@@ -441,8 +418,8 @@ export function EmployeesPage() {
       }
 
       // Parse hourly rate from display format (e.g., "200/Hr" -> 200)
-      const hourlyRate = employee.hourlyRate && employee.hourlyRate !== 'N/A' 
-        ? parseFloat(employee.hourlyRate.replace(/[^0-9.]/g, '')) 
+      const hourlyRate = employee.hourlyRate && employee.hourlyRate !== 'N/A'
+        ? parseFloat(employee.hourlyRate.replace(/[^0-9.]/g, ''))
         : (rawEmployee.hourly_rates || null);
 
       // Parse date of joining - try multiple formats
@@ -523,12 +500,12 @@ export function EmployeesPage() {
     // Execute all updates and wait for completion
     try {
       const results = await Promise.allSettled(updatePromises);
-      
+
       // Count successful updates
       const successfulUpdates = results.filter(r => r.status === 'fulfilled').length;
       const totalFailed = failedEmployees.length;
       const totalSelected = selectedEmployees.length;
-      
+
       if (totalFailed === 0 && successfulUpdates === totalSelected) {
         message.success(`Updated access level to ${access} for ${totalSelected} employee(s)`);
         setSelectedEmployees([]);
@@ -562,12 +539,12 @@ export function EmployeesPage() {
     const selectedDepartment = departmentsData?.result?.find(
       (dept: any) => dept.name === departmentName
     );
-    
+
     if (!selectedDepartment || !selectedDepartment.id) {
       message.error(`Department "${departmentName}" not found`);
       return;
     }
-    
+
     const departmentId = selectedDepartment.id;
 
     // Prepare all update payloads first
@@ -593,8 +570,8 @@ export function EmployeesPage() {
       }
 
       // Parse hourly rate from display format (e.g., "200/Hr" -> 200)
-      const hourlyRate = employee.hourlyRate && employee.hourlyRate !== 'N/A' 
-        ? parseFloat(employee.hourlyRate.replace(/[^0-9.]/g, '')) 
+      const hourlyRate = employee.hourlyRate && employee.hourlyRate !== 'N/A'
+        ? parseFloat(employee.hourlyRate.replace(/[^0-9.]/g, ''))
         : (rawEmployee.hourly_rates || null);
 
       // Parse date of joining - try multiple formats
@@ -683,12 +660,12 @@ export function EmployeesPage() {
     // Execute all updates and wait for completion
     try {
       const results = await Promise.allSettled(updatePromises);
-      
+
       // Count successful updates
       const successfulUpdates = results.filter(r => r.status === 'fulfilled').length;
       const totalFailed = failedEmployees.length;
       const totalSelected = selectedEmployees.length;
-      
+
       if (totalFailed === 0 && successfulUpdates === totalSelected) {
         message.success(`Updated department to ${departmentName} for ${totalSelected} employee(s)`);
         setSelectedEmployees([]);
@@ -717,7 +694,7 @@ export function EmployeesPage() {
 
     // Get selected employees data - use employees array which contains all employees
     const selectedEmployeesData = employees.filter(emp => selectedEmployees.includes(emp.id));
-    
+
     if (selectedEmployeesData.length === 0) {
       message.error('No employee data found for selected employees');
       return;
@@ -725,7 +702,7 @@ export function EmployeesPage() {
 
     // CSV Headers
     const headers = ['Name', 'Email', 'Role', 'Department', 'Access Level', 'Employment Type', 'Hourly Rate', 'Date of Joining', 'Status'];
-    
+
     // CSV Rows - escape special characters properly
     const rows = selectedEmployeesData.map(emp => [
       emp.name || '',
@@ -766,7 +743,7 @@ export function EmployeesPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url); // Clean up the URL
-      
+
       message.success(`Exported ${selectedEmployeesData.length} employee(s) to CSV`);
     } catch (error) {
       console.error('Export error:', error);
@@ -783,7 +760,7 @@ export function EmployeesPage() {
 
     // Filter out current user from selection
     const employeesToDeactivate = selectedEmployees.filter(empId => empId !== currentUserId);
-    
+
     if (employeesToDeactivate.length !== selectedEmployees.length) {
       message.warning('You cannot deactivate yourself. Removed from selection.');
     }
@@ -826,12 +803,12 @@ export function EmployeesPage() {
         // Execute all deactivations and wait for completion
         try {
           const results = await Promise.allSettled(deactivatePromises);
-          
+
           // Count successful deactivations
           const successfulDeactivations = results.filter(r => r.status === 'fulfilled').length;
           const totalFailed = failedEmployees.length;
           const totalToDeactivate = employeesToDeactivate.length;
-          
+
           if (totalFailed === 0 && successfulDeactivations === totalToDeactivate) {
             message.success(`Deactivated ${totalToDeactivate} employee(s)`);
             setSelectedEmployees([]);
@@ -884,7 +861,7 @@ export function EmployeesPage() {
           <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2fr_1.8fr_1.2fr_1fr_1fr_1.2fr_40px] gap-4 px-4 py-3 mb-2 items-center">
             <div className="flex justify-center">
               <Checkbox
-                checked={filteredEmployees.length > 0 && 
+                checked={filteredEmployees.length > 0 &&
                   filteredEmployees.every(emp => selectedEmployees.includes(emp.id))}
                 onChange={toggleSelectAll}
                 className="red-checkbox"
@@ -941,12 +918,12 @@ export function EmployeesPage() {
             <div className="flex items-center gap-0">
               {/* Update Access Level Button with Dropdown */}
               <div className="relative" ref={accessDropdownRef}>
-                <Tooltip 
-                  title="Update Access Level" 
+                <Tooltip
+                  title="Update Access Level"
                   placement="top"
                   styles={{ root: { marginBottom: '8px' } }}
                 >
-                  <button 
+                  <button
                     onClick={() => setShowAccessDropdown(!showAccessDropdown)}
                     className="p-2 hover:bg-white/10 rounded-full transition-colors"
                   >
@@ -989,12 +966,12 @@ export function EmployeesPage() {
 
               {/* Change Department Button with Dropdown */}
               <div className="relative" ref={departmentDropdownRef}>
-                <Tooltip 
-                  title="Change Department" 
+                <Tooltip
+                  title="Change Department"
                   placement="top"
                   styles={{ root: { marginBottom: '8px' } }}
                 >
-                  <button 
+                  <button
                     onClick={() => setShowDepartmentDropdown(!showDepartmentDropdown)}
                     className="p-2 hover:bg-white/10 rounded-full transition-colors"
                   >
@@ -1025,12 +1002,12 @@ export function EmployeesPage() {
               </div>
 
               {/* Export Data Button */}
-              <Tooltip 
-                title="Export Data" 
+              <Tooltip
+                title="Export Data"
                 placement="top"
                 styles={{ root: { marginBottom: '8px' } }}
               >
-                <button 
+                <button
                   onClick={handleExportToCSV}
                   className="p-2 hover:bg-white/10 rounded-full transition-colors"
                 >
@@ -1039,12 +1016,12 @@ export function EmployeesPage() {
               </Tooltip>
 
               {/* Delete Button */}
-              <Tooltip 
-                title="Delete" 
+              <Tooltip
+                title="Delete"
                 placement="top"
                 styles={{ root: { marginBottom: '8px' } }}
               >
-                <button 
+                <button
                   onClick={handleBulkDelete}
                   className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]"
                 >
@@ -1055,8 +1032,8 @@ export function EmployeesPage() {
 
             <div className="h-6 w-px bg-white/20" />
 
-            <button 
-              onClick={() => setSelectedEmployees([])} 
+            <button
+              onClick={() => setSelectedEmployees([])}
               className="text-[14px] font-['Manrope:Medium',sans-serif] text-white hover:text-white/80 transition-colors"
             >
               Cancel
@@ -1084,50 +1061,54 @@ export function EmployeesPage() {
         }}
       >
         <EmployeeForm
-            departments={departmentsData?.result?.filter((dept: any) => dept.is_active !== false).map((dept: any) => dept.name) || []}
-            initialData={editingEmployee ? {
-              name: editingEmployee.name,
-              role: editingEmployee.role,
-              email: editingEmployee.email,
-              phone: editingEmployee.phone,
-              department: editingEmployee.department,
-              hourlyRate: editingEmployee.hourlyRate,
-              dateOfJoining: editingEmployee.dateOfJoining && editingEmployee.dateOfJoining !== 'N/A'
-                ? (() => {
-                  try {
-                    // Parse date string like "01 Jan 2024"
-                    const dateParts = editingEmployee.dateOfJoining.split(' ');
-                    if (dateParts.length === 3) {
-                      const day = dateParts[0].padStart(2, '0');
-                      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                      const month = String(monthNames.indexOf(dateParts[1]) + 1).padStart(2, '0');
-                      const year = dateParts[2];
-                      return `${year}-${month}-${day}`;
-                    }
-                    // Try parsing as ISO string
-                    const date = new Date(editingEmployee.dateOfJoining);
-                    if (!isNaN(date.getTime())) {
-                      return date.toISOString().split('T')[0];
-                    }
-                  } catch (e) {
-                    console.error("Error parsing date:", e);
+          departments={departmentsData?.result?.filter((dept: any) => dept.is_active !== false).map((dept: any) => dept.name) || []}
+          initialData={editingEmployee ? {
+            name: editingEmployee.name,
+            role: editingEmployee.role,
+            email: editingEmployee.email,
+            phone: editingEmployee.phone,
+            department: editingEmployee.department,
+            hourlyRate: editingEmployee.hourlyRate,
+            dateOfJoining: editingEmployee.dateOfJoining && editingEmployee.dateOfJoining !== 'N/A'
+              ? (() => {
+                try {
+                  // Parse date string like "01 Jan 2024"
+                  const dateParts = editingEmployee.dateOfJoining.split(' ');
+                  if (dateParts.length === 3) {
+                    const day = dateParts[0].padStart(2, '0');
+                    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const month = String(monthNames.indexOf(dateParts[1]) + 1).padStart(2, '0');
+                    const year = dateParts[2];
+                    return `${year}-${month}-${day}`;
                   }
-                  return '';
-                })()
-                : '',
-              experience: editingEmployee.experience.toString(),
-              skillsets: editingEmployee.skillsets,
-              access: editingEmployee.access,
-              salary: editingEmployee.salary.toString(),
-              currency: editingEmployee.currency,
-              workingHours: editingEmployee.workingHours.toString(),
-              leaves: editingEmployee.leaves.toString(),
-              role_id: editingEmployee.roleId
-            } : undefined}
-            onSubmit={handleSaveEmployee}
-            onCancel={() => setIsDialogOpen(false)}
-            isEditing={!!editingEmployee}
-          />
+                  // Try parsing as ISO string
+                  const date = new Date(editingEmployee.dateOfJoining);
+                  if (!isNaN(date.getTime())) {
+                    return date.toISOString().split('T')[0];
+                  }
+                } catch (e) {
+                  console.error("Error parsing date:", e);
+                }
+                return '';
+              })()
+              : '',
+            experience: editingEmployee.experience.toString(),
+            skillsets: editingEmployee.skillsets,
+            access: editingEmployee.access,
+            salary: editingEmployee.salary.toString(),
+            currency: editingEmployee.currency,
+            workingHours: editingEmployee.rawWorkingHours,
+            leaves: editingEmployee.leaves.toString(),
+            role_id: editingEmployee.roleId,
+            employmentType: editingEmployee.employmentType
+          } : {
+            // Default values for new employee - fetch from company settings
+            workingHours: companyData?.result?.working_hours
+          }}
+          onSubmit={handleSaveEmployee}
+          onCancel={() => setIsDialogOpen(false)}
+          isEditing={!!editingEmployee}
+        />
       </Modal>
 
       {/* Employee Details Modal */}
