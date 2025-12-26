@@ -451,7 +451,6 @@ export function RequirementsPage() {
     // Determine the ID: editingReq for basic edits, or pendingReqId for workflow actions
     const reqId = pendingReqId;
     if (!reqId) {
-      console.error("No requirement ID found for quotation");
       return;
     }
 

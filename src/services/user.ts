@@ -211,3 +211,12 @@ export const updateUserStatus = async (params: { user_id: number; is_active: boo
   }
 };
 
+// Get all roles
+export const getRoles = async (): Promise<ApiResponse<{ id: number; name: string }[]>> => {
+  try {
+    const { data } = await axiosApi.get<ApiResponse<{ id: number; name: string }[]>>(`/role`);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};

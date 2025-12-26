@@ -113,7 +113,7 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
         setLocalUser(JSON.parse(stored));
       }
     } catch (e) {
-      console.error(e);
+      // Error reading user from localStorage
     }
   }, []);
 
@@ -175,7 +175,7 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
               allRequirements.push(...response.result);
             }
           } catch (error) {
-            console.error(`Failed to fetch requirements for workspace ${workspace.id}:`, error);
+            // Failed to fetch requirements for workspace
           }
         }
         setRequirementsDropdown(allRequirements);

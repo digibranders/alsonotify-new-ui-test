@@ -115,7 +115,7 @@ export function EmployeeDetailsPage() {
           dateOfJoining = date.toISOString();
         }
       } catch (e) {
-        console.error("Invalid date format:", e);
+        // Invalid date format
       }
     }
 

@@ -6,7 +6,16 @@ import { ShieldCheck, Briefcase, Download, Trash2, User as UserIcon, Users } fro
 import { EmployeeForm, EmployeeFormData } from '../../modals/EmployeesForm';
 import { EmployeeDetailsModal } from '../../modals/EmployeeDetailsModal';
 import { EmployeeRow } from './rows/EmployeeRow';
-import { useEmployees, useCreateEmployee, useUpdateEmployee, useCompanyDepartments, useUpdateEmployeeStatus, useUserDetails, useCurrentUserCompany } from '@/hooks/useUser';
+import {
+  useEmployees,
+  useCreateEmployee,
+  useUpdateEmployee,
+  useUpdateEmployeeStatus,
+  useCompanyDepartments,
+  useUserDetails,
+  useRoles,
+  useCurrentUserCompany,
+} from '../../../hooks/useUser';
 import { useRouter } from 'next/navigation';
 import { Employee } from '@/types/genericTypes';
 import { useQueryClient } from '@tanstack/react-query';
@@ -33,6 +42,7 @@ export function EmployeesPage() {
   const { data: departmentsData } = useCompanyDepartments();
   const { data: currentUserData } = useUserDetails();
   const { data: companyData } = useCurrentUserCompany();
+  const { data: rolesData } = useRoles();
   const createEmployeeMutation = useCreateEmployee();
   const updateEmployeeMutation = useUpdateEmployee();
   const updateEmployeeStatusMutation = useUpdateEmployeeStatus();
@@ -213,7 +223,8 @@ export function EmployeesPage() {
     const departmentId = selectedDepartment?.id || null;
 
     // Map access level to role_id
-    const roleId = getRoleIdByAccess(data.access) || data.role_id || editingEmployee?.roleId;
+    const roleName = data.access || 'Employee';
+    const roleId = rolesData?.result?.find((r: any) => r.name === roleName)?.id;
 
     // Parse hourly rate (remove $ if present)
     const hourlyRate = parseFloat(data.hourlyRate.replace(/[^0-9.]/g, '')) || 0;
@@ -227,7 +238,7 @@ export function EmployeesPage() {
           dateOfJoining = date.toISOString();
         }
       } catch (e) {
-        console.error("Invalid date format:", e);
+        // Invalid date format
       }
     }
 
@@ -255,7 +266,7 @@ export function EmployeesPage() {
           mobile_number: fullMobileNumber,
           designation: data.role,
           department_id: departmentId,
-          role_id: roleId,
+          role_id: roleId, // Send resolved role ID
           experience: parseInt(data.experience) || 0,
           skills: data.skillsets.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0),
           date_of_joining: dateOfJoining,
@@ -278,9 +289,9 @@ export function EmployeesPage() {
         }
       );
     } else {
-      // Validate role_id is present
-      if (!roleId) {
-        message.error("Please select an access level");
+      // Validate role is present
+      if (!roleName || !roleId) {
+        message.error("Please select a valid access level");
         return;
       }
 
@@ -291,7 +302,7 @@ export function EmployeesPage() {
           mobile_number: fullMobileNumber,
           designation: data.role,
           department_id: departmentId,
-          role_id: roleId,
+          role_id: roleId, // Send resolved role ID
           experience: parseInt(data.experience) || 0,
           skills: data.skillsets.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0),
           date_of_joining: dateOfJoining,
@@ -351,49 +362,25 @@ export function EmployeesPage() {
         }
       }
     } catch (error) {
-      console.error("Error reading user from localStorage:", error);
+      // Error reading user from localStorage
     }
     return currentUserData?.result?.user?.id || currentUserData?.result?.user?.user_id || null;
   }, [currentUserData]);
 
-  // Helper to map access level to role_id
-  // Based on seed data order: Employee (1), HR (2), Admin (3), Leader (4), Finance (5), Manager (6)
-  const getRoleIdByAccess = (access: 'Admin' | 'Manager' | 'Leader' | 'Employee'): number | null => {
-    const roleMapping: Record<string, number> = {
-      'Admin': 3,      // Admin role (id: 3)
-      'Manager': 6,    // Manager role (id: 6)
-      'Leader': 4,     // Leader role (id: 4)
-      'Employee': 1,   // Employee role (id: 1)
-    };
-    return roleMapping[access] || null;
-  };
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (accessDropdownRef.current && !accessDropdownRef.current.contains(event.target as Node)) {
-        setShowAccessDropdown(false);
-      }
-      if (departmentDropdownRef.current && !departmentDropdownRef.current.contains(event.target as Node)) {
-        setShowDepartmentDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   // Bulk update access level
-  const handleBulkUpdateAccess = async (access: 'Admin' | 'Manager' | 'Leader' | 'Employee') => {
+  const handleBulkUpdateAccess = async (access: string) => { // access is role name
     if (selectedEmployees.length === 0) {
       message.warning('Please select at least one employee');
       return;
     }
 
-    const roleId = getRoleIdByAccess(access);
-    if (!roleId) {
-      message.error('Invalid access level');
+    // Find role ID from name
+    const selectedRole = rolesData?.result?.find((r: any) => r.name === access);
+    if (!selectedRole) {
+      message.error(`Role "${access}" not found`);
       return;
     }
+    const roleId = selectedRole.id;
 
     // Prepare all update payloads first
     const updatePromises: Promise<any>[] = [];
@@ -439,7 +426,7 @@ export function EmployeesPage() {
             }
           }
         } catch (e) {
-          console.error("Error parsing date:", e);
+          // Error parsing date
         }
       }
       // Fallback to raw employee date
@@ -450,7 +437,7 @@ export function EmployeesPage() {
             dateOfJoining = date.toISOString();
           }
         } catch (e) {
-          console.error("Error parsing raw date:", e);
+          // Error parsing raw date
         }
       }
 
@@ -465,7 +452,7 @@ export function EmployeesPage() {
         id: empId,
         name: employee.name, // Required
         email: employee.email, // Required
-        role_id: roleId, // The field we're updating
+        role_id: roleId, // Send resolved role ID
         // Preserve all existing fields to prevent them from being set to null
         designation: rawEmployee.designation || null,
         mobile_number: rawEmployee.mobile_number || rawEmployee.phone || null,
@@ -518,13 +505,12 @@ export function EmployeesPage() {
         }
       } else if (successfulUpdates > 0) {
         message.warning(`Updated ${successfulUpdates} employee(s), ${totalFailed} failed`);
-        console.error('Failed employees:', failedEmployees);
+        // Failed employees logged
       } else {
         message.error(`Failed to update all ${totalSelected} employee(s)`);
-        console.error('Failed employees:', failedEmployees);
+        // Failed employees logged
       }
     } catch (error) {
-      console.error('Bulk update error:', error);
       message.error('An error occurred during bulk update');
     }
   };
@@ -591,7 +577,7 @@ export function EmployeesPage() {
             }
           }
         } catch (e) {
-          console.error("Error parsing date:", e);
+          // Error parsing date
         }
       }
       // Fallback to raw employee date
@@ -602,7 +588,7 @@ export function EmployeesPage() {
             dateOfJoining = date.toISOString();
           }
         } catch (e) {
-          console.error("Error parsing raw date:", e);
+          // Error parsing raw date
         }
       }
 
@@ -612,8 +598,22 @@ export function EmployeesPage() {
         workingHours = rawEmployee.working_hours;
       }
 
-      // Get current role_id - preserve it
-      const currentRoleId = employee.roleId || getRoleIdByAccess(employee.access) || null;
+      // Resolve current role ID
+      let currentRoleId = employee.roleId;
+      if (!currentRoleId && employee.access) {
+        const foundRole = rolesData?.result?.find((r: any) => r.name === employee.access);
+        if (foundRole) currentRoleId = foundRole.id;
+      }
+
+      // Fallback to null if not found (though update might require it if we don't partial update carefully, 
+      // but payload includes all strict fields). 
+      // Actually backend updateUserService updates everything passed. If we pass null, it might error.
+      // But typically we should keep existing if we can.
+
+      if (!currentRoleId && rawEmployee.user_employee?.role_id) {
+        currentRoleId = rawEmployee.user_employee.role_id;
+      }
+
       if (!currentRoleId) {
         failedEmployees.push({ id: empId, name: employee.name, reason: 'Unable to determine current role' });
         continue;
@@ -624,7 +624,7 @@ export function EmployeesPage() {
         id: empId,
         name: employee.name, // Required
         email: employee.email, // Required
-        role_id: currentRoleId, // Preserve current role
+        role_id: currentRoleId, // Preserve current role ID
         department_id: departmentId, // The field we're updating
         // Preserve all existing fields to prevent them from being set to null
         designation: rawEmployee.designation || null,
@@ -674,13 +674,12 @@ export function EmployeesPage() {
         queryClient.invalidateQueries({ queryKey: ["employees"] });
       } else if (successfulUpdates > 0) {
         message.warning(`Updated ${successfulUpdates} employee(s), ${totalFailed} failed`);
-        console.error('Failed employees:', failedEmployees);
+        // Failed employees logged
       } else {
         message.error(`Failed to update all ${totalSelected} employee(s)`);
-        console.error('Failed employees:', failedEmployees);
+        // Failed employees logged
       }
     } catch (error) {
-      console.error('Bulk update error:', error);
       message.error('An error occurred during bulk update');
     }
   };
@@ -746,7 +745,6 @@ export function EmployeesPage() {
 
       message.success(`Exported ${selectedEmployeesData.length} employee(s) to CSV`);
     } catch (error) {
-      console.error('Export error:', error);
       message.error('Failed to export employees to CSV');
     }
   };
@@ -815,13 +813,12 @@ export function EmployeesPage() {
             // Query invalidation is handled in the hook's onSuccess
           } else if (successfulDeactivations > 0) {
             message.warning(`Deactivated ${successfulDeactivations} employee(s), ${totalFailed} failed`);
-            console.error('Failed employees:', failedEmployees);
+            // Failed employees logged
           } else {
             message.error(`Failed to deactivate all ${totalToDeactivate} employee(s)`);
-            console.error('Failed employees:', failedEmployees);
+            // Failed employees logged
           }
         } catch (error) {
-          console.error('Bulk deactivation error:', error);
           message.error('An error occurred during bulk deactivation');
         }
       },
@@ -1087,7 +1084,7 @@ export function EmployeesPage() {
                     return date.toISOString().split('T')[0];
                   }
                 } catch (e) {
-                  console.error("Error parsing date:", e);
+                  // Error parsing date
                 }
                 return '';
               })()

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { Button, Input, Select, Checkbox, DatePicker, App, Modal } from 'antd';
-import { CheckSquare, Calendar } from 'lucide-react';
+import { Button, Input, Select, Checkbox, DatePicker, App, Radio, Tooltip, Avatar } from 'antd';
+import { CheckSquare, Calendar, Users, ArrowRight, Layers, UserPlus, X } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useUserDetails } from '@/hooks/useUser';
 
@@ -12,11 +12,13 @@ export interface TaskFormData {
   name: string;
   project_id: string; // Workspace
   requirement_id: string; // Requirement
-  member_id: string; // Assign to / Member
+  member_id: string; // Legacy: Primary Assignee (optional or first member)
+  assigned_members: number[]; // New: Squad Members
+  execution_mode: "parallel" | "sequential"; // New: Execution Mode
   leader_id: string; // Leader
-  start_date: string; // Start Date
+  end_date: string; // Due Date (replaced start_date)
   estimated_time: string; // Estimated Time (in hours)
-  high_priority: boolean; // High Priority checkbox
+  high_priority: boolean; // High Priority
   description: string; // Description
 }
 
@@ -25,7 +27,7 @@ interface TaskFormProps {
   onSubmit: (data: any) => void;
   onCancel: () => void;
   isEditing?: boolean;
-  users?: Array<{ id: number; name: string }>;
+  users?: Array<{ id: number; name: string; profile_pic?: string }>;
   requirements?: Array<{ id: number; name: string }>;
   workspaces?: Array<{ id: number; name: string }>;
   disabledFields?: {
@@ -39,8 +41,10 @@ const defaultFormData: TaskFormData = {
   project_id: "",
   requirement_id: "",
   member_id: "",
+  assigned_members: [],
+  execution_mode: "parallel",
   leader_id: "",
-  start_date: "",
+  end_date: "",
   estimated_time: "",
   high_priority: false,
   description: "",
@@ -70,7 +74,7 @@ export function TaskForm({
         }
       }
     } catch (error) {
-      console.error("Error reading user from localStorage:", error);
+      // Error reading user from localStorage
     }
     const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
     return apiUser.id ? String(apiUser.id) : '';
@@ -81,6 +85,8 @@ export function TaskForm({
       setFormData({
         ...initialData,
         leader_id: currentUserId || initialData.leader_id, // Auto-set leader to current user
+        assigned_members: initialData.assigned_members || (initialData.member_id ? [parseInt(initialData.member_id)] : []),
+        execution_mode: initialData.execution_mode || "parallel",
       });
     } else {
       setFormData({
@@ -95,19 +101,23 @@ export function TaskForm({
     const missingFields: string[] = [];
     if (!formData.name) missingFields.push('Task Title');
     if (!formData.project_id) missingFields.push('Workspace');
-    if (!formData.start_date) missingFields.push('Start Date');
-    if (!formData.estimated_time || parseFloat(formData.estimated_time) <= 0) missingFields.push('Estimated Time');
+    if (!formData.end_date) missingFields.push('Due Date');
+    // Estimated time is conditional now, but if visible, it should be validated.
+    // However, validation logic needs to know if it's visible. 
+    // We'll rely on backend or simple check: if user is assigned, check it?
+    // User Instructions: "The 'Estimated Time' input should only be visible ... if the currentUserId is present ... If... not ... hide this field."
+    // If hidden, it's not required.
+    const isCurrentUserAssigned = formData.assigned_members.includes(parseInt(currentUserId));
+    if (isCurrentUserAssigned && (!formData.estimated_time || parseFloat(formData.estimated_time) <= 0)) {
+      missingFields.push('My Hours');
+    }
+    // Ensure at least one member is assigned (either legacy member_id or new assigned_members)
+    if ((!formData.assigned_members || formData.assigned_members.length === 0) && !formData.member_id) {
+      missingFields.push('At least one squad member');
+    }
 
     if (missingFields.length > 0) {
       message.error(`Please fill in required fields: ${missingFields.join(', ')}`);
-      return;
-    }
-
-    let formattedStartDate = '';
-    if (formData.start_date) {
-      formattedStartDate = formData.start_date; // Assumed ISO string from state
-    } else {
-      message.error("Start Date is required");
       return;
     }
 
@@ -116,12 +126,15 @@ export function TaskForm({
       name: formData.name,
       project_id: formData.project_id ? parseInt(formData.project_id) : undefined,
       requirement_id: formData.requirement_id ? parseInt(formData.requirement_id) : null,
-      member_id: formData.member_id ? parseInt(formData.member_id) : null,
-      leader_id: formData.leader_id ? parseInt(formData.leader_id) : null,
-      start_date: formattedStartDate,
-      estimated_time: formData.estimated_time ? parseFloat(formData.estimated_time) : 0,
+      leader_id: parseInt(currentUserId), // STRICTLY current user
+      end_date: formData.end_date, // Map to end_date
+      start_date: new Date().toISOString(), // Default start_date to now if required by backend/schema (user said remove from UI only)
+      estimated_time: (formData.estimated_time && isCurrentUserAssigned) ? parseFloat(formData.estimated_time) : 0,
       high_priority: formData.high_priority || false,
       description: formData.description || "",
+      execution_mode: formData.execution_mode,
+      assigned_members: formData.assigned_members,
+      member_id: formData.assigned_members.length > 0 ? formData.assigned_members[0] : null // Legacy fallback
     };
 
     onSubmit(backendData);
@@ -134,6 +147,23 @@ export function TaskForm({
     });
   };
 
+  // Helper to remove member
+  const removeMember = (id: number) => {
+    setFormData(prev => ({
+      ...prev,
+      assigned_members: prev.assigned_members.filter(m => m !== id)
+    }));
+  };
+
+  // Helper to add member
+  const addMember = (id: number) => {
+    if (formData.assigned_members.includes(id)) return;
+    setFormData(prev => ({
+      ...prev,
+      assigned_members: [...prev.assigned_members, id]
+    }));
+  };
+
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Fixed Header */}
@@ -143,177 +173,255 @@ export function TaskForm({
             <div className="p-2 rounded-full bg-[#F7F7F7]">
               <CheckSquare className="w-5 h-5 text-[#666666]" />
             </div>
-            {isEditing ? 'Edit Task' : 'Assign Task'}
+            {isEditing ? 'Edit Task' : 'New Task'}
           </div>
         </div>
         <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
-          {isEditing ? 'Update task details and assignments.' : 'Assign task for people join to team'}
+          {isEditing ? 'Update task parameters and squad.' : 'Define objective and assemble your squad.'}
         </p>
       </div>
 
-      {/* Scrollable Body */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="grid grid-cols-2 gap-6 mb-6">
-          {/* Left Column */}
-          <div className="space-y-5">
-            {/* Workspace (project_id) - Required */}
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                Workspace <span className="text-red-500">*</span>
-              </span>
-              <Select
-                className={`w-full h-11 employee-form-select ${formData.project_id ? 'employee-form-select-filled' : ''}`}
-                placeholder="Select workspace"
-                value={formData.project_id || undefined}
-                onChange={(val) => {
-                  setFormData({ ...formData, project_id: String(val) });
-                }}
-                disabled={disabledFields.workspace}
-                suffixIcon={<div className="text-gray-400">⌄</div>}
-              >
-                {workspaces.length > 0 ? (
-                  workspaces.map((workspace) => (
-                    <Option key={workspace.id} value={workspace.id.toString()}>
-                      {workspace.name}
-                    </Option>
-                  ))
-                ) : (
-                  <Option value="none" disabled>No workspaces available</Option>
-                )}
-              </Select>
-            </div>
+      {/* Scrollable Body - Reduced padding */}
+      <div className="flex-1 overflow-y-auto px-5 py-4 font-['Manrope',sans-serif]">
 
-            {/* Task Title (name) - Required */}
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                Task Title <span className="text-red-500">*</span>
-              </span>
-              <Input
-                placeholder="Research payment flow"
-                className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif]"
-                value={formData.name}
-                onChange={(e) => {
-                  setFormData({ ...formData, name: e.target.value });
-                }}
-              />
-            </div>
+        {/* Compact Grid Layout */}
+        <div className="grid grid-cols-12 gap-x-4 gap-y-4 mb-5">
 
-            {/* Start Date (start_date) - Required */}
-            <div className="space-y-2 flex flex-col">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                Start Date <span className="text-red-500">*</span>
-              </span>
-              <DatePicker
-                className={`w-full h-11 employee-form-datepicker ${formData.start_date ? 'employee-form-datepicker-filled' : ''}`}
-                value={formData.start_date ? dayjs(formData.start_date) : null}
-                onChange={(date) => {
-                  setFormData({ ...formData, start_date: date ? date.toISOString() : '' });
-                }}
-                suffixIcon={<Calendar className="w-4 h-4 text-[#999999]" />}
-              />
-            </div>
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-5">
-            {/* Requirement (requirement_id) - Optional */}
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                Requirement
-              </span>
-              <Select
-                className={`w-full h-11 employee-form-select ${formData.requirement_id ? 'employee-form-select-filled' : ''}`}
-                placeholder="Select requirement"
-                value={formData.requirement_id || undefined}
-                onChange={(val) => {
-                  setFormData({ ...formData, requirement_id: String(val) });
-                }}
-                disabled={disabledFields.requirement}
-                suffixIcon={<div className="text-gray-400">⌄</div>}
-              >
-                {requirements.length > 0 ? (
-                  requirements.map((req) => (
-                    <Option key={req.id} value={req.id.toString()}>
-                      {req.name}
-                    </Option>
-                  ))
-                ) : (
-                  <Option value="none" disabled>No requirements available</Option>
-                )}
-              </Select>
-            </div>
-
-            {/* High Priority (high_priority) - Checkbox */}
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                Priority
-              </span>
-              <div className="flex items-center space-x-2 h-11">
-                <Checkbox
-                  checked={formData.high_priority}
-                  onChange={(e) => {
-                    setFormData({ ...formData, high_priority: e.target.checked });
-                  }}
-                >
-                  <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111]">
-                    High Priority
-                  </span>
-                </Checkbox>
-              </div>
-            </div>
-
-            {/* Estimated Time (estimated_time) - Required */}
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                Estimated Time (hours) <span className="text-red-500">*</span>
-              </span>
-              <Input
-                type="number"
-                step="0.1"
-                min="0"
-                placeholder="0"
-                className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.estimated_time ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.estimated_time}
-                onChange={(e) => {
-                  setFormData({ ...formData, estimated_time: e.target.value });
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Assigned To - Single field */}
-        <div className="mb-6">
-          <div className="space-y-2">
-            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Assign To</span>
-            <Select
-              className={`w-full h-11 employee-form-select ${formData.member_id ? 'employee-form-select-filled' : ''}`}
-              placeholder="Select assigned to"
-              value={formData.member_id || undefined}
-              onChange={(val) => {
-                setFormData({ ...formData, member_id: String(val) });
+          {/* Task Title: Col Span 12 (Full Row) */}
+          <div className="col-span-12 space-y-1.5">
+            <span className="text-[12px] font-bold text-[#111111]">
+              Task Title <span className="text-red-500">*</span>
+            </span>
+            <Input
+              placeholder="e.g. Implement Payment Gateway"
+              className="w-full h-10 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-medium text-sm"
+              value={formData.name}
+              onChange={(e) => {
+                setFormData({ ...formData, name: e.target.value });
               }}
+            />
+          </div>
+
+          {/* Requirement: Col Span 6 */}
+          <div className="col-span-12 sm:col-span-6 space-y-1.5">
+            <span className="text-[12px] font-bold text-[#111111]">
+              Requirement
+            </span>
+            <Select
+              className={`w-full h-10 employee-form-select ${formData.requirement_id ? 'employee-form-select-filled' : ''}`}
+              placeholder="Select requirement"
+              value={formData.requirement_id || undefined}
+              onChange={(val) => {
+                const reqId = parseInt(String(val));
+                const selectedReq = requirements.find(r => r.id === reqId) as any;
+                setFormData(prev => ({
+                  ...prev,
+                  requirement_id: String(val),
+                  project_id: selectedReq?.project_id ? String(selectedReq.project_id) : prev.project_id
+                }));
+              }}
+              disabled={disabledFields.requirement}
               suffixIcon={<div className="text-gray-400">⌄</div>}
+              allowClear
+              onClear={() => setFormData(prev => ({ ...prev, requirement_id: "" }))}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+              }
             >
-              {users.length > 0 ? (
-                users.map((user) => (
-                  <Option key={user.id} value={user.id.toString()}>
-                    {user.name}
+              {requirements.length > 0 ? (
+                requirements.map((req) => (
+                  <Option key={req.id} value={req.id.toString()}>
+                    {req.name}
                   </Option>
                 ))
               ) : (
-                <Option value="none" disabled>No users available</Option>
+                <Option value="none" disabled>No requirements available</Option>
               )}
             </Select>
           </div>
+
+          {/* Workspace: Col Span 6 */}
+          <div className="col-span-12 sm:col-span-6 space-y-1.5">
+            <span className="text-[12px] font-bold text-[#111111]">
+              Workspace <span className="text-red-500">*</span>
+            </span>
+            <Select
+              className={`w-full h-10 employee-form-select ${formData.project_id ? 'employee-form-select-filled' : ''}`}
+              placeholder="Select workspace"
+              value={formData.project_id || undefined}
+              onChange={(val) => {
+                setFormData({ ...formData, project_id: String(val) });
+              }}
+              disabled={disabledFields.workspace}
+              suffixIcon={formData.requirement_id ? null : <div className="text-gray-400">⌄</div>}
+              showSearch
+              filterOption={(input, option) =>
+                (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+              }
+            >
+              {workspaces.length > 0 ? (
+                workspaces.map((workspace) => (
+                  <Option key={workspace.id} value={workspace.id.toString()}>
+                    {workspace.name}
+                  </Option>
+                ))
+              ) : (
+                <Option value="none" disabled>No workspaces available</Option>
+              )}
+            </Select>
+          </div>
+
+          {/* Row 3: Due Date | Priority | My Hours */}
+
+          {/* Due Date: Col Span 4 */}
+          <div className="col-span-12 sm:col-span-4 space-y-1.5">
+            <span className="text-[12px] font-bold text-[#111111]">
+              Due Date <span className="text-red-500">*</span>
+            </span>
+            <DatePicker
+              className={`w-full h-10 employee-form-datepicker ${formData.end_date ? 'employee-form-datepicker-filled' : ''}`}
+              value={formData.end_date ? dayjs(formData.end_date) : null}
+              onChange={(date) => {
+                setFormData({ ...formData, end_date: date ? date.toISOString() : '' });
+              }}
+              suffixIcon={<Calendar className="w-4 h-4 text-[#999999]" />}
+            />
+          </div>
+
+          {/* Priority: Col Span 4 */}
+          <div className="col-span-12 sm:col-span-4 space-y-1.5 flex flex-col">
+            <span className="text-[12px] font-bold text-[#111111]">Priority</span>
+            <Radio.Group
+              value={formData.high_priority ? 'high' : 'medium'}
+              onChange={(e) => setFormData({ ...formData, high_priority: e.target.value === 'high' })}
+              className="flex w-full h-10"
+            >
+              <Radio.Button value="high" className="flex-1 text-center text-xs leading-[38px] px-0 h-10">High</Radio.Button>
+              <Radio.Button value="medium" className="flex-1 text-center text-xs leading-[38px] px-0 h-10">Med</Radio.Button>
+            </Radio.Group>
+          </div>
+
+          {/* My Hours: Col Span 4 (Reduced width) */}
+          <div className="col-span-12 sm:col-span-4 space-y-1.5">
+            <span className={`text-[12px] font-bold ${formData.assigned_members.includes(parseInt(currentUserId)) ? 'text-[#111111]' : 'text-gray-400'}`}>
+              My Hours <span className={`${formData.assigned_members.includes(parseInt(currentUserId)) ? 'text-red-500' : 'hidden'}`}>*</span>
+            </span>
+            <Input
+              type="number"
+              step="0.1"
+              min="0"
+              placeholder={formData.assigned_members.includes(parseInt(currentUserId)) ? "0" : "-"}
+              className={`w-full h-10 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-medium text-sm ${formData.estimated_time ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+              value={formData.estimated_time}
+              onChange={(e) => {
+                setFormData({ ...formData, estimated_time: e.target.value });
+              }}
+              disabled={!formData.assigned_members.includes(parseInt(currentUserId))}
+            />
+          </div>
+
         </div>
 
-        <div className="space-y-2">
-          <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</span>
+        {/* --- SQUAD BUILDER SECTION (Compact) --- */}
+        <div className="mb-5 border border-[#EEEEEE] rounded-xl p-4 bg-[#FAFAFA]">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-[13px] font-bold text-[#111111] flex items-center gap-2">
+              <Users className="w-4 h-4" /> Squad Assembly
+            </h3>
+
+            {/* Execution Mode Toggle */}
+            <div className="flex bg-white rounded-lg p-0.5 border border-[#EEEEEE]">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, execution_mode: "parallel" })}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[11px] font-medium transition-all ${formData.execution_mode === "parallel" ? 'bg-[#E6F4FF] text-[#0091FF]' : 'text-gray-500 hover:bg-gray-50'}`}
+              >
+                <Layers className="w-3 h-3" /> Parallel
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, execution_mode: "sequential" })}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[11px] font-medium transition-all ${formData.execution_mode === "sequential" ? 'bg-[#FFF2E8] text-[#FA541C]' : 'text-gray-500 hover:bg-gray-50'}`}
+              >
+                <ArrowRight className="w-3 h-3" /> Sequential
+              </button>
+            </div>
+          </div>
+
+          {/* Member Selection */}
+          <div className="space-y-3">
+            <Select
+              className="w-full member-select-compact"
+              placeholder={
+                <div className="flex items-center gap-2 text-gray-400 text-[13px]">
+                  <UserPlus className="w-4 h-4" /> <span>Add squad members...</span>
+                </div>
+              }
+              value={null}
+              onChange={(val) => val && addMember(parseInt(val))}
+              suffixIcon={null}
+              dropdownStyle={{ borderRadius: '8px', padding: '8px' }}
+              showSearch
+              optionFilterProp="label"
+            >
+              {users
+                .filter(u => !formData.assigned_members.includes(u.id))
+                .map((user) => (
+                  <Option key={user.id} value={user.id.toString()} label={user.name}>
+                    <div className="flex items-center gap-3 py-1">
+                      <Avatar size="small" src={user.profile_pic}>{user.name.charAt(0)}</Avatar>
+                      <span className="font-medium text-gray-700">{user.name}</span>
+                    </div>
+                  </Option>
+                ))}
+            </Select>
+
+            {/* Selected Squad List */}
+            <div className="space-y-2">
+              {formData.assigned_members.map((memberId, index) => {
+                const user = users.find(u => u.id === memberId);
+                if (!user) return null;
+                return (
+                  <div key={memberId} className="flex items-center justify-between bg-white p-2 px-3 rounded-lg border border-[#E5E7EB] shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-100 text-[9px] font-bold text-gray-500">
+                        {formData.execution_mode === 'sequential' ? index + 1 : '•'}
+                      </div>
+                      <Avatar size="small" shape="circle" className="w-6 h-6 text-[10px]" src={user.profile_pic}>{user.name.charAt(0)}</Avatar>
+                      <span className="text-[13px] font-semibold text-gray-800">{user.name}</span>
+                      {String(user.id) !== currentUserId && (
+                        <span className="xs:inline hidden text-[9px] text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded-full border border-amber-100">
+                          Estimate Pending
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => removeMember(memberId)}
+                      className="p-1 px-2 text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )
+              })}
+              {formData.assigned_members.length === 0 && (
+                <div className="text-center py-4 text-gray-400 text-[12px] border border-dashed border-gray-300 rounded-lg">
+                  No active agents assigned.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Collapsible Description */}
+        <div className="space-y-1.5">
+          <span className="text-[12px] font-bold text-[#111111]">Description</span>
           <TextArea
-            placeholder="Describe your task here!"
-            className={`font-['Manrope:Regular',sans-serif] rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.description ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-            rows={4}
+            placeholder="Describe the mission objectives..."
+            className={`font-['Manrope:Regular',sans-serif] rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] transition-all duration-300 ${formData.description ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+            rows={formData.description ? 3 : 1}
+            onFocus={(e) => e.target.rows = 3}
             value={formData.description}
             onChange={(e) => {
               setFormData({ ...formData, description: e.target.value });
@@ -327,16 +435,16 @@ export function TaskForm({
         <Button
           type="text"
           onClick={handleReset}
-          className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
+          className="h-[44px] px-4 text-[14px] font-semibold text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
         >
           Reset Data
         </Button>
         <Button
           type="primary"
           onClick={handleSubmit}
-          className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
+          className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-semibold transition-transform active:scale-95 border-none"
         >
-          Save Task
+          {isEditing ? 'Update Task' : 'Submit'}
         </Button>
       </div>
       <style jsx global>{`
@@ -344,6 +452,15 @@ export function TaskForm({
         .employee-form-select .ant-select-selector {
           background-color: #F9FAFB !important;
           border-color: #EEEEEE !important;
+          display: flex;
+          align-items: center;
+          height: 40px !important;
+          border-radius: 8px !important;
+        }
+        .member-select-compact .ant-select-selector {
+            height: 40px !important;
+            padding-top: 4px !important;
+            border-radius: 8px !important;
         }
         .employee-form-select .ant-select-selector:hover {
           border-color: #EEEEEE !important;
@@ -362,6 +479,8 @@ export function TaskForm({
         .employee-form-datepicker .ant-picker {
           background-color: #F9FAFB !important;
           border-color: #EEEEEE !important;
+          height: 40px !important;
+          border-radius: 8px !important;
         }
         .employee-form-datepicker .ant-picker:hover {
           border-color: #EEEEEE !important;
@@ -382,6 +501,6 @@ export function TaskForm({
           box-shadow: none !important;
         }
       `}</style>
-    </div>
+    </div >
   );
 }

@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Plus, Edit, Trash2, X, Pencil, CreditCard, Bell, Lock, Database, AlertTriangle, Eye, EyeOff } from 'lucide-react';
-import { Button, Input, Select, Switch, Divider, App } from "antd";
+import { Button, Input, Select, Switch, Divider, App, Modal, DatePicker } from "antd";
 import { useUpdateCompany, useCurrentUserCompany } from '@/hooks/useUser';
+import { usePublicHolidays, useCreateHoliday, useUpdateHoliday, useDeleteHoliday } from '@/hooks/useHoliday';
 import { DEFAULT_DOCUMENT_TYPES, DOCUMENT_TYPES_STORAGE_KEY } from '@/constants/documentTypes';
+import dayjs from 'dayjs';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -78,8 +80,7 @@ const getTimezones = (): Array<{ value: string; label: string }> => {
       return uniqueTimezones.map(tz => ({ value: tz, label: tz }));
     }
   } catch (e) {
-    // Fallback if Intl.supportedValuesOf is not available
-    console.warn('Intl.supportedValuesOf not available, using fallback timezone list');
+    
   }
 
   // Fallback: Comprehensive list of IANA timezones (canonical names only, no deprecated aliases)
@@ -198,7 +199,7 @@ interface Department {
 }
 
 interface Holiday {
-  id: string;
+  id: number | string;
   name: string;
   date: string;
 }
@@ -273,7 +274,7 @@ export function SettingsPage() {
         }
       }
     } catch (error) {
-      console.error('Error reading document types from localStorage:', error);
+      // Error reading document types from localStorage
     }
 
     // Fallback to shared defaults
@@ -289,7 +290,7 @@ export function SettingsPage() {
         window.localStorage.setItem(DOCUMENT_TYPES_STORAGE_KEY, JSON.stringify(requiredDocuments));
       }
     } catch (error) {
-      console.error('Error saving document types to localStorage:', error);
+      // Error saving document types to localStorage
     }
   }, [requiredDocuments]);
 
@@ -298,9 +299,29 @@ export function SettingsPage() {
     { id: '1', name: 'Sick Leave', count: 10 },
     { id: '2', name: 'Casual Leave', count: 5 }
   ]);
-  const [publicHolidays, setPublicHolidays] = useState<Holiday[]>([
-    { id: '1', name: 'New year', date: '2026-01-01' }
-  ]);
+
+  // Holidays - Fetch from API
+  const { data: holidaysData, isLoading: isLoadingHolidays } = usePublicHolidays();
+  const createHolidayMutation = useCreateHoliday();
+  const updateHolidayMutation = useUpdateHoliday();
+  const deleteHolidayMutation = useDeleteHoliday();
+
+  // Holiday modal state
+  const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
+  const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
+  const [holidayForm, setHolidayForm] = useState({ name: '', date: null as dayjs.Dayjs | null });
+
+  // Get holidays from API, filter out deleted ones
+  const publicHolidays = useMemo(() => {
+    if (!holidaysData?.result) return [];
+    return holidaysData.result
+      .filter((h: any) => !h.is_deleted)
+      .map((h: any) => ({
+        id: h.id,
+        name: h.name,
+        date: h.date
+      }));
+  }, [holidaysData]);
 
   // Working Hours State
   const [workingDays, setWorkingDays] = useState(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
@@ -349,6 +370,71 @@ export function SettingsPage() {
     }
   };
 
+  // Holiday Handlers
+  const handleAddHoliday = () => {
+    setEditingHoliday(null);
+    setHolidayForm({ name: '', date: null });
+    setIsHolidayModalOpen(true);
+  };
+
+  const handleEditHoliday = (holiday: Holiday) => {
+    setEditingHoliday(holiday);
+    setHolidayForm({ 
+      name: holiday.name, 
+      date: dayjs(holiday.date) 
+    });
+    setIsHolidayModalOpen(true);
+  };
+
+  const handleDeleteHoliday = (id: number | string) => {
+    Modal.confirm({
+      title: 'Delete Holiday',
+      content: 'Are you sure you want to delete this holiday?',
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk() {
+        deleteHolidayMutation.mutate(Number(id));
+      }
+    });
+  };
+
+  const handleSaveHoliday = () => {
+    if (!holidayForm.name.trim()) {
+      message.error('Holiday name is required');
+      return;
+    }
+    if (!holidayForm.date) {
+      message.error('Holiday date is required');
+      return;
+    }
+
+    const payload = {
+      name: holidayForm.name.trim(),
+      date: holidayForm.date.format('YYYY-MM-DD')
+    };
+
+    if (editingHoliday) {
+      updateHolidayMutation.mutate(
+        { id: Number(editingHoliday.id), payload },
+        {
+          onSuccess: () => {
+            setIsHolidayModalOpen(false);
+            setEditingHoliday(null);
+            setHolidayForm({ name: '', date: null });
+          }
+        }
+      );
+    } else {
+      createHolidayMutation.mutate(payload, {
+        onSuccess: () => {
+          setIsHolidayModalOpen(false);
+          setHolidayForm({ name: '', date: null });
+        }
+      });
+    }
+  };
+
   const handleUpdateLeaveCount = (id: string, count: string) => {
     setLeaves(leaves.map(l => l.id === id ? { ...l, count: parseInt(count) || 0 } : l));
   };
@@ -372,7 +458,6 @@ export function SettingsPage() {
       message.success('Settings saved successfully!');
       setIsEditing(false);
     } catch (error: any) {
-      console.error("Error updating settings:", error);
       const errorMessage = error?.response?.data?.message || "Failed to update settings";
       message.error(errorMessage);
     }
@@ -855,28 +940,43 @@ export function SettingsPage() {
             <div className="space-y-6 border-l border-[#EEEEEE] pl-12">
               <div className="flex items-center gap-2">
                 <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Public Holidays</h2>
-                <button className="hover:scale-110 active:scale-95 transition-transform">
+                <button 
+                  onClick={handleAddHoliday}
+                  className="hover:scale-110 active:scale-95 transition-transform"
+                >
                   <Plus className="w-5 h-5 text-[#ff3b3b]" />
                 </button>
               </div>
 
               <div className="space-y-4">
-                {publicHolidays.map((holiday) => (
-                  <div key={holiday.id} className="p-4 border border-[#EEEEEE] rounded-[12px] flex items-center justify-between bg-white hover:shadow-sm transition-shadow">
-                    <div>
-                      <p className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">{holiday.name}</p>
-                      <p className="text-[12px] text-[#666666] font-['Manrope:Medium',sans-serif]">{new Date(holiday.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+                {isLoadingHolidays ? (
+                  <div className="text-center py-4 text-[13px] text-[#999999]">Loading holidays...</div>
+                ) : publicHolidays.length > 0 ? (
+                  publicHolidays.map((holiday) => (
+                    <div key={holiday.id} className="p-4 border border-[#EEEEEE] rounded-[12px] flex items-center justify-between bg-white hover:shadow-sm transition-shadow">
+                      <div>
+                        <p className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">{holiday.name}</p>
+                        <p className="text-[12px] text-[#666666] font-['Manrope:Medium',sans-serif]">{new Date(holiday.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => handleEditHoliday(holiday)}
+                          className="p-2 text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] rounded-full transition-colors"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteHoliday(holiday.id)}
+                          className="p-2 text-[#ff3b3b] hover:bg-[#FFF5F5] rounded-full transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button className="p-2 text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] rounded-full transition-colors">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button className="p-2 text-[#ff3b3b] hover:bg-[#FFF5F5] rounded-full transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-[13px] text-[#999999]">No holidays added yet</div>
+                )}
               </div>
 
               {/* Pagination placeholder */}
@@ -1141,6 +1241,95 @@ export function SettingsPage() {
           </div>
         )}
       </div>
+
+      {/* Holiday Modal */}
+      <Modal
+        title={null}
+        open={isHolidayModalOpen}
+        onCancel={() => {
+          setIsHolidayModalOpen(false);
+          setEditingHoliday(null);
+          setHolidayForm({ name: '', date: null });
+        }}
+        footer={null}
+        width={500}
+        centered
+        className="rounded-[16px] overflow-hidden"
+        closeIcon={<X className="w-5 h-5 text-[#666666]" />}
+        styles={{
+          body: { padding: 0 },
+        }}
+      >
+        <div className="flex flex-col bg-white">
+          {/* Header */}
+          <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-6">
+            <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-2">
+              <div className="p-2 rounded-full bg-[#F7F7F7]">
+                <Plus className="w-5 h-5 text-[#666666]" />
+              </div>
+              {editingHoliday ? 'Edit Holiday' : 'Add Holiday'}
+            </div>
+            <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
+              {editingHoliday ? 'Update holiday details' : 'Add a new public holiday for your company'}
+            </p>
+          </div>
+
+          {/* Form */}
+          <div className="flex-1 overflow-y-auto px-6 py-6">
+            <div className="space-y-5">
+              {/* Holiday Name */}
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                  <span className="text-[#ff3b3b]">*</span> Holiday Name
+                </span>
+                <Input
+                  placeholder="e.g., New Year, Christmas"
+                  className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${holidayForm.name ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  value={holidayForm.name}
+                  onChange={(e) => setHolidayForm({ ...holidayForm, name: e.target.value })}
+                />
+              </div>
+
+              {/* Holiday Date */}
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                  <span className="text-[#ff3b3b]">*</span> Date
+                </span>
+                <DatePicker
+                  format="YYYY-MM-DD"
+                  placeholder="Select holiday date"
+                  className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${holidayForm.date ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  value={holidayForm.date}
+                  onChange={(date) => setHolidayForm({ ...holidayForm, date })}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-4 pt-6">
+                <Button
+                  type="text"
+                  onClick={() => {
+                    setIsHolidayModalOpen(false);
+                    setEditingHoliday(null);
+                    setHolidayForm({ name: '', date: null });
+                  }}
+                  className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="primary"
+                  onClick={handleSaveHoliday}
+                  loading={createHolidayMutation.isPending || updateHolidayMutation.isPending}
+                  className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
+                >
+                  {editingHoliday ? 'Update' : 'Add'} Holiday
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

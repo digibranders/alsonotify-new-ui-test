@@ -102,7 +102,7 @@ export function EmployeeDetailsModal({
         return `${day}-${month}-${year}`;
       }
     } catch (e) {
-      console.error("Error formatting date:", e);
+      // Error formatting date
     }
     return dateString;
   };

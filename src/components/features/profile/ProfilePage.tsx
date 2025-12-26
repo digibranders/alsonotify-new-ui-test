@@ -146,10 +146,7 @@ export function ProfilePage() {
                 }
             }
         } catch (error) {
-            console.error(
-                "Error reading document types from localStorage:",
-                error
-            );
+            // Error reading document types from localStorage
         }
 
         return DEFAULT_DOCUMENT_TYPES;
@@ -343,7 +340,6 @@ export function ProfilePage() {
             message.success("Profile updated successfully!");
             setIsEditing(false);
         } catch (error: any) {
-            console.error("Error updating profile:", error);
             const errorMessage =
                 error?.response?.data?.message || "Failed to update profile";
             message.error(errorMessage);

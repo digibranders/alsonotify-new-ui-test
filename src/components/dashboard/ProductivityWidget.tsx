@@ -259,7 +259,7 @@ export function ProductivityWidget() {
               return;
             }
           } catch (error) {
-            console.error("Error loading saved timer:", error);
+            // Error loading saved timer
           }
         }
 
@@ -303,7 +303,6 @@ export function ProductivityWidget() {
           // Fetch task detail to verify active worklog - this will properly restore the timer
         }
       } catch (error) {
-        console.error("Error loading saved timer:", error);
         localStorage.removeItem("activeTimer");
       }
     }
@@ -364,7 +363,7 @@ export function ProductivityWidget() {
               previousElapsed = savedData.pausedElapsed;
             }
           } catch (e) {
-            console.error("Error reading paused time:", e);
+            // Error reading paused time
           }
         }
 
@@ -434,7 +433,6 @@ export function ProductivityWidget() {
             },
             onError: (error: any) => {
               antdMessage.error("Failed to start timer");
-              console.error("Start worklog error:", error);
             }
           }
         );
@@ -496,7 +494,6 @@ export function ProductivityWidget() {
           },
           onError: (error: any) => {
             antdMessage.error("Failed to save worklog on pause");
-            console.error("Update worklog error on pause:", error);
             // Revert isRunning state on error (timer will recalculate time from startTime)
             setIsRunning(true);
           }
@@ -648,7 +645,6 @@ export function ProductivityWidget() {
           },
           onError: (error: any) => {
             antdMessage.error("Failed to save worklog");
-            console.error("Update worklog error:", error);
           }
         }
       );
@@ -723,7 +719,6 @@ export function ProductivityWidget() {
           },
           onError: (error: any) => {
             antdMessage.error("Failed to save worklog");
-            console.error("Update worklog error:", error);
           }
         }
       );
@@ -861,7 +856,6 @@ export function ProductivityWidget() {
       };
       setConversations(prev => [...prev, assistantMessage]);
     } catch (error) {
-      console.error("ProductivityWidget handleSend error", error);
       const errorMessage: Message = {
         id: Date.now() + 1,
         type: 'ai',
