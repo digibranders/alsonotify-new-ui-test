@@ -276,11 +276,42 @@ export function TasksPage() {
       params.end_date = dateRange[1].format('YYYY-MM-DD');
     }
 
+
     return toQueryParams(params);
   }, [pagination.limit, pagination.skip, filters, searchQuery, dateRange, activeTab, workspacesData]);
 
+  // Build query params for STATS (without status filter to get global counts)
+  const statsQueryParams = useMemo(() => {
+    const params: Record<string, any> = {
+      limit: 1, // Only need one item to get status_counts
+      skip: 0,
+    };
+
+    // Apply same filters EXCEPT status/activeTab
+    if (filters.workspace !== 'All') {
+      const selectedWorkspace = workspacesData?.result?.projects?.find(
+        (p: any) => p.name === filters.workspace
+      );
+      if (selectedWorkspace?.id) {
+        params.project_id = selectedWorkspace.id;
+      }
+    }
+    if (searchQuery) {
+      params.name = searchQuery;
+    }
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      params.start_date = dateRange[0].format('YYYY-MM-DD');
+      params.end_date = dateRange[1].format('YYYY-MM-DD');
+    }
+
+    return toQueryParams(params);
+  }, [filters.workspace, searchQuery, dateRange, workspacesData]);
+
   // Fetch tasks with query params
   const { data: tasksData, isLoading } = useTasks(queryParams);
+
+  // Fetch stats separately (without status filter)
+  const { data: statsData } = useTasks(statsQueryParams);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -656,20 +687,26 @@ export function TasksPage() {
     // side-effects after filters, search, or date label change (currently none)
   }, [tasks.length, filteredTasks.length, activeTab, searchQuery, filters, dateLabel]);
 
-  // Note: Stats are now based on total count from API, not just current page
-  // For accurate stats, we'd need separate API calls per status, but for now we'll use current page data
-  // Use backend status_counts for accurate breakdown
+  // Note: Stats are now fetched separately without status filter for stable tab counts
+  // Use statsData (global counts) instead of tasksData (filtered)
   const stats = useMemo(() => {
-    const firstTask = tasksData?.result?.[0] as any;
+    const firstTask = statsData?.result?.[0] as any;
     const backendCounts = firstTask?.status_counts || {};
 
+    // Calculate total from counts if available
+    const calculatedTotal = (backendCounts.All) ||
+      ((backendCounts.Assigned || 0) + (backendCounts.In_Progress || 0) +
+        (backendCounts.Completed || 0) + (backendCounts.Delayed || 0) +
+        (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0) +
+        (backendCounts.Review || 0));
+
     return {
-      all: backendCounts.All || totalTasks,
+      all: backendCounts.All || calculatedTotal || totalTasks,
       'In_Progress': backendCounts.In_Progress || 0,
       'Completed': backendCounts.Completed || 0,
       'Delayed': (backendCounts.Delayed || 0) + (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0),
     };
-  }, [tasksData, totalTasks]);
+  }, [statsData, totalTasks]);
 
   const toggleSelectAll = () => {
     if (selectedTasks.length === filteredTasks.length) {
@@ -1080,7 +1117,7 @@ export function TasksPage() {
       {/* Tasks List */}
       <div className="flex-1 overflow-y-auto relative">
         {/* Table Header */}
-        <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2.5fr_1.2fr_1.1fr_1fr_0.8fr_0.6fr_1.5fr_0.6fr_40px] gap-4 px-4 py-3 mb-2 items-center">
+        <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2.5fr_1.2fr_1.1fr_1fr_0.8fr_1.5fr_0.6fr_40px] gap-4 px-4 py-3 mb-2 items-center">
           <div className="flex justify-center">
             <Checkbox
               checked={filteredTasks.length > 0 && selectedTasks.length === filteredTasks.length}
@@ -1105,11 +1142,6 @@ export function TasksPage() {
           <div className="flex justify-center">
             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
               Duration
-            </p>
-          </div>
-          <div className="flex justify-center">
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
-              Timer
             </p>
           </div>
           <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">

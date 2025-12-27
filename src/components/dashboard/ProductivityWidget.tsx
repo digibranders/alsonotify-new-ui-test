@@ -178,7 +178,15 @@ export function ProductivityWidget() {
         const isReview = status.includes('review');
         const isCompleted = status.includes('completed') || status === 'done';
 
-        return (isAssigned || isInProgress || isImpediment) && !isReview && !isCompleted;
+        // Filter out if no keys provided (security)
+        if (!user || !user.id) return false;
+
+        // Check estimate status
+        // Ensure t.task_members exists and current user has estimated_time > 0 (or not null)
+        const myMember = t.task_members?.find((m: any) => m.user_id === user.id);
+        const hasProvidedEstimate = myMember ? (myMember.estimated_time !== null && myMember.estimated_time > 0) : false;
+
+        return (isAssigned || isInProgress || isImpediment) && !isReview && !isCompleted && hasProvidedEstimate;
       })
       .map((t: any) => ({
         id: t.id,
