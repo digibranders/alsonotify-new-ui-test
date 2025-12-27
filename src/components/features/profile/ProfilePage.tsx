@@ -179,7 +179,7 @@ export function ProfilePage() {
                 documentTypeName: documentTypes[1]?.name || "ID Proof",
                 fileName: "profile_photo.webp",
                 fileSize: 1000000, // 1 MB
-                fileUrl: "/documents/profile.png",
+                fileUrl: "https://github.com/shadcn.png",
                 uploadedDate: "2024-01-15T00:00:00Z",
                 fileType: "image",
                 isRequired: documentTypes[1]?.required ?? true,
@@ -473,7 +473,7 @@ export function ProfilePage() {
                                         src={
                                             user?.user_profile?.profile_pic ||
                                             user?.profile_pic ||
-                                            "/documents/profile.png"
+                                            "https://github.com/shadcn.png"
                                         }
                                         alt="Profile"
                                         width={128}

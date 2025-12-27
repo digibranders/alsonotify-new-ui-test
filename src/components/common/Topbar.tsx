@@ -446,8 +446,8 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
               <div className="relative shrink-0 size-[40px] rounded-full ring-2 ring-transparent hover:ring-[#ff3b3b]/20 transition-all cursor-pointer">
                 <Avatar
                   size={40}
-                  // src={user?.user_profile?.profile_pic || user?.profile_pic || "https://github.com/shadcn.png"}
-                  src={user?.user_profile?.profile_pic || user?.profile_pic || "/documents/profile.png"}
+                  src={user?.user_profile?.profile_pic || user?.profile_pic || "https://github.com/shadcn.png"}
+                  // src={user?.user_profile?.profile_pic || user?.profile_pic || "/documents/profile.png"}
                   alt={user?.name || 'User'}
                 />
               </div>
