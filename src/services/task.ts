@@ -500,6 +500,6 @@ export const provideEstimate = async (id: number, hours: number): Promise<ApiRes
 };
 
 export const getCurrentActiveTimer = async () => {
-  const { data } = await axiosApi.get('/tasks/active-timer');
+  const { data } = await axiosApi.get('/task/active-timer');
   return data;
 };

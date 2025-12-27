@@ -190,7 +190,7 @@ export function TaskRow({
       // Call the status change handler passed from parent
       onStatusChange?.(newStatus);
 
-      message.success(worklogAction === 'stuck' ? 'Task marked as stuck' : 'Task marked for review');
+      message.success(worklogAction === 'stuck' ? 'Task marked as blocked' : 'Task marked for review');
       setShowWorklogModal(false);
       setWorklogAction(null);
       setWorklogDescription('');
@@ -323,90 +323,76 @@ export function TaskRow({
 
 
 
-        {/* Progress Bar or Nudge */}
+        {/* Progress Bar - Always Show */}
         <div className="flex flex-col gap-1 w-full justify-center">
-          {isPendingEstimate ? (
-            // Nudge Button
-            <div className="w-full">
-              <Popover
-                open={estimateOpen}
-                onOpenChange={setEstimateOpen}
-                trigger="click"
-                content={
-                  <div className="p-2 w-48">
-                    <p className="text-xs font-medium mb-2">Your Estimate</p>
-                    <Input
-                      type="number"
-                      placeholder="Hours"
-                      value={estimateHours}
-                      onChange={(e) => setEstimateHours(e.target.value)}
-                      className="mb-2 text-sm"
-                    />
-                    <Button
-                      type="primary"
-                      size="small"
-                      loading={submissionLoading}
-                      className="w-full bg-[#EAB308] text-black"
-                      onClick={async () => {
-                        if (!estimateHours) return;
-                        try {
-                          setSubmissionLoading(true);
-                          await provideEstimate(Number(task.id), Number(estimateHours));
-                          message.success("Estimate submitted");
-                          setEstimateOpen(false);
-                          window.location.reload();
-                        } catch (err) {
-                          message.error("Failed");
-                        } finally {
-                          setSubmissionLoading(false);
-                        }
-                      }}
-                    >
-                      Submit
-                    </Button>
-                  </div>
-                }
-              >
-                <Button
-                  block
-                  variant="solid"
-                  color="yellow"
-                  className="!bg-yellow-400 hover:!bg-yellow-500 !text-black border-none font-bold text-xs h-6 flex items-center justify-center gap-1 shadow-sm"
-                >
-                  <Clock className="w-3 h-3" /> EST
-                </Button>
-              </Popover>
+          <div className="flex flex-col gap-0.5">
+            <div className="flex justify-end">
+              <span className={`text-[10px] font-bold ${textColor}`}>
+                {Math.round(percentage)}%
+              </span>
             </div>
-          ) : (
-            // Progress Bar + Percentage
-            <div className="flex flex-col gap-0.5">
-              <div className="flex justify-end">
-                <span className={`text-[10px] font-bold ${textColor}`}>
-                  {Math.round(percentage)}%
-                </span>
-              </div>
-              <SegmentedProgressBar
-                members={liveMembers}
-                totalEstimate={task.estTime}
-                taskStatus={task.status}
-              />
-            </div>
-          )}
+            <SegmentedProgressBar
+              members={liveMembers}
+              totalEstimate={task.estTime}
+              taskStatus={task.status}
+            />
+          </div>
         </div>
 
-        {/* Status (Aggregated) */}
+        {/* Status (Aggregated) or Estimate Button */}
         <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
-          <StatusBadge
-            status={task.status}
-            onChange={onStatusChange}
-            isActive={isActive}
-            isPlayDisabled={isPlayDisabled}
-            isPendingEstimate={isPendingEstimate}
-            onPlay={() => !isPlayDisabled && !isPendingEstimate && startTimer(Number(task.id), task.name, task.project)}
-            onStop={stopTimer}
-            onStuck={handleStuckClick}
-            onComplete={handleCompleteClick}
-          />
+          {isPendingEstimate ? (
+            // ESTIMATE Button when pending
+            <Popover
+              open={estimateOpen}
+              onOpenChange={setEstimateOpen}
+              trigger="click"
+              content={
+                <div className="p-2 w-48">
+                  <p className="text-xs font-medium mb-2">Your Estimate</p>
+                  <Input
+                    type="number"
+                    placeholder="Hours"
+                    value={estimateHours}
+                    onChange={(e) => setEstimateHours(e.target.value)}
+                    className="mb-4 text-sm"
+                  />
+                  <Button
+                    type="primary"
+                    size="small"
+                    loading={submissionLoading}
+                    className="w-full bg-[#EAB308] text-black"
+                    onClick={async () => {
+                      if (!estimateHours) return;
+                      setSubmissionLoading(true);
+                      try {
+                        await provideEstimate(Number(task.id), Number(estimateHours));
+                        message.success("Estimate submitted");
+                        setEstimateOpen(false);
+                        window.location.reload();
+                      } catch (err) {
+                        message.error("Failed");
+                      } finally {
+                        setSubmissionLoading(false);
+                      }
+                    }}
+                  >
+                    Submit
+                  </Button>
+                </div>
+              }
+            >
+              <button
+                className="px-2 py-1 bg-yellow-400 hover:bg-yellow-500 text-black text-[10px] font-bold rounded-full flex items-center gap-1 shadow-sm transition-colors"
+              >
+                <Clock className="w-3 h-3" /> ESTIMATE
+              </button>
+            </Popover>
+          ) : (
+            <StatusBadge
+              status={task.status}
+            />
+          )}
         </div>
 
         {/* Actions */}
@@ -443,7 +429,7 @@ export function TaskRow({
 
       {/* Worklog Modal for Stuck/Complete actions */}
       <Modal
-        title={worklogAction === 'stuck' ? 'Mark as Stuck' : 'Mark as Complete'}
+        title={worklogAction === 'stuck' ? 'Mark as Blocked' : 'Mark as Complete'}
         open={showWorklogModal}
         onCancel={() => {
           setShowWorklogModal(false);
@@ -451,7 +437,7 @@ export function TaskRow({
           setWorklogDescription('');
         }}
         onOk={handleWorklogSubmit}
-        okText={worklogAction === 'stuck' ? 'Mark Stuck' : 'Mark Complete'}
+        okText={worklogAction === 'stuck' ? 'Mark Blocked' : 'Mark Complete'}
         okButtonProps={{
           loading: worklogSubmitting,
           danger: worklogAction === 'stuck',
@@ -480,24 +466,8 @@ export function TaskRow({
 
 function StatusBadge({
   status,
-  onChange,
-  isActive,
-  isPlayDisabled,
-  isPendingEstimate,
-  onPlay,
-  onStop,
-  onStuck,
-  onComplete
 }: {
   status: string;
-  onChange?: (s: string) => void;
-  isActive?: boolean;
-  isPlayDisabled?: boolean;
-  isPendingEstimate?: boolean;
-  onPlay?: () => void;
-  onStop?: () => void;
-  onStuck?: () => void;
-  onComplete?: () => void;
 }) {
   // Map backend statuses to UI configuration with icons and colors matching old frontend
   // User Req: "Map both Stuck and Impediment to a single visual 'Blocked' badge"
@@ -573,68 +543,15 @@ function StatusBadge({
   const style = config[uiStatus] || config['Assigned'];
   const Icon = style.icon;
 
-  // Check if status is terminal (Completed/Review)
-  const isTerminal = ['Completed', 'Review'].includes(status);
-
-  const content = (
-    <div className="flex flex-col gap-1 p-2 min-w-[160px]">
-      {/* Quick Actions Section */}
-      {!isTerminal && (
-        <>
-          <div className="text-[10px] text-gray-400 uppercase tracking-wide px-2 pt-1">Quick Actions</div>
-          <div className="flex gap-1 px-1 pb-2 border-b border-gray-100">
-            {/* Play/Stop Button */}
-            {isActive ? (
-              <button
-                onClick={(e) => { e.stopPropagation(); onStop?.(); }}
-                className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-red-50 hover:bg-red-100 rounded text-xs text-red-600 font-medium transition-colors"
-              >
-                <CircleStop className="w-3.5 h-3.5" /> Pause
-              </button>
-            ) : (
-              <button
-                onClick={(e) => { e.stopPropagation(); onPlay?.(); }}
-                disabled={isPlayDisabled || isPendingEstimate}
-                className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded text-xs font-medium transition-colors ${isPlayDisabled || isPendingEstimate
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-blue-50 hover:bg-blue-100 text-blue-600'
-                  }`}
-                title={isPendingEstimate ? "Provide estimate first" : (isPlayDisabled ? "Waiting for turn" : "Start Timer")}
-              >
-                <Play className="w-3.5 h-3.5" /> {isPendingEstimate ? "Est. Required" : "Play"}
-              </button>
-            )}
-            {/* Stuck Button */}
-            <button
-              onClick={(e) => { e.stopPropagation(); onStuck?.(); }}
-              className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-orange-50 hover:bg-orange-100 rounded text-xs text-orange-600 font-medium transition-colors"
-            >
-              <XCircle className="w-3.5 h-3.5" /> Stuck
-            </button>
-          </div>
-          {/* Complete Button - Full width */}
-          <button
-            onClick={(e) => { e.stopPropagation(); onComplete?.(); }}
-            className="flex items-center justify-center gap-1 px-3 py-1.5 bg-green-50 hover:bg-green-100 rounded text-xs text-green-600 font-medium transition-colors mt-1"
-          >
-            <CheckCircle2 className="w-3.5 h-3.5" /> Mark Complete
-          </button>
-        </>
+  return (
+    <div className="flex items-center justify-center">
+      {style.showCircle ? (
+        <div className={`w-5 h-5 rounded-full ${style.bgColor} flex items-center justify-center ${style.pulse ? 'animate-pulse' : ''}`}>
+          <Icon className={`w-3 h-3 ${style.iconColor}`} />
+        </div>
+      ) : (
+        <Icon className={`w-4 h-4 ${style.iconColor} ${(style as any).animate ? 'animate-spin' : ''}`} />
       )}
     </div>
-  );
-
-  return (
-    <Popover content={content} trigger="click" overlayInnerStyle={{ padding: 0 }}>
-      <div className="cursor-pointer flex items-center justify-center hover:opacity-80 transition-opacity hover:scale-110">
-        {style.showCircle ? (
-          <div className={`w-5 h-5 rounded-full ${style.bgColor} flex items-center justify-center ${style.pulse ? 'animate-pulse' : ''}`}>
-            <Icon className={`w-3 h-3 ${style.iconColor}`} />
-          </div>
-        ) : (
-          <Icon className={`w-4 h-4 ${style.iconColor} ${(style as any).animate ? 'animate-spin' : ''}`} />
-        )}
-      </div>
-    </Popover>
   );
 }

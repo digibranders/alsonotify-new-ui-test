@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { App } from "antd";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
 import { useLogin } from "@/hooks/useAuth";
@@ -8,10 +9,15 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import AuthLayout from "@/components/auth/AuthLayout";
 
-export default function LoginPage() {
+function LoginForm() {
   const { message } = App.useApp();
+  const searchParams = useSearchParams();
   const loginMutation = useLogin();
-  const [email, setEmail] = useState("");
+
+  const initialEmail = searchParams.get("email") || "";
+  const redirect = searchParams.get("redirect") || (searchParams.get("invite") ? `/dashboard/partners?invite=${searchParams.get("invite")}` : "/dashboard");
+
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -24,7 +30,7 @@ export default function LoginPage() {
     }
 
     loginMutation.mutate(
-      { email, password },
+      { email, password, redirect },
       {
         onSuccess: () => {
           message.success("Login successful!");
@@ -142,3 +148,10 @@ export default function LoginPage() {
   );
 }
 
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
+  );
+}

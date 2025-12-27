@@ -13,9 +13,9 @@ export function AccessBadge({ role, className }: AccessBadgeProps) {
 
   switch (role) {
     case "Admin":
-      textColor = "#7F56D9"; // Purple
-      iconColor = "#7F56D9"; // Purple
-      bgColor = "#F9F5FF"; // Light lavender
+      textColor = "#ff3b3b"; // Red (brand color)
+      iconColor = "#ff3b3b"; // Red (brand color)
+      bgColor = "#FFF5F5"; // Light red
       IconComponent = ShieldCheck;
       break;
     case "Manager":
@@ -31,9 +31,9 @@ export function AccessBadge({ role, className }: AccessBadgeProps) {
       IconComponent = User;
       break;
     case "Leader":
-      textColor = "#7F56D9"; // Purple (same as Admin)
-      iconColor = "#7F56D9"; // Purple (same as Admin)
-      bgColor = "#F9F5FF"; // Light lavender (same as Admin)
+      textColor = "#7F56D9"; // Purple
+      iconColor = "#7F56D9"; // Purple
+      bgColor = "#F9F5FF"; // Light lavender
       IconComponent = Users; // Two persons icon
       break;
     default:
@@ -52,8 +52,8 @@ export function AccessBadge({ role, className }: AccessBadgeProps) {
         color: textColor,
       }}
     >
-      <IconComponent 
-        className="w-3 h-3" 
+      <IconComponent
+        className="w-3 h-3"
         style={{ color: iconColor }}
       />
       <span className="text-[11px] font-['Manrope:SemiBold',sans-serif]">

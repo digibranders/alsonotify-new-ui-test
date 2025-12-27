@@ -75,25 +75,39 @@ export function SegmentedProgressBar({ members, totalEstimate, taskStatus }: Seg
 
     return (
         <div className="flex w-full h-1.5 rounded-full overflow-hidden bg-[#E5E5E5]">
-            {segments.map((seg, idx) => (
-                <Tooltip
-                    key={seg.id || idx}
-                    title={`${seg.user.name} | ${seg.status} | ${seg.spentHours.toFixed(1)}h of ${seg.estimated_time ?? 0}h`}
-                >
-                    <div
-                        className="h-full bg-[#E5E5E5] relative first:rounded-l-full last:rounded-r-full border-r border-white/50 last:border-0"
-                        style={{ width: `${seg.widthPercent}%` }}
+            {segments.map((seg, idx) => {
+                const estimate = seg.estimated_time ?? 0;
+                const overtime = seg.spentHours > estimate ? seg.spentHours - estimate : 0;
+                return (
+                    <Tooltip
+                        key={seg.id || idx}
+                        title={
+                            <div className="text-center">
+                                <div>{seg.user.name} | {seg.status}</div>
+                                <div>
+                                    {seg.spentHours.toFixed(1)}h of {estimate}h
+                                    {overtime > 0 && (
+                                        <span style={{ color: '#ff3b3b', marginLeft: 4 }}>+{overtime.toFixed(1)}h</span>
+                                    )}
+                                </div>
+                            </div>
+                        }
                     >
-                        {/* Colored Progress Fill - only the spent portion gets color */}
-                        {seg.overlayPercent > 0 && (
-                            <div
-                                className={`h-full ${seg.colorClass} absolute left-0 top-0 first:rounded-l-full`}
-                                style={{ width: `${seg.overlayPercent}%` }}
-                            />
-                        )}
-                    </div>
-                </Tooltip>
-            ))}
+                        <div
+                            className="h-full bg-[#E5E5E5] relative first:rounded-l-full last:rounded-r-full border-r border-white/50 last:border-0"
+                            style={{ width: `${seg.widthPercent}%` }}
+                        >
+                            {/* Colored Progress Fill - only the spent portion gets color */}
+                            {seg.overlayPercent > 0 && (
+                                <div
+                                    className={`h-full ${seg.colorClass} absolute left-0 top-0 first:rounded-l-full`}
+                                    style={{ width: `${seg.overlayPercent}%` }}
+                                />
+                            )}
+                        </div>
+                    </Tooltip>
+                );
+            })}
         </div>
     );
 }

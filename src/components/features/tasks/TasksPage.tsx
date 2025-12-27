@@ -537,8 +537,21 @@ export function TasksPage() {
   }, [tasks, tasksData]);
 
   const users = useMemo(() => {
-    const userNames = tasks.map(t => t.assignedTo).filter((name): name is string => name !== 'Unassigned');
-    return ['All', ...Array.from(new Set(userNames))];
+    // Collect all unique member names from task_members
+    const userNames = new Set<string>();
+    tasks.forEach(t => {
+      // Add primary assignee
+      if (t.assignedTo && t.assignedTo !== 'Unassigned') {
+        userNames.add(t.assignedTo);
+      }
+      // Add all task members
+      t.task_members?.forEach((m: any) => {
+        if (m.user?.name) {
+          userNames.add(m.user.name);
+        }
+      });
+    });
+    return ['All', 'Multiple', ...Array.from(userNames).sort()];
   }, [tasks]);
 
   const companies = useMemo(() => {
@@ -662,7 +675,18 @@ export function TasksPage() {
   const filteredTasks = useMemo(() => {
     return tasks.filter(task => {
       // Client-side filtering for user, company, requirement (name-based)
-      const matchesUser = filters.user === 'All' || task.assignedTo === filters.user;
+      // Check if ANY task member's name matches the filter (not just the primary assignee)
+      let matchesUser = true;
+      if (filters.user === 'All') {
+        matchesUser = true;
+      } else if (filters.user === 'Multiple') {
+        // Show tasks with multiple members
+        matchesUser = (task.task_members?.length || 0) > 1;
+      } else {
+        // Show tasks where the selected user is a member
+        matchesUser = task.assignedTo === filters.user ||
+          (task.task_members?.some((m: any) => m.user?.name === filters.user) || false);
+      }
       const matchesCompany = filters.company === 'All' || task.client === filters.company;
       const matchesRequirement = filters.requirement === 'All' || task.project === filters.requirement;
 
@@ -991,7 +1015,10 @@ export function TasksPage() {
             </h2>
 
             <button
-              onClick={() => setIsDialogOpen(true)}
+              onClick={() => {
+                setEditingTask(null); // Reset editing task for new task
+                setIsDialogOpen(true);
+              }}
               className="hover:scale-110 active:scale-95 transition-transform"
             >
               <Plus className="size-5 text-[#ff3b3b]" strokeWidth={2} />
@@ -1014,6 +1041,7 @@ export function TasksPage() {
               }}
             >
               <TaskForm
+                key={editingTask ? `edit-${editingTask.id}` : `new-${Date.now()}`}
                 initialData={editingTask ? {
                   name: editingTask.name,
                   project_id: String(editingTask.project_id || ''),

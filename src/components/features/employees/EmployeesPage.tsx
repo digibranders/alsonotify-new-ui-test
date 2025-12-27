@@ -935,7 +935,7 @@ export function EmployeesPage() {
                     {/* Dropdown content */}
                     <div className="bg-white rounded-lg shadow-lg border border-[#EEEEEE] overflow-hidden min-w-[200px]">
                       {[
-                        { value: 'Admin', icon: ShieldCheck, color: '#7F56D9', bgColor: '#F9F5FF' },
+                        { value: 'Admin', icon: ShieldCheck, color: '#ff3b3b', bgColor: '#FFF5F5' },
                         { value: 'Manager', icon: Briefcase, color: '#2E90FA', bgColor: '#EFF8FF' },
                         { value: 'Leader', icon: Users, color: '#7F56D9', bgColor: '#F9F5FF' },
                         { value: 'Employee', icon: UserIcon, color: '#12B76A', bgColor: '#ECFDF3' },

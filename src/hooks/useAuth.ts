@@ -10,13 +10,15 @@ export const useLogin = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (credentials: { email: string; password: string }) => doLogin(credentials),
-    onSuccess: (data) => {
+    mutationFn: (credentials: { email: string; password: string; redirect?: string }) => doLogin(credentials),
+    onSuccess: (data, variables) => {
       if (data.success && data.result.token) {
         setToken(data.result.token);
         axiosApi.defaults.headers.common["authorization"] = data.result.token;
         queryClient.setQueryData(["user"], data.result.user);
-        router.push("/dashboard");
+
+        const redirect = variables.redirect || "/dashboard";
+        router.push(redirect);
       }
     },
   });

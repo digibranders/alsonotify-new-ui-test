@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useTimer } from "@/context/TimerContext";
 import {
   Play24Filled,
   Pause24Filled,
@@ -59,6 +60,10 @@ function parseAsUTC(dateString: string): Date {
 
 export function ProductivityWidget() {
   const { message: antdMessage } = App.useApp();
+
+  // USE SHARED TIMER CONTEXT
+  const { timerState, startTimer: contextStartTimer, stopTimer: contextStopTimer, isLoading: timerLoading } = useTimer();
+
   const [isRunning, setIsRunning] = useState(false);
   const [time, setTime] = useState(0); // Current session elapsed seconds (for display)
   const pausedElapsedRef = useRef<number>(0); // Elapsed time when paused (for resume calculation)
@@ -79,6 +84,23 @@ export function ProductivityWidget() {
   const taskButtonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const conversationRef = useRef<HTMLDivElement>(null);
+
+  // SYNC LOCAL STATE WITH TIMER CONTEXT
+  // This keeps the dashboard in sync with task row timer actions
+  useEffect(() => {
+    if (!timerLoading) {
+      setIsRunning(timerState.isRunning);
+      setTime(timerState.elapsedSeconds);
+      setWorklogId(timerState.worklogId);
+      if (timerState.taskId) {
+        setSelectedTaskId(timerState.taskId);
+        setSelectedTask(timerState.taskName || "");
+      }
+      if (timerState.startTime) {
+        setStartTime(timerState.startTime.toISOString());
+      }
+    }
+  }, [timerState, timerLoading]);
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: (data: { prompt: string; history: { role: "user" | "assistant"; content: string }[] }) =>
@@ -181,10 +203,14 @@ export function ProductivityWidget() {
         // Filter out if no keys provided (security)
         if (!user || !user.id) return false;
 
-        // Check estimate status
-        // Ensure t.task_members exists and current user has estimated_time > 0 (or not null)
-        const myMember = t.task_members?.find((m: any) => m.user_id === user.id);
+        // Check estimate status - use String() to handle type mismatch (number vs string)
+        const myMember = t.task_members?.find((m: any) => String(m.user_id) === String(user.id));
         const hasProvidedEstimate = myMember ? (myMember.estimated_time !== null && myMember.estimated_time > 0) : false;
+
+        // Debug: temporarily log if we're filtering tasks out
+        if (myMember && !hasProvidedEstimate) {
+          console.log('[Dashboard Filter] Task filtered out - no estimate:', t.name, 'estimate:', myMember?.estimated_time);
+        }
 
         return (isAssigned || isInProgress || isImpediment) && !isReview && !isCompleted && hasProvidedEstimate;
       })
@@ -194,7 +220,7 @@ export function ProductivityWidget() {
         project: t.project_id ? workspacesMap.get(t.project_id) || "Unknown Project" : "No Project",
         status: t.status
       }));
-  }, [assignedTasksData, workspacesMap]);
+  }, [assignedTasksData, workspacesMap, user]);
 
   // Update Status Mutation
   const updateStatusMutation = useUpdateTaskStatus();

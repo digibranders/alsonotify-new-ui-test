@@ -220,3 +220,13 @@ export const getRoles = async (): Promise<ApiResponse<{ id: number; name: string
     throw error;
   }
 };
+
+// Accept invitation
+export const acceptInvitation = async (token: string) => {
+  try {
+    const { data } = await axiosApi.post("/user/accept-invite", { token });
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
