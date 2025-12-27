@@ -102,7 +102,7 @@ export function EmployeeDetailsModal({
         return `${day}-${month}-${year}`;
       }
     } catch (e) {
-      console.error("Error formatting date:", e);
+      // Error formatting date
     }
     return dateString;
   };
@@ -121,7 +121,12 @@ export function EmployeeDetailsModal({
   const experience = employee.experience ? `${employee.experience} Years` : 'N/A';
 
   // Format working hours
-  const workingHours = employee.workingHours ? `${employee.workingHours}h / week` : 'N/A';
+  const workingHours = (() => {
+    if (employee.rawWorkingHours?.start_time && employee.rawWorkingHours?.end_time) {
+      return `${employee.rawWorkingHours.start_time} - ${employee.rawWorkingHours.end_time}`;
+    }
+    return employee.workingHours ? `${employee.workingHours}h / week` : 'N/A';
+  })();
 
   // Format leaves
   const leavesTaken = employee.leaves ? `${employee.leaves} Days` : '0 Days';

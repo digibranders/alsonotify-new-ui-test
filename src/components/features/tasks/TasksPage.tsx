@@ -47,6 +47,23 @@ type UITask = {
   member_id?: number;
   leader_id?: number;
   description?: string;
+  endDateIso?: string; // Raw ISO string for form editing
+  execution_mode?: 'parallel' | 'sequential';
+  total_seconds_spent: number;
+  task_members?: {
+    id: number;
+    user_id: number;
+    status: string;
+    estimated_time: number | null;
+    seconds_spent: number;
+    active_worklog_start_time?: string | null;
+    is_current_turn: boolean;
+    user: {
+      id: number;
+      name: string;
+      profile_pic?: string;
+    };
+  }[];
 };
 
 type StatusTab = 'all' | 'In_Progress' | 'Completed' | 'Delayed';
@@ -54,7 +71,7 @@ type StatusTab = 'all' | 'In_Progress' | 'Completed' | 'Delayed';
 // Helper functions for date presets
 const getPresetDateRangeHelper = (preset: string, now: Date): [Date, Date] | null => {
   let from: Date, to: Date;
-  
+
   switch (preset) {
     case "This week":
       from = startOfWeek(now, { weekStartsOn: 1 });
@@ -101,7 +118,7 @@ export function TasksPage() {
   const { data: workspacesData } = useWorkspaces();
   const { data: userDetailsData } = useUserDetails();
   const { data: companyData } = useCurrentUserCompany();
-  
+
   // Get current user's company name as fallback for in-house tasks
   const currentUserCompanyName = useMemo(() => {
     // First try the company API endpoint
@@ -117,12 +134,12 @@ export function TasksPage() {
         }
       }
     } catch (error) {
-      console.error("Error reading company from localStorage:", error);
+      // Error reading company from localStorage
     }
     const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
     return apiUser?.company?.name || null;
   }, [companyData, userDetailsData]);
-  
+
   // Get current user name
   const currentUserName = useMemo(() => {
     try {
@@ -133,19 +150,19 @@ export function TasksPage() {
         }
       }
     } catch (error) {
-      console.error("Error reading user from localStorage:", error);
+      // Error reading user from localStorage
     }
     const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
     return apiUser.name || apiUser.user_profile?.first_name || null;
   }, [userDetailsData]);
-  
+
   // Read tab from URL params
   const tabFromUrl = searchParams.get('tab');
-  const initialTab = (tabFromUrl === 'In_Progress' || tabFromUrl === 'Completed' || tabFromUrl === 'Delayed') 
-    ? tabFromUrl as StatusTab 
+  const initialTab = (tabFromUrl === 'In_Progress' || tabFromUrl === 'Completed' || tabFromUrl === 'Delayed')
+    ? tabFromUrl as StatusTab
     : 'all';
   const [activeTab, setActiveTab] = useState<StatusTab>(initialTab);
-  
+
   // Update tab when URL changes
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
@@ -156,7 +173,7 @@ export function TasksPage() {
     }
   }, [searchParams]);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Initialize filters
   const [filters, setFilters] = useState<Record<string, string>>({
     user: 'All',
@@ -165,10 +182,10 @@ export function TasksPage() {
     status: 'All',
     requirement: 'All'
   });
-  
+
   // Track if filter has been initialized to avoid resetting user's manual changes
   const [filterInitialized, setFilterInitialized] = useState(false);
-  
+
   // Set initial filter to current user when page loads (only once)
   useEffect(() => {
     if (currentUserName && !filterInitialized) {
@@ -177,7 +194,7 @@ export function TasksPage() {
     }
   }, [currentUserName, filterInitialized]);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
-  
+
   // Pagination state
   const [pagination, setPagination] = useState({
     current: 1,
@@ -277,7 +294,7 @@ export function TasksPage() {
           setUsersDropdown(transformed);
         }
       } catch (error) {
-        console.error('Failed to fetch users:', error);
+        // Failed to fetch users
       }
     };
     fetchUsers();
@@ -296,12 +313,12 @@ export function TasksPage() {
               allRequirements.push(...response.result);
             }
           } catch (error) {
-            console.error(`Failed to fetch requirements for workspace ${workspace.id}:`, error);
+            // Failed to fetch requirements for workspace
           }
         }
         setRequirementsDropdown(allRequirements);
       } catch (error) {
-        console.error('Failed to fetch requirements:', error);
+        // Failed to fetch requirements
       }
     };
     fetchRequirements();
@@ -312,14 +329,14 @@ export function TasksPage() {
   // Use backend statuses directly - no mapping needed
   const normalizeBackendStatus = (status: string): ITaskStatus => {
     if (!status) return 'Assigned';
-    
+
     // Normalize status (handle both 'In_Progress' and 'In Progress')
     const normalizedStatus = status.replace(/\s+/g, '_');
-    
+
     // Map to backend enum values
     const validStatuses: ITaskStatus[] = ['Assigned', 'In_Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'];
     const matchedStatus = validStatuses.find(s => s === normalizedStatus || s.toLowerCase() === normalizedStatus.toLowerCase());
-    
+
     return matchedStatus || 'Assigned'; // Default to Assigned
   };
 
@@ -340,16 +357,16 @@ export function TasksPage() {
 
     return tasksData.result.map((t: any) => {
       const startDateObj = t.start_date ? new Date(t.start_date) : null;
-      const dueDateObj = t.due_date ? new Date(t.due_date) : null;
+      const dueDateObj = t.end_date ? new Date(t.end_date) : null;
 
       const startDate = startDateObj
         ? startDateObj
-            .toLocaleDateString('en-GB', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-            })
-            .replace(/ /g, '-')
+          .toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })
+          .replace(/ /g, '-')
         : 'TBD';
 
       let dueDate = 'TBD';
@@ -407,25 +424,25 @@ export function TasksPage() {
 
       // Determine company/client name: if client exists, it's client work, otherwise show company name for in-house
       // Client company comes from task_project.client_user.company.name
-      const clientCompanyName = (t as any).task_project?.client_user?.company?.name || 
-                                t.client?.name || 
-                                t.client_company_name || 
-                                null;
-      
+      const clientCompanyName = (t as any).task_project?.client_user?.company?.name ||
+        t.client?.name ||
+        t.client_company_name ||
+        null;
+
       // For in-house tasks, get company name from task's company relation, project's company, or current user's company
-      const inHouseCompanyName = t.company?.name || 
-                                  t.company_name || 
-                                  (t as any).task_project?.company?.name ||
-                                  (t as any).task_project?.company_name ||
-                                  currentUserCompanyName ||
-                                  null;
-      
+      const inHouseCompanyName = t.company?.name ||
+        t.company_name ||
+        (t as any).task_project?.company?.name ||
+        (t as any).task_project?.company_name ||
+        currentUserCompanyName ||
+        null;
+
       // If there's a client company, it's client work; otherwise show in-house company name
       const displayCompanyName = clientCompanyName || inHouseCompanyName || 'In-House';
 
       // Get requirement name - check multiple possible paths
       // First try from API response (nested relation)
-      let requirementName = 
+      let requirementName =
         (t as any).requirement?.name ||
         (t as any).task_requirement?.name ||
         (t as any).requirement_relation?.name ||
@@ -474,9 +491,15 @@ export function TasksPage() {
         member_id: (t as any).member_user?.id || t.member_id,
         leader_id: (t as any).leader_user?.id || t.leader_id,
         description: t.description || '',
+        endDateIso: t.end_date || '',
+        task_members: t.task_members || [],
+        total_seconds_spent: (t as any).total_seconds_spent || 0,
+        execution_mode: (t as any).execution_mode,
       };
     });
   }, [tasksData, requirementMap, currentUserCompanyName]);
+
+  const currentUserId = userDetailsData?.result?.id || userDetailsData?.result?.user?.id;
 
   useEffect(() => {
     // side-effects after tasks change (currently none)
@@ -635,12 +658,18 @@ export function TasksPage() {
 
   // Note: Stats are now based on total count from API, not just current page
   // For accurate stats, we'd need separate API calls per status, but for now we'll use current page data
-  const stats = useMemo(() => ({
-    all: totalTasks,
-    'In_Progress': tasks.filter(t => t.status === 'In_Progress').length,
-    'Completed': tasks.filter(t => t.status === 'Completed').length,
-    'Delayed': tasks.filter(t => ['Delayed', 'Impediment', 'Stuck'].includes(t.status)).length,
-  }), [tasks, totalTasks]);
+  // Use backend status_counts for accurate breakdown
+  const stats = useMemo(() => {
+    const firstTask = tasksData?.result?.[0] as any;
+    const backendCounts = firstTask?.status_counts || {};
+
+    return {
+      all: backendCounts.All || totalTasks,
+      'In_Progress': backendCounts.In_Progress || 0,
+      'Completed': backendCounts.Completed || 0,
+      'Delayed': (backendCounts.Delayed || 0) + (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0),
+    };
+  }, [tasksData, totalTasks]);
 
   const toggleSelectAll = () => {
     if (selectedTasks.length === filteredTasks.length) {
@@ -775,12 +804,12 @@ export function TasksPage() {
     } else if (startDate && !endDate) {
       let finalStart = startDate;
       let finalEnd = date;
-      
+
       if (date.isBefore(startDate)) {
         finalStart = date;
         finalEnd = startDate;
       }
-      
+
       setStartDate(finalStart);
       setEndDate(finalEnd);
       const newRange: [Dayjs, Dayjs] = [finalStart, finalEnd];
@@ -859,7 +888,7 @@ export function TasksPage() {
                   const isCurrentMonth = date.month() === currentMonth.month();
                   const isInRange = isDateInRange(date);
                   const isStartOrEnd = isDateStartOrEnd(date);
-                  
+
                   return (
                     <button
                       key={index}
@@ -867,10 +896,10 @@ export function TasksPage() {
                       className={`
                         w-8 h-8 rounded-lg text-[12px] font-['Manrope:Regular',sans-serif] transition-colors
                         ${!isCurrentMonth ? 'text-[#CCCCCC]' : 'text-[#111111]'}
-                        ${isStartOrEnd 
-                          ? 'bg-[#111111] text-white' 
-                          : isInRange 
-                            ? 'bg-[#F7F7F7]' 
+                        ${isStartOrEnd
+                          ? 'bg-[#111111] text-white'
+                          : isInRange
+                            ? 'bg-[#F7F7F7]'
                             : 'hover:bg-[#F7F7F7]'
                         }
                       `}
@@ -884,19 +913,18 @@ export function TasksPage() {
           ) : (
             <div className="flex flex-col py-1 min-w-[140px]">
               {datePresets.map((preset) => {
-                const isActive = 
+                const isActive =
                   (preset === "All time" && !dateRange) ||
                   (preset !== "All time" && preset !== "Custom" && dateLabel === preset);
-                
+
                 return (
                   <button
                     key={preset}
                     onClick={() => handleSelectDatePreset(preset)}
-                    className={`text-left px-4 py-2 text-[13px] hover:bg-gray-50 transition-colors ${
-                      isActive 
-                        ? 'text-[#ff3b3b] font-medium bg-gray-50' 
-                        : 'text-[#111111]'
-                    }`}
+                    className={`text-left px-4 py-2 text-[13px] hover:bg-gray-50 transition-colors ${isActive
+                      ? 'text-[#ff3b3b] font-medium bg-gray-50'
+                      : 'text-[#111111]'
+                      }`}
                   >
                     {preset}
                   </button>
@@ -953,9 +981,11 @@ export function TasksPage() {
                   name: editingTask.name,
                   project_id: String(editingTask.project_id || ''),
                   requirement_id: String(editingTask.requirement_id || ''),
+                  assigned_members: [],
+                  execution_mode: 'parallel',
                   member_id: String(editingTask.member_id || ''),
                   leader_id: String(editingTask.leader_id || ''),
-                  start_date: editingTask.startDate || '',
+                  end_date: editingTask.endDateIso || '',
                   estimated_time: String(editingTask.estTime || ''),
                   high_priority: editingTask.priority === 'high',
                   description: editingTask.description || '',
@@ -1050,7 +1080,7 @@ export function TasksPage() {
       {/* Tasks List */}
       <div className="flex-1 overflow-y-auto relative">
         {/* Table Header */}
-        <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2.5fr_1.2fr_1.1fr_1fr_1fr_1.4fr_0.6fr_0.3fr] gap-4 px-4 py-3 mb-2 items-center">
+        <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2.5fr_1.2fr_1.1fr_1fr_0.8fr_0.6fr_1.5fr_0.6fr_40px] gap-4 px-4 py-3 mb-2 items-center">
           <div className="flex justify-center">
             <Checkbox
               checked={filteredTasks.length > 0 && selectedTasks.length === filteredTasks.length}
@@ -1077,6 +1107,11 @@ export function TasksPage() {
               Duration
             </p>
           </div>
+          <div className="flex justify-center">
+            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+              Timer
+            </p>
+          </div>
           <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
             Progress
           </p>
@@ -1089,7 +1124,7 @@ export function TasksPage() {
         </div>
 
         <div className="space-y-2">
-          {filteredTasks.map((task) => (
+          {tasks.map((task) => (
             <TaskRow
               key={task.id}
               task={task}
@@ -1097,6 +1132,8 @@ export function TasksPage() {
               onSelect={() => toggleSelect(task.id)}
               onEdit={() => handleEditTask(task)}
               onDelete={() => handleDeleteTask(task.id)}
+              onStatusChange={(status) => updateTaskMutation.mutate({ id: task.id, status } as any)}
+              currentUserId={currentUserId ? Number(currentUserId) : undefined}
             />
           ))}
         </div>
@@ -1161,7 +1198,7 @@ export function TasksPage() {
             {Array.from({ length: Math.min(5, Math.ceil(totalTasks / pagination.pageSize)) }, (_, i) => {
               const totalPages = Math.ceil(totalTasks / pagination.pageSize);
               let pageNum: number;
-              
+
               if (totalPages <= 5) {
                 pageNum = i + 1;
               } else if (pagination.current <= 3) {
@@ -1171,16 +1208,15 @@ export function TasksPage() {
               } else {
                 pageNum = pagination.current - 2 + i;
               }
-              
+
               return (
                 <button
                   key={pageNum}
                   onClick={() => handlePaginationChange(pageNum, pagination.pageSize)}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all font-['Manrope:SemiBold',sans-serif] text-[13px] ${
-                    pagination.current === pageNum
-                      ? 'bg-[#ff3b3b] text-white'
-                      : 'border border-[#EEEEEE] text-[#666666] hover:bg-[#F7F7F7]'
-                  }`}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all font-['Manrope:SemiBold',sans-serif] text-[13px] ${pagination.current === pageNum
+                    ? 'bg-[#ff3b3b] text-white'
+                    : 'border border-[#EEEEEE] text-[#666666] hover:bg-[#F7F7F7]'
+                    }`}
                 >
                   {pageNum}
                 </button>

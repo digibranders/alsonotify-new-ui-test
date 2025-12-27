@@ -55,15 +55,15 @@ export function Sidebar({ userRole }: SidebarProps) {
       allowedRoles: ['Admin', 'Manager', 'Leader']
     },
     {
-      id: 'clients',
-      path: '/dashboard/clients',
-      label: 'Clients',
+      id: 'partners',
+      path: '/dashboard/partners',
+      label: 'Partners',
       icon: <Handshake24Filled />,
       allowedRoles: ['Admin', 'Manager']
     },
     {
       id: 'requirements',
-      path: '/dashboard/kanban',
+      path: '/dashboard/requirements',
       label: 'Requirements',
       icon: <PeopleTeam24Filled />,
       allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']

@@ -12,6 +12,7 @@ import {
   inviteUser,
   updateCurrentUserCompany,
   getCurrentUserCompany,
+  getRoles,
   type UserType,
   type ClientOrOutsourceType,
   type CompanyDepartmentType,
@@ -149,5 +150,13 @@ export const useUpdateCompany = () => {
       queryClient.invalidateQueries({ queryKey: ["user", "company"] });
       queryClient.invalidateQueries({ queryKey: ["user", "details"] });
     },
+  });
+};
+// Get all roles
+export const useRoles = () => {
+  return useQuery({
+    queryKey: ["roles"],
+    queryFn: () => getRoles(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };

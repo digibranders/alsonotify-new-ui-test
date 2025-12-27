@@ -1,405 +1,604 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useTask, useWorklogs } from '@/hooks/useTask';
-import { Button, Tag, Divider, Tooltip } from 'antd';
-import { CheckCircle2, Loader2, AlertCircle, Clock, Calendar, User, Briefcase, FileText, Eye, XCircle, Ban, Activity, ClipboardList } from 'lucide-react';
-
-// Normalize backend status to match backend enum
-const normalizeBackendStatus = (status: string): 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck' => {
-    if (!status) return 'Assigned';
-    const normalizedStatus = status.replace(/\s+/g, '_');
-    const validStatuses: Array<'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck'> = 
-        ['Assigned', 'In_Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'];
-    const matchedStatus = validStatuses.find(s => s === normalizedStatus || s.toLowerCase() === normalizedStatus.toLowerCase());
-    return matchedStatus || 'Assigned';
-};
+import {
+  FileText, ListTodo, Calendar, Clock, CheckCircle2,
+  Loader2, AlertCircle, Briefcase, FolderOpen,
+  ArrowRight, Plus, Send, Paperclip, X, MessageSquare
+} from 'lucide-react';
+import { Breadcrumb, Checkbox, Tooltip, App } from 'antd';
+import { useTask } from '@/hooks/useTask';
+import { format } from 'date-fns';
 
 export function TaskDetailsPage() {
-    const params = useParams();
-    const taskId = params.taskId as string;
-    const router = useRouter();
-    const { data: taskData, isLoading } = useTask(parseInt(taskId || '0'));
-    const { data: worklogsData, isLoading: isLoadingWorklogs } = useWorklogs(parseInt(taskId || '0'), 50, 0);
+  const params = useParams();
+  const router = useRouter();
+  const { message } = App.useApp();
+  const taskId = Number(params.taskId);
 
-    if (isLoading) {
-        return (
-            <div className="flex flex-col items-center justify-center h-full">
-                <p className="text-[#999999]">Loading task...</p>
-            </div>
-        );
+  const { data: taskData, isLoading } = useTask(taskId);
+  const task = taskData?.result;
+
+  const [activeTab, setActiveTab] = useState<'details' | 'steps'>('details');
+  const [selectedSteps, setSelectedSteps] = useState<string[]>([]);
+  const [messageText, setMessageText] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
+
+  if (isLoading) {
+    return <div className="p-8">Loading...</div>;
+  }
+
+  if (!task) {
+    return <div className="p-8">Task not found</div>;
+  }
+
+  const getPriorityColor = (priority?: string) => {
+    switch (priority?.toLowerCase()) {
+      case 'high': return 'bg-[#FFF5F5] text-[#ff3b3b]';
+      case 'medium': return 'bg-[#FFF8E1] text-[#F59E0B]';
+      case 'low': return 'bg-[#F0F9FF] text-[#2F80ED]';
+      default: return 'bg-[#F3F4F6] text-[#6B7280]';
     }
+  };
 
-    const backendTask = taskData?.result;
-    if (!backendTask) {
-        return (
-            <div className="flex flex-col items-center justify-center h-full">
-                <h2 className="text-xl font-semibold mb-2">Task not found</h2>
-                <Button onClick={() => router.push('/dashboard/tasks')}>Back to Tasks</Button>
-            </div>
-        );
+  // Mock activity data
+  const activityData = [
+    { id: 1, type: 'comment', user: 'Satyam Yadav', avatar: 'SY', date: '2 hours ago', message: 'Started working on the wireframes.', attachments: [] },
+    { id: 2, type: 'status', user: 'System', avatar: 'S', date: 'Yesterday', message: 'Status changed from "Todo" to "In Progress"', isSystem: true },
+  ];
+
+  const handleSendMessage = () => {
+    if (messageText.trim() || attachments.length > 0) {
+      setMessageText('');
+      setAttachments([]);
     }
+  };
 
-    // Transform backend data to UI format
-    const assignedToName =
-        (backendTask as any).member_user?.name ||
-        (backendTask.assigned_to as any)?.name ||
-        'Unassigned';
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setAttachments([...attachments, ...Array.from(e.target.files)]);
+    }
+  };
 
-    // Get workspace/project name - workspace and project are the same in backend
-    const detailedTaskWorkspace =
-        (backendTask as any).task_project?.name ||
-        (backendTask as any).requirement?.name ||
-        (backendTask.requirement_id
-            ? `Requirement ${backendTask.requirement_id}`
-            : 'General');
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
 
-    // Get requirement name
-    const requirementName =
-        (backendTask as any).requirement?.name ||
-        (backendTask.requirement_id
-            ? `Requirement ${backendTask.requirement_id}`
-            : 'No Requirement');
+  // Mock steps data - replace with actual data when available
+  const steps: any[] = [];
 
-    const estTime = (backendTask as any).estimated_time || 0;
-    const timeSpent = (backendTask as any).time_spent || 0;
-    const isOverEstimate = estTime > 0 && timeSpent > estTime;
-
-    const baseStatus = normalizeBackendStatus(backendTask.status || '');
-    // If task is delayed by time but status is not already Delayed/Impediment/Stuck, mark as Delayed
-    const effectiveStatus: 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck' =
-        baseStatus === 'Completed'
-            ? 'Completed'
-            : isOverEstimate && !['Delayed', 'Impediment', 'Stuck'].includes(baseStatus)
-                ? 'Delayed'
-                : baseStatus;
-
-    // Determine company/client name: if client exists, it's client work, otherwise show company name for in-house
-    // Client company comes from task_project.client_user.company.name
-    const clientCompanyName = (backendTask as any).task_project?.client_user?.company?.name || 
-                               (backendTask as any).client?.name || 
-                               (backendTask as any).client_company_name || 
-                               null;
-    
-    // For in-house tasks, get company name from task's company relation or project's company
-    const inHouseCompanyName = (backendTask as any).company?.name || 
-                                (backendTask as any).company_name || 
-                                (backendTask as any).task_project?.company?.name ||
-                                (backendTask as any).task_project?.company_name ||
-                                null;
-    
-    // If there's a client company, it's client work; otherwise show in-house company name
-    const displayCompanyName = clientCompanyName || inHouseCompanyName || 'In-House';
-
-    const task = {
-        id: String(backendTask.id),
-        name: (backendTask as any).name || backendTask.title || '',
-        taskId: String(backendTask.id),
-        client: displayCompanyName,
-        project: detailedTaskWorkspace,
-        leader: (backendTask as any).leader_user?.name || (backendTask as any).leader?.name || 'Unassigned',
-        assignedTo: assignedToName,
-        startDate: (backendTask as any).start_date ? new Date((backendTask as any).start_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
-        dueDate: (backendTask as any).due_date ? new Date((backendTask as any).due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-') : 'TBD',
-        estTime,
-        timeSpent,
-        activities: backendTask.worklogs?.length || 0,
-        status: effectiveStatus,
-        priority: (typeof backendTask.priority === 'string' ? backendTask.priority.toLowerCase() : 'medium') as 'high' | 'medium' | 'low',
-    };
-
-    const getStatusConfig = (status: string) => {
-        // Match backend statuses with icons and colors from old frontend
-        switch (status) {
-            case 'Assigned': 
-                return { icon: Clock, color: 'text-[#0284c7]', bg: 'bg-[#f0f9ff]', border: 'border-[#0284c7]', label: 'Assigned' };
-            case 'In_Progress': 
-                return { icon: Loader2, color: 'text-[#0284c7]', bg: 'bg-[#f0f9ff]', border: 'border-[#0284c7]', label: 'In Progress' };
-            case 'Completed': 
-                return { icon: CheckCircle2, color: 'text-[#16a34a]', bg: 'bg-[#f0fdf4]', border: 'border-[#16a34a]', label: 'Completed' };
-            case 'Delayed': 
-                return { icon: AlertCircle, color: 'text-[#dc2626]', bg: 'bg-[#fef2f2]', border: 'border-[#dc2626]', label: 'Delayed' };
-            case 'Impediment': 
-                return { icon: XCircle, color: 'text-[#9e36ff]', bg: 'bg-[#f5ebff]', border: 'border-[#9e36ff]', label: 'Impediment' };
-            case 'Review': 
-                return { icon: Eye, color: 'text-[#fbbf24]', bg: 'bg-[#fffbeb]', border: 'border-[#fbbf24]', label: 'Review' };
-            case 'Stuck': 
-                return { icon: Ban, color: 'text-[#9e36ff]', bg: 'bg-[#f5ebff]', border: 'border-[#9e36ff]', label: 'Stuck' };
-            default: 
-                return { icon: Clock, color: 'text-[#0284c7]', bg: 'bg-[#f0f9ff]', border: 'border-[#0284c7]', label: 'Assigned' };
-        }
-    };
-
-    const statusConfig = getStatusConfig(task.status);
-    const StatusIcon = statusConfig.icon;
-    const progress = task.estTime > 0 ? (task.timeSpent / task.estTime) * 100 : 0;
-    const formatHours = (hours: number | string | null | undefined) =>
-        Number(Number(hours || 0).toFixed(1));
-    const overtimeHours = isOverEstimate ? timeSpent - estTime : 0;
-    // For delayed tasks, cap percentage at 100% and show overtime separately
-    const displayProgress = isOverEstimate ? 100 : Math.round(progress);
-    const progressLabel = isOverEstimate
-        ? `100% of estimate`
-        : `${displayProgress}% Complete`;
-    // Show colors matching old frontend
-    const progressBarColor = isOverEstimate
-        ? 'bg-[#dc2626]'  // Red for tasks with overtime (matches old frontend)
-        : task.status === 'Completed'
-            ? 'bg-[#16a34a]'  // Green for completed tasks without overtime (matches old frontend)
-            : task.status === 'Delayed' || task.status === 'Impediment' || task.status === 'Stuck'
-                ? 'bg-[#dc2626]'  // Red for delayed/impediment/stuck (matches old frontend)
-                : task.status === 'Review'
-                    ? 'bg-[#fbbf24]'  // Yellow/Orange for review (matches old frontend)
-                    : 'bg-[#0284c7]';  // Blue for Assigned/In_Progress (matches old frontend)
-
-    return (
-        <div className="w-full h-full flex flex-col p-6 overflow-y-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <Button type="text" onClick={() => router.push('/dashboard/tasks')} className="pl-0 hover:bg-transparent hover:text-[#ff3b3b]">
-                    ← Back to Tasks
-                </Button>
-
-                <div className={`flex items-center gap-2 px-4 py-2 rounded-full border ${statusConfig.bg} ${statusConfig.border}`}>
-                    <StatusIcon className={`w-4 h-4 ${statusConfig.color}`} />
-                    <span className={`text-sm font-['Manrope:SemiBold',sans-serif] ${statusConfig.color}`}>{statusConfig.label}</span>
-                </div>
+  return (
+    <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] flex overflow-hidden">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="p-8 pb-0">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-2">
+              <Breadcrumb
+                separator={<span className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#999999]">/</span>}
+                items={[
+                  {
+                    title: (
+                      <span
+                        onClick={() => router.push('/dashboard/tasks')}
+                        className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors"
+                      >
+                        Tasks
+                      </span>
+                    ),
+                  },
+                  {
+                    title: (
+                      <span className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111] line-clamp-1 max-w-[300px]">
+                        {task.title}
+                      </span>
+                    ),
+                  },
+                ]}
+              />
             </div>
 
-            <div className="bg-white rounded-[24px] border border-[#EEEEEE] p-8 max-w-6xl mx-auto w-full">
-                {/* Task Header */}
-                <div className="flex items-start justify-between mb-8">
-                    <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-3">
-                            <span className="text-sm font-mono text-[#999999]">#{task.taskId}</span>
-                            <Tag className={`
-                                ${task.priority === 'high' ? 'text-red-600 border-red-200 bg-red-50' :
-                                    task.priority === 'medium' ? 'text-orange-600 border-orange-200 bg-orange-50' :
-                                        'text-blue-600 border-blue-200 bg-blue-50'}
-                            `}>
-                                {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
-                            </Tag>
-                        </div>
-                        <h1 className="text-3xl font-['Manrope:Bold',sans-serif] text-[#111111] mb-3 leading-tight">
-                            {task.name}
-                        </h1>
-                        <div className="flex items-center gap-2 text-[#666666]">
-                            <Briefcase className="w-4 h-4" />
-                            <span className="text-sm font-['Manrope:Medium',sans-serif]">
-                                {task.client} • {task.project}
-                            </span>
-                        </div>
-                    </div>
+            <div className="flex items-center gap-4">
+              <StatusBadge status={task.status || 'todo'} showLabel />
+              {task.priority && (
+                <span className={`px-3 py-1.5 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide ${getPriorityColor(task.priority)}`}>
+                  {task.priority}
+                </span>
+              )}
+              <div className="flex -space-x-2">
+                <div className="w-8 h-8 rounded-full border-2 border-white bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm" title={task.assigned_to?.toString() || 'Unassigned'}>
+                  <span className="text-[10px] text-white font-['Manrope:Bold',sans-serif]">
+                    {task.assigned_to ? 'U' : '?'}
+                  </span>
                 </div>
-
-                <Divider className="my-6" />
-
-                {/* Main Layout: Grid with better organization */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Left Column: Description and Progress (8 columns) */}
-                    <div className="lg:col-span-8 space-y-6">
-                        {/* Description Section - Scrollable for large content */}
-                        <div className="border border-[#EEEEEE] rounded-xl p-6">
-                            <h3 className="text-sm font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide mb-4">Description</h3>
-                            <div 
-                                className="text-[#111111] leading-relaxed prose prose-sm max-w-none [&>p]:mb-3 [&>p]:last:mb-0 max-h-[400px] overflow-y-auto pr-2"
-                                dangerouslySetInnerHTML={{ 
-                                    __html: backendTask.description || '<p class="text-[#999999]">No description provided for this task yet.</p>' 
-                                }}
-                            />
-                        </div>
-
-                        {/* Progress Section */}
-                        <div className="border border-[#EEEEEE] rounded-xl p-6">
-                            <h3 className="text-sm font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide mb-4">Progress</h3>
-                            <div className="bg-[#F7F7F7] rounded-lg p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <span className={`text-sm font-medium ${isOverEstimate ? 'text-[#EB5757]' : 'text-[#111111]'}`}>
-                                        {progressLabel}
-                                    </span>
-                                    <span className="text-sm text-[#666666]">
-                                        {formatHours(task.timeSpent)}h of {formatHours(task.estTime)}h
-                                        {isOverEstimate && (
-                                            <span className="ml-1 text-[#EB5757] font-['Manrope:Medium',sans-serif]">
-                                                (+{formatHours(overtimeHours)}h overtime)
-                                            </span>
-                                        )}
-                                    </span>
-                                </div>
-                                <div className="w-full h-2.5 bg-[#EEEEEE] rounded-full overflow-hidden">
-                                    <div
-                                        className={`h-full rounded-full transition-all ${progressBarColor}`}
-                                        style={{ width: `${Math.min(progress, 100)}%` }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Activity / Worklogs Section - Better organized */}
-                        <div className="border border-[#EEEEEE] rounded-xl p-6">
-                            <h3 className="text-sm font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide mb-4">Activity / Worklogs</h3>
-                            {isLoadingWorklogs ? (
-                                <div className="bg-[#F7F7F7] rounded-lg p-6 text-center">
-                                    <p className="text-[#999999] text-sm">Loading activities...</p>
-                                </div>
-                            ) : worklogsData?.result && worklogsData.result.length > 0 ? (
-                                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                                    {worklogsData.result.map((worklog: any, index: number) => {
-                                        // Calculate duration
-                                        let duration = '';
-                                        if (worklog.time_in_seconds) {
-                                            const hours = Math.floor(worklog.time_in_seconds / 3600);
-                                            const minutes = Math.floor((worklog.time_in_seconds % 3600) / 60);
-                                            if (hours > 0) {
-                                                duration = `${hours}h ${minutes}m`;
-                                            } else {
-                                                duration = `${minutes}m`;
-                                            }
-                                        } else if (worklog.hours) {
-                                            const hours = Math.floor(worklog.hours);
-                                            const minutes = Math.floor((worklog.hours - hours) * 60);
-                                            if (hours > 0) {
-                                                duration = `${hours}h ${minutes}m`;
-                                            } else {
-                                                duration = `${minutes}m`;
-                                            }
-                                        } else if (worklog.start_datetime && worklog.end_datetime) {
-                                            const start = new Date(worklog.start_datetime);
-                                            const end = new Date(worklog.end_datetime);
-                                            const diffMs = end.getTime() - start.getTime();
-                                            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                                            const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                                            if (diffHours > 0) {
-                                                duration = `${diffHours}h ${diffMinutes}m`;
-                                            } else {
-                                                duration = `${diffMinutes}m`;
-                                            }
-                                        }
-
-                                        // Format date - separate date and time
-                                        const worklogDate = worklog.date || worklog.start_datetime || worklog.created_at;
-                                        let dateStr = '';
-                                        let timeStr = '';
-                                        if (worklogDate) {
-                                            const date = new Date(worklogDate);
-                                            dateStr = date.toLocaleDateString('en-GB', { 
-                                                day: '2-digit', 
-                                                month: 'short', 
-                                                year: 'numeric'
-                                            });
-                                            timeStr = date.toLocaleTimeString('en-GB', { 
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            });
-                                        }
-
-                                        return (
-                                            <div key={worklog.id} className="flex gap-4 pb-4 border-b border-[#EEEEEE] last:border-0 last:pb-0">
-                                                {/* Timeline indicator */}
-                                                <div className="flex flex-col items-center flex-shrink-0">
-                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center">
-                                                        <Activity className="w-4 h-4 text-white" />
-                                                    </div>
-                                                    {index < worklogsData.result.length - 1 && (
-                                                        <div className="w-0.5 h-full bg-[#EEEEEE] mt-2 flex-1 min-h-[40px]" />
-                                                    )}
-                                                </div>
-                                                
-                                                {/* Content */}
-                                                <div className="flex-1 min-w-0 pb-2">
-                                                    {/* Header: Date, Time, Duration */}
-                                                    <div className="flex items-center gap-3 mb-2 flex-wrap">
-                                                        {dateStr && (
-                                                            <span className="text-[12px] text-[#666666] font-['Manrope:SemiBold',sans-serif]">
-                                                                {dateStr}
-                                                            </span>
-                                                        )}
-                                                        {timeStr && (
-                                                            <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
-                                                                {timeStr}
-                                                            </span>
-                                                        )}
-                                                        {duration && (
-                                                            <span className="px-2.5 py-1 rounded-full bg-[#FEF3F2] border border-[#FECACA] text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#ff3b3b]">
-                                                                {duration}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    
-                                                    {/* Description - Handles large text */}
-                                                    {worklog.description ? (
-                                                        <div className="text-[13px] text-[#111111] font-['Manrope:Regular',sans-serif] leading-relaxed break-words">
-                                                            {worklog.description}
-                                                        </div>
-                                                    ) : (
-                                                        <p className="text-[13px] text-[#999999] font-['Manrope:Regular',sans-serif] italic">
-                                                            No description provided
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            ) : (
-                                <div className="bg-[#F7F7F7] rounded-lg p-6 text-center">
-                                    <p className="text-[#999999] text-sm">No worklogs or activities recorded yet.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Right Sidebar: Task Metadata (4 columns) */}
-                    <div className="lg:col-span-4 space-y-6">
-                        <div className="border border-[#EEEEEE] rounded-xl p-5 space-y-4 sticky top-6">
-                            <div className="flex items-start gap-3">
-                                <User className="w-5 h-5 text-[#999999] mt-0.5 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs text-[#999999] mb-1.5 m-0 font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide">Assigned To</p>
-                                    <div className="flex items-center gap-2">
-                                        <Tooltip title={task.assignedTo}>
-                                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0">
-                                                {task.assignedTo.charAt(0)}
-                                            </div>
-                                        </Tooltip>
-                                        <p className="text-sm font-medium text-[#111111] m-0 truncate">{task.assignedTo}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <Divider className="my-3" />
-
-                            <div className="flex items-start gap-3">
-                                <Calendar className="w-5 h-5 text-[#999999] mt-0.5 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs text-[#999999] mb-1.5 m-0 font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide">Due Date</p>
-                                    <p className="text-sm font-medium text-[#111111] m-0">{task.dueDate}</p>
-                                </div>
-                            </div>
-
-                            <Divider className="my-3" />
-
-                            <div className="flex items-start gap-3">
-                                <FileText className="w-5 h-5 text-[#999999] mt-0.5 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs text-[#999999] mb-1.5 m-0 font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide">Workspace</p>
-                                    <p className="text-sm font-medium text-[#111111] m-0 truncate">{task.project}</p>
-                                </div>
-                            </div>
-
-                            <Divider className="my-3" />
-
-                            <div className="flex items-start gap-3">
-                                <ClipboardList className="w-5 h-5 text-[#999999] mt-0.5 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs text-[#999999] mb-1.5 m-0 font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide">Requirement</p>
-                                    <p className="text-sm font-medium text-[#111111] m-0 truncate">{requirementName}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+              </div>
             </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="border-b border-[#EEEEEE]">
+            <div className="flex items-center gap-8">
+              <TabButton
+                active={activeTab === 'details'}
+                onClick={() => setActiveTab('details')}
+                icon={FileText}
+                label="Details"
+              />
+              <TabButton
+                active={activeTab === 'steps'}
+                onClick={() => setActiveTab('steps')}
+                icon={ListTodo}
+                label={`Steps (${steps.length})`}
+              />
+            </div>
+          </div>
         </div>
-    );
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-8 bg-[#FAFAFA]">
+          {activeTab === 'details' && (
+            <div className="max-w-5xl mx-auto space-y-8">
+              {/* Description Section */}
+              <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
+                <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-[#ff3b3b]" />
+                  Description
+                </h3>
+                <p className="text-[14px] text-[#444444] font-['Inter:Regular',sans-serif] leading-relaxed whitespace-pre-wrap">
+                  {task.description || "No description provided."}
+                </p>
+              </div>
+
+              {/* Task Metadata */}
+              <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] flex items-center gap-2">
+                    <Briefcase className="w-5 h-5 text-[#ff3b3b]" />
+                    Task Overview
+                  </h3>
+                </div>
+
+                {/* Top Row: Context & People */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                  {/* Assigned To */}
+                  <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#F5F5F5]">
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Assigned To</p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm text-white font-['Manrope:Bold',sans-serif] text-[14px]">
+                        {task.assigned_to ? 'U' : '?'}
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate" title={task.assigned_to?.toString() || 'Unassigned'}>
+                          {task.assigned_to ? `User ${task.assigned_to}` : 'Unassigned'}
+                        </p>
+                        <p className="text-[11px] text-[#666666] truncate">Assignee</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Leader */}
+                  <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#F5F5F5]">
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Leader</p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#E0E0E0] border border-[#CCCCCC] flex items-center justify-center shadow-sm text-[#666666] font-['Manrope:Bold',sans-serif] text-[14px]">
+                        A
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate">Admin</p>
+                        <p className="text-[11px] text-[#666666] truncate">Supervisor</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Client */}
+                  <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#F5F5F5]">
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Client</p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-white border border-[#EEEEEE] flex items-center justify-center text-[#111111]">
+                        <Briefcase className="w-4 h-4" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate">Client</p>
+                        <p className="text-[11px] text-[#666666] truncate">Partner</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Requirement */}
+                  <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#F5F5F5]">
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Requirement</p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-white border border-[#EEEEEE] flex items-center justify-center text-[#111111]">
+                        <FolderOpen className="w-4 h-4" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate">
+                          {task.requirement_id ? `Requirement ${task.requirement_id}` : 'No Requirement'}
+                        </p>
+                        <p className="text-[11px] text-[#666666] truncate">Scope</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom Row: Timeline & Progress */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-[#EEEEEE]">
+                  {/* Timeline */}
+                  <div className="flex flex-col">
+                    <h4 className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-[#999999]" />
+                      Timeline
+                    </h4>
+                    <div className="bg-[#FAFAFA] p-5 rounded-xl border border-[#F5F5F5] flex items-center justify-between flex-1 h-full">
+                      <div>
+                        <p className="text-[11px] text-[#999999] mb-1">Start Date</p>
+                        <p className="text-[14px] font-['Inter:SemiBold',sans-serif] text-[#111111]">
+                          Not set
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-center px-4 opacity-30">
+                        <span className="h-[1px] w-12 bg-black mb-1"></span>
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[11px] text-[#999999] mb-1">Due Date</p>
+                        <p className="text-[14px] font-['Inter:SemiBold',sans-serif] text-[#111111]">
+                          {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy') : 'Not set'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Progress Metrics */}
+                  <div className="flex flex-col">
+                    <h4 className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4 flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-[#999999]" />
+                      Progress Tracking
+                    </h4>
+                    <div className="bg-[#FAFAFA] p-5 rounded-xl border border-[#F5F5F5] space-y-4 flex-1 h-full flex flex-col justify-center">
+                      <div className="flex justify-between items-end w-full">
+                        <div>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-[24px] font-['Manrope:Bold',sans-serif] text-[#111111] leading-none">0</span>
+                            <span className="text-[13px] text-[#666666] font-['Inter:Medium',sans-serif]">hrs estimated</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={`text-[18px] font-['Manrope:Bold',sans-serif] leading-none ${
+                            task.status === 'delayed' ? 'text-[#ff3b3b]' :
+                            task.status === 'completed' ? 'text-[#0F9D58]' :
+                            'text-[#2F80ED]'
+                          }`}>
+                            0%
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="relative pt-2 w-full">
+                        <div className="flex justify-between text-[10px] font-['Inter:SemiBold',sans-serif] text-[#999999] mb-1.5 uppercase tracking-wide">
+                          <span>0h</span>
+                          <span>0h logged</span>
+                        </div>
+                        <div className="w-full h-2 bg-[#E0E0E0] rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              task.status === 'delayed' ? 'bg-[#ff3b3b]' :
+                              task.status === 'completed' ? 'bg-[#0F9D58]' :
+                              'bg-[#2F80ED]'
+                            }`}
+                            style={{ width: '0%' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'steps' && (
+            <div className="max-w-5xl mx-auto space-y-8">
+              <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] flex items-center gap-2">
+                    <ListTodo className="w-5 h-5 text-[#ff3b3b]" />
+                    Steps Breakdown
+                  </h3>
+                  <button className="h-8 px-3 text-[12px] border border-[#EEEEEE] rounded-md hover:bg-[#FAFAFA] transition-colors flex items-center gap-2">
+                    <Plus className="w-4 h-4" /> Add Step
+                  </button>
+                </div>
+
+                {/* Table Header */}
+                <div className="grid grid-cols-[40px_1fr_1.5fr_1fr_1fr] gap-4 px-4 pb-3 mb-2 border-b border-[#EEEEEE] items-center">
+                  <div className="flex justify-center">
+                    <Checkbox
+                      checked={steps.length > 0 && selectedSteps.length === steps.length}
+                      onChange={(e) => {
+                        if (e.target.checked && steps.length > 0) {
+                          setSelectedSteps(steps.map((s: any) => s.id));
+                        } else {
+                          setSelectedSteps([]);
+                        }
+                      }}
+                      className="border-[#DDDDDD] [&.ant-checkbox-checked]:bg-[#ff3b3b] [&.ant-checkbox-checked]:border-[#ff3b3b]"
+                    />
+                  </div>
+                  <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Assignee</p>
+                  <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Role</p>
+                  <div className="flex justify-center">
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Est. Hours</p>
+                  </div>
+                  <div className="flex justify-center">
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Status</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {steps.length > 0 ? (
+                    steps.map((step: any) => (
+                      <StepRow
+                        key={step.id}
+                        step={step}
+                        selected={selectedSteps.includes(step.id)}
+                        onSelect={() => {
+                          if (selectedSteps.includes(step.id)) {
+                            setSelectedSteps(selectedSteps.filter(id => id !== step.id));
+                          } else {
+                            setSelectedSteps([...selectedSteps, step.id]);
+                          }
+                        }}
+                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-[#999999] text-[13px]">No steps defined</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right Drawer - Activity & Chat */}
+      <div className="w-[400px] border-l border-[#EEEEEE] flex flex-col bg-white rounded-tr-[24px] rounded-br-[24px]">
+        {/* Drawer Header */}
+        <div className="p-6 border-b border-[#EEEEEE]">
+          <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-[#ff3b3b]" />
+            Activity & Chat
+          </h3>
+          <p className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif] mt-1">
+            Task updates and comments
+          </p>
+        </div>
+
+        {/* Activity Feed */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {activityData.map((activity) => (
+            <div key={activity.id} className="flex gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                activity.isSystem
+                  ? 'bg-[#F0F0F0]'
+                  : 'bg-gradient-to-br from-[#666666] to-[#999999]'
+              }`}>
+                <span className={`text-[11px] font-['Manrope:Bold',sans-serif] ${
+                  activity.isSystem ? 'text-[#999999]' : 'text-white'
+                }`}>
+                  {activity.avatar}
+                </span>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className={`text-[13px] font-['Manrope:SemiBold',sans-serif] ${
+                    activity.isSystem ? 'text-[#999999]' : 'text-[#111111]'
+                  }`}>
+                    {activity.user}
+                  </span>
+                  <span className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">
+                    {activity.date}
+                  </span>
+                </div>
+
+                <div className={`${
+                  activity.type === 'comment'
+                    ? 'bg-[#F7F7F7] p-3 rounded-[12px] rounded-tl-none'
+                    : ''
+                }`}>
+                  <p className="text-[13px] text-[#444444] font-['Inter:Regular',sans-serif]">
+                    {activity.message}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Message Input */}
+        <div className="p-4 border-t border-[#EEEEEE] bg-white">
+          {attachments.length > 0 && (
+            <div className="mb-3 space-y-1">
+              {attachments.map((file, index) => (
+                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border border-[#EEEEEE]">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <Paperclip className="w-3.5 h-3.5 text-[#666666] shrink-0" />
+                    <span className="text-[11px] text-[#444444] truncate">{file.name}</span>
+                  </div>
+                  <button
+                    onClick={() => setAttachments(attachments.filter((_, i) => i !== index))}
+                    className="p-1 hover:bg-[#FAFAFA] rounded transition-colors shrink-0"
+                  >
+                    <X className="w-3.5 h-3.5 text-[#999999]" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="relative">
+            <textarea
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type a message or comment..."
+              className="w-full min-h-[80px] p-3 pr-10 rounded-[12px] border border-[#DDDDDD] bg-[#FAFAFA] text-[13px] focus:outline-none focus:border-[#ff3b3b]/30 resize-none font-['Inter:Medium',sans-serif]"
+            />
+            <div className="absolute bottom-3 right-3 flex gap-2">
+              <label htmlFor="file-upload-task" className="cursor-pointer text-[#999999] hover:text-[#666666] transition-colors">
+                <Paperclip className="w-4 h-4" />
+                <input
+                  id="file-upload-task"
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+              </label>
+              <button
+                onClick={handleSendMessage}
+                disabled={!messageText.trim() && attachments.length === 0}
+                className="text-[#ff3b3b] hover:text-[#E03131] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
+
+function TabButton({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: any; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        flex items-center gap-2 pb-4 relative transition-colors
+        ${active ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'}
+      `}
+    >
+      <Icon className="w-4 h-4" />
+      <span className="text-[13px] font-['Manrope:Bold',sans-serif]">{label}</span>
+      {active && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
+    </button>
+  );
+}
+
+function StatusBadge({ status, showLabel }: { status: string; showLabel?: boolean }) {
+  let color = "bg-[#F7F7F7] text-[#666666]";
+  let icon = <Clock className="w-3.5 h-3.5" />;
+  let label = status;
+
+  switch (status?.toLowerCase()) {
+    case 'completed':
+    case 'done':
+      color = "bg-[#E8F5E9] text-[#0F9D58]";
+      icon = <CheckCircle2 className="w-3.5 h-3.5" />;
+      label = "Completed";
+      break;
+    case 'delayed':
+      color = "bg-[#FFF5F5] text-[#ff3b3b]";
+      icon = <AlertCircle className="w-3.5 h-3.5" />;
+      label = "Delayed";
+      break;
+    case 'in-progress':
+    case 'in_progress':
+      color = "bg-[#E3F2FD] text-[#2F80ED]";
+      icon = <Loader2 className="w-3.5 h-3.5 animate-spin" />;
+      label = "In Progress";
+      break;
+    case 'todo':
+    case 'pending':
+      color = "bg-[#F7F7F7] text-[#666666]";
+      icon = <Clock className="w-3.5 h-3.5" />;
+      label = "To Do";
+      break;
+    case 'impediment':
+      color = "bg-[#FFF5F5] text-[#ff3b3b]";
+      icon = <AlertCircle className="w-3.5 h-3.5" />;
+      label = "Impediment";
+      break;
+    case 'in-review':
+    case 'review':
+      color = "bg-[#F3E5F5] text-[#9C27B0]";
+      icon = <Loader2 className="w-3.5 h-3.5" />;
+      label = "In Review";
+      break;
+  }
+
+  return (
+    <Tooltip title={label}>
+      <div className={`flex items-center justify-center w-7 h-7 rounded-full ${color} border border-current/10 cursor-help transition-transform hover:scale-110`}>
+        {icon}
+      </div>
+    </Tooltip>
+  );
+}
+
+function StepRow({
+  step,
+  selected = false,
+  onSelect
+}: {
+  step: any;
+  selected?: boolean;
+  onSelect?: () => void;
+}) {
+  return (
+    <div
+      onClick={onSelect}
+      className={`
+        group bg-white border rounded-[16px] p-4 transition-all duration-300 cursor-pointer relative z-10
+        ${selected
+          ? 'border-[#ff3b3b] shadow-[0_0_0_1px_#ff3b3b] bg-[#FFF5F5]'
+          : 'border-[#EEEEEE] hover:border-[#ff3b3b]/20 hover:shadow-lg'
+        }
+      `}
+    >
+      <div className="grid grid-cols-[40px_1fr_1.5fr_1fr_1fr] gap-4 items-center">
+        {/* Checkbox */}
+        <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={selected}
+            onChange={onSelect}
+            className="border-[#DDDDDD] [&.ant-checkbox-checked]:bg-[#ff3b3b] [&.ant-checkbox-checked]:border-[#ff3b3b]"
+          />
+        </div>
+
+        {/* Assignee */}
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center">
+            <span className="text-[11px] text-white font-['Manrope:Bold',sans-serif]">
+              {step.assignee ? step.assignee.charAt(0) : 'U'}
+            </span>
+          </div>
+          <span className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">{step.assignee || 'Unassigned'}</span>
+        </div>
+
+        {/* Role */}
+        <div>
+          <span className="text-[13px] text-[#666666] font-['Inter:Medium',sans-serif]">{step.role || 'N/A'}</span>
+        </div>
+
+        {/* Hours */}
+        <div className="flex justify-center">
+          <span className="text-[13px] text-[#111111] font-['Inter:Medium',sans-serif]">{step.estHours || 0} hrs</span>
+        </div>
+
+        {/* Status */}
+        <div className="flex justify-center">
+          <StatusBadge status={step.status || 'todo'} />
+        </div>
+      </div>
+    </div>
+  );
+}
+

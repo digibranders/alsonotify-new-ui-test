@@ -62,7 +62,6 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
         window.location.href = response.result;
       }
     } catch (error) {
-      console.error(error);
       message.error("Failed to connect to Microsoft Teams");
     } finally {
       setConnecting(false);
@@ -172,7 +171,6 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
       queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
       await refetchCalendarEvents();
     } catch (error: any) {
-      console.error("Error creating event:", error);
       const errorMessage = error?.response?.data?.message || "Failed to create event";
       message.error(errorMessage);
     } finally {

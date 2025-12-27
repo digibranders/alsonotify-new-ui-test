@@ -71,6 +71,7 @@ export const useCompleteSignup = () => {
       registerToken: string | null;
       companyName: string;
       businessType: string;
+      accountType: string;
       country: string;
       timezone: string;
     }) =>
@@ -78,6 +79,7 @@ export const useCompleteSignup = () => {
         params.registerToken,
         params.companyName,
         params.businessType,
+        params.accountType,
         params.country,
         params.timezone
       ),

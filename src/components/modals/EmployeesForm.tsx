@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Button, Input, Select, DatePicker } from "antd";
+import { Button, Input, Select, DatePicker, TimePicker } from "antd";
 import { ShieldCheck, Briefcase, User, Users, Calendar, Check } from "lucide-react";
 import { User as UserIcon } from "lucide-react";
 import dayjs from "dayjs";
@@ -12,6 +12,7 @@ export interface EmployeeFormData {
   role: string;
   email: string;
   phone: string;
+  countryCode: string;
   department: string;
   hourlyRate: string;
   dateOfJoining: string;
@@ -20,14 +21,15 @@ export interface EmployeeFormData {
   access: "Admin" | "Manager" | "Leader" | "Employee";
   salary: string;
   currency: string;
-  workingHours: string;
+  workingHoursStart: string;
+  workingHoursEnd: string;
   leaves: string;
   role_id?: number;
   employmentType?: 'Full-time' | 'Contract' | 'Part-time';
 }
 
 interface EmployeeFormProps {
-  initialData?: EmployeeFormData;
+  initialData?: any; // Allow loose typing for mapping input data
   onSubmit: (data: EmployeeFormData) => void;
   onCancel: () => void;
   isEditing?: boolean;
@@ -40,6 +42,7 @@ const defaultFormData: EmployeeFormData = {
   role: "",
   email: "",
   phone: "",
+  countryCode: "+91",
   department: "",
   hourlyRate: "",
   dateOfJoining: "",
@@ -48,11 +51,21 @@ const defaultFormData: EmployeeFormData = {
   access: "Employee",
   salary: "",
   currency: "INR",
-  workingHours: "",
+  workingHoursStart: "",
+  workingHoursEnd: "",
   leaves: "",
   role_id: undefined,
   employmentType: undefined,
 };
+
+const countryCodes = [
+  { code: "+1", country: "US" },
+  { code: "+91", country: "IN" },
+  { code: "+44", country: "UK" },
+  { code: "+61", country: "AU" },
+  { code: "+81", country: "JP" },
+  { code: "+49", country: "DE" },
+];
 
 export function EmployeeForm({
   initialData,
@@ -65,7 +78,41 @@ export function EmployeeForm({
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      // Parse initial data to fit new form structure
+      let start = "";
+      let end = "";
+
+      // Handle working hours if it comes as an object or string
+      if (initialData.workingHours && typeof initialData.workingHours === 'object') {
+        start = initialData.workingHours.start_time || "";
+        end = initialData.workingHours.end_time || "";
+      } else if (initialData.workingHoursStart) {
+        start = initialData.workingHoursStart;
+        end = initialData.workingHoursEnd;
+      }
+
+      // Handle phone number splitting if needed
+      let phone = initialData.phone || "";
+      let countryCode = initialData.countryCode || "+91";
+
+      // Simple logic to extract country code if phone starts with +
+      if (phone && phone.startsWith("+") && !initialData.countryCode) {
+        // Try to match known codes
+        const matched = countryCodes.find(c => phone.startsWith(c.code));
+        if (matched) {
+          countryCode = matched.code;
+          phone = phone.slice(matched.code.length).trim();
+        }
+      }
+
+      setFormData({
+        ...defaultFormData,
+        ...initialData,
+        workingHoursStart: start,
+        workingHoursEnd: end,
+        phone,
+        countryCode
+      });
     } else {
       setFormData(defaultFormData);
     }
@@ -214,31 +261,31 @@ export function EmployeeForm({
                   </div>
                 )}
               >
-                  <Option value="Employee">
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4" style={{ color: "#12B76A" }} />
-                      <span style={{ color: "#12B76A" }}>Employee</span>
-                    </div>
-                  </Option>
-                  <Option value="Admin">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4" style={{ color: "#7F56D9" }} />
-                      <span style={{ color: "#7F56D9" }}>Admin</span>
-                    </div>
-                  </Option>
-                  <Option value="Manager">
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="w-4 h-4" style={{ color: "#2E90FA" }} />
-                      <span style={{ color: "#2E90FA" }}>Manager</span>
-                    </div>
-                  </Option>
-                  <Option value="Leader">
-                    <div className="flex items-center gap-2">
-                      <Users className="w-4 h-4" style={{ color: "#7F56D9" }} />
-                      <span style={{ color: "#7F56D9" }}>Leader</span>
-                    </div>
-                  </Option>
-                </Select>
+                <Option value="Employee">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4" style={{ color: "#12B76A" }} />
+                    <span style={{ color: "#12B76A" }}>Employee</span>
+                  </div>
+                </Option>
+                <Option value="Admin">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4" style={{ color: "#7F56D9" }} />
+                    <span style={{ color: "#7F56D9" }}>Admin</span>
+                  </div>
+                </Option>
+                <Option value="Manager">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-4 h-4" style={{ color: "#2E90FA" }} />
+                    <span style={{ color: "#2E90FA" }}>Manager</span>
+                  </div>
+                </Option>
+                <Option value="Leader">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" style={{ color: "#7F56D9" }} />
+                    <span style={{ color: "#7F56D9" }}>Leader</span>
+                  </div>
+                </Option>
+              </Select>
               <style jsx global>{`
                 /* Gray background for all Select dropdowns (default) */
                 .employee-form-select .ant-select-selector {
@@ -327,30 +374,37 @@ export function EmployeeForm({
                 onChange={(v) => setFormData({ ...formData, department: String(v) })}
                 suffixIcon={<div className="text-gray-400">⌄</div>}
               >
+
                 {departments.length > 0 ? (
                   departments.map((dept) => (
                     <Option key={dept} value={dept}>{dept}</Option>
                   ))
                 ) : (
-                  <>
-                    <Option value="Development">Development</Option>
-                    <Option value="Design">Design</Option>
-                    <Option value="Marketing">Marketing</Option>
-                    <Option value="Operations">Operations</Option>
-                    <Option value="Management">Management</Option>
-                  </>
+                  <Option value="" disabled>No departments found</Option>
                 )}
               </Select>
             </div>
 
             <div className="space-y-2">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Contact Number</span>
-              <Input
-                placeholder="+1 234 567 890"
-                className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.phone ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
+              <div className="flex gap-2">
+                <Select
+                  className={`w-[85px] h-11 employee-form-select ${formData.countryCode ? 'employee-form-select-filled' : ''}`}
+                  value={formData.countryCode}
+                  onChange={(v) => setFormData({ ...formData, countryCode: String(v) })}
+                  suffixIcon={<div className="text-gray-400">⌄</div>}
+                >
+                  {countryCodes.map((c) => (
+                    <Option key={c.code} value={c.code}>{c.code} {c.country}</Option>
+                  ))}
+                </Select>
+                <Input
+                  placeholder="123 456 7890"
+                  className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.phone ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -367,13 +421,29 @@ export function EmployeeForm({
 
             <div className="space-y-2">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours</span>
-              <Input
-                type="number"
-                placeholder="e.g. 40"
-                className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.workingHours ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.workingHours}
-                onChange={(e) => setFormData({ ...formData, workingHours: e.target.value })}
-              />
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <TimePicker
+                    placeholder="Start Time"
+                    format="h:mm a"
+                    className={`w-full h-11 employee-form-datepicker ${formData.workingHoursStart ? 'employee-form-datepicker-filled' : ''}`}
+                    value={formData.workingHoursStart ? dayjs(formData.workingHoursStart, 'h:mm a') : null}
+                    onChange={(time) => setFormData({ ...formData, workingHoursStart: time ? time.format('h:mm a') : '' })}
+                    suffixIcon={<div className="text-gray-400">⌄</div>}
+                  />
+                </div>
+                <span className="text-[#666666]">to</span>
+                <div className="flex-1">
+                  <TimePicker
+                    placeholder="End Time"
+                    format="h:mm a"
+                    className={`w-full h-11 employee-form-datepicker ${formData.workingHoursEnd ? 'employee-form-datepicker-filled' : ''}`}
+                    value={formData.workingHoursEnd ? dayjs(formData.workingHoursEnd, 'h:mm a') : null}
+                    onChange={(time) => setFormData({ ...formData, workingHoursEnd: time ? time.format('h:mm a') : '' })}
+                    suffixIcon={<div className="text-gray-400">⌄</div>}
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">

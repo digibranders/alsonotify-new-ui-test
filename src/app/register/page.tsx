@@ -52,7 +52,7 @@ function RegisterForm() {
           if (data.success) {
             if (inviteToken) {
               message.success("Registration successful!");
-              router.push(`/company-details?t=${data.result.token}`);
+              router.push(`/company-details?t=${data.result.token}&type=${formData.accountType.toLowerCase()}`);
             } else {
               message.success("Please check your email to verify your account");
               router.push("/login");

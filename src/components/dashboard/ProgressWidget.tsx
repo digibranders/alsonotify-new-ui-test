@@ -47,7 +47,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
   const handleRangeTypeChange = (value: string) => {
     setSelectedRangeType(value);
     setIsDropdownOpen(false);
-    
+
     if (value === 'custom') {
       setCalendarOpen(true);
       // If we already have a custom range, use it; otherwise reset
@@ -62,7 +62,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
       }
       return;
     }
-    
+
     setCalendarOpen(false);
     const now = dayjs();
     let newRange: [Dayjs, Dayjs] | null = null;
@@ -169,13 +169,13 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
       // Second click: set end date
       let finalStart = startDate;
       let finalEnd = date;
-      
+
       if (date.isBefore(startDate)) {
         // If clicked date is before start, swap them
         finalStart = date;
         finalEnd = startDate;
       }
-      
+
       // Set the range and close calendar
       setStartDate(finalStart);
       setEndDate(finalEnd);
@@ -393,7 +393,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
                   const isCurrentMonth = date.month() === currentMonth.month();
                   const isInRange = isDateInRange(date);
                   const isStartOrEnd = isDateStartOrEnd(date);
-                  
+
                   return (
                     <button
                       key={index}
@@ -401,10 +401,10 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
                       className={`
                         w-8 h-8 rounded-lg text-[12px] font-['Manrope:Regular',sans-serif] transition-colors
                         ${!isCurrentMonth ? 'text-[#CCCCCC]' : 'text-[#111111]'}
-                        ${isStartOrEnd 
-                          ? 'bg-[#111111] text-white' 
-                          : isInRange 
-                            ? 'bg-[#F7F7F7]' 
+                        ${isStartOrEnd
+                          ? 'bg-[#111111] text-white'
+                          : isInRange
+                            ? 'bg-[#F7F7F7]'
                             : 'hover:bg-[#F7F7F7]'
                         }
                       `}
@@ -494,6 +494,11 @@ function ProgressCard({ title, data, isLoading = false, dateRangeLabel = 'this p
   // Filter out zero values for the chart only
   const activeData = chartData.filter(d => d.value > 0);
 
+  // Data to render: if total is 0, use a placeholder ring
+  const renderData = data.total === 0
+    ? [{ name: 'Empty', value: 1, color: '#f3f4f6' }]
+    : activeData;
+
   if (isLoading) {
     return (
       <div className="group relative flex flex-col bg-white rounded-[20px] border border-gray-100 p-5 h-full overflow-hidden">
@@ -527,19 +532,20 @@ function ProgressCard({ title, data, isLoading = false, dateRangeLabel = 'this p
           <ResponsiveContainer width="100%" height="100%">
             <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
               <Pie
-                data={activeData}
+                data={renderData}
                 cx="50%"
                 cy="50%"
                 innerRadius={45}
                 outerRadius={60}
-                paddingAngle={4}
-                cornerRadius={4}
+                paddingAngle={data.total === 0 ? 0 : 4}
+                cornerRadius={data.total === 0 ? 0 : 4}
                 dataKey="value"
                 stroke="#ffffff"
                 strokeWidth={2}
+                isAnimationActive={false}
               >
-                {activeData.map((entry, index) => (
-                  <Cell key={`cell - ${index} `} fill={entry.color} />
+                {renderData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
                 <Label
                   content={({ viewBox }) => {
@@ -577,7 +583,7 @@ function ProgressCard({ title, data, isLoading = false, dateRangeLabel = 'this p
                           </text>
                         );
                       }
-                      
+
                       // Otherwise show the total number
                       return (
                         <text
@@ -622,23 +628,20 @@ function ProgressCard({ title, data, isLoading = false, dateRangeLabel = 'this p
                   onStatusClick(item.name);
                 }
               }}
-              className={`flex items-center justify-between w-full py-2 border-b border-gray-50 last:border-0 group/item transition-colors rounded-lg px-2 -mx-2 ${
-                onStatusClick
+              className={`flex items-center justify-between w-full py-2 border-b border-gray-50 last:border-0 group/item transition-colors rounded-lg px-2 -mx-2 ${onStatusClick
                   ? 'hover:bg-gray-50/50 cursor-pointer'
                   : 'cursor-default'
-              } ${item.value === 0 ? 'opacity-60' : ''}`}
+                } ${item.value === 0 ? 'opacity-60' : ''}`}
             >
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full shrink-0 ring-2 ring-white shadow-sm" style={{ backgroundColor: item.color }} />
-                <span className={`text-[13px] font-medium font-['Manrope',sans-serif] whitespace-nowrap group-hover/item:text-[#111111] transition-colors ${
-                  item.value > 0 ? 'text-[#111111]' : 'text-[#666666]'
-                }`}>
+                <span className={`text-[13px] font-medium font-['Manrope',sans-serif] whitespace-nowrap group-hover/item:text-[#111111] transition-colors ${item.value > 0 ? 'text-[#111111]' : 'text-[#666666]'
+                  }`}>
                   {item.name === 'In Progress' ? 'In Progress' : item.name}
                 </span>
               </div>
-              <span className={`text-[16px] font-bold font-['Manrope',sans-serif] ${
-                item.value > 0 ? 'text-[#111111]' : 'text-[#666666]'
-              }`}>
+              <span className={`text-[16px] font-bold font-['Manrope',sans-serif] ${item.value > 0 ? 'text-[#111111]' : 'text-[#666666]'
+                }`}>
                 {item.value || 0}
               </span>
             </div>

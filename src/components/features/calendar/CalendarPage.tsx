@@ -7,6 +7,7 @@ import { useTasks } from '@/hooks/useTask';
 import { useMeetings } from '@/hooks/useMeeting';
 import { useLeaves } from '@/hooks/useLeave';
 import { useTeamsConnectionStatus, useCalendarEvents } from '@/hooks/useCalendar';
+import { usePublicHolidays } from '@/hooks/useHoliday';
 import { MicrosoftUserOAuth, createCalendarEvent, CreateEventPayload, GraphEvent } from '@/services/calendar';
 import { useEmployees, useCurrentUserCompany } from '@/hooks/useUser';
 import { useQueryClient } from '@tanstack/react-query';
@@ -27,7 +28,7 @@ interface CalendarEvent {
   title: string;
   date: string;
   time: string;
-  type: 'meeting' | 'deadline' | 'event' | 'leave';
+  type: 'meeting' | 'deadline' | 'event' | 'leave' | 'holiday';
   participants?: { name: string; avatar?: string }[];
   location?: string;
   description?: string;
@@ -72,9 +73,10 @@ export function CalendarPage() {
   const { data: tasks, isLoading: isLoadingTasks } = useTasks();
   const { data: meetings, isLoading: isLoadingMeetings } = useMeetings();
   const { data: leaves, isLoading: isLoadingLeaves } = useLeaves();
+  const { data: holidays, isLoading: isLoadingHolidays } = usePublicHolidays();
   const { data: teamsStatus, isLoading: isLoadingTeamsStatus, refetch: refetchTeamsStatus } = useTeamsConnectionStatus();
 
-  const isLoading = isLoadingTasks || isLoadingMeetings || isLoadingLeaves;
+  const isLoading = isLoadingTasks || isLoadingMeetings || isLoadingLeaves || isLoadingHolidays;
   const isConnected = teamsStatus?.result?.connected ?? false;
 
   // Connect to Teams
@@ -86,7 +88,6 @@ export function CalendarPage() {
         window.location.href = response.result;
       }
     } catch (error) {
-      console.error(error);
       message.error("Failed to connect to Microsoft Teams");
     } finally {
       setConnecting(false);
@@ -183,7 +184,6 @@ export function CalendarPage() {
       // Refresh calendar events
       await refetchCalendarEvents();
     } catch (error: any) {
-      console.error("Error creating event:", error);
       const errorMessage = error?.response?.data?.message || "Failed to create event";
       message.error(errorMessage);
     } finally {
@@ -286,8 +286,26 @@ export function CalendarPage() {
       });
     }
 
+    // Process Public Holidays
+    if (holidays?.result) {
+      holidays.result.forEach((holiday: any) => {
+        if (holiday.is_deleted) return; // Skip deleted holidays
+        allEvents.push({
+          id: `holiday-${holiday.id}`,
+          title: holiday.name,
+          date: dayjs(holiday.date).format('YYYY-MM-DD'),
+          time: 'All Day',
+          type: 'holiday',
+          description: `Public Holiday: ${holiday.name}`,
+          status: 'holiday',
+          color: '#8b5cf6',
+          raw: holiday
+        });
+      });
+    }
+
     return allEvents;
-  }, [tasks, meetings, leaves, calendarEvents]);
+  }, [tasks, meetings, leaves, calendarEvents, holidays]);
 
   // Calendar Grid Generation
   const calendarDays = useMemo(() => {
@@ -743,6 +761,10 @@ export function CalendarPage() {
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full bg-[#f59e0b]" />
                   <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">Leaves</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-[#8b5cf6]" />
+                  <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">Holidays</span>
                 </div>
               </div>
             </div>

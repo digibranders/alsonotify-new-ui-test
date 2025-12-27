@@ -164,7 +164,6 @@ export function AIChatWidget() {
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error("AIChatWidget handleSubmit error", error);
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: "assistant",

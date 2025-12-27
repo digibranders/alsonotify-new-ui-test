@@ -7,7 +7,7 @@ import { NoteComposerModal } from '../../common/NoteComposerModal';
 import { NoteViewModal } from '../../common/NoteViewModal';
 import { getNotes, createNote, updateNote, deleteNote, archiveNote, unarchiveNote, Note, NoteType, ChecklistItem } from '../../../services/notes';
 import { ApiError, getErrorMessage } from '../../../types/errors';
-import { hexToRgba, DEFAULT_NOTE_COLOR } from '../../../utils/colorUtils';
+import { DEFAULT_NOTE_COLOR } from '../../../utils/colorUtils';
 import { isArray } from '../../../utils/validation';
 import { normalizeNoteType } from '../../../utils/noteUtils';
 
@@ -129,7 +129,7 @@ export function NotesPage() {
     if (!items || items.length === 0) {
       return undefined;
     }
-    
+
     return items.map(item => ({
       text: item.text,
       checked: item.isChecked,
@@ -210,18 +210,18 @@ export function NotesPage() {
     if (!query.trim()) {
       return true;
     }
-    
+
     const lowerQuery = query.toLowerCase();
     const titleMatch = note.title.toLowerCase().includes(lowerQuery);
-    const contentMatch = note.content 
+    const contentMatch = note.content
       ? note.content.toLowerCase().includes(lowerQuery)
       : false;
-    
+
     // Also search in checklist items
-    const itemsMatch = note.items?.some(item => 
+    const itemsMatch = note.items?.some(item =>
       item.text.toLowerCase().includes(lowerQuery)
     ) || false;
-    
+
     return titleMatch || contentMatch || itemsMatch;
   }, []);
 
@@ -269,25 +269,18 @@ export function NotesPage() {
   useEffect(() => {
     const calculateCardHeight = () => {
       if (!scrollContainerRef.current) return;
-      
+
       const containerHeight = scrollContainerRef.current.clientHeight;
       if (containerHeight <= 0) return;
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NotesPage.tsx:calculateCardHeight',message:'Calculating card height',data:{containerHeight,calculatedHeight:Math.floor((containerHeight - 48) / 2)},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
-      
+
       // 2 rows + 1 gap (24px) + bottom padding (24px) = containerHeight
       // cardHeight * 2 + 24 + 24 = containerHeight
       // cardHeight = (containerHeight - 48) / 2
       const newCardHeight = Math.floor((containerHeight - 48) / 2);
-      
+
       // Set minimum height of 200px and maximum of 350px for reasonable card sizes
       if (newCardHeight >= 200 && newCardHeight <= 350) {
         setCardHeight(newCardHeight);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NotesPage.tsx:calculateCardHeight',message:'Card height set',data:{newCardHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
       }
     };
 
@@ -317,7 +310,7 @@ export function NotesPage() {
 
     // Also listen to window resize as fallback
     window.addEventListener('resize', calculateCardHeight);
-    
+
     return () => {
       if (resizeObserver) {
         resizeObserver.disconnect();
@@ -343,23 +336,18 @@ export function NotesPage() {
         }}
       >
         {/* Notes Grid */}
-        <div 
+        <div
           className="h-full overflow-y-auto"
           ref={(el) => {
             scrollContainerRef.current = el;
-            // #region agent log
-            if (el) {
-              fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NotesPage.tsx:283',message:'Scroll container dimensions',data:{scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,offsetHeight:el.offsetHeight,overflowY:window.getComputedStyle(el).overflowY},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'A'})}).catch(()=>{});
-              // Trigger calculation when ref is set
-              if (el.clientHeight > 0) {
-                const containerHeight = el.clientHeight;
-                const newCardHeight = Math.floor((containerHeight - 48) / 2);
-                if (newCardHeight >= 200 && newCardHeight <= 350) {
-                  setCardHeight(newCardHeight);
-                }
+            // Trigger calculation when ref is set
+            if (el && el.clientHeight > 0) {
+              const containerHeight = el.clientHeight;
+              const newCardHeight = Math.floor((containerHeight - 48) / 2);
+              if (newCardHeight >= 200 && newCardHeight <= 350) {
+                setCardHeight(newCardHeight);
               }
             }
-            // #endregion
           }}
         >
           {isLoading ? (
@@ -379,15 +367,11 @@ export function NotesPage() {
               </p>
             </div>
           ) : (
-            <div 
-              className="grid grid-cols-4 gap-6 pb-6" 
+            <div
+              className="grid grid-cols-4 gap-6 pb-6"
               style={{ gridAutoRows: `${cardHeight}px` }}
               ref={(el) => {
-                // #region agent log
-                if (el) {
-                  fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NotesPage.tsx:301',message:'Grid container dimensions',data:{scrollHeight:el.scrollHeight,offsetHeight:el.offsetHeight,childrenCount:el.children.length,gridAutoRows:window.getComputedStyle(el).gridAutoRows,cardHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'B'})}).catch(()=>{});
-                }
-                // #endregion
+                // Grid container ref
               }}
             >
               {filteredNotes.map((note) => (
@@ -428,11 +412,11 @@ export function NotesPage() {
           items: editingNote.items ? editingNote.items.map((item, index) => {
             // Handle both backend format {text, checked} and frontend format ChecklistItem
             const isBackendFormat = 'checked' in item && !('isChecked' in item);
-            
+
             return {
               id: item.id || `item-${editingNote.id}-${index}`,
               text: item.text || '',
-              isChecked: isBackendFormat 
+              isChecked: isBackendFormat
                 ? (item as { checked?: boolean }).checked || false
                 : (item as ChecklistItem).isChecked || false,
               order: item.order !== undefined ? item.order : index,
@@ -477,24 +461,20 @@ interface NoteCardProps {
 
 function NoteCard({ note, onArchive, onUnarchive, onDelete, onEdit, onClick }: NoteCardProps) {
   const noteColor = note.color || DEFAULT_NOTE_COLOR;
-  const borderColorNormal = hexToRgba(noteColor, 0.5);
+  const borderColorNormal = '#EEEEEE';
   const borderColorHover = noteColor;
 
   return (
-    <div 
-      className="relative group w-full h-full" 
+    <div
+      className="relative group w-full h-full"
       ref={(el) => {
-        // #region agent log
-        if (el) {
-          fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'NotesPage.tsx:393',message:'NoteCard dimensions',data:{offsetHeight:el.offsetHeight,offsetWidth:el.offsetWidth,computedHeight:window.getComputedStyle(el).height,computedWidth:window.getComputedStyle(el).width,aspectRatio:el.offsetWidth/el.offsetHeight},timestamp:Date.now(),sessionId:'debug-session',runId:'run3',hypothesisId:'C'})}).catch(()=>{});
-        }
-        // #endregion
+        // NoteCard ref
       }}
     >
       {/* Card with white background */}
       <div
         className="relative h-full w-full bg-white rounded-xl border transition-all duration-300 p-4 flex flex-col cursor-pointer hover:shadow-lg"
-        style={{ 
+        style={{
           borderColor: borderColorNormal,
           borderWidth: '1px'
         }}
@@ -508,7 +488,7 @@ function NoteCard({ note, onArchive, onUnarchive, onDelete, onEdit, onClick }: N
           // Only trigger if click is not on action buttons
           const target = e.target as HTMLElement;
           const isActionButton = target.closest('button');
-          
+
           if (!isActionButton) {
             onClick(note);
           }
@@ -562,7 +542,7 @@ function NoteCard({ note, onArchive, onUnarchive, onDelete, onEdit, onClick }: N
         {/* Content */}
         <div className="flex-1 overflow-hidden min-h-0">
           {normalizeNoteType(note.type) === 'text' && note.content && (
-            <div 
+            <div
               className="font-['Inter:Regular',sans-serif] text-[13px] text-[#666666] line-clamp-[8] leading-relaxed prose prose-sm max-w-none [&>p]:mb-2 [&>p]:last:mb-0 h-full"
               dangerouslySetInnerHTML={{ __html: note.content }}
             />
@@ -574,7 +554,7 @@ function NoteCard({ note, onArchive, onUnarchive, onDelete, onEdit, onClick }: N
                 .filter((item) => {
                   // Handle both backend format {checked} and frontend format {isChecked}
                   const isBackendFormat = 'checked' in item && !('isChecked' in item);
-                  return isBackendFormat 
+                  return isBackendFormat
                     ? !(item as { checked?: boolean }).checked
                     : !(item as ChecklistItem).isChecked;
                 })
@@ -597,13 +577,13 @@ function NoteCard({ note, onArchive, onUnarchive, onDelete, onEdit, onClick }: N
               {(() => {
                 const completedItems = note.items.filter((item) => {
                   const isBackendFormat = 'checked' in item && !('isChecked' in item);
-                  return isBackendFormat 
+                  return isBackendFormat
                     ? (item as { checked?: boolean }).checked
                     : (item as ChecklistItem).isChecked;
                 });
-                
+
                 if (completedItems.length === 0) return null;
-                
+
                 return (
                   <div className="mt-2 pt-2 border-t border-[#EEEEEE] flex-shrink-0">
                     <div className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999] mb-1 uppercase">

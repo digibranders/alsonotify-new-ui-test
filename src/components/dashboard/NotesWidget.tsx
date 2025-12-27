@@ -184,30 +184,10 @@ function NoteCard({ note, onArchive, onDelete, onClick }: {
     onClick?: (note: Note) => void;
 }) {
 
-    // Helper function to convert hex to rgba with opacity
-    const hexToRgba = (hex: string, opacity: number): string => {
-        // Remove # if present
-        let cleanHex = hex.replace('#', '');
 
-        // Handle 3-digit hex
-        if (cleanHex.length === 3) {
-            cleanHex = cleanHex.split('').map(char => char + char).join('');
-        }
-
-        // Handle 6-digit hex
-        if (cleanHex.length === 6) {
-            const r = parseInt(cleanHex.slice(0, 2), 16);
-            const g = parseInt(cleanHex.slice(2, 4), 16);
-            const b = parseInt(cleanHex.slice(4, 6), 16);
-            return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-        }
-
-        // Fallback to default color
-        return `rgba(255, 59, 59, ${opacity})`;
-    };
 
     const noteColor = note.color || '#ff3b3b';
-    const borderColorNormal = hexToRgba(noteColor, 0.5);
+    const borderColorNormal = '#EEEEEE';
     const borderColorHover = noteColor;
 
     return (

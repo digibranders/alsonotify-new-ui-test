@@ -13,88 +13,111 @@ import {
 
 const { Option } = Select;
 
+const countryCodes = [
+    { code: "+1", country: "US" },
+    { code: "+91", country: "IN" },
+    { code: "+44", country: "UK" },
+    { code: "+61", country: "AU" },
+    { code: "+81", country: "JP" },
+    { code: "+49", country: "DE" },
+];
+
 export function ProfilePage() {
     const { message } = App.useApp();
-    const [isEditing, setIsEditing] = useState(false);
-    const { data: userDetailsData } = useUserDetails();
+    const { data: currentUserData } = useUserDetails();
+    const user = currentUserData?.result?.user;
     const updateProfileMutation = useUpdateProfile();
-
-    // Get user data from localStorage or backend
-    const user = useMemo(() => {
-        // First try localStorage (most up-to-date after login)
-        try {
-            if (typeof window !== "undefined") {
-                const localUser = JSON.parse(
-                    localStorage.getItem("user") || "{}"
-                );
-                if (localUser && Object.keys(localUser).length > 0) {
-                    return localUser;
-                }
-            }
-        } catch (error) {
-            console.error("Error reading user from localStorage:", error);
-        }
-        // Fallback to API data - backend returns { result: { user: {...user_profile nested inside...}, access: {...}, token: "..." } }
-        const apiUser =
-            userDetailsData?.result?.user || userDetailsData?.result || {};
-        return apiUser;
-    }, [userDetailsData]);
 
     // Initialize profile state with real data or fallback to mock data
     const initialProfile = useMemo(() => {
-        const userProfile = user?.user_profile || {};
+        // user_profile is an array in the User model definition
+        const rawUserProfile = user?.user_profile;
+        const userProfile = Array.isArray(rawUserProfile) ? rawUserProfile[0] : rawUserProfile || {};
+
         const fullName = user?.name || "";
         const nameParts = fullName.split(" ");
 
+        // Robust mobile number resolution (same as EmployeesPage)
+        const fullMobileNumber =
+            userProfile?.mobile_number ||
+            user?.mobile_number ||
+            userProfile?.phone ||
+            user?.phone ||
+            "";
+
+        let phone = fullMobileNumber;
+        let countryCode = "+91";
+
+        // Parse country code
+        if (phone && phone.startsWith("+")) {
+            const matched = countryCodes.find(c => phone.startsWith(c.code));
+            if (matched) {
+                countryCode = matched.code;
+                phone = phone.replace(matched.code, "").trim();
+            }
+        } else if (!phone) {
+            // Default if no phone
+            phone = "";
+        }
+
+        // Parse address
+        const fullAddress = userProfile?.address || "";
+        const addressParts = fullAddress.split(",").map((p: string) => p.trim());
+        const addressLine1 = addressParts[0] || "";
+        const addressLine2 = addressParts.slice(1).join(", ") || "";
+
+        // Parse Working Hours
+        const workingHours = userProfile?.working_hours || {};
+        const startTime = (workingHours as any)?.start_time || "09:30";
+        const endTime = (workingHours as any)?.end_time || "18:30";
+
         return {
-            firstName: userProfile?.first_name || nameParts[0] || "Satyam", // Mock fallback
-            middleName: userProfile?.middle_name || nameParts[1] || "",
-            lastName:
-                userProfile?.last_name ||
-                nameParts.slice(2).join(" ") ||
-                nameParts[1] ||
-                "Yadav", // Mock fallback
-            email: user?.email || "gaurav.jadhav@alsonotify.com", // Mock fallback
-            phone:
-                userProfile?.mobile_number || user?.phone || "+91 98765 43210", // Mock fallback
-            designation:
-                userProfile?.designation ||
-                user?.designation ||
-                "Senior Product Designer", // Mock fallback
+            firstName: userProfile?.first_name || nameParts[0] || "",
+            middleName: userProfile?.middle_name || (nameParts.length > 2 ? nameParts[1] : "") || "",
+            lastName: userProfile?.last_name || nameParts.slice(nameParts.length > 2 ? 2 : 1).join(" ") || "",
+            email: user?.email || "",
+            phone: phone,
+            countryCode: countryCode,
+            designation: userProfile?.designation || user?.designation || "",
             dob: userProfile?.date_of_birth
                 ? new Date(userProfile.date_of_birth)
-                      .toISOString()
-                      .split("T")[0]
-                : "1995-08-15", // Mock fallback
-            gender: userProfile?.gender || "Male", // Mock fallback
-            employeeId:
-                user?.employee_id || userProfile?.employee_id || "AN-0042", // Mock fallback
-            addressLine1:
-                userProfile?.address?.split(",")[0] ||
-                userProfile?.address ||
-                "B-402, Green Valley Apartments", // Mock fallback
-            addressLine2:
-                userProfile?.address?.split(",").slice(1).join(",") ||
-                "Tech Park Road, Whitefield", // Mock fallback
-            city: userProfile?.city || "Bangalore", // Mock fallback
-            state: userProfile?.state || "Karnataka", // Mock fallback
-            zipCode: userProfile?.zipcode || "560066", // Mock fallback
-            country: userProfile?.country || "India", // Mock fallback
-            emergencyContactName:
-                (userProfile?.emergency_contact as any)?.name || "Ravi Yadav", // Mock fallback
-            emergencyRelationship:
-                (userProfile?.emergency_contact as any)?.relationship ||
-                "Brother", // Mock fallback
-            emergencyContactNumber:
-                (userProfile?.emergency_contact as any)?.phone ||
-                "+91 98765 00000", // Mock fallback
+                    .toISOString()
+                    .split("T")[0]
+                : "",
+            gender: userProfile?.gender || "",
+            employeeId: user?.employee_id || userProfile?.employee_id || "",
+
+            // Employment Details
+            employmentType: userProfile?.employment_type || "Full-time",
+            dateOfJoining: userProfile?.date_of_joining
+                ? new Date(userProfile.date_of_joining)
+                    .toISOString()
+                    .split("T")[0]
+                : "",
+            experience: userProfile?.experience || 0,
+            startTime: startTime,
+            endTime: endTime,
+            salary: userProfile?.salary_yearly || 0,
+            hourlyRate: userProfile?.hourly_rates || 0,
+            leaves: userProfile?.no_of_leaves || 0,
+
+            addressLine1: addressLine1,
+            addressLine2: addressLine2,
+            city: userProfile?.city || "",
+            state: userProfile?.state || "",
+            zipCode: userProfile?.zipcode || "",
+            country: userProfile?.country || "India",
+            emergencyContactName: (userProfile?.emergency_contact as any)?.name || "",
+            emergencyRelationship: (userProfile?.emergency_contact as any)?.relationship || "",
+            emergencyContactNumber: (userProfile?.emergency_contact as any)?.phone || "",
             newPassword: "",
             confirmPassword: "",
         };
     }, [user]);
 
+    const [isEditing, setIsEditing] = useState(false);
     const [profile, setProfile] = useState(initialProfile);
-    
+
     // Notification preferences state
     const [notificationPreferences, setNotificationPreferences] = useState({
         emailNotifications: true,
@@ -123,10 +146,7 @@ export function ProfilePage() {
                 }
             }
         } catch (error) {
-            console.error(
-                "Error reading document types from localStorage:",
-                error
-            );
+            // Error reading document types from localStorage
         }
 
         return DEFAULT_DOCUMENT_TYPES;
@@ -249,9 +269,8 @@ export function ProfilePage() {
                     placeholder={placeholder}
                     type={type}
                     disabled={!isEditing}
-                    className={`h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Manrope:Medium',sans-serif] text-[13px] ${
-                        !isEditing ? "bg-[#FAFAFA] text-[#666666]" : "bg-white"
-                    }`}
+                    className={`h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Manrope:Medium',sans-serif] text-[13px] ${!isEditing ? "bg-[#FAFAFA] text-[#666666]" : "bg-white"
+                        }`}
                 />
             </div>
         );
@@ -274,9 +293,8 @@ export function ProfilePage() {
                         setProfile({ ...profile, [field]: String(v) })
                     }
                     disabled={!isEditing}
-                    className={`w-full h-11 ${
-                        !isEditing ? "bg-[#FAFAFA]" : ""
-                    }`}
+                    className={`w-full h-11 ${!isEditing ? "bg-[#FAFAFA]" : ""
+                        }`}
                 >
                     {options.map((opt) => (
                         <Option key={opt} value={opt}>
@@ -291,11 +309,14 @@ export function ProfilePage() {
     const handleSaveChanges = async () => {
         try {
             // Prepare user profile payload
+            const fullMobileNumber = `${profile.countryCode || "+91"} ${profile.phone}`.trim();
             const userProfilePayload = {
+                name: `${profile.firstName} ${profile.lastName}`.trim(),
+                email: profile.email,
                 first_name: profile.firstName,
                 middle_name: profile.middleName || null,
                 last_name: profile.lastName,
-                mobile_number: profile.phone,
+                mobile_number: fullMobileNumber,
                 designation: profile.designation,
                 date_of_birth: profile.dob
                     ? new Date(profile.dob).toISOString()
@@ -319,7 +340,6 @@ export function ProfilePage() {
             message.success("Profile updated successfully!");
             setIsEditing(false);
         } catch (error: any) {
-            console.error("Error updating profile:", error);
             const errorMessage =
                 error?.response?.data?.message || "Failed to update profile";
             message.error(errorMessage);
@@ -378,13 +398,12 @@ export function ProfilePage() {
                                 <span className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666]">
                                     Profile Completion
                                 </span>
-                                <span className={`text-[12px] font-['Manrope:SemiBold',sans-serif] ${
-                                    profileCompletion === 100 
-                                        ? 'text-[#2ecc71]' 
-                                        : profileCompletion >= 50 
-                                        ? 'text-[#3b8eff]' 
+                                <span className={`text-[12px] font-['Manrope:SemiBold',sans-serif] ${profileCompletion === 100
+                                    ? 'text-[#2ecc71]'
+                                    : profileCompletion >= 50
+                                        ? 'text-[#3b8eff]'
                                         : 'text-[#ff3b3b]'
-                                }`}>
+                                    }`}>
                                     {profileCompletion}%
                                 </span>
                             </div>
@@ -392,11 +411,11 @@ export function ProfilePage() {
                                 percent={profileCompletion}
                                 showInfo={false}
                                 strokeColor={
-                                    profileCompletion === 100 
-                                        ? "#2ecc71" 
-                                        : profileCompletion >= 50 
-                                        ? "#3b8eff" 
-                                        : "#ff3b3b"
+                                    profileCompletion === 100
+                                        ? "#2ecc71"
+                                        : profileCompletion >= 50
+                                            ? "#3b8eff"
+                                            : "#ff3b3b"
                                 }
                                 trailColor="#E5E5E5"
                                 className="profile-completion-progress"
@@ -499,7 +518,36 @@ export function ProfilePage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         {renderField("Email Address", profile.email, "email")}
-                        {renderField("Phone Number", profile.phone, "phone")}
+                        <div className="space-y-2">
+                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                Phone Number
+                            </div>
+                            <div className="flex gap-2">
+                                <Select
+                                    value={profile.countryCode}
+                                    onChange={(v) =>
+                                        setProfile({ ...profile, countryCode: String(v) })
+                                    }
+                                    disabled={!isEditing}
+                                    className={`w-[85px] h-11 ${!isEditing ? "bg-[#FAFAFA]" : ""}`}
+                                    suffixIcon={<div className="text-gray-400">⌄</div>}
+                                >
+                                    {countryCodes.map((c) => (
+                                        <Option key={c.code} value={c.code}>{c.code} {c.country}</Option>
+                                    ))}
+                                </Select>
+                                <Input
+                                    value={profile.phone}
+                                    onChange={(e) =>
+                                        setProfile({ ...profile, phone: e.target.value })
+                                    }
+                                    placeholder="123 456 7890"
+                                    disabled={!isEditing}
+                                    className={`flex-1 h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Manrope:Medium',sans-serif] text-[13px] ${!isEditing ? "bg-[#FAFAFA] text-[#666666]" : "bg-white"
+                                        }`}
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -514,6 +562,111 @@ export function ProfilePage() {
                             profile.employeeId,
                             "employeeId"
                         )}
+                    </div>
+                </section>
+
+                <Divider className="my-8 bg-[#EEEEEE]" />
+
+                {/* Employment Details */}
+                <section className="mb-10">
+                    <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
+                        Employment Details
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        {/* Employment Type - Read Only */}
+                        <div className="space-y-2">
+                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                Employment Type
+                            </div>
+                            <Input
+                                value={profile.employmentType}
+                                disabled={true}
+                                className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                            />
+                        </div>
+                        {/* Date of Joining - Read Only */}
+                        <div className="space-y-2">
+                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                Date of Joining
+                            </div>
+                            <Input
+                                value={profile.dateOfJoining}
+                                type="date"
+                                disabled={true}
+                                className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        {/* Experience */}
+                        <div className="space-y-2">
+                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                Experience (Years)
+                            </div>
+                            <Input
+                                value={profile.experience}
+                                disabled={true}
+                                className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                            />
+                        </div>
+                        {/* Working Hours */}
+                        <div className="col-span-2 space-y-2">
+                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                Working Hours
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    value={profile.startTime}
+                                    disabled={true}
+                                    className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                                />
+                                <span className="text-[#666666] text-sm">to</span>
+                                <Input
+                                    value={profile.endTime}
+                                    disabled={true}
+                                    className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Salary */}
+                        <div className="space-y-2">
+                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                Salary (Yearly)
+                            </div>
+                            <Input
+                                value={profile.salary}
+                                disabled={true}
+                                prefix="$"
+                                className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                            />
+                        </div>
+                        {/* Hourly Rate */}
+                        <div className="space-y-2">
+                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                Hourly Rate
+                            </div>
+                            <Input
+                                value={profile.hourlyRate}
+                                disabled={true}
+                                suffix="/Hr"
+                                className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                            />
+                        </div>
+                        {/* Leaves Balance */}
+                        <div className="space-y-2">
+                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                Leaves Balance
+                            </div>
+                            <Input
+                                value={profile.leaves}
+                                disabled={true}
+                                className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                            />
+                        </div>
                     </div>
                 </section>
 
