@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Button,
     Input,
@@ -16,70 +16,20 @@ import {
     Trash2,
     Users,
     Download,
-    Search,
     ChevronLeft,
     ChevronRight
 } from 'lucide-react';
+import axiosApi from '../../../config/axios';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { PartnerRow, Partner } from './rows/PartnerRow';
 import { BankOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined } from '@ant-design/icons';
 
 // Mock Data
-const initialPartners: Partner[] = [
-    {
-        id: 1,
-        name: "Satyam Yadav",
-        company: "Triem Security",
-        type: 'ORGANIZATION',
-        email: "satyam@triem.in",
-        phone: "+91 98765 43210",
-        country: "India",
-        status: 'active',
-        requirements: 5,
-        onboarding: "15-Nov-2025"
-    },
-    {
-        id: 2,
-        name: "Alice Johnson",
-        company: "Alice Johnson",
-        type: 'INDIVIDUAL',
-        email: "alice@design.com",
-        phone: "+44 7700 900077",
-        country: "UK",
-        status: 'active',
-        requirements: 2,
-        onboarding: "20-Nov-2025"
-    },
-    {
-        id: 3,
-        name: "John Smith",
-        company: "TechCorp Inc.",
-        type: 'ORGANIZATION',
-        email: "john@techcorp.com",
-        phone: "+1 555 0123",
-        country: "USA",
-        status: 'active',
-        requirements: 8,
-        onboarding: "01-Nov-2025"
-    },
-    {
-        id: 4,
-        name: "Michael Brown",
-        company: "MB Solutions",
-        type: 'INDIVIDUAL',
-        email: "michael@mb.com",
-        phone: "+1 444 555 6666",
-        country: "USA",
-        status: 'inactive',
-        requirements: 0,
-        onboarding: "10-Oct-2025"
-    }
-];
-
 const { Option } = Select;
 
-export function PartnersPage() {
-    const [partners, setPartners] = useState<Partner[]>(initialPartners);
+export function PartnersPageContent() {
+    const [partners, setPartners] = useState<Partner[]>([]);
+    const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
     const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
@@ -90,6 +40,44 @@ export function PartnersPage() {
     });
     const [selectedPartners, setSelectedPartners] = useState<number[]>([]);
     const [form] = Form.useForm();
+
+    const fetchPartners = async () => {
+        try {
+            setLoading(true);
+            const response = await axiosApi.get('/user/outsource');
+            if (response.data.success) {
+                const mappedPartners: Partner[] = response.data.result.map((item: any) => ({
+                    id: item.association_id || item.invite_id, // Handle both active and pending
+                    name: item.name || '',
+                    company: item.company || '',
+                    type: 'ORGANIZATION', // Default or derived if available
+                    email: item.email || '',
+                    phone: '', // Not in simplified response
+                    country: '', // Not in simplified response
+                    status: item.is_active || item.status === 'ACCEPTED' ? 'active' : 'inactive', // Simplified status mapping
+                    requirements: 0,
+                    onboarding: item.associated_date ? new Date(item.associated_date).toLocaleDateString() : '-'
+                }));
+                // Filter out pending invites if needed, or show them. User asked to connect data, so we show all.
+                // Assuming 'status' logic: active = connected, inactive = pending/deactivated? 
+                // The current tabs are 'active' | 'inactive'. 
+                // Let's map pending/invited to 'inactive' or maybe keep them visible. 
+                // For now, mapping PENDING status from backend to 'inactive' tab might be confusing if they are just invited.
+                // But the UI only has Active/Deactivated. Let's start with this mapping.
+
+                setPartners(mappedPartners);
+            }
+        } catch (error) {
+            console.error('Failed to fetch partners:', error);
+            message.error('Failed to load partners');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchPartners();
+    }, []);
 
     // Pagination
     const [pagination, setPagination] = useState({
@@ -125,12 +113,6 @@ export function PartnersPage() {
     const handleAdd = () => {
         setEditingPartner(null);
         form.resetFields();
-        form.setFieldsValue({
-            type: 'ORGANIZATION',
-            country: 'USA',
-            onboarding: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-'),
-            requirements: 0,
-        });
         setIsModalOpen(true);
     };
 
@@ -154,24 +136,25 @@ export function PartnersPage() {
         });
     };
 
-    const handleModalOk = () => {
-        form.validateFields().then(values => {
-            const newPartner: Partner = {
-                id: editingPartner ? editingPartner.id : Math.max(...partners.map(p => p.id), 0) + 1,
-                ...values,
-                company: values.type === 'INDIVIDUAL' ? (values.company || values.name) : values.company,
-                status: editingPartner ? editingPartner.status : 'active'
-            };
+    const handleModalOk = async () => {
+        try {
+            const values = await form.validateFields();
 
-            if (editingPartner) {
-                setPartners(prev => prev.map(p => p.id === editingPartner.id ? newPartner : p));
-                message.success('Partner updated successfully');
-            } else {
-                setPartners(prev => [newPartner, ...prev]);
-                message.success('Partner added successfully');
-            }
+            // Sending invitation
+            await axiosApi.post('/user/invite', {
+                email: values.email,
+                name: values.name,
+                requestSentFor: 'OUTSOURCE'
+            });
+
+            message.success('Invitation sent successfully');
             setIsModalOpen(false);
-        });
+            form.resetFields();
+            fetchPartners();
+        } catch (error) {
+            console.error('Failed to send invitation:', error);
+            // message.error('Failed to send invitation'); // Optional: Generic error handling usually handled by interceptors
+        }
     };
 
     // Filter Configuration
@@ -372,80 +355,31 @@ export function PartnersPage() {
                             <Users className="w-5 h-5 text-[#666666]" />
                         </div>
                         <span className="font-['Manrope:Bold',sans-serif] text-[18px]">
-                            {editingPartner ? 'Edit Partner' : 'Add Partner'}
+                            {editingPartner ? 'Edit Partner' : 'Invite Partner'}
                         </span>
                     </div>
                 }
                 open={isModalOpen}
                 onOk={handleModalOk}
                 onCancel={() => setIsModalOpen(false)}
-                okText={editingPartner ? 'Update' : 'Create'}
+                okText={editingPartner ? 'Update' : 'Send Invitation'}
                 cancelButtonProps={{ className: "font-['Manrope:SemiBold',sans-serif]" }}
                 okButtonProps={{
                     style: { backgroundColor: '#111111' },
                     className: "font-['Manrope:SemiBold',sans-serif]"
                 }}
-                width={600}
+                width={500}
                 centered
                 className="rounded-[16px] overflow-hidden"
             >
                 <Form form={form} layout="vertical" className="mt-6">
-                    <div className="grid grid-cols-2 gap-4">
-                        <Form.Item name="type" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Partner Type</span>} rules={[{ required: true }]}>
-                            <Select className="h-10">
-                                <Option value="INDIVIDUAL">Individual</Option>
-                                <Option value="ORGANIZATION">Organization</Option>
-                            </Select>
-                        </Form.Item>
-                        <Form.Item name="country" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Country</span>} rules={[{ required: true }]}>
-                            <Select className="h-10" showSearch>
-                                <Option value="USA">USA</Option>
-                                <Option value="India">India</Option>
-                                <Option value="UK">UK</Option>
-                                <Option value="UAE">UAE</Option>
-                            </Select>
-                        </Form.Item>
-                    </div>
-
-                    <Form.Item noStyle shouldUpdate={(prev, curr) => prev.type !== curr.type}>
-                        {({ getFieldValue }) => (
-                            getFieldValue('type') === 'ORGANIZATION' ? (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Form.Item name="company" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Business Name</span>} rules={[{ required: true }]}>
-                                        <Input prefix={<BankOutlined className="text-gray-400" />} className="h-10" placeholder="Company Name" />
-                                    </Form.Item>
-                                    <Form.Item name="name" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Contact Person</span>} rules={[{ required: true }]}>
-                                        <Input prefix={<UserOutlined className="text-gray-400" />} className="h-10" placeholder="Contact Person" />
-                                    </Form.Item>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Form.Item name="name" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Full Name</span>} rules={[{ required: true }]}>
-                                        <Input prefix={<UserOutlined className="text-gray-400" />} className="h-10" placeholder="Full Name" />
-                                    </Form.Item>
-                                    <Form.Item name="company" hidden><Input /></Form.Item>
-                                </div>
-                            )
-                        )}
+                    <Form.Item name="name" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Name</span>} rules={[{ required: true }]}>
+                        <Input prefix={<UserOutlined className="text-gray-400" />} className="h-10" placeholder="Partner Name" />
                     </Form.Item>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <Form.Item name="email" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Email</span>} rules={[{ required: true, type: 'email' }]}>
-                            <Input prefix={<MailOutlined className="text-gray-400" />} className="h-10" placeholder="email@example.com" />
-                        </Form.Item>
-                        <Form.Item name="phone" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Phone</span>} rules={[{ required: true }]}>
-                            <Input prefix={<PhoneOutlined className="text-gray-400" />} className="h-10" placeholder="+1 234 567 890" />
-                        </Form.Item>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <Form.Item name="onboarding" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Onboarding Date</span>}>
-                            <Input prefix={<CalendarOutlined className="text-gray-400" />} className="h-10" placeholder="DD-MMM-YYYY" />
-                        </Form.Item>
-                        <Form.Item name="requirements" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Requirements Count</span>}>
-                            <Input type="number" className="h-10" />
-                        </Form.Item>
-                    </div>
+                    <Form.Item name="email" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Email</span>} rules={[{ required: true, type: 'email' }]}>
+                        <Input prefix={<MailOutlined className="text-gray-400" />} className="h-10" placeholder="email@example.com" />
+                    </Form.Item>
                 </Form>
             </Modal>
         </div>
