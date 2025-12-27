@@ -213,8 +213,8 @@ export function RequirementsForm({
                     )}
                 </div>
 
-                {/* Row 4: Budget (Outsourced only) */}
-                {formData.type === 'outsourced' && (
+                {/* Row 4: Budget (Outsourced only) - Only show when editing */}
+                {formData.type === 'outsourced' && isEditing && (
                     <div className="grid grid-cols-2 gap-6 mb-6">
                         <div className="space-y-2">
                             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Target Budget</span>

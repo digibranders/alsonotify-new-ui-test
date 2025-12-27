@@ -1,13 +1,15 @@
 'use client';
 
 import { AlsonotifyLayoutWrapper } from '../../AlsonotifyLayoutWrapper';
-import { PartnersPage } from '../../../components/features/partners/PartnersPage';
+import { PartnersPageContent } from '../../../components/features/partners/PartnersPage';
+
+export const dynamic = 'force-dynamic';
 
 export default function PartnersPageRoute() {
     return (
         <AlsonotifyLayoutWrapper>
             <div className="flex-1 overflow-hidden">
-                <PartnersPage />
+                <PartnersPageContent />
             </div>
         </AlsonotifyLayoutWrapper>
     );

@@ -108,7 +108,7 @@ export function TaskForm({
     // User Instructions: "The 'Estimated Time' input should only be visible ... if the currentUserId is present ... If... not ... hide this field."
     // If hidden, it's not required.
     const isCurrentUserAssigned = formData.assigned_members.includes(parseInt(currentUserId));
-    if (isCurrentUserAssigned && (!formData.estimated_time || parseFloat(formData.estimated_time) <= 0)) {
+    if (isCurrentUserAssigned && (!formData.estimated_time || isNaN(parseFloat(formData.estimated_time)))) {
       missingFields.push('My Hours');
     }
     // Ensure at least one member is assigned (either legacy member_id or new assigned_members)
