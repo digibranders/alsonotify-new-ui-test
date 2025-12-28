@@ -51,6 +51,7 @@ interface TaskRowProps {
   onDelete?: () => void;
   onStatusChange?: (status: string) => void;
   currentUserId?: number;
+  hideRequirements?: boolean;
 }
 
 export function TaskRow({
@@ -60,7 +61,8 @@ export function TaskRow({
   onEdit,
   onDelete,
   onStatusChange,
-  currentUserId
+  currentUserId,
+  hideRequirements = false
 }: TaskRowProps) {
   const router = useRouter();
   const { timerState, startTimer, stopTimer } = useTimer();
@@ -223,7 +225,7 @@ export function TaskRow({
         }
       `}
     >
-      <div className="grid grid-cols-[40px_2.5fr_1.2fr_1.1fr_1fr_0.8fr_1.5fr_0.6fr_40px] gap-4 items-center">
+      <div className={`grid gap-4 items-center ${hideRequirements ? 'grid-cols-[40px_2.5fr_1.1fr_1fr_0.8fr_1.5fr_0.6fr_40px]' : 'grid-cols-[40px_2.5fr_1.2fr_1.1fr_1fr_0.8fr_1.5fr_0.6fr_40px]'}`}>
         {/* Checkbox */}
         <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
           <Checkbox
@@ -258,15 +260,17 @@ export function TaskRow({
         </div>
 
         {/* Project (Mapped to Requirements Header) */}
-        <div>
-          <Link
-            href="/dashboard/workspace"
-            onClick={(e) => e.stopPropagation()}
-            className="text-[13px] !text-[#111111] visited:!text-[#111111] font-['Manrope:Medium',sans-serif] truncate hover:text-[#ff3b3b] hover:underline"
-          >
-            {task.project}
-          </Link>
-        </div>
+        {!hideRequirements && (
+          <div>
+            <Link
+              href="/dashboard/workspace"
+              onClick={(e) => e.stopPropagation()}
+              className="text-[13px] !text-[#111111] visited:!text-[#111111] font-['Manrope:Medium',sans-serif] truncate hover:text-[#ff3b3b] hover:underline"
+            >
+              {task.project}
+            </Link>
+          </div>
+        )}
 
         {/* Timeline */}
         <div>

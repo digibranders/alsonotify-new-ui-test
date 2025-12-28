@@ -24,6 +24,7 @@ import { useWorkspace, useRequirements } from '@/hooks/useWorkspace';
 import { useTasks } from '@/hooks/useTask';
 import { SubTask } from '@/types/genericTypes';
 import { format } from 'date-fns';
+import { TaskRow } from '@/components/features/tasks/rows/TaskRow';
 
 export function RequirementDetailsPage() {
   const { message } = App.useApp();
@@ -40,6 +41,7 @@ export function RequirementDetailsPage() {
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [messageText, setMessageText] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [ganttView, setGanttView] = useState<'day' | 'week' | 'month'>('week');
 
   const workspace = useMemo(() => {
     if (!workspaceData?.result) return null;
@@ -310,7 +312,120 @@ export function RequirementDetailsPage() {
                   <Briefcase className="w-5 h-5 text-[#ff3b3b]" />
                   Requirement Details
                 </h3>
-                {/* Content area - empty as shown in screenshot */}
+
+                {/* Details Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  {/* Type */}
+                  <div>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Type</p>
+                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
+                      {workspace?.in_house ? 'In-house' : 'Client Project'}
+                    </p>
+                  </div>
+
+                  {/* Pricing Model */}
+                  <div>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Pricing Model</p>
+                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111] flex items-center gap-1">
+                      <span className="text-[#ff3b3b]">$</span>
+                      {requirement.pricing_model || 'Requirement Basis'}
+                    </p>
+                  </div>
+
+                  {/* Company / Client */}
+                  <div>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Company / Client</p>
+                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
+                      {workspace?.client_user?.company?.name || workspace?.name || 'N/A'}
+                      {workspace?.client_user?.name && ` · ${workspace.client_user.name}`}
+                    </p>
+                  </div>
+
+                  {/* Requirement Budget */}
+                  <div>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Requirement Budget</p>
+                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
+                      ${requirement.budget ? Number(requirement.budget).toFixed(2) : '0.00'}
+                    </p>
+                  </div>
+
+                  {/* Start Date */}
+                  <div>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Start Date</p>
+                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
+                      {requirement.start_date ? format(new Date(requirement.start_date), 'MMM d, yyyy') : 'Not set'}
+                    </p>
+                  </div>
+
+                  {/* End Date */}
+                  <div>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Due Date</p>
+                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
+                      {requirement.end_date ? format(new Date(requirement.end_date), 'MMM d, yyyy') : 'Not set'}
+                    </p>
+                  </div>
+
+                  {/* Quoted Price */}
+                  <div>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Quoted Price</p>
+                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
+                      ${requirement.quoted_price ? Number(requirement.quoted_price).toFixed(2) : '0.00'}
+                    </p>
+                  </div>
+
+                  {/* Total Tasks */}
+                  <div>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Total Tasks</p>
+                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
+                      {requirement.total_task || tasks.length || 0}
+                    </p>
+                  </div>
+
+                  {/* Leader */}
+                  {requirement.leader_user && (
+                    <div>
+                      <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Leader</p>
+                      <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
+                        {requirement.leader_user.name || 'N/A'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Manager */}
+                  {requirement.manager_user && (
+                    <div>
+                      <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Manager</p>
+                      <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
+                        {requirement.manager_user.name || 'N/A'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Document Link */}
+                  {requirement.document_link && (
+                    <div>
+                      <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Document</p>
+                      <a
+                        href={requirement.document_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[14px] font-['Inter:Medium',sans-serif] text-[#2F80ED] hover:underline truncate block"
+                      >
+                        View Document
+                      </a>
+                    </div>
+                  )}
+
+                  {/* High Priority */}
+                  {requirement.high_priority && (
+                    <div>
+                      <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Priority</p>
+                      <span className="px-2 py-1 bg-[#FFF5F5] text-[#ff3b3b] text-[12px] font-['Manrope:Bold',sans-serif] rounded-full">
+                        High Priority
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -329,47 +444,70 @@ export function RequirementDetailsPage() {
                   </Button>
                 </div>
 
-                {/* Table Header */}
-                <div className="grid grid-cols-[40px_1fr_200px_150px_120px_40px] gap-4 px-4 pb-3 mb-2 border-b border-[#EEEEEE] items-center">
-                  <div className="flex justify-center">
-                    <Checkbox
-                      checked={tasks.length > 0 && selectedTasks.length === tasks.length}
-                      onChange={(e) => {
-                        if (e.target.checked) setSelectedTasks(tasks.map((t: any) => String(t.id)));
-                        else setSelectedTasks([]);
-                      }}
-                      className="border-[#DDDDDD] [&.ant-checkbox-checked]:bg-[#ff3b3b] [&.ant-checkbox-checked]:border-[#ff3b3b]"
-                    />
+                {/* Table Header - matches TaskRow grid (without requirements) */}
+                <div className="px-4 pb-3 mb-2">
+                  <div className="grid grid-cols-[40px_2.5fr_1.1fr_1fr_0.8fr_1.5fr_0.6fr_40px] gap-4 items-center">
+                    <div className="flex justify-center">
+                      <Checkbox
+                        checked={tasks.length > 0 && selectedTasks.length === tasks.length}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedTasks(tasks.map((t: any) => String(t.id)));
+                          else setSelectedTasks([]);
+                        }}
+                        className="border-[#DDDDDD] [&.ant-checkbox-checked]:bg-[#ff3b3b] [&.ant-checkbox-checked]:border-[#ff3b3b]"
+                      />
+                    </div>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Task</p>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Timeline</p>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide text-center">Assigned</p>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide text-center">Duration</p>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide text-center">Progress</p>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide text-center">Status</p>
+                    <p></p>
                   </div>
-                  <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Task</p>
-                  <div className="flex justify-center">
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Assigned</p>
-                  </div>
-                  <div className="flex justify-center">
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Due Date</p>
-                  </div>
-                  <div className="flex justify-center">
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Status</p>
-                  </div>
-                  <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide"></p>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {tasks.length > 0 ? (
-                    tasks.map((task: any) => (
-                      <SubTaskRow
-                        key={task.id}
-                        task={task}
-                        selected={selectedTasks.includes(String(task.id))}
-                        onSelect={() => {
-                          if (selectedTasks.includes(String(task.id))) {
-                            setSelectedTasks(selectedTasks.filter(id => id !== String(task.id)));
-                          } else {
-                            setSelectedTasks([...selectedTasks, String(task.id)]);
-                          }
-                        }}
-                      />
-                    ))
+                    tasks.map((task: any) => {
+                      // Map task data to TaskRow expected format
+                      const mappedTask = {
+                        id: String(task.id),
+                        name: task.name || task.title || 'Untitled',
+                        taskId: String(task.id),
+                        client: workspace?.client_user?.name || workspace?.name || 'N/A',
+                        project: requirement?.name || 'N/A',
+                        leader: task.leader_user?.name || '',
+                        assignedTo: task.member_user?.name || task.task_members?.[0]?.user?.name || 'Unassigned',
+                        startDate: task.start_date || '',
+                        dueDate: task.end_date || '',
+                        estTime: Number(task.estimated_time) || 0,
+                        timeSpent: task.time_spent || 0,
+                        total_seconds_spent: task.total_seconds_spent || 0,
+                        activities: 0,
+                        status: task.status || 'Assigned',
+                        priority: task.high_priority ? 'high' : 'low',
+                        timelineDate: task.end_date ? format(new Date(task.end_date), 'MMM dd') : 'N/A',
+                        timelineLabel: task.status === 'Delayed' ? 'Overdue' : '',
+                        execution_mode: task.execution_mode,
+                        task_members: task.task_members || []
+                      };
+                      return (
+                        <TaskRow
+                          key={task.id}
+                          task={mappedTask as any}
+                          selected={selectedTasks.includes(String(task.id))}
+                          onSelect={() => {
+                            if (selectedTasks.includes(String(task.id))) {
+                              setSelectedTasks(selectedTasks.filter(id => id !== String(task.id)));
+                            } else {
+                              setSelectedTasks([...selectedTasks, String(task.id)]);
+                            }
+                          }}
+                          hideRequirements={true}
+                        />
+                      );
+                    })
                   ) : (
                     <div className="text-center py-8 text-[#999999] text-[13px]">No tasks created yet</div>
                   )}
@@ -410,163 +548,368 @@ export function RequirementDetailsPage() {
             </div>
           )}
 
-          {activeTab === 'gantt' && (
-            <div className="bg-white rounded-[16px] border border-[#EEEEEE] shadow-sm overflow-hidden flex flex-col h-[600px]">
-              <div className="p-6 border-b border-[#EEEEEE] flex justify-between items-center shrink-0">
-                <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] flex items-center gap-2">
-                  <BarChart2 className="w-5 h-5 text-[#ff3b3b]" />
-                  Gantt Chart
-                </h3>
-                <div className="flex gap-2">
-                  <Button type="default" size="small" className="h-8 text-[12px] border-[#EEEEEE]">Day</Button>
-                  <Button type="default" size="small" className="h-8 text-[12px] bg-[#F7F7F7] border-[#EEEEEE]">Week</Button>
-                  <Button type="default" size="small" className="h-8 text-[12px] border-[#EEEEEE]">Month</Button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-auto">
-                {/* Gantt Header */}
-                <div className="flex border-b border-[#EEEEEE] min-w-[800px]">
-                  <div className="w-[250px] p-4 font-['Manrope:Bold',sans-serif] text-[13px] text-[#111111] border-r border-[#EEEEEE] sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                    Task Name
+          {activeTab === 'gantt' && (() => {
+            // Calculate timeline from actual task dates
+            const allTasks = [...tasks, ...revisions];
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Find earliest start and latest end dates
+            let minDate = new Date();
+            let maxDate = new Date();
+            let hasValidDates = false;
+
+            allTasks.forEach((task: any) => {
+              if (task.start_date) {
+                const start = new Date(task.start_date);
+                if (!hasValidDates || start < minDate) minDate = new Date(start);
+                hasValidDates = true;
+              }
+              if (task.end_date) {
+                const end = new Date(task.end_date);
+                if (!hasValidDates || end > maxDate) maxDate = new Date(end);
+                hasValidDates = true;
+              }
+            });
+
+            // If no valid dates, use today +/- 2 weeks
+            if (!hasValidDates) {
+              minDate = new Date(today);
+              minDate.setDate(minDate.getDate() - 7);
+              maxDate = new Date(today);
+              maxDate.setDate(maxDate.getDate() + 14);
+            } else {
+              // Add buffer days
+              minDate.setDate(minDate.getDate() - 3);
+              maxDate.setDate(maxDate.getDate() + 7);
+            }
+
+            minDate.setHours(0, 0, 0, 0);
+            maxDate.setHours(0, 0, 0, 0);
+
+            // Calculate columns based on view mode
+            let columnDates: Date[] = [];
+            const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+            if (ganttView === 'day') {
+              // Show individual days (max 21 days)
+              const daysToShow = Math.min(totalDays, 21);
+              for (let i = 0; i < daysToShow; i++) {
+                const d = new Date(minDate);
+                d.setDate(d.getDate() + i);
+                columnDates.push(d);
+              }
+            } else if (ganttView === 'week') {
+              // Show days grouped by week (14 days)
+              const daysToShow = Math.min(totalDays, 14);
+              for (let i = 0; i < daysToShow; i++) {
+                const d = new Date(minDate);
+                d.setDate(d.getDate() + i);
+                columnDates.push(d);
+              }
+            } else {
+              // Month view - show weeks (28 days)
+              const daysToShow = Math.min(totalDays, 28);
+              for (let i = 0; i < daysToShow; i++) {
+                const d = new Date(minDate);
+                d.setDate(d.getDate() + i);
+                columnDates.push(d);
+              }
+            }
+
+            const timelineStart = columnDates[0];
+            const timelineEnd = columnDates[columnDates.length - 1];
+            const timelineDays = Math.ceil((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+            // Calculate today position
+            const todayPosition = today >= timelineStart && today <= timelineEnd
+              ? ((today.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)) / timelineDays * 100
+              : -1;
+
+            // Calculate bar position for a task
+            const getBarPosition = (task: any) => {
+              const startDate = task.start_date ? new Date(task.start_date) : today;
+              const endDate = task.end_date ? new Date(task.end_date) : new Date(startDate.getTime() + 3 * 24 * 60 * 60 * 1000);
+              startDate.setHours(0, 0, 0, 0);
+              endDate.setHours(0, 0, 0, 0);
+
+              const startDiff = (startDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24);
+              const duration = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24) + 1;
+
+              const left = Math.max(0, (startDiff / timelineDays) * 100);
+              const width = Math.min(100 - left, (duration / timelineDays) * 100);
+
+              return { left, width };
+            };
+
+            // Get status color
+            const getStatusColor = (task: any) => {
+              const status = (task.status || '').toLowerCase();
+              if (status === 'completed' || status === 'done') return 'bg-[#E8F5E9] border-[#0F9D58] text-[#0F9D58]';
+              if (status === 'delayed' || status === 'stuck' || status === 'impediment') return 'bg-[#FFF5F5] border-[#ff3b3b] text-[#ff3b3b]';
+              if (status === 'in_progress') return 'bg-[#E3F2FD] border-[#2F80ED] text-[#2F80ED]';
+              return 'bg-[#FFF8E1] border-[#F59E0B] text-[#F59E0B]';
+            };
+
+            // Get assigned name
+            const getAssignedName = (task: any) => {
+              if (task.member_user?.name) return task.member_user.name;
+              if (task.task_members?.[0]?.user?.name) return task.task_members[0].user.name;
+              return 'Unassigned';
+            };
+
+            return (
+              <div className="bg-white rounded-[16px] border border-[#EEEEEE] shadow-sm overflow-hidden flex flex-col h-[600px]">
+                <div className="p-6 border-b border-[#EEEEEE] flex justify-between items-center shrink-0">
+                  <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] flex items-center gap-2">
+                    <BarChart2 className="w-5 h-5 text-[#ff3b3b]" />
+                    Gantt Chart
+                  </h3>
+                  <div className="flex gap-2">
+                    <Button
+                      type={ganttView === 'day' ? 'primary' : 'default'}
+                      size="small"
+                      className="h-8 text-[12px] !rounded-lg"
+                      style={ganttView === 'day' ? { backgroundColor: '#ff3b3b', borderColor: '#ff3b3b' } : { borderColor: '#EEEEEE' }}
+                      onClick={() => setGanttView('day')}
+                    >
+                      Day
+                    </Button>
+                    <Button
+                      type={ganttView === 'week' ? 'primary' : 'default'}
+                      size="small"
+                      className="h-8 text-[12px] !rounded-lg"
+                      style={ganttView === 'week' ? { backgroundColor: '#ff3b3b', borderColor: '#ff3b3b' } : { borderColor: '#EEEEEE' }}
+                      onClick={() => setGanttView('week')}
+                    >
+                      Week
+                    </Button>
+                    <Button
+                      type={ganttView === 'month' ? 'primary' : 'default'}
+                      size="small"
+                      className="h-8 text-[12px] !rounded-lg"
+                      style={ganttView === 'month' ? { backgroundColor: '#ff3b3b', borderColor: '#ff3b3b' } : { borderColor: '#EEEEEE' }}
+                      onClick={() => setGanttView('month')}
+                    >
+                      Month
+                    </Button>
                   </div>
-                  <div className="flex-1 grid grid-cols-10">
-                    {Array.from({ length: 10 }).map((_, i) => {
-                      const date = new Date('2025-11-20');
-                      date.setDate(date.getDate() + i);
-                      return (
-                        <div key={i} className="border-r border-[#EEEEEE] p-2 text-center min-w-[60px]">
-                          <div className="text-[10px] text-[#999999] font-['Inter:SemiBold',sans-serif] uppercase">{date.toLocaleDateString('en-US', { weekday: 'short' })}</div>
-                          <div className="text-[12px] text-[#111111] font-['Manrope:Bold',sans-serif]">{date.getDate()}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
                 </div>
-
-                {/* Gantt Body */}
-                <div className="min-w-[800px]">
-                  {[...tasks, ...revisions].map((task: any, index: number) => {
-                    const startOffset = index % 5;
-                    const duration = (index % 3) + 2;
-                    const assignedName = task.assigned_to ? `User ${task.assigned_to}` : 'Unassigned';
-
-                    return (
-                      <div key={task.id} className="flex border-b border-[#FAFAFA] hover:bg-[#FAFAFA] transition-colors group">
-                        <div className="w-[250px] p-3 border-r border-[#EEEEEE] flex items-center gap-3 sticky left-0 bg-white group-hover:bg-[#FAFAFA] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${task.type === 'revision' ? 'bg-[#FFF5F5] text-[#ff3b3b]' : 'bg-[#F7F7F7] text-[#999999]'}`}>
-                            #{task.id}
-                          </span>
-                          <span className="text-[13px] text-[#111111] font-['Inter:Medium',sans-serif] truncate">{task.title || task.name}</span>
-                        </div>
-                        <div className="flex-1 grid grid-cols-10 relative py-3">
-                          {/* Grid Lines */}
-                          {Array.from({ length: 10 }).map((_, i) => (
-                            <div key={i} className="border-r border-[#FAFAFA] absolute inset-y-0" style={{ left: `${i * 10}%`, width: '1px' }} />
-                          ))}
-
-                          {/* Bar */}
+                <div className="flex-1 overflow-auto">
+                  {/* Gantt Header */}
+                  <div className="flex border-b border-[#EEEEEE] min-w-[800px] sticky top-0 bg-white z-20">
+                    <div className="w-[250px] p-4 font-['Manrope:Bold',sans-serif] text-[13px] text-[#111111] border-r border-[#EEEEEE] sticky left-0 bg-white z-30 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                      Task Name
+                    </div>
+                    <div className="flex-1 flex relative">
+                      {columnDates.map((date, i) => {
+                        const isToday = date.toDateString() === today.toDateString();
+                        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                        return (
                           <div
-                            className={`absolute h-6 rounded-[4px] top-1/2 -translate-y-1/2 flex items-center px-2 shadow-sm
-                              ${task.status === 'completed' ? 'bg-[#E8F5E9] border border-[#0F9D58] text-[#0F9D58]' :
-                                task.status === 'delayed' ? 'bg-[#FFF5F5] border border-[#ff3b3b] text-[#ff3b3b]' :
-                                  task.type === 'revision' ? 'bg-[#FFF5F5] border border-[#ff3b3b] text-[#ff3b3b]' :
-                                    'bg-[#E3F2FD] border border-[#2F80ED] text-[#2F80ED]'
-                              }
-                            `}
-                            style={{
-                              left: `${startOffset * 10}%`,
-                              width: `${duration * 10}%`
-                            }}
+                            key={i}
+                            className={`flex-1 border-r border-[#EEEEEE] p-2 text-center min-w-[60px] ${isWeekend ? 'bg-[#FAFAFA]' : ''} ${isToday ? 'bg-[#FFF5F5]' : ''}`}
                           >
-                            <span className="text-[10px] font-['Manrope:Bold',sans-serif] truncate w-full">{assignedName.split(' ')[0]}</span>
+                            <div className="text-[10px] text-[#999999] font-['Inter:SemiBold',sans-serif] uppercase">
+                              {date.toLocaleDateString('en-US', { weekday: 'short' })}
+                            </div>
+                            <div className={`text-[12px] font-['Manrope:Bold',sans-serif] ${isToday ? 'text-[#ff3b3b]' : 'text-[#111111]'}`}>
+                              {date.getDate()}
+                            </div>
+                            {ganttView !== 'day' && i === 0 && (
+                              <div className="text-[9px] text-[#999999] mt-0.5">
+                                {date.toLocaleDateString('en-US', { month: 'short' })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Gantt Body */}
+                  <div className="min-w-[800px] relative">
+                    {/* Today Marker */}
+                    {todayPosition >= 0 && todayPosition <= 100 && (
+                      <div
+                        className="absolute top-0 bottom-0 w-0.5 bg-[#ff3b3b] z-10 pointer-events-none"
+                        style={{ left: `calc(250px + ${todayPosition}% * (100% - 250px) / 100)` }}
+                      />
+                    )}
+
+                    {allTasks.length > 0 ? allTasks.map((task: any) => {
+                      const { left, width } = getBarPosition(task);
+                      const statusColor = getStatusColor(task);
+                      const assignedName = getAssignedName(task);
+                      const isRevision = task.type === 'revision';
+
+                      return (
+                        <div key={task.id} className="flex border-b border-[#FAFAFA] hover:bg-[#FAFAFA] transition-colors group">
+                          <div className="w-[250px] p-3 border-r border-[#EEEEEE] flex items-center gap-3 sticky left-0 bg-white group-hover:bg-[#FAFAFA] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${isRevision ? 'bg-[#FFF5F5] text-[#ff3b3b]' : 'bg-[#F7F7F7] text-[#999999]'}`}>
+                              #{task.id}
+                            </span>
+                            <span className="text-[13px] text-[#111111] font-['Inter:Medium',sans-serif] truncate">
+                              {task.name || task.title}
+                            </span>
+                          </div>
+                          <div className="flex-1 relative py-3" style={{ minHeight: '44px' }}>
+                            {/* Grid Lines */}
+                            {columnDates.map((date, i) => {
+                              const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                              return (
+                                <div
+                                  key={i}
+                                  className={`absolute inset-y-0 ${isWeekend ? 'bg-[#FAFAFA]' : ''}`}
+                                  style={{ left: `${(i / columnDates.length) * 100}%`, width: `${100 / columnDates.length}%`, borderRight: '1px solid #FAFAFA' }}
+                                />
+                              );
+                            })}
+
+                            {/* Task Bar */}
+                            <Tooltip title={
+                              <div className="text-xs">
+                                <div className="font-bold">{task.name || task.title}</div>
+                                <div>Start: {task.start_date ? format(new Date(task.start_date), 'MMM d, yyyy') : 'Not set'}</div>
+                                <div>End: {task.end_date ? format(new Date(task.end_date), 'MMM d, yyyy') : 'Not set'}</div>
+                                <div>Assigned: {assignedName}</div>
+                                <div>Status: {task.status || 'Pending'}</div>
+                              </div>
+                            }>
+                              <div
+                                className={`absolute h-6 rounded-[4px] top-1/2 -translate-y-1/2 flex items-center px-2 shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${statusColor}`}
+                                style={{
+                                  left: `${left}%`,
+                                  width: `${Math.max(width, 5)}%`,
+                                  minWidth: '40px'
+                                }}
+                              >
+                                <span className="text-[10px] font-['Manrope:Bold',sans-serif] truncate w-full">
+                                  {assignedName.split(' ')[0]}
+                                </span>
+                              </div>
+                            </Tooltip>
                           </div>
                         </div>
+                      );
+                    }) : (
+                      <div className="text-center py-12 text-[#999999] text-[13px]">No tasks to display</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {activeTab === 'kanban' && (() => {
+            // Map actual statuses to Kanban columns
+            const allTasks = [...tasks, ...revisions];
+
+            const getColumnTasks = (column: string) => {
+              return allTasks.filter((t: any) => {
+                const status = (t.status || '').toLowerCase().replace(' ', '_');
+                switch (column) {
+                  case 'todo':
+                    return status === 'assigned' || status === 'pending' || status === 'todo' || !t.status;
+                  case 'in-progress':
+                    return status === 'in_progress' || status === 'inprogress';
+                  case 'impediment':
+                    return status === 'stuck' || status === 'impediment' || status === 'delayed' || status === 'blocked';
+                  case 'completed':
+                    return status === 'completed' || status === 'done' || status === 'review';
+                  default:
+                    return false;
+                }
+              });
+            };
+
+            const getAssignedInfo = (task: any) => {
+              if (task.member_user?.name) return { name: task.member_user.name, pic: task.member_user.profile_pic };
+              if (task.task_members?.[0]?.user?.name) return { name: task.task_members[0].user.name, pic: task.task_members[0].user.profile_pic };
+              return { name: 'Unassigned', pic: null };
+            };
+
+            return (
+              <div className="h-full overflow-x-auto">
+                <div className="flex gap-6 min-w-[1000px] h-full pb-4">
+                  {['todo', 'in-progress', 'impediment', 'completed'].map((status) => {
+                    const columnTasks = getColumnTasks(status);
+
+                    const getStatusStyle = (s: string) => {
+                      switch (s) {
+                        case 'todo': return { color: 'text-[#666666]', bg: 'bg-[#F7F7F7]', dotBg: 'bg-[#666666]', label: 'To Do' };
+                        case 'in-progress': return { color: 'text-[#2F80ED]', bg: 'bg-[#E3F2FD]', dotBg: 'bg-[#2F80ED]', label: 'In Progress' };
+                        case 'impediment': return { color: 'text-[#ff3b3b]', bg: 'bg-[#FFF5F5]', dotBg: 'bg-[#ff3b3b]', label: 'Blocked / Delayed' };
+                        case 'completed': return { color: 'text-[#0F9D58]', bg: 'bg-[#E8F5E9]', dotBg: 'bg-[#0F9D58]', label: 'Completed' };
+                        default: return { color: 'text-[#666666]', bg: 'bg-[#F5F5F5]', dotBg: 'bg-[#666666]', label: 'Unknown' };
+                      }
+                    };
+
+                    const style = getStatusStyle(status);
+
+                    return (
+                      <div key={status} className="flex-1 min-w-[280px] flex flex-col bg-[#F7F7F7] rounded-[16px] p-4 border border-[#EEEEEE]">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${style.bg} w-fit`}>
+                            <div className={`w-2 h-2 rounded-full ${style.dotBg}`} />
+                            <span className={`text-[12px] font-['Manrope:Bold',sans-serif] ${style.color}`}>{style.label}</span>
+                          </div>
+                          <span className="text-[12px] font-['Inter:SemiBold',sans-serif] text-[#999999]">{columnTasks.length}</span>
+                        </div>
+
+                        <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+                          {columnTasks.map((task: any) => {
+                            const assigned = getAssignedInfo(task);
+                            const initials = assigned.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+                            const isRevision = task.type === 'revision';
+                            return (
+                              <div key={task.id} className="bg-white p-4 rounded-[12px] border border-[#EEEEEE] shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
+                                <div className="flex items-center justify-between mb-3">
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${isRevision ? 'bg-[#FFF5F5] text-[#ff3b3b]' : 'bg-[#F7F7F7] text-[#999999]'}`}>
+                                    {isRevision ? '#REV-' : '#'}{task.id}
+                                  </span>
+                                  {isRevision && (
+                                    <Tooltip title="Revision">
+                                      <RotateCcw className="w-3.5 h-3.5 text-[#ff3b3b]" />
+                                    </Tooltip>
+                                  )}
+                                </div>
+                                <h4 className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-3 leading-snug">
+                                  {task.name || task.title}
+                                </h4>
+                                <div className="flex items-center justify-between pt-3 border-t border-[#FAFAFA]">
+                                  <div className="flex items-center gap-2">
+                                    {assigned.pic ? (
+                                      <img src={assigned.pic} alt={assigned.name} className="w-6 h-6 rounded-full object-cover" />
+                                    ) : (
+                                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center">
+                                        <span className="text-[9px] text-white font-['Manrope:Bold',sans-serif]">
+                                          {initials}
+                                        </span>
+                                      </div>
+                                    )}
+                                    <span className="text-[11px] text-[#666666] truncate max-w-[80px]">{assigned.name.split(' ')[0]}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 text-[#999999]">
+                                    <Calendar className="w-3 h-3" />
+                                    <span className="text-[10px]">{task.end_date ? format(new Date(task.end_date), 'dd-MMM') : 'N/A'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <button className="mt-3 flex items-center justify-center gap-2 py-2 rounded-[8px] hover:bg-[#EAEAEA] transition-colors text-[#666666] text-[12px] font-['Manrope:SemiBold',sans-serif] border border-dashed border-[#DDDDDD]">
+                          <Plus className="w-4 h-4" /> Add Task
+                        </button>
                       </div>
                     );
                   })}
                 </div>
               </div>
-            </div>
-          )}
-
-          {activeTab === 'kanban' && (
-            <div className="h-full overflow-x-auto">
-              <div className="flex gap-6 min-w-[1000px] h-full pb-4">
-                {['todo', 'in-progress', 'impediment', 'completed'].map((status) => {
-                  const columnTasks = [...tasks, ...revisions].filter((t: any) => {
-                    if (status === 'impediment') return t.status === 'impediment' || t.status === 'delayed';
-                    return t.status === status;
-                  });
-
-                  const getStatusStyle = (s: string) => {
-                    switch (s) {
-                      case 'todo': return { color: 'text-[#666666]', bg: 'bg-[#F7F7F7]', label: 'To Do' };
-                      case 'in-progress': return { color: 'text-[#2F80ED]', bg: 'bg-[#E3F2FD]', label: 'In Progress' };
-                      case 'impediment': return { color: 'text-[#ff3b3b]', bg: 'bg-[#FFF5F5]', label: 'Blocked / Delayed' };
-                      case 'completed': return { color: 'text-[#0F9D58]', bg: 'bg-[#E8F5E9]', label: 'Completed' };
-                      default: return { color: 'text-[#666666]', bg: 'bg-[#F5F5F5]', label: 'Unknown' };
-                    }
-                  };
-
-                  const style = getStatusStyle(status);
-
-                  return (
-                    <div key={status} className="flex-1 min-w-[280px] flex flex-col bg-[#F7F7F7] rounded-[16px] p-4 border border-[#EEEEEE]">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${style.bg} w-fit`}>
-                          <div className={`w-2 h-2 rounded-full ${style.color.replace('text', 'bg')}`} />
-                          <span className={`text-[12px] font-['Manrope:Bold',sans-serif] ${style.color}`}>{style.label}</span>
-                        </div>
-                        <span className="text-[12px] font-['Inter:SemiBold',sans-serif] text-[#999999]">{columnTasks.length}</span>
-                      </div>
-
-                      <div className="flex-1 space-y-3 overflow-y-auto pr-1">
-                        {columnTasks.map((task: any) => {
-                          const assignedName = task.assigned_to ? `User ${task.assigned_to}` : 'Unassigned';
-                          const initials = assignedName.split(' ').map((n: string) => n[0]).join('').toUpperCase();
-                          return (
-                            <div key={task.id} className="bg-white p-4 rounded-[12px] border border-[#EEEEEE] shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group">
-                              <div className="flex items-center justify-between mb-3">
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${task.type === 'revision' ? 'bg-[#FFF5F5] text-[#ff3b3b]' : 'bg-[#F7F7F7] text-[#999999]'}`}>
-                                  #{task.id}
-                                </span>
-                                {task.type === 'revision' && (
-                                  <Tooltip title="Revision">
-                                    <RotateCcw className="w-3.5 h-3.5 text-[#ff3b3b]" />
-                                  </Tooltip>
-                                )}
-                              </div>
-                              <h4 className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-3 leading-snug">
-                                {task.title || task.name}
-                              </h4>
-                              <div className="flex items-center justify-between pt-3 border-t border-[#FAFAFA]">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#666666] to-[#999999] flex items-center justify-center">
-                                    <span className="text-[9px] text-white font-['Manrope:Bold',sans-serif]">
-                                      {initials}
-                                    </span>
-                                  </div>
-                                  <span className="text-[11px] text-[#666666] truncate max-w-[80px]">{assignedName.split(' ')[0]}</span>
-                                </div>
-                                <div className="flex items-center gap-1 text-[#999999]">
-                                  <Calendar className="w-3 h-3" />
-                                  <span className="text-[10px]">{task.due_date ? format(new Date(task.due_date), 'MM-dd') : 'N/A'}</span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      <button className="mt-3 flex items-center justify-center gap-2 py-2 rounded-[8px] hover:bg-[#EAEAEA] transition-colors text-[#666666] text-[12px] font-['Manrope:SemiBold',sans-serif] border border-dashed border-[#DDDDDD]">
-                        <Plus className="w-4 h-4" /> Add Task
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {activeTab === 'pnl' && (
             <div className="max-w-5xl mx-auto space-y-8">
@@ -740,23 +1083,20 @@ export function RequirementDetailsPage() {
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {activityData.map((activity) => (
             <div key={activity.id} className="flex gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                activity.isSystem
-                  ? 'bg-[#F0F0F0]'
-                  : 'bg-gradient-to-br from-[#666666] to-[#999999]'
-              }`}>
-                <span className={`text-[11px] font-['Manrope:Bold',sans-serif] ${
-                  activity.isSystem ? 'text-[#999999]' : 'text-white'
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activity.isSystem
+                ? 'bg-[#F0F0F0]'
+                : 'bg-gradient-to-br from-[#666666] to-[#999999]'
                 }`}>
+                <span className={`text-[11px] font-['Manrope:Bold',sans-serif] ${activity.isSystem ? 'text-[#999999]' : 'text-white'
+                  }`}>
                   {activity.avatar}
                 </span>
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2 mb-1">
-                  <span className={`text-[13px] font-['Manrope:SemiBold',sans-serif] ${
-                    activity.isSystem ? 'text-[#999999]' : 'text-[#111111]'
-                  }`}>
+                  <span className={`text-[13px] font-['Manrope:SemiBold',sans-serif] ${activity.isSystem ? 'text-[#999999]' : 'text-[#111111]'
+                    }`}>
                     {activity.user}
                   </span>
                   <span className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">
@@ -764,11 +1104,10 @@ export function RequirementDetailsPage() {
                   </span>
                 </div>
 
-                <div className={`${
-                  activity.type === 'comment'
-                    ? 'bg-[#F7F7F7] p-3 rounded-[12px] rounded-tl-none'
-                    : ''
-                }`}>
+                <div className={`${activity.type === 'comment'
+                  ? 'bg-[#F7F7F7] p-3 rounded-[12px] rounded-tl-none'
+                  : ''
+                  }`}>
                   <p className="text-[13px] text-[#444444] font-['Inter:Regular',sans-serif]">
                     {activity.message}
                   </p>

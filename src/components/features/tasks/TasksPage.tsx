@@ -246,13 +246,12 @@ export function TasksPage() {
     }
     // Add tab filter (status-based) - only if status filter is not explicitly set
     if (activeTab !== 'all' && filters.status === 'All') {
-      if (activeTab === 'In_Progress') {
-        params.status = 'In_Progress';
-      } else if (activeTab === 'Completed') {
+      if (activeTab === 'Completed') {
         params.status = 'Completed';
-      } else if (activeTab === 'Delayed') {
-        params.status = 'Delayed';
       }
+      // Note: In_Progress tab shows all tasks except Assigned and Completed - filter client-side
+      // Note: Delayed tab doesn't use status filter - it's time-based (end_date < today)
+      // We'll filter client-side after fetching all tasks
     } else if (filters.status !== 'All') {
       // Map UI status to backend status
       const statusMap: Record<string, string> = {
@@ -673,6 +672,10 @@ export function TasksPage() {
   // Apply client-side filters for user/company (since we can't easily map names to IDs)
   // Workspace filtering is now done server-side via query params
   const filteredTasks = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTime = today.getTime();
+
     return tasks.filter(task => {
       // Client-side filtering for user, company, requirement (name-based)
       // Check if ANY task member's name matches the filter (not just the primary assignee)
@@ -703,9 +706,22 @@ export function TasksPage() {
         }
       }
 
+      // In Progress tab: show all tasks except Assigned and Completed
+      if (activeTab === 'In_Progress') {
+        const isActiveTask = task.status !== 'Assigned' && task.status !== 'Completed';
+        if (!isActiveTask) return false;
+      }
+
+      // Delayed tab: show tasks where end_date has passed and task is NOT completed
+      if (activeTab === 'Delayed') {
+        const isOverdue = task.dueDateValue != null && task.dueDateValue < todayTime;
+        const isNotCompleted = task.status !== 'Completed';
+        if (!isOverdue || !isNotCompleted) return false;
+      }
+
       return matchesUser && matchesCompany && matchesRequirement && matchesDate;
     });
-  }, [tasks, filters, dateRange]);
+  }, [tasks, filters, dateRange, activeTab]);
 
   useEffect(() => {
     // side-effects after filters, search, or date label change (currently none)
@@ -716,6 +732,23 @@ export function TasksPage() {
   const stats = useMemo(() => {
     const firstTask = statsData?.result?.[0] as any;
     const backendCounts = firstTask?.status_counts || {};
+    const allTasks = statsData?.result || [];
+
+    // Calculate delayed count: tasks where end_date < today AND not completed
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTime = today.getTime();
+
+    let delayedCount = 0;
+    allTasks.forEach((t: any) => {
+      if (t.end_date && t.status !== 'Completed') {
+        const endDateObj = new Date(t.end_date);
+        endDateObj.setHours(0, 0, 0, 0);
+        if (endDateObj.getTime() < todayTime) {
+          delayedCount++;
+        }
+      }
+    });
 
     // Calculate total from counts if available
     const calculatedTotal = (backendCounts.All) ||
@@ -726,9 +759,11 @@ export function TasksPage() {
 
     return {
       all: backendCounts.All || calculatedTotal || totalTasks,
-      'In_Progress': backendCounts.In_Progress || 0,
+      // In Progress = all tasks except Assigned and Completed
+      'In_Progress': (backendCounts.In_Progress || 0) + (backendCounts.Delayed || 0) +
+        (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0) + (backendCounts.Review || 0),
       'Completed': backendCounts.Completed || 0,
-      'Delayed': (backendCounts.Delayed || 0) + (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0),
+      'Delayed': delayedCount > 0 ? delayedCount : ((backendCounts.Delayed || 0) + (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0)),
     };
   }, [statsData, totalTasks]);
 

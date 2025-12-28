@@ -10,6 +10,7 @@ import {
   provideEstimate,
   startWorkLog,
   updateWorklog,
+  getAssignedTaskDetail,
   type TaskType,
 } from "../services/task";
 
@@ -126,5 +127,13 @@ export const useUpdateWorkLog = () => {
       queryClient.invalidateQueries({ queryKey: ["task", variables.task_id] });
       queryClient.invalidateQueries({ queryKey: ["worklogs", variables.task_id] });
     },
+  });
+};
+
+export const useTaskTimer = (taskId: number) => {
+  return useQuery({
+    queryKey: ["taskTimer", taskId],
+    queryFn: () => getAssignedTaskDetail(taskId),
+    enabled: !!taskId,
   });
 };

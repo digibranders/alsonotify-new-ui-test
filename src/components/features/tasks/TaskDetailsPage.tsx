@@ -8,7 +8,9 @@ import {
   ArrowRight, Plus, Send, Paperclip, X, MessageSquare
 } from 'lucide-react';
 import { Breadcrumb, Checkbox, Tooltip, App } from 'antd';
-import { useTask } from '@/hooks/useTask';
+import { useTask, useTaskTimer } from '@/hooks/useTask';
+import { useWorkspaces, useRequirements } from '@/hooks/useWorkspace';
+import { useEmployees } from '@/hooks/useUser';
 import { format } from 'date-fns';
 
 export function TaskDetailsPage() {
@@ -18,7 +20,28 @@ export function TaskDetailsPage() {
   const taskId = Number(params.taskId);
 
   const { data: taskData, isLoading } = useTask(taskId);
+  const { data: timerData } = useTaskTimer(taskId);
+  const { data: employeesData } = useEmployees();
+  const { data: workspacesData } = useWorkspaces();
+
   const task = taskData?.result;
+  const { data: requirementsData } = useRequirements(task?.project_id || 0);
+  const timer = timerData?.result;
+
+  // Use pre-populated relation data from API
+  const assignee = task?.member_user || (task?.task_members?.[0]?.user);
+  const leader = task?.leader_user;
+  const workspace = task?.task_project;
+  const requirement = task?.task_requirement;
+
+  // Calculate progress
+  const estimatedHours = timer?.estimated_time || 0;
+  const workedSeconds = timer?.worked_time || 0;
+  const workedHours = workedSeconds / 3600;
+  const progressPercent = estimatedHours > 0
+    ? Math.min(Math.round((workedHours / estimatedHours) * 100), 100)
+    : 0;
+  const formattedLogged = workedHours < 0.1 && workedHours > 0 ? '< 0.1' : workedHours.toFixed(1);
 
   const [activeTab, setActiveTab] = useState<'details' | 'steps'>('details');
   const [selectedSteps, setSelectedSteps] = useState<string[]>([]);
@@ -71,6 +94,110 @@ export function TaskDetailsPage() {
   // Mock steps data - replace with actual data when available
   const steps: any[] = [];
 
+  const rightDrawer = (
+    <div className="w-[400px] border-l border-[#EEEEEE] flex flex-col bg-white rounded-tr-[24px] rounded-br-[24px]">
+      {/* Drawer Header */}
+      <div className="p-6 border-b border-[#EEEEEE]">
+        <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] flex items-center gap-2">
+          <MessageSquare className="w-5 h-5 text-[#ff3b3b]" />
+          Activity & Chat
+        </h3>
+        <p className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif] mt-1">
+          Task updates and comments
+        </p>
+      </div>
+
+      {/* Activity Feed */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {activityData.map((activity) => (
+          <div key={activity.id} className="flex gap-3">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activity.isSystem
+              ? 'bg-[#F0F0F0]'
+              : 'bg-gradient-to-br from-[#666666] to-[#999999]'
+              }`}>
+              <span className={`text-[11px] font-['Manrope:Bold',sans-serif] ${activity.isSystem ? 'text-[#999999]' : 'text-white'
+                }`}>
+                {activity.avatar}
+              </span>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className={`text-[13px] font-['Manrope:SemiBold',sans-serif] ${activity.isSystem ? 'text-[#999999]' : 'text-[#111111]'
+                  }`}>
+                  {activity.user}
+                </span>
+                <span className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">
+                  {activity.date}
+                </span>
+              </div>
+
+              <div className={`${activity.type === 'comment'
+                ? 'bg-[#F7F7F7] p-3 rounded-[12px] rounded-tl-none'
+                : ''
+                }`}>
+                <p className="text-[13px] text-[#444444] font-['Inter:Regular',sans-serif]">
+                  {activity.message}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Message Input */}
+      <div className="p-4 border-t border-[#EEEEEE] bg-white">
+        {attachments.length > 0 && (
+          <div className="mb-3 space-y-1">
+            {attachments.map((file, index) => (
+              <div key={index} className="flex items-center justify-between p-2 bg-white rounded border border-[#EEEEEE]">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Paperclip className="w-3.5 h-3.5 text-[#666666] shrink-0" />
+                  <span className="text-[11px] text-[#444444] truncate">{file.name}</span>
+                </div>
+                <button
+                  onClick={() => setAttachments(attachments.filter((_, i) => i !== index))}
+                  className="p-1 hover:bg-[#FAFAFA] rounded transition-colors shrink-0"
+                >
+                  <X className="w-3.5 h-3.5 text-[#999999]" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="relative">
+          <textarea
+            value={messageText}
+            onChange={(e) => setMessageText(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type a message or comment..."
+            className="w-full min-h-[80px] p-3 pr-10 rounded-[12px] border border-[#DDDDDD] bg-[#FAFAFA] text-[13px] focus:outline-none focus:border-[#ff3b3b]/30 resize-none font-['Inter:Medium',sans-serif]"
+          />
+          <div className="absolute bottom-3 right-3 flex gap-2">
+            <label htmlFor="file-upload-task" className="cursor-pointer text-[#999999] hover:text-[#666666] transition-colors">
+              <Paperclip className="w-4 h-4" />
+              <input
+                id="file-upload-task"
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+            </label>
+            <button
+              onClick={handleSendMessage}
+              disabled={!messageText.trim() && attachments.length === 0}
+              className="text-[#ff3b3b] hover:text-[#E03131] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] flex overflow-hidden">
       {/* Main Content */}
@@ -95,7 +222,7 @@ export function TaskDetailsPage() {
                   {
                     title: (
                       <span className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111] line-clamp-1 max-w-[300px]">
-                        {task.title}
+                        {task.name || task.title || 'Untitled Task'}
                       </span>
                     ),
                   },
@@ -110,32 +237,25 @@ export function TaskDetailsPage() {
                   {task.priority}
                 </span>
               )}
-              <div className="flex -space-x-2">
-                <div className="w-8 h-8 rounded-full border-2 border-white bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm" title={task.assigned_to?.toString() || 'Unassigned'}>
-                  <span className="text-[10px] text-white font-['Manrope:Bold',sans-serif]">
-                    {task.assigned_to ? 'U' : '?'}
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
+        </div>
 
-          {/* Tabs */}
-          <div className="border-b border-[#EEEEEE]">
-            <div className="flex items-center gap-8">
-              <TabButton
-                active={activeTab === 'details'}
-                onClick={() => setActiveTab('details')}
-                icon={FileText}
-                label="Details"
-              />
-              <TabButton
-                active={activeTab === 'steps'}
-                onClick={() => setActiveTab('steps')}
-                icon={ListTodo}
-                label={`Steps (${steps.length})`}
-              />
-            </div>
+        {/* Tabs */}
+        <div className="border-b border-[#EEEEEE]">
+          <div className="flex items-center gap-8 pl-8">
+            <TabButton
+              active={activeTab === 'details'}
+              onClick={() => setActiveTab('details')}
+              icon={FileText}
+              label="Details"
+            />
+            <TabButton
+              active={activeTab === 'steps'}
+              onClick={() => setActiveTab('steps')}
+              icon={ListTodo}
+              label={`Steps (${steps.length})`}
+            />
           </div>
         </div>
 
@@ -170,13 +290,13 @@ export function TaskDetailsPage() {
                     <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Assigned To</p>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm text-white font-['Manrope:Bold',sans-serif] text-[14px]">
-                        {task.assigned_to ? 'U' : '?'}
+                        {assignee?.name ? assignee.name.charAt(0).toUpperCase() : '?'}
                       </div>
                       <div className="overflow-hidden">
-                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate" title={task.assigned_to?.toString() || 'Unassigned'}>
-                          {task.assigned_to ? `User ${task.assigned_to}` : 'Unassigned'}
+                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate" title={assignee?.name || 'Unassigned'}>
+                          {assignee?.name || 'Unassigned'}
                         </p>
-                        <p className="text-[11px] text-[#666666] truncate">Assignee</p>
+                        <p className="text-[11px] text-[#666666] truncate">Member</p>
                       </div>
                     </div>
                   </div>
@@ -186,25 +306,27 @@ export function TaskDetailsPage() {
                     <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Leader</p>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-[#E0E0E0] border border-[#CCCCCC] flex items-center justify-center shadow-sm text-[#666666] font-['Manrope:Bold',sans-serif] text-[14px]">
-                        A
+                        {leader?.name ? leader.name.charAt(0) : 'U'}
                       </div>
                       <div className="overflow-hidden">
-                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate">Admin</p>
-                        <p className="text-[11px] text-[#666666] truncate">Supervisor</p>
+                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate">{leader?.name || 'Unknown'}</p>
+                        <p className="text-[11px] text-[#666666] truncate">Creator</p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Client */}
+                  {/* Workspace */}
                   <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#F5F5F5]">
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Client</p>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Workspace</p>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-white border border-[#EEEEEE] flex items-center justify-center text-[#111111]">
                         <Briefcase className="w-4 h-4" />
                       </div>
                       <div className="overflow-hidden">
-                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate">Client</p>
-                        <p className="text-[11px] text-[#666666] truncate">Partner</p>
+                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate">
+                          {workspace?.name || 'No Workspace'}
+                        </p>
+                        <p className="text-[11px] text-[#666666] truncate">Project</p>
                       </div>
                     </div>
                   </div>
@@ -218,7 +340,7 @@ export function TaskDetailsPage() {
                       </div>
                       <div className="overflow-hidden">
                         <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate">
-                          {task.requirement_id ? `Requirement ${task.requirement_id}` : 'No Requirement'}
+                          {requirement?.name || (task?.requirement_id ? `Req ${task.requirement_id}` : 'None')}
                         </p>
                         <p className="text-[11px] text-[#666666] truncate">Scope</p>
                       </div>
@@ -238,7 +360,7 @@ export function TaskDetailsPage() {
                       <div>
                         <p className="text-[11px] text-[#999999] mb-1">Start Date</p>
                         <p className="text-[14px] font-['Inter:SemiBold',sans-serif] text-[#111111]">
-                          Not set
+                          {task.start_date ? format(new Date(task.start_date), 'MMM d, yyyy') : 'Not set'}
                         </p>
                       </div>
                       <div className="flex flex-col items-center px-4 opacity-30">
@@ -248,7 +370,7 @@ export function TaskDetailsPage() {
                       <div className="text-right">
                         <p className="text-[11px] text-[#999999] mb-1">Due Date</p>
                         <p className="text-[14px] font-['Inter:SemiBold',sans-serif] text-[#111111]">
-                          {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy') : 'Not set'}
+                          {task.end_date ? format(new Date(task.end_date), 'MMM d, yyyy') : 'Not set'}
                         </p>
                       </div>
                     </div>
@@ -264,17 +386,16 @@ export function TaskDetailsPage() {
                       <div className="flex justify-between items-end w-full">
                         <div>
                           <div className="flex items-baseline gap-1">
-                            <span className="text-[24px] font-['Manrope:Bold',sans-serif] text-[#111111] leading-none">0</span>
+                            <span className="text-[24px] font-['Manrope:Bold',sans-serif] text-[#111111] leading-none">{estimatedHours}</span>
                             <span className="text-[13px] text-[#666666] font-['Inter:Medium',sans-serif]">hrs estimated</span>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className={`text-[18px] font-['Manrope:Bold',sans-serif] leading-none ${
-                            task.status === 'delayed' ? 'text-[#ff3b3b]' :
+                          <p className={`text-[18px] font-['Manrope:Bold',sans-serif] leading-none ${task.status === 'delayed' ? 'text-[#ff3b3b]' :
                             task.status === 'completed' ? 'text-[#0F9D58]' :
-                            'text-[#2F80ED]'
-                          }`}>
-                            0%
+                              'text-[#2F80ED]'
+                            }`}>
+                            {progressPercent}%
                           </p>
                         </div>
                       </div>
@@ -282,16 +403,15 @@ export function TaskDetailsPage() {
                       <div className="relative pt-2 w-full">
                         <div className="flex justify-between text-[10px] font-['Inter:SemiBold',sans-serif] text-[#999999] mb-1.5 uppercase tracking-wide">
                           <span>0h</span>
-                          <span>0h logged</span>
+                          <span>{formattedLogged}h logged</span>
                         </div>
                         <div className="w-full h-2 bg-[#E0E0E0] rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              task.status === 'delayed' ? 'bg-[#ff3b3b]' :
+                            className={`h-full rounded-full transition-all duration-500 ${task.status === 'delayed' ? 'bg-[#ff3b3b]' :
                               task.status === 'completed' ? 'bg-[#0F9D58]' :
-                              'bg-[#2F80ED]'
-                            }`}
-                            style={{ width: '0%' }}
+                                'bg-[#2F80ED]'
+                              }`}
+                            style={{ width: `${progressPercent}%` }}
                           />
                         </div>
                       </div>
@@ -366,112 +486,7 @@ export function TaskDetailsPage() {
         </div>
       </div>
 
-      {/* Right Drawer - Activity & Chat */}
-      <div className="w-[400px] border-l border-[#EEEEEE] flex flex-col bg-white rounded-tr-[24px] rounded-br-[24px]">
-        {/* Drawer Header */}
-        <div className="p-6 border-b border-[#EEEEEE]">
-          <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-[#ff3b3b]" />
-            Activity & Chat
-          </h3>
-          <p className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif] mt-1">
-            Task updates and comments
-          </p>
-        </div>
-
-        {/* Activity Feed */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {activityData.map((activity) => (
-            <div key={activity.id} className="flex gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                activity.isSystem
-                  ? 'bg-[#F0F0F0]'
-                  : 'bg-gradient-to-br from-[#666666] to-[#999999]'
-              }`}>
-                <span className={`text-[11px] font-['Manrope:Bold',sans-serif] ${
-                  activity.isSystem ? 'text-[#999999]' : 'text-white'
-                }`}>
-                  {activity.avatar}
-                </span>
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className={`text-[13px] font-['Manrope:SemiBold',sans-serif] ${
-                    activity.isSystem ? 'text-[#999999]' : 'text-[#111111]'
-                  }`}>
-                    {activity.user}
-                  </span>
-                  <span className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">
-                    {activity.date}
-                  </span>
-                </div>
-
-                <div className={`${
-                  activity.type === 'comment'
-                    ? 'bg-[#F7F7F7] p-3 rounded-[12px] rounded-tl-none'
-                    : ''
-                }`}>
-                  <p className="text-[13px] text-[#444444] font-['Inter:Regular',sans-serif]">
-                    {activity.message}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Message Input */}
-        <div className="p-4 border-t border-[#EEEEEE] bg-white">
-          {attachments.length > 0 && (
-            <div className="mb-3 space-y-1">
-              {attachments.map((file, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border border-[#EEEEEE]">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Paperclip className="w-3.5 h-3.5 text-[#666666] shrink-0" />
-                    <span className="text-[11px] text-[#444444] truncate">{file.name}</span>
-                  </div>
-                  <button
-                    onClick={() => setAttachments(attachments.filter((_, i) => i !== index))}
-                    className="p-1 hover:bg-[#FAFAFA] rounded transition-colors shrink-0"
-                  >
-                    <X className="w-3.5 h-3.5 text-[#999999]" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="relative">
-            <textarea
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type a message or comment..."
-              className="w-full min-h-[80px] p-3 pr-10 rounded-[12px] border border-[#DDDDDD] bg-[#FAFAFA] text-[13px] focus:outline-none focus:border-[#ff3b3b]/30 resize-none font-['Inter:Medium',sans-serif]"
-            />
-            <div className="absolute bottom-3 right-3 flex gap-2">
-              <label htmlFor="file-upload-task" className="cursor-pointer text-[#999999] hover:text-[#666666] transition-colors">
-                <Paperclip className="w-4 h-4" />
-                <input
-                  id="file-upload-task"
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-              </label>
-              <button
-                onClick={handleSendMessage}
-                disabled={!messageText.trim() && attachments.length === 0}
-                className="text-[#ff3b3b] hover:text-[#E03131] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      {rightDrawer}
     </div>
   );
 }
