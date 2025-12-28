@@ -1,10 +1,10 @@
-import { Checkbox, Tooltip, Dropdown, Popover, Input, Button, message, Avatar } from "antd";
+import { Checkbox, Tooltip, Dropdown, Popover, Input, Button, message, Avatar, Modal } from "antd";
 import { AlertCircle, CheckCircle2, Clock, Loader2, MoreVertical, ArrowRightCircle, Eye, XCircle, Ban, Edit, Trash2, Play, CircleStop } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MenuProps } from "antd";
 import { useState, useEffect } from "react";
-import { provideEstimate } from "../../../../services/task";
+import { provideEstimate, updateWorklog } from "../../../../services/task";
 import { SegmentedProgressBar } from "./SegmentedProgressBar";
 import { useTimer } from "../../../../context/TimerContext";
 
@@ -51,6 +51,7 @@ interface TaskRowProps {
   onDelete?: () => void;
   onStatusChange?: (status: string) => void;
   currentUserId?: number;
+  hideRequirements?: boolean;
 }
 
 export function TaskRow({
@@ -60,7 +61,8 @@ export function TaskRow({
   onEdit,
   onDelete,
   onStatusChange,
-  currentUserId
+  currentUserId,
+  hideRequirements = false
 }: TaskRowProps) {
   const router = useRouter();
   const { timerState, startTimer, stopTimer } = useTimer();
@@ -68,6 +70,12 @@ export function TaskRow({
   const [estimateOpen, setEstimateOpen] = useState(false);
   const [estimateHours, setEstimateHours] = useState("");
   const [submissionLoading, setSubmissionLoading] = useState(false);
+
+  // Worklog modal state for Stuck/Complete actions
+  const [showWorklogModal, setShowWorklogModal] = useState(false);
+  const [worklogAction, setWorklogAction] = useState<'stuck' | 'complete' | null>(null);
+  const [worklogDescription, setWorklogDescription] = useState("");
+  const [worklogSubmitting, setWorklogSubmitting] = useState(false);
 
   // Local ticker state for re-rendering live times for OTHER members (not current user)
   const [now, setNow] = useState(new Date());
@@ -145,8 +153,53 @@ export function TaskRow({
     if (isActive) {
       await stopTimer();
     } else {
-      if (isPlayDisabled) return;
+      if (isPlayDisabled || isPendingEstimate) return;
       await startTimer(Number(task.id), task.name, task.project); // Pass task info
+    }
+  };
+
+  // Handle Stuck action - stop timer and show worklog modal
+  const handleStuckClick = async () => {
+    // If timer is running on this task, stop it first
+    if (isActive) {
+      await stopTimer();
+    }
+    setWorklogAction('stuck');
+    setWorklogDescription('');
+    setShowWorklogModal(true);
+  };
+
+  // Handle Complete action - stop timer and show worklog modal  
+  const handleCompleteClick = async () => {
+    // If timer is running on this task, stop it first
+    if (isActive) {
+      await stopTimer();
+    }
+    setWorklogAction('complete');
+    setWorklogDescription('');
+    setShowWorklogModal(true);
+  };
+
+  // Handle worklog modal submission
+  const handleWorklogSubmit = async () => {
+    if (!worklogAction) return;
+
+    setWorklogSubmitting(true);
+    try {
+      // Determine the new status based on action
+      const newStatus = worklogAction === 'stuck' ? 'Stuck' : 'Review';
+
+      // Call the status change handler passed from parent
+      onStatusChange?.(newStatus);
+
+      message.success(worklogAction === 'stuck' ? 'Task marked as blocked' : 'Task marked for review');
+      setShowWorklogModal(false);
+      setWorklogAction(null);
+      setWorklogDescription('');
+    } catch (error) {
+      message.error('Failed to update task status');
+    } finally {
+      setWorklogSubmitting(false);
     }
   };
 
@@ -172,7 +225,7 @@ export function TaskRow({
         }
       `}
     >
-      <div className="grid grid-cols-[40px_2.5fr_1.2fr_1.1fr_1fr_0.8fr_0.6fr_1.5fr_0.6fr_40px] gap-4 items-center">
+      <div className={`grid gap-4 items-center ${hideRequirements ? 'grid-cols-[40px_2.5fr_1.1fr_1fr_0.8fr_1.5fr_0.6fr_40px]' : 'grid-cols-[40px_2.5fr_1.2fr_1.1fr_1fr_0.8fr_1.5fr_0.6fr_40px]'}`}>
         {/* Checkbox */}
         <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
           <Checkbox
@@ -207,15 +260,17 @@ export function TaskRow({
         </div>
 
         {/* Project (Mapped to Requirements Header) */}
-        <div>
-          <Link
-            href="/dashboard/workspace"
-            onClick={(e) => e.stopPropagation()}
-            className="text-[13px] !text-[#111111] visited:!text-[#111111] font-['Manrope:Medium',sans-serif] truncate hover:text-[#ff3b3b] hover:underline"
-          >
-            {task.project}
-          </Link>
-        </div>
+        {!hideRequirements && (
+          <div>
+            <Link
+              href="/dashboard/workspace"
+              onClick={(e) => e.stopPropagation()}
+              className="text-[13px] !text-[#111111] visited:!text-[#111111] font-['Manrope:Medium',sans-serif] truncate hover:text-[#ff3b3b] hover:underline"
+            >
+              {task.project}
+            </Link>
+          </div>
+        )}
 
         {/* Timeline */}
         <div>
@@ -270,97 +325,78 @@ export function TaskRow({
           </span>
         </div>
 
-        {/* Timer / Action Button */}
-        <div className="flex justify-center items-center">
-          <Tooltip title={isPlayDisabled ? "Waiting for turn" : (isActive ? "Stop Timer" : "Start Timer")}>
-            <button
-              onClick={handleTimerClick}
-              disabled={isPlayDisabled && !isActive}
-              className={`transition-colors flex items-center justify-center ${isPlayDisabled && !isActive ? 'opacity-30 cursor-not-allowed' : 'hover:text-[#ff3b3b]'}`}
-            >
-              {isActive ? (
-                <CircleStop className="w-5 h-5 text-red-500 animate-pulse" />
-              ) : (
-                <Play className="w-5 h-5 text-[#666666]" />
-              )}
-            </button>
-          </Tooltip>
-        </div>
 
-        {/* Progress Bar or Nudge */}
+
+        {/* Progress Bar - Always Show */}
         <div className="flex flex-col gap-1 w-full justify-center">
-          {isPendingEstimate ? (
-            // Nudge Button
-            <div className="w-full">
-              <Popover
-                open={estimateOpen}
-                onOpenChange={setEstimateOpen}
-                trigger="click"
-                content={
-                  <div className="p-2 w-48">
-                    <p className="text-xs font-medium mb-2">Your Estimate</p>
-                    <Input
-                      type="number"
-                      placeholder="Hours"
-                      value={estimateHours}
-                      onChange={(e) => setEstimateHours(e.target.value)}
-                      className="mb-2 text-sm"
-                    />
-                    <Button
-                      type="primary"
-                      size="small"
-                      loading={submissionLoading}
-                      className="w-full bg-[#EAB308] text-black"
-                      onClick={async () => {
-                        if (!estimateHours) return;
-                        try {
-                          setSubmissionLoading(true);
-                          await provideEstimate(Number(task.id), Number(estimateHours));
-                          message.success("Estimate submitted");
-                          setEstimateOpen(false);
-                          window.location.reload();
-                        } catch (err) {
-                          message.error("Failed");
-                        } finally {
-                          setSubmissionLoading(false);
-                        }
-                      }}
-                    >
-                      Submit
-                    </Button>
-                  </div>
-                }
-              >
-                <Button
-                  block
-                  variant="solid"
-                  color="yellow"
-                  className="!bg-yellow-400 hover:!bg-yellow-500 !text-black border-none font-bold text-xs h-6 flex items-center justify-center gap-1 shadow-sm"
-                >
-                  <Clock className="w-3 h-3" /> EST
-                </Button>
-              </Popover>
+          <div className="flex flex-col gap-0.5">
+            <div className="flex justify-end">
+              <span className={`text-[10px] font-bold ${textColor}`}>
+                {Math.round(percentage)}%
+              </span>
             </div>
-          ) : (
-            // Progress Bar + Percentage
-            <div className="flex flex-col gap-0.5">
-              <div className="flex justify-end">
-                <span className={`text-[10px] font-bold ${textColor}`}>
-                  {Math.round(percentage)}%
-                </span>
-              </div>
-              <SegmentedProgressBar
-                members={liveMembers}
-                totalEstimate={task.estTime}
-                taskStatus={task.status}
-              />
-            </div>
-          )}
+            <SegmentedProgressBar
+              members={liveMembers}
+              totalEstimate={task.estTime}
+              taskStatus={task.status}
+            />
+          </div>
         </div>
 
-        {/* Status (Aggregated) */}
+        {/* Status (Aggregated) or Estimate Button */}
         <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
-          <StatusBadge status={task.status} onChange={onStatusChange} />
+          {isPendingEstimate ? (
+            // ESTIMATE Button when pending
+            <Popover
+              open={estimateOpen}
+              onOpenChange={setEstimateOpen}
+              trigger="click"
+              content={
+                <div className="p-2 w-48">
+                  <p className="text-xs font-medium mb-2">Your Estimate</p>
+                  <Input
+                    type="number"
+                    placeholder="Hours"
+                    value={estimateHours}
+                    onChange={(e) => setEstimateHours(e.target.value)}
+                    className="mb-4 text-sm"
+                  />
+                  <Button
+                    type="primary"
+                    size="small"
+                    loading={submissionLoading}
+                    className="w-full bg-[#EAB308] text-black"
+                    onClick={async () => {
+                      if (!estimateHours) return;
+                      setSubmissionLoading(true);
+                      try {
+                        await provideEstimate(Number(task.id), Number(estimateHours));
+                        message.success("Estimate submitted");
+                        setEstimateOpen(false);
+                        window.location.reload();
+                      } catch (err) {
+                        message.error("Failed");
+                      } finally {
+                        setSubmissionLoading(false);
+                      }
+                    }}
+                  >
+                    Submit
+                  </Button>
+                </div>
+              }
+            >
+              <button
+                className="px-2 py-1 bg-yellow-400 hover:bg-yellow-500 text-black text-[10px] font-bold rounded-full flex items-center gap-1 shadow-sm transition-colors"
+              >
+                <Clock className="w-3 h-3" /> ESTIMATE
+              </button>
+            </Popover>
+          ) : (
+            <StatusBadge
+              status={task.status}
+            />
+          )}
         </div>
 
         {/* Actions */}
@@ -394,11 +430,49 @@ export function TaskRow({
           </Dropdown>
         </div>
       </div>
+
+      {/* Worklog Modal for Stuck/Complete actions */}
+      <Modal
+        title={worklogAction === 'stuck' ? 'Mark as Blocked' : 'Mark as Complete'}
+        open={showWorklogModal}
+        onCancel={() => {
+          setShowWorklogModal(false);
+          setWorklogAction(null);
+          setWorklogDescription('');
+        }}
+        onOk={handleWorklogSubmit}
+        okText={worklogAction === 'stuck' ? 'Mark Blocked' : 'Mark Complete'}
+        okButtonProps={{
+          loading: worklogSubmitting,
+          danger: worklogAction === 'stuck',
+          style: worklogAction === 'complete' ? { backgroundColor: '#16a34a', borderColor: '#16a34a' } : undefined
+        }}
+        cancelButtonProps={{ disabled: worklogSubmitting }}
+      >
+        <div className="py-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Add a note (optional)
+          </label>
+          <Input.TextArea
+            value={worklogDescription}
+            onChange={(e) => setWorklogDescription(e.target.value)}
+            placeholder={worklogAction === 'stuck'
+              ? "Describe what's blocking this task..."
+              : "Add final notes about this task..."}
+            rows={4}
+            className="w-full"
+          />
+        </div>
+      </Modal>
     </div>
   );
 }
 
-function StatusBadge({ status, onChange }: { status: string; onChange?: (s: string) => void }) {
+function StatusBadge({
+  status,
+}: {
+  status: string;
+}) {
   // Map backend statuses to UI configuration with icons and colors matching old frontend
   // User Req: "Map both Stuck and Impediment to a single visual 'Blocked' badge"
 
@@ -416,7 +490,7 @@ function StatusBadge({ status, onChange }: { status: string; onChange?: (s: stri
     showCircle: boolean;
     animate?: boolean;
     pulse?: boolean;
-    val: string; // The actual backend status value
+    val: string;
   }> = {
     'Assigned': {
       icon: Clock,
@@ -451,14 +525,14 @@ function StatusBadge({ status, onChange }: { status: string; onChange?: (s: stri
       showCircle: true,
       val: 'Delayed'
     },
-    'Blocked': { // Mapped from Stuck/Impediment for display purposes
+    'Blocked': {
       icon: XCircle,
       bgColor: 'bg-[#ef4444]',
       iconColor: 'text-white',
       label: 'Blocked',
       showCircle: true,
       pulse: true,
-      val: 'Stuck' // Default mapping back to Stuck if selected? Or we can't map back easily. This `val` won't be used directly for 'Blocked' in the popover.
+      val: 'Stuck'
     },
     'Review': {
       icon: Eye,
@@ -473,42 +547,15 @@ function StatusBadge({ status, onChange }: { status: string; onChange?: (s: stri
   const style = config[uiStatus] || config['Assigned'];
   const Icon = style.icon;
 
-  const content = (
-    <div className="flex flex-col gap-1 p-1">
-      {Object.entries(config).map(([key, conf]) => {
-        if (key === 'Blocked') {
-          // Show both Stuck and Impediment options
-          return (
-            <>
-              <button key="Stuck" onClick={() => onChange?.('Stuck')} className="text-left px-3 py-1.5 hover:bg-gray-50 rounded text-xs flex items-center gap-2">
-                <XCircle className="w-3 h-3 text-[#ef4444]" /> Stuck
-              </button>
-              <button key="Impediment" onClick={() => onChange?.('Impediment')} className="text-left px-3 py-1.5 hover:bg-gray-50 rounded text-xs flex items-center gap-2">
-                <Ban className="w-3 h-3 text-[#ef4444]" /> Impediment
-              </button>
-            </>
-          );
-        }
-        return (
-          <button key={key} onClick={() => onChange?.(conf.val)} className="text-left px-3 py-1.5 hover:bg-gray-50 rounded text-xs flex items-center gap-2">
-            <conf.icon className={`w-3 h-3 ${conf.iconColor}`} /> {conf.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-
   return (
-    <Popover content={content} trigger="click" overlayInnerStyle={{ padding: 0 }}>
-      <div className="cursor-pointer flex items-center justify-center hover:opacity-80 transition-opacity">
-        {style.showCircle ? (
-          <div className={`w-5 h-5 rounded-full ${style.bgColor} flex items-center justify-center ${style.pulse ? 'animate-pulse' : ''}`}>
-            <Icon className={`w-3 h-3 ${style.iconColor}`} />
-          </div>
-        ) : (
-          <Icon className={`w-4 h-4 ${style.iconColor} ${(style as any).animate ? 'animate-spin' : ''}`} />
-        )}
-      </div>
-    </Popover>
+    <div className="flex items-center justify-center">
+      {style.showCircle ? (
+        <div className={`w-5 h-5 rounded-full ${style.bgColor} flex items-center justify-center ${style.pulse ? 'animate-pulse' : ''}`}>
+          <Icon className={`w-3 h-3 ${style.iconColor}`} />
+        </div>
+      ) : (
+        <Icon className={`w-4 h-4 ${style.iconColor} ${(style as any).animate ? 'animate-spin' : ''}`} />
+      )}
+    </div>
   );
 }

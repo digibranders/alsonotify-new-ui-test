@@ -17,11 +17,14 @@ import {
     Users,
     Download,
     ChevronLeft,
-    ChevronRight
+    ChevronRight,
+    Loader2
 } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import axiosApi from '../../../config/axios';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { PartnerRow, Partner } from './rows/PartnerRow';
+import { acceptInvitation } from '@/services/user';
 import { BankOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined } from '@ant-design/icons';
 
 // Mock Data
@@ -78,6 +81,40 @@ export function PartnersPageContent() {
     useEffect(() => {
         fetchPartners();
     }, []);
+
+    // Handle invitation acceptance from URL
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const inviteToken = searchParams.get('invite');
+
+    useEffect(() => {
+        if (inviteToken) {
+            const processInvite = async () => {
+                const hide = message.loading('Accepting invitation...', 0);
+                try {
+                    const result = await acceptInvitation(inviteToken);
+                    if (result.success) {
+                        message.success('Invitation accepted! You are now partners.');
+                        fetchPartners();
+                    } else {
+                        message.error(result.message || 'Failed to accept invitation.');
+                    }
+                } catch (error: any) {
+                    const msg = error?.response?.data?.message || 'Something went wrong while accepting invitation.';
+                    message.error(msg);
+                } finally {
+                    hide();
+                    // Clean up URL
+                    const params = new URLSearchParams(searchParams.toString());
+                    params.delete('invite');
+                    params.delete('email'); // Also clean up email if present
+                    const newPath = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+                    router.replace(newPath);
+                }
+            };
+            processInvite();
+        }
+    }, [inviteToken, searchParams, router]);
 
     // Pagination
     const [pagination, setPagination] = useState({

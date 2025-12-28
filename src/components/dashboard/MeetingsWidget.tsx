@@ -155,7 +155,7 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
 
       await createCalendarEvent(payload);
       message.success("Event created successfully!");
-      
+
       // Reset form and close modal
       setShowDialog(false);
       setFormData({
@@ -183,25 +183,25 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
     if (!eventsData?.result) return [];
 
     const now = dayjs().tz(companyTimeZone);
-    
+
     // Filter meetings that haven't ended yet (show until meeting end time)
     // Parse event times properly - they come in ISO format and may be in UTC
     const upcoming = (eventsData.result as GraphEvent[])
       .filter((event: GraphEvent) => {
         if (event.isCancelled) return false;
-        
+
         // Parse end time - event.end.dateTime is in ISO format
         // Convert to company timezone for proper comparison
         const endTime = dayjs.utc(event.end.dateTime).tz(companyTimeZone);
-        
+
         // Show meeting if current time is before the meeting end time
         // This means meetings will be shown until they end (including in-progress meetings)
         // Use 'minute' precision to avoid microsecond comparison issues
         const shouldShow = now.isBefore(endTime, 'minute') || now.isSame(endTime, 'minute');
-        
+
         return shouldShow;
       })
-      .sort((a: GraphEvent, b: GraphEvent) => 
+      .sort((a: GraphEvent, b: GraphEvent) =>
         dayjs.utc(a.start.dateTime).tz(companyTimeZone).valueOf() - dayjs.utc(b.start.dateTime).tz(companyTimeZone).valueOf()
       )
       .slice(0, 3) // Show only first 3 meetings (upcoming or in-progress)
@@ -210,7 +210,7 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
         const startTime = dayjs.utc(event.start.dateTime).tz(companyTimeZone);
         const endTime = dayjs.utc(event.end.dateTime).tz(companyTimeZone);
         const durationMinutes = endTime.diff(startTime, 'minute');
-        
+
         // Format duration
         let duration = '';
         if (durationMinutes < 60) {
@@ -245,7 +245,7 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
             // Check URLs for platform indicators
             const joinUrl = event.onlineMeeting?.joinUrl || event.onlineMeetingUrl || '';
             const urlLower = joinUrl.toLowerCase();
-            
+
             if (urlLower.includes('teams.microsoft.com') || urlLower.includes('teams.live.com') || urlLower.includes('/meetup-join/')) {
               platform = 'Teams';
             } else if (urlLower.includes('zoom.us') || urlLower.includes('zoom.com')) {
@@ -265,7 +265,7 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
 
         // Get join URL for the meeting
         const joinUrl = event.onlineMeeting?.joinUrl || event.onlineMeetingUrl || event.webLink || null;
-        
+
         // Get full attendees list for details modal
         const allAttendees = (event.attendees || []).map((attendee: any) => ({
           name: attendee?.emailAddress?.name || attendee?.emailAddress?.address?.split('@')[0] || 'Unknown',
@@ -350,8 +350,8 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
           ) : (
             <div className="flex flex-col gap-2.5">
               {processedMeetings.map((meeting) => (
-                <MeetingItem 
-                  key={meeting.id} 
+                <MeetingItem
+                  key={meeting.id}
                   {...meeting}
                   onJoin={(joinUrl) => {
                     if (joinUrl) {
@@ -407,125 +407,125 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
           <div className="flex-1 overflow-y-auto px-6 py-6">
             {/* Form Fields */}
             <div className="space-y-5">
-            {/* Title Field */}
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                <span className="text-[#ff3b3b]">*</span> Title
-              </span>
-              <Input
-                placeholder="Event title"
-                className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.title ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              />
-            </div>
-
-            {/* Start Date & Time Field */}
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                <span className="text-[#ff3b3b]">*</span> Start Date & Time
-              </span>
-              <DatePicker
-                showTime
-                format="YYYY-MM-DD HH:mm"
-                placeholder="Select start date & time"
-                className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.startDateTime ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.startDateTime}
-                onChange={(date) => setFormData({ ...formData, startDateTime: date })}
-                suffixIcon={<CalendarIcon className="w-4 h-4 text-[#666666]" />}
-              />
-            </div>
-
-            {/* End Time Field */}
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                <span className="text-[#ff3b3b]">*</span> End Time
-              </span>
-              <div className="flex items-center gap-3">
-                <Select
-                  placeholder="Select duration"
-                  className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.duration ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                  value={formData.duration}
-                  onChange={(value) => setFormData({ ...formData, duration: value })}
-                >
-                  <Option value="30 mins">30 mins</Option>
-                  <Option value="45 mins">45 mins</Option>
-                  <Option value="1 hour">1 hour</Option>
-                  <Option value="1.5 hours">1.5 hours</Option>
-                  <Option value="2 hours">2 hours</Option>
-                </Select>
+              {/* Title Field */}
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                  <span className="text-[#ff3b3b]">*</span> Title
+                </span>
                 <Input
-                  placeholder="Custom time"
-                  className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.customTime ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                  value={formData.customTime}
-                  onChange={(e) => setFormData({ ...formData, customTime: e.target.value })}
-                  suffix={<Clock className="w-4 h-4 text-[#666666]" />}
+                  placeholder="Event title"
+                  className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.title ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 />
               </div>
-            </div>
 
-            {/* Attendees Field */}
-            <AttendeesField
-              attendees={formData.attendees}
-              onAddAttendee={(attendee) => {
-                if (!formData.attendees.some(a => a.email.toLowerCase() === attendee.email.toLowerCase())) {
+              {/* Start Date & Time Field */}
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                  <span className="text-[#ff3b3b]">*</span> Start Date & Time
+                </span>
+                <DatePicker
+                  showTime
+                  format="YYYY-MM-DD HH:mm"
+                  placeholder="Select start date & time"
+                  className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.startDateTime ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  value={formData.startDateTime}
+                  onChange={(date) => setFormData({ ...formData, startDateTime: date })}
+                  suffixIcon={<CalendarIcon className="w-4 h-4 text-[#666666]" />}
+                />
+              </div>
+
+              {/* End Time Field */}
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                  <span className="text-[#ff3b3b]">*</span> End Time
+                </span>
+                <div className="flex items-center gap-3">
+                  <Select
+                    placeholder="Select duration"
+                    className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.duration ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                    value={formData.duration}
+                    onChange={(value) => setFormData({ ...formData, duration: value })}
+                  >
+                    <Option value="30 mins">30 mins</Option>
+                    <Option value="45 mins">45 mins</Option>
+                    <Option value="1 hour">1 hour</Option>
+                    <Option value="1.5 hours">1.5 hours</Option>
+                    <Option value="2 hours">2 hours</Option>
+                  </Select>
+                  <Input
+                    placeholder="Custom time"
+                    className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.customTime ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                    value={formData.customTime}
+                    onChange={(e) => setFormData({ ...formData, customTime: e.target.value })}
+                    suffix={<Clock className="w-4 h-4 text-[#666666]" />}
+                  />
+                </div>
+              </div>
+
+              {/* Attendees Field */}
+              <AttendeesField
+                attendees={formData.attendees}
+                onAddAttendee={(attendee) => {
+                  if (!formData.attendees.some(a => a.email.toLowerCase() === attendee.email.toLowerCase())) {
+                    setFormData({
+                      ...formData,
+                      attendees: [...formData.attendees, attendee],
+                    });
+                  }
+                }}
+                onRemoveAttendee={(index) => {
                   setFormData({
                     ...formData,
-                    attendees: [...formData.attendees, attendee],
-                  });
-                }
-              }}
-              onRemoveAttendee={(index) => {
-                setFormData({
-                  ...formData,
-                  attendees: formData.attendees.filter((_, i) => i !== index),
-                });
-              }}
-              employeesData={employeesData}
-            />
-
-            {/* Description Field */}
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                Description
-              </span>
-              <TextArea
-                placeholder="Agenda, notes, etc."
-                className={`min-h-[120px] rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] resize-none ${formData.description ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                rows={4}
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-4 pt-6">
-              <Button
-                type="text"
-                onClick={() => {
-                  setShowDialog(false);
-                  setFormData({
-                    title: '',
-                    startDateTime: null,
-                    duration: '',
-                    customTime: '',
-                    attendees: [],
-                    description: ''
+                    attendees: formData.attendees.filter((_, i) => i !== index),
                   });
                 }}
-                className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="primary"
-                onClick={handleCreateEvent}
-                loading={submitting}
-                className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
-              >
-                Create
-              </Button>
-            </div>
+                employeesData={employeesData}
+              />
+
+              {/* Description Field */}
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                  Description
+                </span>
+                <TextArea
+                  placeholder="Agenda, notes, etc."
+                  className={`min-h-[120px] rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] resize-none ${formData.description ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  rows={4}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-4 pt-6">
+                <Button
+                  type="text"
+                  onClick={() => {
+                    setShowDialog(false);
+                    setFormData({
+                      title: '',
+                      startDateTime: null,
+                      duration: '',
+                      customTime: '',
+                      attendees: [],
+                      description: ''
+                    });
+                  }}
+                  className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="primary"
+                  onClick={handleCreateEvent}
+                  loading={submitting}
+                  className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
+                >
+                  Create
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -560,7 +560,7 @@ function AttendeesField({
   // Filter suggestions based on input
   const suggestions = useMemo(() => {
     if (!inputValue.trim()) return [];
-    
+
     const query = inputValue.toLowerCase();
     const filtered = employees.filter((emp: any) => {
       const email = (emp.email || '').toLowerCase();
@@ -573,7 +573,7 @@ function AttendeesField({
     // Also check if input is a valid email format and not already in attendees
     const isEmailFormat = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inputValue);
     const isAlreadyAdded = attendees.some(a => a.email.toLowerCase() === inputValue.toLowerCase());
-    
+
     if (isEmailFormat && !isAlreadyAdded && !filtered.some((emp: any) => emp.email?.toLowerCase() === inputValue.toLowerCase())) {
       // Add custom email as first suggestion
       return [{ email: inputValue, name: inputValue }, ...filtered];
@@ -611,7 +611,7 @@ function AttendeesField({
       setSelectedIndex(-1);
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedIndex(prev => 
+      setSelectedIndex(prev =>
         prev < suggestions.length - 1 ? prev + 1 : prev
       );
     } else if (e.key === 'ArrowUp') {
@@ -656,7 +656,7 @@ function AttendeesField({
       <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
         Attendees
       </span>
-      
+
       {/* Attendee Chips (Gmail style) */}
       {attendees.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2 min-h-[32px] p-2 border border-[#EEEEEE] rounded-lg bg-[#F9FAFB]">
@@ -706,11 +706,10 @@ function AttendeesField({
               <div
                 key={idx}
                 onClick={() => handleSelectSuggestion(suggestion)}
-                className={`px-4 py-2.5 cursor-pointer transition-colors ${
-                  idx === selectedIndex
+                className={`px-4 py-2.5 cursor-pointer transition-colors ${idx === selectedIndex
                     ? 'bg-[#F7F7F7]'
                     : 'hover:bg-[#FAFAFA]'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2">
                   <div className="flex-1">
@@ -733,14 +732,14 @@ function AttendeesField({
   );
 }
 
-function MeetingItem({ 
-  title, 
-  time, 
-  duration, 
-  date, 
-  attendees, 
-  totalAttendees, 
-  platform, 
+function MeetingItem({
+  title,
+  time,
+  duration,
+  date,
+  attendees,
+  totalAttendees,
+  platform,
   organizer,
   joinUrl,
   allAttendees = [],
@@ -748,14 +747,14 @@ function MeetingItem({
   startDateTime,
   endDateTime,
   onJoin
-}: { 
-  title: string; 
-  time: string; 
-  duration: string; 
-  date: { month: string; day: number }; 
-  attendees: { name: string; avatar: string | null }[]; 
-  totalAttendees: number; 
-  platform: string; 
+}: {
+  title: string;
+  time: string;
+  duration: string;
+  date: { month: string; day: number };
+  attendees: { name: string; avatar: string | null }[];
+  totalAttendees: number;
+  platform: string;
   organizer: string;
   joinUrl?: string | null;
   allAttendees?: Array<{ name: string; email: string; avatar: string }>;
@@ -837,6 +836,7 @@ function MeetingItem({
         onOpenChange={setShowDetails}
         trigger="click"
         placement="right"
+        overlayInnerStyle={{ padding: 0 }}
         content={
           <div className="w-[300px] bg-white rounded-[12px] shadow-lg border border-[#EEEEEE] overflow-hidden">
             {/* Header */}
@@ -907,103 +907,98 @@ function MeetingItem({
           </div>
         }
       >
-        <div 
+        <div
           className="group p-3 rounded-xl border border-[#EEEEEE] hover:border-[#ff3b3b]/20 transition-all duration-300 hover:shadow-lg cursor-pointer"
           onClick={handleCardClick}
         >
-        <div className="flex items-start gap-2.5">
-          {/* Date Badge - Rounded Square */}
-          <div className="flex-shrink-0">
-            <div className={`w-[48px] h-[48px] rounded-[12px] flex flex-col items-center justify-center ${
-              isRedDate 
-                ? 'bg-[#ff3b3b]' 
-                : 'bg-[#E5E5E5]'
-            }`}>
-              <span className={`text-[10px] font-['Manrope:Medium',sans-serif] uppercase leading-none mb-0.5 ${
-                isRedDate ? 'text-white' : 'text-[#666666]'
-              }`}>
-                {date.month}
-              </span>
-              <span className={`text-[20px] font-['Manrope:Bold',sans-serif] leading-none ${
-                isRedDate ? 'text-white' : 'text-[#111111]'
-              }`}>
-                {date.day}
-              </span>
-            </div>
-          </div>
-
-          {/* Meeting Info */}
-          <div className="flex-1 min-w-0">
-            {/* Title & Platform Tag */}
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <h4 className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] line-clamp-1 flex-1">
-                {truncateTitle(title)}
-              </h4>
-              {joinUrl ? (
-                <button
-                  onClick={handleJoinClick}
-                  className="px-1.5 py-0.5 rounded-full text-[9px] font-['Manrope:Medium',sans-serif] flex-shrink-0 flex items-center gap-0.5 hover:opacity-80 transition-opacity cursor-pointer"
-                  style={{ backgroundColor: platformColor.bg, color: platformColor.text }}
-                  title={`Join ${platform} meeting`}
-                >
-                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-                  </svg>
-                  {platform}
-                </button>
-              ) : (
-                <span 
-                  className="px-1.5 py-0.5 rounded-full text-[9px] font-['Manrope:Medium',sans-serif] flex-shrink-0 flex items-center gap-0.5"
-                  style={{ backgroundColor: platformColor.bg, color: platformColor.text }}
-                >
-                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-                  </svg>
-                  {platform}
+          <div className="flex items-start gap-2.5">
+            {/* Date Badge - Rounded Square */}
+            <div className="flex-shrink-0">
+              <div className={`w-[48px] h-[48px] rounded-[12px] flex flex-col items-center justify-center ${isRedDate
+                  ? 'bg-[#ff3b3b]'
+                  : 'bg-[#E5E5E5]'
+                }`}>
+                <span className={`text-[10px] font-['Manrope:Medium',sans-serif] uppercase leading-none mb-0.5 ${isRedDate ? 'text-white' : 'text-[#666666]'
+                  }`}>
+                  {date.month}
                 </span>
-              )}
+                <span className={`text-[20px] font-['Manrope:Bold',sans-serif] leading-none ${isRedDate ? 'text-white' : 'text-[#111111]'
+                  }`}>
+                  {date.day}
+                </span>
+              </div>
             </div>
 
-            {/* Time, Duration, Host & Attendees - All in one line */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <div className="flex items-center gap-1 text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">
-                  <Clock className="size-3.5" strokeWidth={2} />
-                  <span>{time}</span>
-                </div>
-                <div className="w-1 h-1 rounded-full bg-[#CCCCCC]" />
-                <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">Host: {truncateOrganizer(organizer)}</span>
+            {/* Meeting Info */}
+            <div className="flex-1 min-w-0">
+              {/* Title & Platform Tag */}
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <h4 className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] line-clamp-1 flex-1">
+                  {truncateTitle(title)}
+                </h4>
+                {joinUrl ? (
+                  <button
+                    onClick={handleJoinClick}
+                    className="px-1.5 py-0.5 rounded-full text-[9px] font-['Manrope:Medium',sans-serif] flex-shrink-0 flex items-center gap-0.5 hover:opacity-80 transition-opacity cursor-pointer"
+                    style={{ backgroundColor: platformColor.bg, color: platformColor.text }}
+                    title={`Join ${platform} meeting`}
+                  >
+                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                    </svg>
+                    {platform}
+                  </button>
+                ) : (
+                  <span
+                    className="px-1.5 py-0.5 rounded-full text-[9px] font-['Manrope:Medium',sans-serif] flex-shrink-0 flex items-center gap-0.5"
+                    style={{ backgroundColor: platformColor.bg, color: platformColor.text }}
+                  >
+                    <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                    </svg>
+                    {platform}
+                  </span>
+                )}
               </div>
 
-              {/* Attendees - Aligned to the right on same line */}
-              <div className="flex items-center -space-x-2 flex-shrink-0">
-                {attendees.slice(0, 3).map((attendee, index) => {
-                  const initials = getInitials(attendee.name);
-                  return (
-                    <div
-                      key={index}
-                      className="w-6 h-6 rounded-full border-2 border-white bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm relative z-[5] hover:z-10 transition-all"
-                    >
-                      <span className="text-[9px] text-white font-['Manrope:Bold',sans-serif]">{initials}</span>
-                    </div>
-                  );
-                })}
-                {totalAttendees > attendees.length && (
-                  <div className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-sm relative z-[1] ${
-                    isRedDate ? 'bg-[#ff3b3b]' : 'bg-[#E5E5E5]'
-                  }`}>
-                    <span className={`text-[9px] font-['Manrope:SemiBold',sans-serif] ${
-                      isRedDate ? 'text-white' : 'text-[#666666]'
-                    }`}>
-                      +{totalAttendees - attendees.length}
-                    </span>
+              {/* Time, Duration, Host & Attendees - All in one line */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="flex items-center gap-1 text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">
+                    <Clock className="size-3.5" strokeWidth={2} />
+                    <span>{time}</span>
                   </div>
-                )}
+                  <div className="w-1 h-1 rounded-full bg-[#CCCCCC]" />
+                  <span className="text-[#666666] text-[11px] font-['Manrope:Regular',sans-serif]">Host: {truncateOrganizer(organizer)}</span>
+                </div>
+
+                {/* Attendees - Aligned to the right on same line */}
+                <div className="flex items-center -space-x-2 flex-shrink-0">
+                  {attendees.slice(0, 3).map((attendee, index) => {
+                    const initials = getInitials(attendee.name);
+                    return (
+                      <div
+                        key={index}
+                        className="w-6 h-6 rounded-full border-2 border-white bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm relative z-[5] hover:z-10 transition-all"
+                      >
+                        <span className="text-[9px] text-white font-['Manrope:Bold',sans-serif]">{initials}</span>
+                      </div>
+                    );
+                  })}
+                  {totalAttendees > attendees.length && (
+                    <div className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-sm relative z-[1] ${isRedDate ? 'bg-[#ff3b3b]' : 'bg-[#E5E5E5]'
+                      }`}>
+                      <span className={`text-[9px] font-['Manrope:SemiBold',sans-serif] ${isRedDate ? 'text-white' : 'text-[#666666]'
+                        }`}>
+                        +{totalAttendees - attendees.length}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
       </Popover>
     </>
   );

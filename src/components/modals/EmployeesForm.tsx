@@ -126,7 +126,7 @@ export function EmployeeForm({
   const getAccessLevelConfig = (access: string) => {
     switch (access) {
       case "Admin":
-        return { icon: ShieldCheck, color: "#7F56D9", bgColor: "#F9F5FF" };
+        return { icon: ShieldCheck, color: "#ff3b3b", bgColor: "#FFF5F5" };
       case "Manager":
         return { icon: Briefcase, color: "#2E90FA", bgColor: "#EFF8FF" };
       case "Leader":
@@ -269,8 +269,8 @@ export function EmployeeForm({
                 </Option>
                 <Option value="Admin">
                   <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4" style={{ color: "#7F56D9" }} />
-                    <span style={{ color: "#7F56D9" }}>Admin</span>
+                    <ShieldCheck className="w-4 h-4" style={{ color: "#ff3b3b" }} />
+                    <span style={{ color: "#ff3b3b" }}>Admin</span>
                   </div>
                 </Option>
                 <Option value="Manager">

@@ -3,6 +3,11 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Inf
 import { PageLayout } from '../../layout/PageLayout';
 import { Popover, Spin, Tag, Badge, Avatar, Tooltip, Button, Modal, Input, Select, DatePicker, App } from 'antd';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import { useTasks } from '@/hooks/useTask';
 import { useMeetings } from '@/hooks/useMeeting';
 import { useLeaves } from '@/hooks/useLeave';
@@ -35,6 +40,7 @@ interface CalendarEvent {
   status?: string;
   color: string;
   raw?: any;
+  endDate?: string;
 }
 
 export function CalendarPage() {
@@ -47,14 +53,14 @@ export function CalendarPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const queryClient = useQueryClient();
-  
+
   // Fetch employees for autocomplete (only when modal is open)
   const { data: employeesData } = useEmployees(showEventDialog ? 'limit=100' : '');
-  
+
   // Get company timezone from backend, fallback to browser timezone
   const { data: companyData } = useCurrentUserCompany();
   const companyTimeZone = companyData?.result?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  
+
   // Fetch calendar events for refreshing after creation
   const startISO = dayjs().startOf("day").toISOString();
   const endISO = dayjs().add(7, "day").endOf("day").toISOString();
@@ -169,7 +175,7 @@ export function CalendarPage() {
 
       await createCalendarEvent(payload);
       message.success("Event created successfully!");
-      
+
       // Reset form and close modal
       setShowEventDialog(false);
       setFormData({
@@ -204,7 +210,7 @@ export function CalendarPage() {
         if (task.due_date) {
           allEvents.push({
             id: `task-${task.id}`,
-            title: task.title,
+            title: task.title || task.name || 'Untitled',
             date: dayjs(task.due_date).format('YYYY-MM-DD'),
             time: 'Deadline',
             type: 'deadline',
@@ -221,7 +227,8 @@ export function CalendarPage() {
     if (calendarEvents) {
       (calendarEvents as GraphEvent[]).forEach((event: GraphEvent) => {
         if (event.isCancelled) return;
-        const startTime = dayjs(event.start.dateTime);
+        // Parse start time - convert from UTC/ISO to company timezone
+        const startTime = dayjs.utc(event.start.dateTime).tz(companyTimeZone);
         allEvents.push({
           id: `calendar-event-${event.id}`,
           title: event.subject || 'Untitled Meeting',
@@ -231,9 +238,9 @@ export function CalendarPage() {
           location: event.isOnlineMeeting ? 'Microsoft Teams' : undefined,
           description: event.body?.content || '',
           status: 'scheduled',
-          participants: event.attendees?.map((a: any) => ({ 
-            name: a.emailAddress?.name || a.emailAddress?.address?.split('@')[0] || 'Unknown', 
-            avatar: undefined 
+          participants: event.attendees?.map((a: any) => ({
+            name: a.emailAddress?.name || a.emailAddress?.address?.split('@')[0] || 'Unknown',
+            avatar: undefined
           })),
           color: '#3B82F6',
           raw: event
@@ -379,10 +386,35 @@ export function CalendarPage() {
   };
 
   const todayEvents = events.filter(e => e.date === dayjs().format('YYYY-MM-DD'));
-  const upcomingEvents = events
-    .filter(e => dayjs(e.date).isAfter(dayjs(), 'day'))
-    .sort((a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf())
-    .slice(0, 5);
+
+  const upcomingEvents = useMemo(() => {
+    // Filter out past events and holidays
+    const rawUpcoming = events
+      .filter(e => dayjs(e.date).isAfter(dayjs(), 'day') && e.type !== 'holiday')
+      .sort((a, b) => dayjs(a.date).valueOf() - dayjs(b.date).valueOf());
+
+    // Aggregate continuous leaves
+    const aggregated: CalendarEvent[] = [];
+
+    rawUpcoming.forEach((event) => {
+      const lastEvent = aggregated[aggregated.length - 1];
+
+      // Check if this is a leave event and matches the previous one
+      if (lastEvent &&
+        event.type === 'leave' &&
+        lastEvent.type === 'leave' &&
+        lastEvent.title === event.title &&
+        dayjs(event.date).diff(dayjs(lastEvent.endDate || lastEvent.date), 'day') === 1) {
+        // Extend the previous event
+        lastEvent.endDate = event.date;
+      } else {
+        // Add as new event
+        aggregated.push({ ...event }); // Clone to avoid mutation issues
+      }
+    });
+
+    return aggregated.slice(0, 10);
+  }, [events]);
 
   const renderEventPopup = (event: CalendarEvent) => {
     // Extract Teams meeting details from raw GraphEvent
@@ -390,22 +422,22 @@ export function CalendarPage() {
     const isTeamsMeeting = graphEvent?.isOnlineMeeting || event.location === 'Microsoft Teams';
     const joinUrl = graphEvent?.onlineMeeting?.joinUrl || graphEvent?.onlineMeetingUrl;
     const webLink = graphEvent?.webLink;
-    
+
     // Extract meeting ID and passcode from description or body content
     let meetingId: string | null = null;
     let passcode: string | null = null;
-    
+
     if (graphEvent?.body?.content) {
       // Remove HTML tags for text extraction
       const textContent = graphEvent.body.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-      
+
       // Try to extract meeting ID (format: numbers separated by spaces, e.g., "415 314 166 645 2")
       const meetingIdPatterns = [
         /Meeting ID[:\s]+([\d\s]+)/i,
         /(\d{3}\s+\d{3}\s+\d{3}\s+\d{3}\s+\d+)/,
         /ID[:\s]+([\d\s]{10,})/i
       ];
-      
+
       for (const pattern of meetingIdPatterns) {
         const match = textContent.match(pattern);
         if (match) {
@@ -413,14 +445,14 @@ export function CalendarPage() {
           break;
         }
       }
-      
+
       // Try to extract passcode (alphanumeric, typically 6-10 characters)
       const passcodePatterns = [
         /Passcode[:\s]+([A-Za-z0-9]{4,12})/i,
         /Password[:\s]+([A-Za-z0-9]{4,12})/i,
         /Code[:\s]+([A-Za-z0-9]{4,12})/i
       ];
-      
+
       for (const pattern of passcodePatterns) {
         const match = textContent.match(pattern);
         if (match) {
@@ -470,7 +502,7 @@ export function CalendarPage() {
                 <span className="text-[13px] text-[#242424] font-['Manrope:Regular',sans-serif]">{passcode}</span>
               </div>
             )}
-            
+
             {/* Meeting Link - For organizers */}
             {webLink && (
               <div className="mt-4">
@@ -707,7 +739,7 @@ export function CalendarPage() {
             </div>
 
             {/* Upcoming Events */}
-            <div className="bg-[#F7F7F7] rounded-[16px] p-5">
+            <div className="bg-[#F7F7F7] rounded-[16px] p-5 flex-1 min-h-[300px]">
               <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-4">
                 Upcoming
               </h4>
@@ -726,7 +758,14 @@ export function CalendarPage() {
                           </div>
                           <div className="flex items-center gap-1 text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                             <CalendarIcon className="w-3 h-3" />
-                            {dayjs(event.date).format('MMM D')} • {event.time}
+                            {event.endDate ? (
+                              // Check if same month
+                              dayjs(event.date).month() === dayjs(event.endDate).month() ?
+                                `${dayjs(event.date).format('MMM D')} - ${dayjs(event.endDate).format('D')}` :
+                                `${dayjs(event.date).format('MMM D')} - ${dayjs(event.endDate).format('MMM D')}`
+                            ) : (
+                              dayjs(event.date).format('MMM D')
+                            )} • {event.time}
                           </div>
                         </div>
                       </div>
@@ -737,35 +776,6 @@ export function CalendarPage() {
                     No upcoming events
                   </div>
                 )}
-              </div>
-            </div>
-
-            {/* Event Types Legend */}
-            <div className="bg-[#F7F7F7] rounded-[16px] p-5">
-              <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-4">
-                Event Types
-              </h4>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-[#3B82F6]" />
-                  <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">Meetings</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-[#ff3b3b]" />
-                  <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">Deadlines</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-[#8b5cf6]" />
-                  <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">Events</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-[#f59e0b]" />
-                  <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">Leaves</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-[#8b5cf6]" />
-                  <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">Holidays</span>
-                </div>
               </div>
             </div>
           </div>
@@ -967,7 +977,7 @@ function AttendeesField({
   // Filter suggestions based on input
   const suggestions = useMemo(() => {
     if (!inputValue.trim()) return [];
-    
+
     const query = inputValue.toLowerCase();
     const filtered = employees.filter((emp: any) => {
       const email = (emp.email || '').toLowerCase();
@@ -980,7 +990,7 @@ function AttendeesField({
     // Also check if input is a valid email format and not already in attendees
     const isEmailFormat = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inputValue);
     const isAlreadyAdded = attendees.some(a => a.email.toLowerCase() === inputValue.toLowerCase());
-    
+
     if (isEmailFormat && !isAlreadyAdded && !filtered.some((emp: any) => emp.email?.toLowerCase() === inputValue.toLowerCase())) {
       // Add custom email as first suggestion
       return [{ email: inputValue, name: inputValue }, ...filtered];
@@ -1018,7 +1028,7 @@ function AttendeesField({
       setSelectedIndex(-1);
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedIndex(prev => 
+      setSelectedIndex(prev =>
         prev < suggestions.length - 1 ? prev + 1 : prev
       );
     } else if (e.key === 'ArrowUp') {
@@ -1063,7 +1073,7 @@ function AttendeesField({
       <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
         Attendees
       </span>
-      
+
       {/* Attendee Chips (Gmail style) */}
       {attendees.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2 min-h-[32px] p-2 border border-[#EEEEEE] rounded-lg bg-[#F9FAFB]">
@@ -1113,11 +1123,10 @@ function AttendeesField({
               <div
                 key={idx}
                 onClick={() => handleSelectSuggestion(suggestion)}
-                className={`px-4 py-2.5 cursor-pointer transition-colors ${
-                  idx === selectedIndex
-                    ? 'bg-[#F7F7F7]'
-                    : 'hover:bg-[#FAFAFA]'
-                }`}
+                className={`px-4 py-2.5 cursor-pointer transition-colors ${idx === selectedIndex
+                  ? 'bg-[#F7F7F7]'
+                  : 'hover:bg-[#FAFAFA]'
+                  }`}
               >
                 <div className="flex items-center gap-2">
                   <div className="flex-1">

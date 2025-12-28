@@ -246,13 +246,12 @@ export function TasksPage() {
     }
     // Add tab filter (status-based) - only if status filter is not explicitly set
     if (activeTab !== 'all' && filters.status === 'All') {
-      if (activeTab === 'In_Progress') {
-        params.status = 'In_Progress';
-      } else if (activeTab === 'Completed') {
+      if (activeTab === 'Completed') {
         params.status = 'Completed';
-      } else if (activeTab === 'Delayed') {
-        params.status = 'Delayed';
       }
+      // Note: In_Progress tab shows all tasks except Assigned and Completed - filter client-side
+      // Note: Delayed tab doesn't use status filter - it's time-based (end_date < today)
+      // We'll filter client-side after fetching all tasks
     } else if (filters.status !== 'All') {
       // Map UI status to backend status
       const statusMap: Record<string, string> = {
@@ -276,11 +275,42 @@ export function TasksPage() {
       params.end_date = dateRange[1].format('YYYY-MM-DD');
     }
 
+
     return toQueryParams(params);
   }, [pagination.limit, pagination.skip, filters, searchQuery, dateRange, activeTab, workspacesData]);
 
+  // Build query params for STATS (without status filter to get global counts)
+  const statsQueryParams = useMemo(() => {
+    const params: Record<string, any> = {
+      limit: 1, // Only need one item to get status_counts
+      skip: 0,
+    };
+
+    // Apply same filters EXCEPT status/activeTab
+    if (filters.workspace !== 'All') {
+      const selectedWorkspace = workspacesData?.result?.projects?.find(
+        (p: any) => p.name === filters.workspace
+      );
+      if (selectedWorkspace?.id) {
+        params.project_id = selectedWorkspace.id;
+      }
+    }
+    if (searchQuery) {
+      params.name = searchQuery;
+    }
+    if (dateRange && dateRange[0] && dateRange[1]) {
+      params.start_date = dateRange[0].format('YYYY-MM-DD');
+      params.end_date = dateRange[1].format('YYYY-MM-DD');
+    }
+
+    return toQueryParams(params);
+  }, [filters.workspace, searchQuery, dateRange, workspacesData]);
+
   // Fetch tasks with query params
   const { data: tasksData, isLoading } = useTasks(queryParams);
+
+  // Fetch stats separately (without status filter)
+  const { data: statsData } = useTasks(statsQueryParams);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -506,8 +536,21 @@ export function TasksPage() {
   }, [tasks, tasksData]);
 
   const users = useMemo(() => {
-    const userNames = tasks.map(t => t.assignedTo).filter((name): name is string => name !== 'Unassigned');
-    return ['All', ...Array.from(new Set(userNames))];
+    // Collect all unique member names from task_members
+    const userNames = new Set<string>();
+    tasks.forEach(t => {
+      // Add primary assignee
+      if (t.assignedTo && t.assignedTo !== 'Unassigned') {
+        userNames.add(t.assignedTo);
+      }
+      // Add all task members
+      t.task_members?.forEach((m: any) => {
+        if (m.user?.name) {
+          userNames.add(m.user.name);
+        }
+      });
+    });
+    return ['All', 'Multiple', ...Array.from(userNames).sort()];
   }, [tasks]);
 
   const companies = useMemo(() => {
@@ -629,9 +672,24 @@ export function TasksPage() {
   // Apply client-side filters for user/company (since we can't easily map names to IDs)
   // Workspace filtering is now done server-side via query params
   const filteredTasks = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTime = today.getTime();
+
     return tasks.filter(task => {
       // Client-side filtering for user, company, requirement (name-based)
-      const matchesUser = filters.user === 'All' || task.assignedTo === filters.user;
+      // Check if ANY task member's name matches the filter (not just the primary assignee)
+      let matchesUser = true;
+      if (filters.user === 'All') {
+        matchesUser = true;
+      } else if (filters.user === 'Multiple') {
+        // Show tasks with multiple members
+        matchesUser = (task.task_members?.length || 0) > 1;
+      } else {
+        // Show tasks where the selected user is a member
+        matchesUser = task.assignedTo === filters.user ||
+          (task.task_members?.some((m: any) => m.user?.name === filters.user) || false);
+      }
       const matchesCompany = filters.company === 'All' || task.client === filters.company;
       const matchesRequirement = filters.requirement === 'All' || task.project === filters.requirement;
 
@@ -648,28 +706,66 @@ export function TasksPage() {
         }
       }
 
+      // In Progress tab: show all tasks except Assigned and Completed
+      if (activeTab === 'In_Progress') {
+        const isActiveTask = task.status !== 'Assigned' && task.status !== 'Completed';
+        if (!isActiveTask) return false;
+      }
+
+      // Delayed tab: show tasks where end_date has passed and task is NOT completed
+      if (activeTab === 'Delayed') {
+        const isOverdue = task.dueDateValue != null && task.dueDateValue < todayTime;
+        const isNotCompleted = task.status !== 'Completed';
+        if (!isOverdue || !isNotCompleted) return false;
+      }
+
       return matchesUser && matchesCompany && matchesRequirement && matchesDate;
     });
-  }, [tasks, filters, dateRange]);
+  }, [tasks, filters, dateRange, activeTab]);
 
   useEffect(() => {
     // side-effects after filters, search, or date label change (currently none)
   }, [tasks.length, filteredTasks.length, activeTab, searchQuery, filters, dateLabel]);
 
-  // Note: Stats are now based on total count from API, not just current page
-  // For accurate stats, we'd need separate API calls per status, but for now we'll use current page data
-  // Use backend status_counts for accurate breakdown
+  // Note: Stats are now fetched separately without status filter for stable tab counts
+  // Use statsData (global counts) instead of tasksData (filtered)
   const stats = useMemo(() => {
-    const firstTask = tasksData?.result?.[0] as any;
+    const firstTask = statsData?.result?.[0] as any;
     const backendCounts = firstTask?.status_counts || {};
+    const allTasks = statsData?.result || [];
+
+    // Calculate delayed count: tasks where end_date < today AND not completed
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTime = today.getTime();
+
+    let delayedCount = 0;
+    allTasks.forEach((t: any) => {
+      if (t.end_date && t.status !== 'Completed') {
+        const endDateObj = new Date(t.end_date);
+        endDateObj.setHours(0, 0, 0, 0);
+        if (endDateObj.getTime() < todayTime) {
+          delayedCount++;
+        }
+      }
+    });
+
+    // Calculate total from counts if available
+    const calculatedTotal = (backendCounts.All) ||
+      ((backendCounts.Assigned || 0) + (backendCounts.In_Progress || 0) +
+        (backendCounts.Completed || 0) + (backendCounts.Delayed || 0) +
+        (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0) +
+        (backendCounts.Review || 0));
 
     return {
-      all: backendCounts.All || totalTasks,
-      'In_Progress': backendCounts.In_Progress || 0,
+      all: backendCounts.All || calculatedTotal || totalTasks,
+      // In Progress = all tasks except Assigned and Completed
+      'In_Progress': (backendCounts.In_Progress || 0) + (backendCounts.Delayed || 0) +
+        (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0) + (backendCounts.Review || 0),
       'Completed': backendCounts.Completed || 0,
-      'Delayed': (backendCounts.Delayed || 0) + (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0),
+      'Delayed': delayedCount > 0 ? delayedCount : ((backendCounts.Delayed || 0) + (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0)),
     };
-  }, [tasksData, totalTasks]);
+  }, [statsData, totalTasks]);
 
   const toggleSelectAll = () => {
     if (selectedTasks.length === filteredTasks.length) {
@@ -954,7 +1050,10 @@ export function TasksPage() {
             </h2>
 
             <button
-              onClick={() => setIsDialogOpen(true)}
+              onClick={() => {
+                setEditingTask(null); // Reset editing task for new task
+                setIsDialogOpen(true);
+              }}
               className="hover:scale-110 active:scale-95 transition-transform"
             >
               <Plus className="size-5 text-[#ff3b3b]" strokeWidth={2} />
@@ -977,6 +1076,7 @@ export function TasksPage() {
               }}
             >
               <TaskForm
+                key={editingTask ? `edit-${editingTask.id}` : `new-${Date.now()}`}
                 initialData={editingTask ? {
                   name: editingTask.name,
                   project_id: String(editingTask.project_id || ''),
@@ -1080,7 +1180,7 @@ export function TasksPage() {
       {/* Tasks List */}
       <div className="flex-1 overflow-y-auto relative">
         {/* Table Header */}
-        <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2.5fr_1.2fr_1.1fr_1fr_0.8fr_0.6fr_1.5fr_0.6fr_40px] gap-4 px-4 py-3 mb-2 items-center">
+        <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2.5fr_1.2fr_1.1fr_1fr_0.8fr_1.5fr_0.6fr_40px] gap-4 px-4 py-3 mb-2 items-center">
           <div className="flex justify-center">
             <Checkbox
               checked={filteredTasks.length > 0 && selectedTasks.length === filteredTasks.length}
@@ -1105,11 +1205,6 @@ export function TasksPage() {
           <div className="flex justify-center">
             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
               Duration
-            </p>
-          </div>
-          <div className="flex justify-center">
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
-              Timer
             </p>
           </div>
           <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">

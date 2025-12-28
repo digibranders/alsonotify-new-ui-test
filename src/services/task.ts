@@ -4,14 +4,22 @@ import { ApiError, NetworkError, getErrorMessage, isAxiosError } from "../types/
 
 export interface TaskType {
   id: number;
-  title: string;
+  title?: string;
+  name?: string;
   description?: string;
   status?: string;
   priority?: string;
   project_id?: number;
   requirement_id?: number;
   assigned_to?: number;
+  member_id?: number;
+  leader_id?: number;
   due_date?: string;
+  start_date?: string;
+  end_date?: string;
+  created_by?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Worklog {
@@ -40,6 +48,18 @@ export interface Comment {
 export interface TaskDetailType extends TaskType {
   worklogs?: Worklog[];
   comments?: Comment[];
+  // Pre-populated relation fields from API
+  leader_user?: { id: number; name?: string; email?: string };
+  member_user?: { id: number; name?: string; email?: string };
+  task_project?: { id: number; name?: string };
+  task_requirement?: { id: number; name?: string };
+  task_members?: Array<{
+    id: number;
+    user_id: number;
+    status?: string;
+    estimated_time?: number;
+    user?: { id: number; name?: string; email?: string };
+  }>;
 }
 
 /**
@@ -500,6 +520,6 @@ export const provideEstimate = async (id: number, hours: number): Promise<ApiRes
 };
 
 export const getCurrentActiveTimer = async () => {
-  const { data } = await axiosApi.get('/tasks/active-timer');
+  const { data } = await axiosApi.get('/task/active-timer');
   return data;
 };
