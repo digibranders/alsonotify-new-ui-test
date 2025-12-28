@@ -158,7 +158,7 @@ export function EmployeeForm({
       </div>
 
       {/* Scrollable Body */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className="flex-1 overflow-y-auto px-6 py-6 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
         {/* Section: Employee Details */}
         <div className="grid grid-cols-2 gap-6">
           {/* Left Column */}
@@ -219,19 +219,7 @@ export function EmployeeForm({
               />
             </div>
 
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Salary</span>
-              <Select
-                className={`w-full h-11 employee-form-select ${formData.currency ? 'employee-form-select-filled' : ''}`}
-                placeholder="Monthly"
-                value={formData.currency}
-                onChange={(v) => setFormData({ ...formData, currency: String(v) })}
-                suffixIcon={<div className="text-gray-400">⌄</div>}
-              >
-                <Option value="Monthly">Monthly</Option>
-                <Option value="Yearly">Yearly</Option>
-              </Select>
-            </div>
+
 
             <div className="space-y-2">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Leaves Balance</span>

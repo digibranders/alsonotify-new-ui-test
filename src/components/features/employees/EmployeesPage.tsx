@@ -1044,16 +1044,14 @@ export function EmployeesPage() {
         onCancel={() => setIsDialogOpen(false)}
         footer={null}
         width={700}
-        centered={false}
+        centered
         className="rounded-[16px] overflow-hidden"
-        style={{
-          top: '10px',
-          paddingBottom: '10px',
-        }}
         styles={{
           body: {
             padding: 0,
-            height: 'calc(100vh - 20px)',
+            maxHeight: 'calc(100vh - 100px)',
+            display: 'flex',
+            flexDirection: 'column',
           },
         }}
       >
