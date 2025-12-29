@@ -85,6 +85,7 @@ export function EmployeesPage() {
       department: emp.department?.name || 'Unassigned',
       access: getRoleFromUser(emp.user_employee),
       roleId: emp.user_employee?.role_id,
+      roleColor: emp.user_employee?.role?.color,
       salary: emp.salary_yearly || emp.salary || 0,
       currency: 'USD',
       workingHours: emp.working_hours?.start_time && emp.working_hours?.end_time ? 8 : 0,
@@ -1044,16 +1045,14 @@ export function EmployeesPage() {
         onCancel={() => setIsDialogOpen(false)}
         footer={null}
         width={700}
-        centered={false}
+        centered
         className="rounded-[16px] overflow-hidden"
-        style={{
-          top: '10px',
-          paddingBottom: '10px',
-        }}
         styles={{
           body: {
             padding: 0,
-            height: 'calc(100vh - 20px)',
+            maxHeight: 'calc(100vh - 100px)',
+            display: 'flex',
+            flexDirection: 'column',
           },
         }}
       >

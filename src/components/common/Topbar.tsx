@@ -43,6 +43,7 @@ type UserRole = 'Admin' | 'Manager' | 'Leader' | 'Employee';
 
 interface HeaderProps {
   userRole?: UserRole;
+  roleColor?: string;
   setUserRole?: (role: UserRole) => void;
 }
 
@@ -54,7 +55,7 @@ const getGreeting = (): string => {
   return 'Evening';
 };
 
-export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
+export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderProps) {
   const router = useRouter();
   const handleLogout = useLogout();
   const { message } = App.useApp();
@@ -401,7 +402,7 @@ export function Header({ userRole = 'Admin', setUserRole }: HeaderProps) {
                 <span className="font-['Manrope:Regular',sans-serif]">{`👋 ${greeting}! `}</span>
                 <span className="font-['Manrope:Bold',sans-serif]">{firstName}</span>
               </p>
-              <AccessBadge role={mappedRole || userRole} />
+              <AccessBadge role={mappedRole || userRole} color={roleColor} />
             </div>
           </div>
 

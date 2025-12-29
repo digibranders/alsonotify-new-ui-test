@@ -91,7 +91,7 @@ export function EmployeeRow({
 
         {/* Access */}
         <div className="flex flex-col items-start">
-          <AccessBadge role={employee.access} />
+          <AccessBadge role={employee.access} color={employee.roleColor} />
         </div>
 
         {/* Employment Type */}

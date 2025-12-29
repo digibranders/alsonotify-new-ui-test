@@ -1,9 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, Edit, Trash2, X, Pencil, CreditCard, Bell, Lock, Database, AlertTriangle, Eye, EyeOff } from 'lucide-react';
-import { Button, Input, Select, Switch, Divider, App, Modal, DatePicker } from "antd";
-import { useUpdateCompany, useCurrentUserCompany } from '@/hooks/useUser';
+import { Plus, Edit, Trash2, X, Pencil, CreditCard, Bell, Lock, Database, AlertTriangle, Eye, EyeOff, Shield, ChevronDown, ChevronRight, Check } from 'lucide-react';
+import { Button, Input, Select, Switch, Divider, App, Modal, DatePicker, Collapse, Checkbox } from "antd";
+import { useUpdateCompany, useCurrentUserCompany, useRoles, useRolePermissions, useUpsertRole, useUpdateRolePermissions, useUserDetails } from '@/hooks/useUser';
 import { usePublicHolidays, useCreateHoliday, useUpdateHoliday, useDeleteHoliday } from '@/hooks/useHoliday';
 import { DEFAULT_DOCUMENT_TYPES, DOCUMENT_TYPES_STORAGE_KEY } from '@/constants/documentTypes';
+import { getRoleFromUser } from '@/utils/roleUtils';
+import { People24Filled } from "@fluentui/react-icons";
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
@@ -80,7 +82,7 @@ const getTimezones = (): Array<{ value: string; label: string }> => {
       return uniqueTimezones.map(tz => ({ value: tz, label: tz }));
     }
   } catch (e) {
-    
+
   }
 
   // Fallback: Comprehensive list of IANA timezones (canonical names only, no deprecated aliases)
@@ -218,7 +220,7 @@ interface DocumentTypeLocal {
 
 export function SettingsPage() {
   const { message } = App.useApp();
-  const [activeTab, setActiveTab] = useState<'company' | 'leaves' | 'working-hours' | 'integrations' | 'financials' | 'notifications' | 'security' | 'data'>('company');
+  const [activeTab, setActiveTab] = useState<'company' | 'leaves' | 'working-hours' | 'integrations' | 'financials' | 'notifications' | 'security' | 'data' | 'access-management'>('company');
   const [isEditing, setIsEditing] = useState(false);
 
   // State for new tabs
@@ -228,6 +230,12 @@ export function SettingsPage() {
   const [showPassword, setShowPassword] = useState({ current: false, new: false, confirm: false });
   const updateCompanyMutation = useUpdateCompany();
   const { data: companyData } = useCurrentUserCompany();
+  const { data: userDetails } = useUserDetails();
+
+  const isAdmin = useMemo(() => {
+    const userData = userDetails?.result?.user || userDetails?.result || {};
+    return getRoleFromUser(userData) === 'Admin';
+  }, [userDetails]);
 
   // Get timezones list (memoized to avoid regenerating on every render)
   const timezones = useMemo(() => getTimezones(), []);
@@ -238,6 +246,7 @@ export function SettingsPage() {
   const [timeZone, setTimeZone] = useState(companyData?.result?.timezone || 'Asia/Kolkata');
   const [currency, setCurrency] = useState(companyData?.result?.currency || 'USD');
   const [address, setAddress] = useState(companyData?.result?.address || '');
+  const [defaultEmployeePassword, setDefaultEmployeePassword] = useState(companyData?.result?.default_employee_password || 'Pass@123');
 
   // Update state when company data loads
   useEffect(() => {
@@ -247,6 +256,7 @@ export function SettingsPage() {
       setTimeZone(companyData.result.timezone || 'Asia/Kolkata');
       setCurrency(companyData.result.currency || 'USD');
       setAddress(companyData.result.address || '');
+      setDefaultEmployeePassword(companyData.result.default_employee_password || 'Pass@123');
     }
   }, [companyData]);
   const [departments, setDepartments] = useState<Department[]>([
@@ -329,6 +339,33 @@ export function SettingsPage() {
   const [workEndTime, setWorkEndTime] = useState('18:00');
   const [breakTime, setBreakTime] = useState('60');
 
+  // Role Management State
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [roleFormName, setRoleFormName] = useState('');
+  const [roleFormColor, setRoleFormColor] = useState('#BBBBBB');
+  const [editingRole, setEditingRole] = useState<{ id?: number; name: string; color?: string } | null>(null);
+  const [selectedPermissionIds, setSelectedPermissionIds] = useState<Set<number>>(new Set());
+
+  const { data: rolesData, isLoading: isLoadingRoles } = useRoles();
+  const { data: rolePermissions, isLoading: isLoadingPermissions } = useRolePermissions(selectedRoleId);
+  const upsertRoleMutation = useUpsertRole();
+  const updatePermissionsMutation = useUpdateRolePermissions();
+
+  useEffect(() => {
+    if (rolePermissions?.result) {
+      const initial = new Set<number>();
+      rolePermissions.result.forEach((mod) => {
+        mod.actions.forEach((act) => {
+          if (act.assigned) {
+            initial.add(act.id);
+          }
+        });
+      });
+      setSelectedPermissionIds(initial);
+    }
+  }, [rolePermissions]);
+
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   // Handlers
@@ -379,9 +416,9 @@ export function SettingsPage() {
 
   const handleEditHoliday = (holiday: Holiday) => {
     setEditingHoliday(holiday);
-    setHolidayForm({ 
-      name: holiday.name, 
-      date: dayjs(holiday.date) 
+    setHolidayForm({
+      name: holiday.name,
+      date: dayjs(holiday.date)
     });
     setIsHolidayModalOpen(true);
   };
@@ -435,6 +472,32 @@ export function SettingsPage() {
     }
   };
 
+  const handleSaveRole = () => {
+    if (!roleFormName.trim()) {
+      message.error('Role name is required');
+      return;
+    }
+
+    const payload = {
+      id: editingRole?.id,
+      name: roleFormName.trim(),
+      color: roleFormColor,
+    };
+
+    upsertRoleMutation.mutate(payload, {
+      onSuccess: () => {
+        message.success(`Role ${editingRole ? 'updated' : 'added'} successfully`);
+        setIsRoleModalOpen(false);
+        setRoleFormName('');
+        setRoleFormColor('#BBBBBB');
+        setEditingRole(null);
+      },
+      onError: (error: any) => {
+        message.error(error?.response?.data?.message || `Failed to ${editingRole ? 'update' : 'add'} role`);
+      },
+    });
+  };
+
   const handleUpdateLeaveCount = (id: string, count: string) => {
     setLeaves(leaves.map(l => l.id === id ? { ...l, count: parseInt(count) || 0 } : l));
   };
@@ -450,6 +513,10 @@ export function SettingsPage() {
         payload.timezone = timeZone;
         payload.currency = currency;
         payload.address = address;
+      }
+
+      if (activeTab === 'security' && isAdmin) {
+        payload.default_employee_password = defaultEmployeePassword;
       }
       // Note: Departments, leaves, and working hours might need separate API endpoints
       // For now, we'll save company basic info
@@ -483,7 +550,7 @@ export function SettingsPage() {
           <h1 className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
             {isIndividual ? 'Settings' : 'Company Settings'}
           </h1>
-          {activeTab === 'company' && (
+          {(activeTab === 'company' || (activeTab === 'security' && isAdmin)) && (
             !isEditing ? (
               <Button
                 onClick={handleEdit}
@@ -574,6 +641,16 @@ export function SettingsPage() {
                 Working Hours
                 {activeTab === 'working-hours' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
               </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setActiveTab('access-management')}
+                  className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'access-management' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
+                    }`}
+                >
+                  Access Management
+                  {activeTab === 'access-management' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
+                </button>
+              )}
               <button
                 onClick={() => setActiveTab('integrations')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'integrations' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
@@ -940,7 +1017,7 @@ export function SettingsPage() {
             <div className="space-y-6 border-l border-[#EEEEEE] pl-12">
               <div className="flex items-center gap-2">
                 <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Public Holidays</h2>
-                <button 
+                <button
                   onClick={handleAddHoliday}
                   className="hover:scale-110 active:scale-95 transition-transform"
                 >
@@ -959,13 +1036,13 @@ export function SettingsPage() {
                         <p className="text-[12px] text-[#666666] font-['Manrope:Medium',sans-serif]">{new Date(holiday.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button 
+                        <button
                           onClick={() => handleEditHoliday(holiday)}
                           className="p-2 text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] rounded-full transition-colors"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDeleteHoliday(holiday.id)}
                           className="p-2 text-[#ff3b3b] hover:bg-[#FFF5F5] rounded-full transition-colors"
                         >
@@ -1091,6 +1168,221 @@ export function SettingsPage() {
           </div>
         )}
 
+        {/* Access Management Tab */}
+        {activeTab === 'access-management' && (
+          <div className="bg-white rounded-[24px] p-8 border border-[#EEEEEE] mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center justify-between mb-10">
+              <div>
+                <h2 className="text-[18px] font-['Manrope:Bold',sans-serif] text-[#111111]">Access Management</h2>
+                <p className="text-[13px] text-[#666666] mt-1 font-['Manrope:Regular',sans-serif]">
+                  Manage roles and define specific permissions for your team.
+                </p>
+              </div>
+              <Button
+                onClick={() => {
+                  setEditingRole(null);
+                  setRoleFormName('');
+                  setIsRoleModalOpen(true);
+                }}
+                className="bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-11 rounded-full text-[13px] flex items-center gap-2 border-none transition-all shadow-md active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                Add Role
+              </Button>
+            </div>
+
+            <div className="flex gap-8 h-[calc(100vh-500px)] min-h-[500px]">
+              {/* Roles List - Sticky */}
+              <div className="w-1/3 flex flex-col">
+                <div className="flex items-center h-10 mb-2 px-1">
+                  <span className="text-[12px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider">
+                    Roles
+                  </span>
+                </div>
+                <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="space-y-1">
+                    {rolesData?.result
+                      ?.filter((role: any) => role.name !== 'Super Admin')
+                      ?.sort((a: any, b: any) => {
+                        const order = ['Admin', 'Manager', 'Leader', 'Employee'];
+                        const aIdx = order.indexOf(a.name);
+                        const bIdx = order.indexOf(b.name);
+                        if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+                        if (aIdx !== -1) return -1;
+                        if (bIdx !== -1) return 1;
+                        return a.name.localeCompare(b.name);
+                      })
+                      ?.map((role: any) => (
+                        <div
+                          key={role.id}
+                          onClick={() => setSelectedRoleId(role.id)}
+                          className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${selectedRoleId === role.id
+                            ? 'bg-[#111111] text-white shadow-lg'
+                            : 'hover:bg-[#F7F7F7] text-[#111111]'
+                            }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Lock className={`w-4 h-4 ${selectedRoleId === role.id ? 'text-white/70' : 'text-[#666666]'}`} />
+                            <span className="text-[14px] font-['Manrope:Medium',sans-serif]">{role.name}</span>
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingRole(role);
+                                setRoleFormName(role.name);
+                                setRoleFormColor(role.color || '#BBBBBB');
+                                setIsRoleModalOpen(true);
+                              }}
+                              className={`p-1.5 rounded-md hover:bg-white/20 ${selectedRoleId === role.id ? 'text-white' : 'text-[#666666]'}`}
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    {isLoadingRoles && (
+                      <div className="py-8 text-center text-[#999999] text-[13px]">Loading roles...</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Permissions Editor - Scrollable */}
+              <div className="w-2/3 flex flex-col">
+                {selectedRoleId ? (
+                  <div className="flex flex-col h-full">
+                    <div className="flex items-center justify-between h-10 mb-2 px-1">
+                      <span className="text-[12px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider">
+                        Permissions for {rolesData?.result?.find((r: any) => r.id === selectedRoleId)?.name}
+                      </span>
+                      <Button
+                        onClick={() => {
+                          updatePermissionsMutation.mutate({
+                            roleId: selectedRoleId,
+                            actions: Array.from(selectedPermissionIds),
+                          });
+                        }}
+                        loading={updatePermissionsMutation.isPending}
+                        className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-9 rounded-full text-[12px] border-none shadow-sm active:scale-95 transition-all"
+                      >
+                        Save Permissions
+                      </Button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6">
+                      {isLoadingPermissions ? (
+                        <div className="py-20 text-center text-[#999999] text-[13px]">
+                          Loading permissions...
+                        </div>
+                      ) : (
+                        <Collapse
+                          ghost
+                          accordion
+                          expandIcon={({ isActive }) => (
+                            <div className={`transition-transform duration-200 ${isActive ? 'rotate-90' : ''}`}>
+                              <ChevronRight className="w-4 h-4 text-[#666666]" />
+                            </div>
+                          )}
+                          className="custom-permissions-collapse"
+                          items={rolePermissions?.result?.map((mod) => {
+                            const actionIds = mod.actions.map((a) => a.id);
+                            const allChecked = actionIds.every((id) => selectedPermissionIds.has(id));
+                            const indeterminate = actionIds.some((id) => selectedPermissionIds.has(id)) && !allChecked;
+
+                            return {
+                              key: mod.module,
+                              header: (
+                                <div className="flex items-center justify-between w-full pr-4">
+                                  <span className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
+                                    {mod.module}
+                                  </span>
+                                  <div onClick={(e) => e.stopPropagation()}>
+                                    <Checkbox
+                                      indeterminate={indeterminate}
+                                      checked={allChecked}
+                                      onChange={(e) => {
+                                        const next = new Set(selectedPermissionIds);
+                                        actionIds.forEach((id) => {
+                                          if (e.target.checked) next.add(id);
+                                          else next.delete(id);
+                                        });
+                                        setSelectedPermissionIds(next);
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              ),
+                              label: (
+                                <div className="flex items-center justify-between w-full pr-4">
+                                  <span className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
+                                    {mod.module}
+                                  </span>
+                                  <div onClick={(e) => e.stopPropagation()}>
+                                    <Checkbox
+                                      indeterminate={indeterminate}
+                                      checked={allChecked}
+                                      onChange={(e) => {
+                                        const next = new Set(selectedPermissionIds);
+                                        actionIds.forEach((id) => {
+                                          if (e.target.checked) next.add(id);
+                                          else next.delete(id);
+                                        });
+                                        setSelectedPermissionIds(next);
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              ),
+                              children: (
+                                <div className="grid grid-cols-2 gap-4 p-2">
+                                  {mod.actions.map((act) => (
+                                    <div
+                                      key={act.id}
+                                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-white transition-colors cursor-pointer"
+                                      onClick={() => {
+                                        const next = new Set(selectedPermissionIds);
+                                        if (next.has(act.id)) next.delete(act.id);
+                                        else next.add(act.id);
+                                        setSelectedPermissionIds(next);
+                                      }}
+                                    >
+                                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${selectedPermissionIds.has(act.id)
+                                        ? 'bg-[#ff3b3b] border-[#ff3b3b]'
+                                        : 'bg-white border-[#DDDDDD]'
+                                        }`}>
+                                        {selectedPermissionIds.has(act.id) && <Check className="w-2.5 h-2.5 text-white stroke-[4]" />}
+                                      </div>
+                                      <span className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif]">
+                                        {act.name}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ),
+                              className: "mb-2 bg-[#F9FAFB] rounded-xl border-none overflow-hidden"
+                            };
+                          })}
+                        />
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-[#F9FAFB] rounded-2xl border border-dashed border-[#EEEEEE]">
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
+                      <Shield className="w-6 h-6 text-[#999999]" />
+                    </div>
+                    <h3 className="text-[15px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Select a role</h3>
+                    <p className="text-[13px] text-[#666666] mt-1 max-w-[240px]">
+                      Select a role from the left to view and manage its permissions.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Financials Tab */}
         {activeTab === 'financials' && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-2xl">
@@ -1207,6 +1499,27 @@ export function SettingsPage() {
               </div>
               <Switch checked={security.twoFactor} onChange={(v) => setSecurity({ ...security, twoFactor: v })} />
             </div>
+
+            {isAdmin && (
+              <>
+                <Divider />
+                <div className="mt-8">
+                  <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4 flex items-center gap-2">
+                    <People24Filled className="w-4 h-4 text-[#ff3b3b]" color="#ff3b3b" /> Default Employee Password
+                  </h3>
+                  <div className="max-w-md">
+                    <p className="text-[12px] text-[#666666] mb-3">This password will be pre-filled when creating new employees.</p>
+                    <Input
+                      placeholder="Default Password"
+                      value={defaultEmployeePassword}
+                      onChange={(e) => setDefaultEmployeePassword(e.target.value)}
+                      disabled={!isEditing}
+                      className="h-11 rounded-lg"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
@@ -1326,6 +1639,94 @@ export function SettingsPage() {
                   {editingHoliday ? 'Update' : 'Add'} Holiday
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Role Management Modal */}
+      <Modal
+        title={null}
+        open={isRoleModalOpen}
+        onCancel={() => {
+          setIsRoleModalOpen(false);
+          setRoleFormName('');
+          setEditingRole(null);
+        }}
+        footer={null}
+        width={400}
+        centered
+        className="rounded-2xl overflow-hidden"
+        closeIcon={null}
+      >
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-[18px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
+              {editingRole ? 'Edit Role' : 'Add New Role'}
+            </h3>
+            <button
+              onClick={() => {
+                setIsRoleModalOpen(false);
+                setRoleFormName('');
+                setEditingRole(null);
+              }}
+              className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors"
+            >
+              <X className="w-5 h-5 text-[#666666]" />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                Role Name
+              </span>
+              <Input
+                placeholder="e.g. Project Manager"
+                value={roleFormName}
+                onChange={(e) => setRoleFormName(e.target.value)}
+                className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveRole()}
+                autoFocus
+              />
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                Badge Color
+              </span>
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                {['#BBBBBB', '#ff3b3b', '#2E90FA', '#12B76A', '#7F56D9', '#F79009', '#F04438', '#667085'].map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => setRoleFormColor(color)}
+                    className={`w-5 h-5 rounded-full border-2 shrink-0 transition-all ${roleFormColor === color ? 'border-[#111111] scale-110' : 'border-transparent'
+                      }`}
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4">
+              <Button
+                type="text"
+                onClick={() => {
+                  setIsRoleModalOpen(false);
+                  setRoleFormName('');
+                  setEditingRole(null);
+                }}
+                className="h-10 px-6 font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#666666]"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveRole}
+                loading={upsertRoleMutation.isPending}
+                className="bg-[#111111] hover:bg-black text-white font-['Manrope:SemiBold',sans-serif] px-8 h-11 rounded-full text-[13px] border-none shadow-sm transition-all active:scale-95"
+              >
+                {editingRole ? 'Update' : 'Add'} Role
+              </Button>
             </div>
           </div>
         </div>

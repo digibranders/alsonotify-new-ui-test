@@ -16,6 +16,7 @@ export interface Employee {
   workingHours: number;
   leaves: number;
   roleId?: number;
+  roleColor?: string;
   employmentType?: 'In-house' | 'Freelancer' | 'Agency';
   rawWorkingHours?: { start_time: string; end_time: string };
 }

@@ -160,3 +160,44 @@ export const useRoles = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
+
+// Role permission hooks
+import {
+  upsertRole,
+  getRolePermissions,
+  updateRolePermissions,
+  type RoleType,
+  type ModuleActionGroup,
+} from "../services/user";
+
+export const useRolePermissions = (roleId: number | null) => {
+  return useQuery({
+    queryKey: ["rolePermissions", roleId],
+    queryFn: () => getRolePermissions(roleId!),
+    enabled: !!roleId,
+    staleTime: 5 * 60 * 1000,
+  });
+};
+
+export const useUpsertRole = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: Partial<RoleType>) => upsertRole(params),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roles"] });
+    },
+  });
+};
+
+export const useUpdateRolePermissions = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ roleId, actions }: { roleId: number; actions: number[] }) =>
+      updateRolePermissions(roleId, actions),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["rolePermissions", variables.roleId] });
+    },
+  });
+};

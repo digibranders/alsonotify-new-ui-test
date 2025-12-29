@@ -228,8 +228,10 @@ export function TasksPage() {
 
     // Add filters
     if (filters.user !== 'All') {
-      // Need to find user ID from name - for now, we'll keep client-side filtering for user
-      // params.member_id = filters.user;
+      const selectedUser = usersDropdown.find(u => u.name === filters.user);
+      if (selectedUser?.id) {
+        params.member_id = selectedUser.id;
+      }
     }
     if (filters.company !== 'All') {
       // Need to find company ID from name - for now, we'll keep client-side filtering for company
@@ -244,7 +246,14 @@ export function TasksPage() {
         params.project_id = selectedWorkspace.id;
       }
     }
+    if (filters.requirement !== 'All') {
+      const selectedReq = requirementsDropdown.find(r => r.name === filters.requirement);
+      if (selectedReq?.id) {
+        params.requirement_id = selectedReq.id;
+      }
+    }
     // Add tab filter (status-based) - only if status filter is not explicitly set
+
     if (activeTab !== 'all' && filters.status === 'All') {
       if (activeTab === 'Completed') {
         params.status = 'Completed';
@@ -286,13 +295,24 @@ export function TasksPage() {
       skip: 0,
     };
 
-    // Apply same filters EXCEPT status/activeTab
+    if (filters.user !== 'All') {
+      const selectedUser = usersDropdown.find(u => u.name === filters.user);
+      if (selectedUser?.id) {
+        params.member_id = selectedUser.id;
+      }
+    }
     if (filters.workspace !== 'All') {
       const selectedWorkspace = workspacesData?.result?.projects?.find(
         (p: any) => p.name === filters.workspace
       );
       if (selectedWorkspace?.id) {
         params.project_id = selectedWorkspace.id;
+      }
+    }
+    if (filters.requirement !== 'All') {
+      const selectedReq = requirementsDropdown.find(r => r.name === filters.requirement);
+      if (selectedReq?.id) {
+        params.requirement_id = selectedReq.id;
       }
     }
     if (searchQuery) {
@@ -536,22 +556,8 @@ export function TasksPage() {
   }, [tasks, tasksData]);
 
   const users = useMemo(() => {
-    // Collect all unique member names from task_members
-    const userNames = new Set<string>();
-    tasks.forEach(t => {
-      // Add primary assignee
-      if (t.assignedTo && t.assignedTo !== 'Unassigned') {
-        userNames.add(t.assignedTo);
-      }
-      // Add all task members
-      t.task_members?.forEach((m: any) => {
-        if (m.user?.name) {
-          userNames.add(m.user.name);
-        }
-      });
-    });
-    return ['All', 'Multiple', ...Array.from(userNames).sort()];
-  }, [tasks]);
+    return ['All', ...usersDropdown.map(u => u.name).sort()];
+  }, [usersDropdown]);
 
   const companies = useMemo(() => {
     const companyNames = tasks.map(t => t.client).filter((name): name is string => typeof name === 'string' && name !== 'In-House');
@@ -565,16 +571,15 @@ export function TasksPage() {
 
   const statuses = useMemo(() => ['All', 'Assigned', 'In Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'], []);
 
-  const requirements = useMemo(() => {
-    const requirementNames = tasks.map(t => t.project).filter((name): name is string => typeof name === 'string' && name !== 'General');
-    return ['All', ...Array.from(new Set(requirementNames))];
-  }, [tasks]);
+  const requirementsList = useMemo(() => {
+    return ['All', ...requirementsDropdown.map(r => r.name).sort()];
+  }, [requirementsDropdown]);
 
   const filterOptions: FilterOption[] = [
     { id: 'user', label: 'User', options: users, defaultValue: 'All' },
     { id: 'company', label: 'Company', options: companies, placeholder: 'Company' },
     { id: 'workspace', label: 'Workspace', options: workspaces, placeholder: 'Workspace' },
-    { id: 'requirement', label: 'Requirement', options: requirements, placeholder: 'Requirement' },
+    { id: 'requirement', label: 'Requirement', options: requirementsList, placeholder: 'Requirement' },
     { id: 'status', label: 'Status', options: statuses, placeholder: 'Status' }
   ];
 
@@ -677,21 +682,8 @@ export function TasksPage() {
     const todayTime = today.getTime();
 
     return tasks.filter(task => {
-      // Client-side filtering for user, company, requirement (name-based)
-      // Check if ANY task member's name matches the filter (not just the primary assignee)
-      let matchesUser = true;
-      if (filters.user === 'All') {
-        matchesUser = true;
-      } else if (filters.user === 'Multiple') {
-        // Show tasks with multiple members
-        matchesUser = (task.task_members?.length || 0) > 1;
-      } else {
-        // Show tasks where the selected user is a member
-        matchesUser = task.assignedTo === filters.user ||
-          (task.task_members?.some((m: any) => m.user?.name === filters.user) || false);
-      }
+      // Client-side filtering for items not supported by backend yet (e.g. company name match)
       const matchesCompany = filters.company === 'All' || task.client === filters.company;
-      const matchesRequirement = filters.requirement === 'All' || task.project === filters.requirement;
 
       // Date filtering (client-side since API might not support it exactly as we need)
       let matchesDate = true;
@@ -719,7 +711,7 @@ export function TasksPage() {
         if (!isOverdue || !isNotCompleted) return false;
       }
 
-      return matchesUser && matchesCompany && matchesRequirement && matchesDate;
+      return matchesCompany && matchesDate;
     });
   }, [tasks, filters, dateRange, activeTab]);
 
@@ -1195,7 +1187,7 @@ export function TasksPage() {
             Requirements
           </p>
           <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
-            Timeline
+            Due Date
           </p>
           <div className="flex justify-center">
             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">

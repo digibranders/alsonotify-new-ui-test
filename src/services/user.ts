@@ -230,3 +230,51 @@ export const acceptInvitation = async (token: string) => {
     throw error;
   }
 };
+
+// Role types for access management
+export interface RoleType {
+  id?: number;
+  name: string;
+  color?: string;
+}
+
+export interface PermissionAction {
+  id: number;
+  name: string;
+  assigned: boolean;
+}
+
+export interface ModuleActionGroup {
+  module: string;
+  actions: PermissionAction[];
+}
+
+// Create or update role
+export const upsertRole = async (params: Partial<RoleType>): Promise<ApiResponse<RoleType>> => {
+  try {
+    const { data } = await axiosApi.put<ApiResponse<RoleType>>("/role", params);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get permissions for a role
+export const getRolePermissions = async (roleId: number): Promise<ApiResponse<ModuleActionGroup[]>> => {
+  try {
+    const { data } = await axiosApi.get<ApiResponse<ModuleActionGroup[]>>(`/role/${roleId}/actions`);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Update permissions for a role
+export const updateRolePermissions = async (roleId: number, actions: number[]): Promise<ApiResponse<unknown>> => {
+  try {
+    const { data } = await axiosApi.put<ApiResponse<unknown>>(`/role/${roleId}/actions`, { actions });
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
