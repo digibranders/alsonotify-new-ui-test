@@ -11,14 +11,16 @@ export const doLogin = async (params: { email: string; password: string }) => {
 };
 
 export const doSignup = async (
-  name: string,
+  firstName: string,
+  lastName: string,
   email: string,
   password: string,
   token: string | null
 ): Promise<ApiResponse<{ token: string }>> => {
   try {
     const { data } = await axiosApi.post("/auth/register", {
-      name,
+      firstName,
+      lastName,
       email,
       password,
       token,

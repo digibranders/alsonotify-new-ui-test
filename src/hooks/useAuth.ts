@@ -26,8 +26,8 @@ export const useLogin = () => {
 
 export const useRegister = () => {
   return useMutation({
-    mutationFn: (params: { name: string; email: string; password: string; token: string | null }) =>
-      doSignup(params.name, params.email, params.password, params.token),
+    mutationFn: (params: { firstName: string; lastName: string; email: string; password: string; token: string | null }) =>
+      doSignup(params.firstName, params.lastName, params.email, params.password, params.token),
   });
 };
 
