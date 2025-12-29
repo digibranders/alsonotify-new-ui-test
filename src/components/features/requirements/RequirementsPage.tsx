@@ -864,8 +864,8 @@ export function RequirementsPage() {
         />
       </div>
 
-      <div className="flex-1 min-h-0 relative">
-        <div className="h-full overflow-y-auto pb-6">
+      <div className="flex-1 min-h-0 relative flex flex-col">
+        <div className="flex-1 overflow-y-auto pb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {finalFilteredReqs.slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize).map((requirement) => (
               <RequirementCard
@@ -919,8 +919,10 @@ export function RequirementsPage() {
               </p>
             </div>
           )}
+        </div>
 
-          {finalFilteredReqs.length > 0 && (
+        {finalFilteredReqs.length > 0 && (
+          <div className="bg-white">
             <PaginationBar
               currentPage={currentPage}
               totalItems={finalFilteredReqs.length}
@@ -932,8 +934,8 @@ export function RequirementsPage() {
               }}
               itemLabel="requirements"
             />
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Bulk Action Bar */}
         {selectedReqs.length > 0 && (

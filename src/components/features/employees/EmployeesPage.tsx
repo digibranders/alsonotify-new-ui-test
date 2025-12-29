@@ -902,19 +902,23 @@ export function EmployeesPage() {
             ))}
           </div>
 
-          {isLoading ? (
+          {isLoading && (
             <div className="text-center py-12">
               <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">Loading employees...</p>
             </div>
-          ) : filteredEmployees.length === 0 ? (
+          )}
+
+          {!isLoading && filteredEmployees.length === 0 && (
             <div className="text-center py-12">
               <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">
                 No employees found
               </p>
             </div>
-          ) : null}
+          )}
+        </div>
 
-          {filteredEmployees.length > 0 && (
+        {filteredEmployees.length > 0 && (
+          <div className="bg-white">
             <PaginationBar
               currentPage={currentPage}
               totalItems={filteredEmployees.length}
@@ -926,8 +930,8 @@ export function EmployeesPage() {
               }}
               itemLabel="employees"
             />
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Bulk Action Bar */}
         {selectedEmployees.length > 0 && (

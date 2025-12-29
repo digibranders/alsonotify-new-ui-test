@@ -33,8 +33,8 @@ export function PaginationBar({
     };
 
     return (
-        <div className={`mt-4 pt-4 flex items-center justify-between border-t border-[#EEEEEE] ${className}`}>
-            <p className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+        <div className={`mt-2 pt-2 flex items-center justify-between border-t border-[#EEEEEE] ${className}`}>
+            <p className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                 {startIndex + 1}-{endIndex} of {totalItems} {itemLabel}
             </p>
 
@@ -42,9 +42,9 @@ export function PaginationBar({
                 <button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-7 h-7 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                    <ChevronLeft className="w-4 h-4 text-[#666666]" />
+                    <ChevronLeft className="w-3.5 h-3.5 text-[#666666]" />
                 </button>
 
                 {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
@@ -64,7 +64,7 @@ export function PaginationBar({
                         <button
                             key={pageNum}
                             onClick={() => handlePageChange(pageNum)}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all font-['Manrope:SemiBold',sans-serif] text-[13px] ${currentPage === pageNum
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all font-['Manrope:SemiBold',sans-serif] text-[12px] ${currentPage === pageNum
                                 ? 'bg-[#ff3b3b] text-white'
                                 : 'border border-[#EEEEEE] text-[#666666] hover:bg-[#F7F7F7]'
                                 }`}
@@ -77,15 +77,15 @@ export function PaginationBar({
                 <button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-7 h-7 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                    <ChevronRight className="w-4 h-4 text-[#666666]" />
+                    <ChevronRight className="w-3.5 h-3.5 text-[#666666]" />
                 </button>
 
                 <select
                     value={pageSize}
                     onChange={(e) => onPageSizeChange(Number(e.target.value))}
-                    className="ml-2 px-2 py-1 h-8 rounded-lg border border-[#EEEEEE] text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666] bg-white hover:bg-[#F7F7F7] hover:border-[#EEEEEE] focus:outline-none focus:border-[#ff3b3b] transition-colors cursor-pointer"
+                    className="ml-2 px-2 py-0.5 h-7 rounded-lg border border-[#EEEEEE] text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666] bg-white hover:bg-[#F7F7F7] hover:border-[#EEEEEE] focus:outline-none focus:border-[#ff3b3b] transition-colors cursor-pointer"
                 >
                     <option value={10}>10</option>
                     <option value={12}>12</option>
