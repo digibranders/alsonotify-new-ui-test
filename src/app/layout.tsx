@@ -10,8 +10,8 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: 'Alsonotify - Agency-Client Collaboration',
-  description: 'Minimalist agency-client collaboration tool',
+  title: 'Alsonotify',
+  description: 'Alsonotify - Project management Tool',
   icons: {
     icon: '/favicon.png',
   },

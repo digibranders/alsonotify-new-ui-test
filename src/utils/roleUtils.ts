@@ -21,7 +21,7 @@ export const getRoleFromUser = (user: any): UserRole => {
 
     if (roleId) {
         const roleIdMapping: Record<number, UserRole> = {
-            1: 'Admin',   // Super Admin
+            1: 'Admin',
             2: 'Employee',
             3: 'Employee', // HR
             4: 'Admin',

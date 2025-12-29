@@ -198,6 +198,7 @@ export function EmployeeDetailsPage() {
     workingHours: backendEmp.working_hours ? calculateWorkingHours(backendEmp.working_hours) : 0,
     leaves: backendEmp.no_of_leaves || 0,
     roleId: backendEmp.user_employee?.role_id,
+    roleColor: backendEmp.user_employee?.role?.color,
     employmentType: backendEmp.employment_type || 'Full-time',
   };
 
@@ -250,7 +251,7 @@ export function EmployeeDetailsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <AccessBadge role={employee.access} />
+            <AccessBadge role={employee.access} color={employee.roleColor} />
             <Tag className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium border ${employee.status === 'active'
               ? 'bg-green-50 text-green-700 border-green-200'
               : 'bg-red-50 text-red-700 border-red-200'

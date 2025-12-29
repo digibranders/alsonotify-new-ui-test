@@ -180,7 +180,7 @@ export function EmployeeDetailsModal({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <AccessBadge role={employee.access} />
+              <AccessBadge role={employee.access} color={employee.roleColor} />
               <span
                 className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] ${employee.status === 'active'
                   ? 'bg-[#ECFDF3] text-[#12B76A]'

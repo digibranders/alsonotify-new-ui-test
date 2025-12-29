@@ -18,6 +18,7 @@ import {
   Receipt24Filled,
   Sparkle24Filled,
   Notepad24Filled,
+  Video24Filled,
   Settings24Filled
 } from "@fluentui/react-icons";
 import React from "react";
@@ -26,6 +27,7 @@ type UserRole = 'Admin' | 'Manager' | 'Leader' | 'Employee';
 
 interface SidebarProps {
   userRole: UserRole;
+  permissions?: any;
 }
 
 type NavItemConfig = {
@@ -36,7 +38,9 @@ type NavItemConfig = {
   allowedRoles: UserRole[];
 };
 
-export function Sidebar({ userRole }: SidebarProps) {
+import { navPermissionMap } from '@/utils/navUtils';
+
+export function Sidebar({ userRole, permissions }: SidebarProps) {
   const pathname = usePathname();
 
   const navItems: NavItemConfig[] = [
@@ -52,14 +56,14 @@ export function Sidebar({ userRole }: SidebarProps) {
       path: '/dashboard/employees',
       label: 'Employees',
       icon: <People24Filled />,
-      allowedRoles: ['Admin', 'Manager', 'Leader']
+      allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
     },
     {
       id: 'partners',
       path: '/dashboard/partners',
       label: 'Partners',
       icon: <Handshake24Filled />,
-      allowedRoles: ['Admin', 'Manager']
+      allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
     },
     {
       id: 'requirements',
@@ -87,14 +91,14 @@ export function Sidebar({ userRole }: SidebarProps) {
       path: '/dashboard/reports',
       label: 'Reports',
       icon: <DocumentMultiple24Filled />,
-      allowedRoles: ['Admin', 'Manager']
+      allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
     },
     {
       id: 'workload',
       path: '/dashboard/workload',
       label: 'Workload',
       icon: <ChartMultiple24Filled />,
-      allowedRoles: ['Admin', 'Manager', 'Leader']
+      allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
     },
     {
       id: 'calendar',
@@ -115,7 +119,7 @@ export function Sidebar({ userRole }: SidebarProps) {
       path: '/dashboard/invoices',
       label: 'Invoices',
       icon: <Receipt24Filled />,
-      allowedRoles: ['Admin']
+      allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
     },
     {
       id: 'notes',
@@ -124,9 +128,27 @@ export function Sidebar({ userRole }: SidebarProps) {
       icon: <Notepad24Filled />,
       allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
     },
+    {
+      id: 'meetings',
+      path: '/dashboard/meetings',
+      label: 'Meetings',
+      icon: <Video24Filled />,
+      allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
+    },
   ];
 
-  const filteredNavItems = navItems.filter(item => item.allowedRoles.includes(userRole));
+  const filteredNavItems = navItems.filter(item => {
+    const permissionKey = navPermissionMap[item.id];
+    const hasPermission = permissions?.Navigation?.[permissionKey];
+
+    // If granular permission is explicitly defined, respect it
+    if (hasPermission !== undefined) {
+      return hasPermission;
+    }
+
+    // Otherwise fallback to role-based access
+    return item.allowedRoles.includes(userRole);
+  });
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {

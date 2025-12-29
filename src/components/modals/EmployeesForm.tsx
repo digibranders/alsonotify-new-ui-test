@@ -25,7 +25,7 @@ export interface EmployeeFormData {
   workingHoursEnd: string;
   leaves: string;
   role_id?: number;
-  employmentType?: 'Full-time' | 'Contract' | 'Part-time';
+  employmentType?: 'Full-time' | 'Part-time' | 'Contract' | 'Intern';
 }
 
 interface EmployeeFormProps {
@@ -199,12 +199,13 @@ export function EmployeeForm({
                 className={`w-full h-11 employee-form-select ${formData.employmentType ? 'employee-form-select-filled' : ''}`}
                 placeholder="Select type"
                 value={formData.employmentType}
-                onChange={(v) => setFormData({ ...formData, employmentType: v as 'Full-time' | 'Contract' | 'Part-time' })}
+                onChange={(v) => setFormData({ ...formData, employmentType: v as 'Full-time' | 'Part-time' | 'Contract' | 'Intern' })}
                 suffixIcon={<div className="text-gray-400">⌄</div>}
               >
-                <Option value="Full-time">Full-time</Option>
+                <Option value="Full-time">Full Time</Option>
+                <Option value="Part-time">Part Time</Option>
                 <Option value="Contract">Contract</Option>
-                <Option value="Part-time">Part-time</Option>
+                <Option value="Intern">Intern</Option>
               </Select>
             </div>
 
@@ -249,12 +250,6 @@ export function EmployeeForm({
                   </div>
                 )}
               >
-                <Option value="Employee">
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4" style={{ color: "#12B76A" }} />
-                    <span style={{ color: "#12B76A" }}>Employee</span>
-                  </div>
-                </Option>
                 <Option value="Admin">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4" style={{ color: "#ff3b3b" }} />
@@ -271,6 +266,12 @@ export function EmployeeForm({
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4" style={{ color: "#7F56D9" }} />
                     <span style={{ color: "#7F56D9" }}>Leader</span>
+                  </div>
+                </Option>
+                <Option value="Employee">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4" style={{ color: "#12B76A" }} />
+                    <span style={{ color: "#12B76A" }}>Employee</span>
                   </div>
                 </Option>
               </Select>
