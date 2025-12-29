@@ -234,7 +234,7 @@ export const getRoles = async (): Promise<ApiResponse<{ id: number; name: string
 // Accept invitation
 export const acceptInvitation = async (token: string) => {
   try {
-    const { data } = await axiosApi.post("/user/accept-invite", { token });
+    const { data } = await axiosApi.post("/auth/accept-invite", { token });
     return data;
   } catch (error) {
     throw error;
@@ -283,6 +283,33 @@ export const getRolePermissions = async (roleId: number): Promise<ApiResponse<Mo
 export const updateRolePermissions = async (roleId: number, actions: number[]): Promise<ApiResponse<unknown>> => {
   try {
     const { data } = await axiosApi.put<ApiResponse<unknown>>(`/role/${roleId}/actions`, { actions });
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get received invites
+export const getReceivedInvites = async (): Promise<ApiResponse<{
+  id: number;
+  inviterName: string;
+  inviterCompany: string;
+  inviterImage: string | null;
+  type: string;
+  date: string
+}[]>> => {
+  try {
+    const { data } = await axiosApi.get("/user/invites/received");
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Accept invite by ID
+export const acceptInviteById = async (inviteId: number): Promise<ApiResponse<any>> => {
+  try {
+    const { data } = await axiosApi.post("/user/invite/accept-id", { inviteId });
     return data;
   } catch (error) {
     throw error;

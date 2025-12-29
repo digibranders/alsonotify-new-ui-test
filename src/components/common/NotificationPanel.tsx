@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Drawer } from 'antd';
-import { BellOff, FileText, AlertCircle, CheckSquare, Info, X, Check } from 'lucide-react';
+import { BellOff, FileText, AlertCircle, CheckSquare, Info, X, Check, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export interface NotificationItem {
@@ -11,7 +11,7 @@ export interface NotificationItem {
   message: string;
   time: string;
   unread: boolean;
-  type?: 'requirement' | 'task' | 'delivery' | 'workspace' | 'alert' | 'general';
+  type?: 'requirement' | 'task' | 'delivery' | 'workspace' | 'alert' | 'general' | 'partner_invite';
   actionLink?: string;
   actionLabel?: string;
 }
@@ -57,6 +57,7 @@ function NotificationItemComponent({
       case 'task': return <CheckSquare className="w-5 h-5" />;
       case 'delivery': return <Info className="w-5 h-5" />;
       case 'workspace': return <Info className="w-5 h-5" />;
+      case 'partner_invite': return <Users className="w-5 h-5" />;
       default: return <Info className="w-5 h-5" />;
     }
   };
@@ -69,6 +70,7 @@ function NotificationItemComponent({
       if (notification.type === 'requirement') navigate('/dashboard/kanban');
       if (notification.type === 'task') navigate('/dashboard/tasks');
       if (notification.type === 'alert') navigate('/dashboard/tasks');
+      if (notification.type === 'partner_invite') navigate('/dashboard/partners');
     }
   };
 
@@ -84,8 +86,9 @@ function NotificationItemComponent({
 
       <div className="flex gap-4">
         <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center border ${notification.type === 'requirement' ? 'bg-blue-50 border-blue-100 text-blue-600' :
-            notification.type === 'alert' ? 'bg-red-50 border-red-100 text-red-600' :
-              notification.type === 'task' ? 'bg-orange-50 border-orange-100 text-orange-600' :
+          notification.type === 'alert' ? 'bg-red-50 border-red-100 text-red-600' :
+            notification.type === 'task' ? 'bg-orange-50 border-orange-100 text-orange-600' :
+              notification.type === 'partner_invite' ? 'bg-purple-50 border-purple-100 text-purple-600' :
                 'bg-gray-50 border-gray-100 text-gray-600'
           }`}>
           {getIcon(notification.type)}
@@ -233,8 +236,8 @@ export function NotificationPanel({
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`flex-1 rounded-md text-[12px] font-['Inter:Medium',sans-serif] transition-all ${activeTab === tab.key
-                  ? 'bg-white text-[#111111] shadow-sm'
-                  : 'text-[#666666] hover:text-[#111111]'
+                ? 'bg-white text-[#111111] shadow-sm'
+                : 'text-[#666666] hover:text-[#111111]'
                 }`}
             >
               {tab.label}
