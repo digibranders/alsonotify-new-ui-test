@@ -18,7 +18,8 @@ import {
     Download,
     ChevronLeft,
     ChevronRight,
-    Loader2
+    Loader2,
+    Globe
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import axiosApi from '../../../config/axios';
@@ -29,6 +30,16 @@ import { BankOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlin
 
 // Mock Data
 const { Option } = Select;
+
+const countryCodes = [
+    { code: "+1", country: "US" },
+    { code: "+91", country: "IN" },
+    { code: "+44", country: "UK" },
+    { code: "+61", country: "AU" },
+    { code: "+81", country: "JP" },
+    { code: "+49", country: "DE" },
+    { code: "+971", country: "AE" },
+];
 
 export function PartnersPageContent() {
     const [partners, setPartners] = useState<Partner[]>([]);
@@ -58,14 +69,16 @@ export function PartnersPageContent() {
                         association_id: item.association_id, // Keep track of association_id for updates
                         name: item.name || '',
                         company: item.company || '',
-                        type: 'ORGANIZATION',
+                        type: item.company ? 'ORGANIZATION' : 'INDIVIDUAL',
                         email: item.email || '',
-                        phone: '',
-                        country: '',
+                        phone: item.phone || '',
+                        country: item.country || '',
+                        timezone: item.timezone || '',
                         status: (isAccepted && isActive) ? 'active' : 'inactive',
                         requirements: 0,
                         onboarding: item.associated_date ? new Date(item.associated_date).toLocaleDateString() : '-',
-                        rawStatus: item.status // Keep raw status to distinguish between pending and deactivated
+                        rawStatus: item.status, // Keep raw status to distinguish between pending and deactivated
+                        isOrgAccount: !!item.company
                     };
                 });
                 // Filter out pending invites if needed, or show them. User asked to connect data, so we show all.
@@ -142,9 +155,9 @@ export function PartnersPageContent() {
             item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
             item.email.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesType = filters.type === 'All' || item.type === filters.type;
-        const matchesCountry = filters.country === 'All' || item.country === filters.country;
-
+        const matchesType = filters.type === 'All' || item.type.toUpperCase() === filters.type.toUpperCase();
+        const matchesCountry = filters.country === 'All' ||
+            (item.country && item.country.toLowerCase() === filters.country.toLowerCase());
         return matchesTab && matchesSearch && matchesType && matchesCountry;
     });
 
@@ -162,7 +175,12 @@ export function PartnersPageContent() {
 
     const handleEdit = (record: Partner) => {
         setEditingPartner(record);
-        form.setFieldsValue(record);
+        const nameParts = (record.name || "").split(" ");
+        form.setFieldsValue({
+            ...record,
+            firstName: nameParts[0] || "",
+            lastName: nameParts.slice(1).join(" ") || ""
+        });
         setIsModalOpen(true);
     };
 
@@ -206,7 +224,7 @@ export function PartnersPageContent() {
             // Sending invitation
             await axiosApi.post('/user/invite', {
                 email: values.email,
-                name: values.name,
+                name: `${values.firstName} ${values.lastName}`.trim(),
                 requestSentFor: 'OUTSOURCE'
             });
 
@@ -223,7 +241,7 @@ export function PartnersPageContent() {
     // Filter Configuration
     const countries = ['All', ...Array.from(new Set(partners.map(p => p.country)))];
     const filterOptions: FilterOption[] = [
-        { id: 'type', label: 'Type', options: ['All', 'INDIVIDUAL', 'ORGANIZATION'], defaultValue: 'All' },
+        { id: 'type', label: 'Type', options: ['All', 'Individual', 'Organization'], defaultValue: 'All' },
         { id: 'country', label: 'Country', options: countries, defaultValue: 'All' }
     ];
 
@@ -314,7 +332,7 @@ export function PartnersPageContent() {
             {/* List Area */}
             <div className="flex-1 overflow-y-auto relative pb-20">
                 {/* Grid Header */}
-                <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_1.8fr_1.2fr_1fr_1.5fr_1.2fr_1fr_0.8fr_40px] gap-4 px-4 py-3 mb-2 items-center">
+                <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_1.8fr_1.2fr_1fr_1.5fr_1.2fr_0.8fr_40px] gap-4 px-4 py-3 mb-2 items-center">
                     <div className="flex justify-center">
                         <Checkbox
                             checked={paginatedPartners.length > 0 && selectedPartners.length === paginatedPartners.length}
@@ -326,7 +344,6 @@ export function PartnersPageContent() {
                     <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Contact Person</p>
                     <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Type</p>
                     <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Email</p>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Contact</p>
                     <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Onboarding</p>
                     <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Country</p>
                     <p></p>
@@ -413,37 +430,116 @@ export function PartnersPageContent() {
             {/* Modal */}
             <Modal
                 title={
-                    <div className="flex items-center gap-2">
-                        <div className="p-2 rounded-full bg-[#F7F7F7]">
-                            <Users className="w-5 h-5 text-[#666666]" />
-                        </div>
-                        <span className="font-['Manrope:Bold',sans-serif] text-[18px]">
-                            {editingPartner ? 'Edit Partner' : 'Invite Partner'}
-                        </span>
+                    <div className="flex items-center gap-2 text-[18px] font-['Manrope:Bold',sans-serif]">
+                        <UserOutlined className="p-2 bg-[#F7F7F7] rounded-full text-[#666666]" />
+                        {editingPartner ? 'Partner Details' : 'Invite Partner'}
                     </div>
                 }
                 open={isModalOpen}
-                onOk={handleModalOk}
+                onOk={editingPartner ? () => setIsModalOpen(false) : handleModalOk}
                 onCancel={() => setIsModalOpen(false)}
-                okText={editingPartner ? 'Update' : 'Send Invitation'}
-                cancelButtonProps={{ className: "font-['Manrope:SemiBold',sans-serif]" }}
+                okText={editingPartner ? 'Close' : 'Send Invitation'}
                 okButtonProps={{
-                    style: { backgroundColor: '#111111' },
-                    className: "font-['Manrope:SemiBold',sans-serif]"
+                    className: editingPartner
+                        ? "bg-[#666666] hover:bg-[#555555] border-none rounded-[8px] h-10 px-6 font-['Manrope:SemiBold',sans-serif]"
+                        : "bg-[#111111] hover:bg-black border-none rounded-[8px] h-10 px-6 font-['Manrope:SemiBold',sans-serif]"
                 }}
-                width={500}
+                cancelButtonProps={{
+                    style: { display: editingPartner ? 'none' : 'inline-block' },
+                    className: "rounded-[8px] h-10 px-6 font-['Manrope:SemiBold',sans-serif]"
+                }}
                 centered
                 className="rounded-[16px] overflow-hidden"
             >
-                <Form form={form} layout="vertical" className="mt-6">
-                    <Form.Item name="name" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Name</span>} rules={[{ required: true }]}>
-                        <Input prefix={<UserOutlined className="text-gray-400" />} className="h-10" placeholder="Partner Name" />
-                    </Form.Item>
+                {editingPartner ? (
+                    <div className="mt-6 space-y-6">
+                        <div className="grid grid-cols-2 gap-6">
+                            <div>
+                                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-1">Contact Person</p>
+                                <p className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">{editingPartner.name}</p>
+                            </div>
+                            {editingPartner.company && (
+                                <div>
+                                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-1">Company Name</p>
+                                    <p className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">{editingPartner.company}</p>
+                                </div>
+                            )}
+                        </div>
 
-                    <Form.Item name="email" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Email</span>} rules={[{ required: true, type: 'email' }]}>
-                        <Input prefix={<MailOutlined className="text-gray-400" />} className="h-10" placeholder="email@example.com" />
-                    </Form.Item>
-                </Form>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div>
+                                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-1">Email Address</p>
+                                <div className="flex items-center gap-2">
+                                    <MailOutlined className="text-[#666666] text-[12px]" />
+                                    <p className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">{editingPartner.email}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-1">Contact</p>
+                                <div className="flex items-center gap-2">
+                                    <PhoneOutlined className="text-[#666666] text-[12px]" />
+                                    <p className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">
+                                        {(() => {
+                                            const phone = editingPartner.phone || '';
+                                            if (phone.startsWith('+')) return phone;
+                                            const code = countryCodes.find(c => c.country === editingPartner.country)?.code || '';
+                                            return code ? `${code} ${phone}` : (phone || 'N/A');
+                                        })()}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-6">
+                            <div>
+                                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-1">Country</p>
+                                <div className="flex items-center gap-2">
+                                    <Globe className="w-3.5 h-3.5 text-[#666666]" />
+                                    <p className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">{editingPartner.country || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-1">Timezone</p>
+                                <p className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">{editingPartner.timezone || 'N/A'}</p>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <Form form={form} layout="vertical" className="mt-6" initialValues={{ countryCode: '+91' }}>
+                        <div className="grid grid-cols-2 gap-4">
+                            <Form.Item
+                                name="firstName"
+                                label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">First Name</span>}
+                                rules={[{ required: true, message: 'First name is required' }]}
+                            >
+                                <Input
+                                    prefix={<UserOutlined className="text-gray-400" />}
+                                    className="h-10"
+                                    placeholder="First Name"
+                                />
+                            </Form.Item>
+
+                            <Form.Item
+                                name="lastName"
+                                label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Last Name</span>}
+                            >
+                                <Input
+                                    prefix={<UserOutlined className="text-gray-400" />}
+                                    className="h-10"
+                                    placeholder="Last Name (Optional)"
+                                />
+                            </Form.Item>
+                        </div>
+
+                        <Form.Item name="email" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Email Address</span>} rules={[{ required: true, type: 'email', message: 'Valid email is required' }]}>
+                            <Input
+                                prefix={<MailOutlined className="text-gray-400" />}
+                                className="h-10"
+                                placeholder="email@example.com"
+                            />
+                        </Form.Item>
+                    </Form>
+                )}
             </Modal>
         </div>
     );

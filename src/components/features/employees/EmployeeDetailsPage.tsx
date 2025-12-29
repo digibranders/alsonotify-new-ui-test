@@ -122,7 +122,9 @@ export function EmployeeDetailsPage() {
     updateEmployeeMutation.mutate(
       {
         id: parseInt(employeeId),
-        name: data.name,
+        name: `${data.firstName} ${data.lastName}`.trim(),
+        first_name: data.firstName,
+        last_name: data.lastName,
         email: data.email,
         mobile_number: data.phone, // Map frontend phone to backend mobile_number
         designation: data.role,
@@ -412,7 +414,8 @@ export function EmployeeDetailsPage() {
           <EmployeeForm
             departments={departmentsData?.result?.filter((dept: any) => dept.is_active !== false).map((dept: any) => dept.name) || []}
             initialData={{
-              name: employee.name,
+              firstName: employee.name.split(" ")[0] || "",
+              lastName: employee.name.split(" ").slice(1).join(" ") || "",
               role: employee.role,
               email: employee.email,
               phone: employee.phone,

@@ -212,10 +212,12 @@ export function EmployeesPage() {
   };
 
   const handleSaveEmployee = async (data: EmployeeFormData) => {
-    if (!data.name) {
-      message.error("Employee name is required");
+    if (!data.firstName) {
+      message.error("First name is required");
       return;
     }
+
+    const fullName = `${data.firstName} ${data.lastName}`.trim();
 
     // Find department ID from name
     const selectedDepartment = departmentsData?.result?.find(
@@ -262,7 +264,9 @@ export function EmployeesPage() {
       updateEmployeeMutation.mutate(
         {
           id: editingEmployee.id,
-          name: data.name,
+          name: fullName,
+          first_name: data.firstName,
+          last_name: data.lastName,
           email: data.email,
           mobile_number: fullMobileNumber,
           designation: data.role,
@@ -298,7 +302,9 @@ export function EmployeesPage() {
 
       createEmployeeMutation.mutate(
         {
-          name: data.name,
+          name: fullName,
+          first_name: data.firstName,
+          last_name: data.lastName,
           email: data.email,
           mobile_number: fullMobileNumber,
           designation: data.role,

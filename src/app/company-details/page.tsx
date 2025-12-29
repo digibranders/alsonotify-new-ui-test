@@ -4,8 +4,16 @@ import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { UploadCloud, User, Check, ArrowRight, Loader2 } from "lucide-react";
-import { Select, App } from "antd";
-import { useCompleteSignup } from "@/hooks/useAuth";
+import {
+  message,
+  Select,
+  Steps,
+  Button,
+  Upload,
+  Input,
+  App,
+} from "antd";
+import { useCompleteSignup, useVerifyToken } from "@/hooks/useAuth";
 import { industryToBusinessType, commonCountries, commonTimezones } from "@/data/defaultData";
 import AuthLayout from "@/components/auth/AuthLayout";
 
@@ -17,6 +25,7 @@ function CompanyDetailsForm() {
   const { message } = App.useApp();
   const token = searchParams.get("t");
   const completeSignupMutation = useCompleteSignup();
+  const { data: userData } = useVerifyToken(token);
 
   const [currentStep, setCurrentStep] = useState<"company" | "admin">("company");
 
@@ -37,8 +46,9 @@ function CompanyDetailsForm() {
     firstName: "",
     lastName: "",
     country: "",
-    phone: "", // Optional - not sent to API
-    photo: null as File | null, // Optional - not sent to API
+    countryCode: "+91",
+    phone: "",
+    photo: null as File | null,
   });
 
   // Auto-fill for Individual
@@ -52,6 +62,21 @@ function CompanyDetailsForm() {
       }));
     }
   }, [isIndividual]);
+
+  // Pre-fill Admin Details from token data
+  useEffect(() => {
+    if (userData?.success && userData.result) {
+      const { name } = userData.result;
+      if (name) {
+        const parts = name.split(" ");
+        setAdminData((prev) => ({
+          ...prev,
+          firstName: parts[0] || "",
+          lastName: parts.slice(1).join(" ") || "",
+        }));
+      }
+    }
+  }, [userData]);
 
 
   // Map country name to country code
@@ -98,37 +123,58 @@ function CompanyDetailsForm() {
       return;
     }
 
-    // Map industry to businessType
-    const businessType = industryToBusinessType[companyData.industry] || 21; // Default to "Others"
-    const countryCode = getCountryCode(companyData.country);
+    // For organization, move to next step. For individual, complete signup.
+    if (isIndividual) {
+      // Map industry to businessType
+      const businessType = industryToBusinessType[companyData.industry] || 21; // Default to "Others"
+      const countryCode = getCountryCode(companyData.country);
 
-    // Call API to complete signup
-    try {
-      await completeSignupMutation.mutateAsync({
-        registerToken: token,
-        companyName: companyData.companyName,
-        businessType: String(businessType),
-        accountType: isIndividual ? "INDIVIDUAL" : "ORGANIZATION",
-        country: countryCode,
-        timezone: companyData.timezone,
-      });
-      // On success, the hook will redirect to dashboard automatically
-      // Note: Step 2 (admin details) is optional and won't be shown if API succeeds
-      // as the hook redirects immediately to dashboard
-    } catch (error: any) {
-      const errorMessage =
-        error?.response?.data?.message || "Failed to complete signup. Please try again.";
-      message.error(errorMessage);
+      try {
+        await completeSignupMutation.mutateAsync({
+          registerToken: token,
+          companyName: companyData.companyName,
+          businessType: String(businessType),
+          accountType: "INDIVIDUAL",
+          country: countryCode,
+          timezone: companyData.timezone,
+        });
+      } catch (error: any) {
+        const errorMessage =
+          error?.response?.data?.message || "Failed to complete signup. Please try again.";
+        message.error(errorMessage);
+      }
+    } else {
+      setCurrentStep("admin");
     }
   };
 
   const handleComplete = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Admin details are optional - backend doesn't support them yet
-    // Just show a message and redirect
-    message.success("Profile completed successfully!");
-    // The API call was already done in step 1, so just redirect
-    router.push("/dashboard");
+    if (!adminData.firstName || !adminData.lastName) {
+      message.error("Please fill in required admin fields");
+      return;
+    }
+
+    const businessType = industryToBusinessType[companyData.industry] || 21;
+    const countryCode = getCountryCode(companyData.country);
+
+    try {
+      await completeSignupMutation.mutateAsync({
+        registerToken: token,
+        companyName: companyData.companyName,
+        businessType: String(businessType),
+        accountType: "ORGANIZATION",
+        country: countryCode,
+        timezone: companyData.timezone,
+        firstName: adminData.firstName,
+        lastName: adminData.lastName,
+        phone: `${adminData.countryCode} ${adminData.phone}`.trim(),
+      });
+    } catch (error: any) {
+      const errorMessage =
+        error?.response?.data?.message || "Failed to complete signup. Please try again.";
+      message.error(errorMessage);
+    }
   };
 
   return (
@@ -388,59 +434,55 @@ function CompanyDetailsForm() {
                     </div>
 
                     {/* Form Fields */}
+                    {/* Input Fields */}
                     <div className="flex-1 space-y-6">
-                      <div className="grid grid-cols-2 gap-6">
+                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                          <label className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider">
                             First Name <span className="text-[#ff3b3b]">*</span>
                           </label>
-                          <input
-                            type="text"
-                            placeholder="John"
+                          <Input
+                            placeholder="e.g. John"
                             value={adminData.firstName}
                             onChange={(e) =>
                               setAdminData({ ...adminData, firstName: e.target.value })
                             }
-                            className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
-                            required
+                            className="h-12 bg-white/50 border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-1 focus:ring-[#ff3b3b] rounded-xl font-['Manrope:Medium',sans-serif]"
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
-                            Last Name <span className="text-[#ff3b3b]">*</span>
+                          <label className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider">
+                            Last Name
                           </label>
-                          <input
-                            type="text"
-                            placeholder="Doe"
+                          <Input
+                            placeholder="e.g. Doe"
                             value={adminData.lastName}
                             onChange={(e) =>
                               setAdminData({ ...adminData, lastName: e.target.value })
                             }
-                            className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
-                            required
+                            className="h-12 bg-white/50 border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-1 focus:ring-[#ff3b3b] rounded-xl font-['Manrope:Medium',sans-serif]"
                           />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-6">
+                      <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                          <label className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider">
                             Country <span className="text-[#ff3b3b]">*</span>
                           </label>
                           <Select
-                            value={adminData.country}
-                            onChange={(v) =>
-                              setAdminData({ ...adminData, country: String(v) })
-                            }
-                            placeholder="Select Country"
-                            className="w-full h-12 company-details-select"
-                            suffixIcon={<div className="text-gray-400">⌄</div>}
+                            showSearch
+                            placeholder="Select country"
+                            value={adminData.country || undefined}
+                            onChange={(val) => setAdminData({ ...adminData, country: val })}
+                            className="w-full text-left"
+                            size="large"
                           >
-                            <Option value="india">India</Option>
-                            <Option value="usa">United States</Option>
-                            <Option value="uk">United Kingdom</Option>
-                            <Option value="canada">Canada</Option>
-                            <Option value="australia">Australia</Option>
+                            {commonCountries.map((c) => (
+                              <Option key={c.code} value={c.name}>
+                                {c.name}
+                              </Option>
+                            ))}
                           </Select>
                         </div>
                         <div className="space-y-2">

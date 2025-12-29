@@ -5,9 +5,11 @@ import { Briefcase } from "lucide-react";
 const { Option } = Select;
 
 export interface ClientFormData {
-  name: string;
+  firstName: string;
+  lastName: string;
   company: string;
   email: string;
+  countryCode: string;
   phone: string;
   country: string;
   requirements: string;
@@ -22,9 +24,11 @@ interface ClientFormProps {
 }
 
 const defaultFormData: ClientFormData = {
-  name: "",
+  firstName: "",
+  lastName: "",
   company: "",
   email: "",
+  countryCode: "+91",
   phone: "",
   country: "",
   requirements: "0",
@@ -48,7 +52,28 @@ export function ClientForm({
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      const nameParts = ((initialData as any).name || "").split(" ");
+      let phone = initialData.phone || "";
+      let countryCode = initialData.countryCode || "+91";
+
+      if (phone && phone.startsWith("+")) {
+        // Try to match 
+        const codes = ["+91", "+1", "+44", "+61", "+971"];
+        const matched = codes.find(c => phone.startsWith(c));
+        if (matched) {
+          countryCode = matched;
+          phone = phone.slice(matched.length).trim();
+        }
+      }
+
+      setFormData({
+        ...defaultFormData,
+        ...initialData,
+        firstName: initialData.firstName || nameParts[0] || "",
+        lastName: initialData.lastName || nameParts.slice(1).join(" ") || "",
+        phone,
+        countryCode
+      });
     } else {
       setFormData(defaultFormData);
     }
@@ -101,20 +126,29 @@ export function ClientForm({
           <>
             {/* Row 1 */}
             <div className="grid grid-cols-2 gap-6 mb-6">
-              <div className="space-y-2">
-                <label
-                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
-                >
-                  Contact Person
-                </label>
-                <Input
-                  placeholder="Enter contact person name"
-                  className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.name ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2">
+                    First Name <span className="text-[#ff3b3b]">*</span>
+                  </label>
+                  <Input
+                    placeholder="John"
+                    className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.firstName ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2">
+                    Last Name
+                  </label>
+                  <Input
+                    placeholder="Doe"
+                    className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.lastName ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <label
@@ -160,14 +194,28 @@ export function ClientForm({
                 >
                   Contact (Phone)
                 </label>
-                <Input
-                  placeholder="+1 234 567 890"
-                  className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.phone ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                />
+                <div className="flex gap-2">
+                  <Select
+                    className={`w-[85px] h-11 employee-form-select ${formData.countryCode ? 'employee-form-select-filled' : ''}`}
+                    value={formData.countryCode}
+                    onChange={(v) => setFormData({ ...formData, countryCode: String(v) })}
+                    suffixIcon={<div className="text-gray-400">⌄</div>}
+                  >
+                    <Option value="+91">+91 IN</Option>
+                    <Option value="+1">+1 US</Option>
+                    <Option value="+44">+44 UK</Option>
+                    <Option value="+61">+61 AU</Option>
+                    <Option value="+971">+971 AE</Option>
+                  </Select>
+                  <Input
+                    placeholder="8698027152"
+                    className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.phone ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                  />
+                </div>
               </div>
             </div>
 

@@ -35,7 +35,10 @@ export const doCompleteSignup = async (
   businessType: string,
   accountType: string,
   country: string,
-  timezone: string
+  timezone: string,
+  firstName?: string,
+  lastName?: string,
+  phone?: string
 ) => {
   try {
     const { data } = await axiosApi.post("/auth/register/complete", {
@@ -45,8 +48,20 @@ export const doCompleteSignup = async (
       accountType,
       country,
       timezone,
+      firstName,
+      lastName,
+      phone
     });
     axiosApi.defaults.headers.common["Authorization"] = data.result.token;
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const verifyRegisterToken = async (registerToken: string) => {
+  try {
+    const { data } = await axiosApi.get(`/auth/register/verify-token?registerToken=${registerToken}`);
     return data;
   } catch (error) {
     throw error;
@@ -75,4 +90,3 @@ export const resetPassword = async (reset_token: string, password: string) => {
     throw error;
   }
 };
-

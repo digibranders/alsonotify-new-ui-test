@@ -8,7 +8,8 @@ const { TextArea } = Input;
 const { Option } = Select;
 
 export interface EmployeeFormData {
-  name: string;
+  firstName: string;
+  lastName: string;
   role: string;
   email: string;
   phone: string;
@@ -38,7 +39,8 @@ interface EmployeeFormProps {
 }
 
 const defaultFormData: EmployeeFormData = {
-  name: "",
+  firstName: "",
+  lastName: "",
   role: "",
   email: "",
   phone: "",
@@ -105,9 +107,13 @@ export function EmployeeForm({
         }
       }
 
+      const nameParts = (initialData.name || "").split(" ");
+
       setFormData({
         ...defaultFormData,
         ...initialData,
+        firstName: initialData.firstName || nameParts[0] || "",
+        lastName: initialData.lastName || nameParts.slice(1).join(" ") || "",
         workingHoursStart: start,
         workingHoursEnd: end,
         phone,
@@ -163,14 +169,25 @@ export function EmployeeForm({
         <div className="grid grid-cols-2 gap-6">
           {/* Left Column */}
           <div className="space-y-5">
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Full Name</span>
-              <Input
-                placeholder="Enter full name"
-                className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.name ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">First Name <span className="text-[#ff3b3b]">*</span></span>
+                <Input
+                  placeholder="First name"
+                  className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.firstName ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Last Name</span>
+                <Input
+                  placeholder="Last name"
+                  className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.lastName ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
