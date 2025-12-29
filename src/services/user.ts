@@ -234,7 +234,7 @@ export const getRoles = async (): Promise<ApiResponse<{ id: number; name: string
 // Accept invitation
 export const acceptInvitation = async (token: string) => {
   try {
-    const { data } = await axiosApi.post("/user/accept-invite", { token });
+    const { data } = await axiosApi.post("/auth/accept-invite", { token });
     return data;
   } catch (error) {
     throw error;
