@@ -1,5 +1,6 @@
 import { Checkbox, Dropdown, MenuProps, Avatar, Tag } from "antd";
-import { MoreVertical, Edit, Trash2, Mail, Phone, Globe, User, Briefcase, Building } from "lucide-react";
+import { MoreVertical, Edit, Trash2, Mail, Phone, Globe, User, Briefcase, Building, Eye as EyeIcon } from "lucide-react";
+import { EyeOutlined } from '@ant-design/icons';
 import Link from "next/link";
 
 export interface Partner {
@@ -11,10 +12,12 @@ export interface Partner {
     email: string;
     phone: string;
     country: string;
+    timezone?: string;
     status: 'active' | 'inactive';
     requirements: number;
     onboarding: string;
     rawStatus?: string;
+    isOrgAccount?: boolean;
 }
 
 interface PartnerRowProps {
@@ -55,7 +58,7 @@ export function PartnerRow({
                 }
       `}
         >
-            <div className="grid grid-cols-[40px_1.8fr_1.2fr_1fr_1.5fr_1.2fr_1fr_0.8fr_40px] gap-4 items-center">
+            <div className="grid grid-cols-[40px_1.8fr_1.2fr_1fr_1.5fr_1.2fr_0.8fr_40px] gap-4 items-center">
                 {/* Checkbox */}
                 <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
                     <Checkbox
@@ -114,13 +117,6 @@ export function PartnerRow({
                     </span>
                 </div>
 
-                {/* Contact */}
-                <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 text-[#666666]">
-                    <Phone className="w-3.5 h-3.5 shrink-0" />
-                    <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111]">
-                        {partner.phone}
-                    </span>
-                </div>
 
                 {/* Onboarding */}
                 <div>
@@ -144,8 +140,8 @@ export function PartnerRow({
                             items: [
                                 {
                                     key: 'edit',
-                                    label: 'Edit',
-                                    icon: <Edit className="w-3.5 h-3.5" />,
+                                    label: 'View Details',
+                                    icon: <EyeOutlined className="w-3.5 h-3.5" />,
                                     onClick: onEdit,
                                     className: "text-[13px] font-['Manrope:Medium',sans-serif]"
                                 },

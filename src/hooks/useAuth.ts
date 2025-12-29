@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { doLogin, doSignup, forgetPassword, doCompleteSignup } from "../services/auth";
+import { doLogin, doSignup, forgetPassword, doCompleteSignup, verifyRegisterToken } from "../services/auth";
 import { setToken, deleteToken, getToken } from "../services/cookies";
 import axiosApi from "../config/axios";
 import { getUserDetails } from "../services/user";
@@ -64,6 +64,15 @@ export const useUser = () => {
   });
 };
 
+export const useVerifyToken = (token: string | null) => {
+  return useQuery({
+    queryKey: ["verify-token", token],
+    queryFn: () => verifyRegisterToken(token!),
+    enabled: !!token,
+    retry: false,
+  });
+};
+
 export const useCompleteSignup = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -76,6 +85,9 @@ export const useCompleteSignup = () => {
       accountType: string;
       country: string;
       timezone: string;
+      firstName?: string;
+      lastName?: string;
+      phone?: string;
     }) =>
       doCompleteSignup(
         params.registerToken,
@@ -83,7 +95,10 @@ export const useCompleteSignup = () => {
         params.businessType,
         params.accountType,
         params.country,
-        params.timezone
+        params.timezone,
+        params.firstName,
+        params.lastName,
+        params.phone
       ),
     onSuccess: (data) => {
       if (data.success && data.result.token) {
