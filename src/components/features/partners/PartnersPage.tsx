@@ -25,7 +25,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import axiosApi from '../../../config/axios';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { PartnerRow, Partner } from './rows/PartnerRow';
-import { acceptInvitation, updateAssociationStatus, getReceivedInvites, acceptInviteById } from '@/services/user';
+import { acceptInvitation, updateAssociationStatus, getReceivedInvites, acceptInviteById, declineInviteById } from '@/services/user';
 import { BankOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined } from '@ant-design/icons';
 
 // Mock Data
@@ -47,7 +47,7 @@ export function PartnersPageContent() {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
-    const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
+    const [activeTab, setActiveTab] = useState<'active' | 'inactive' | 'requests'>('active');
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState({
         type: 'All',
@@ -90,7 +90,7 @@ export function PartnersPageContent() {
                         isOrgAccount: !!item.company
                     };
                 });
-                setPartners(mappedPartners);
+                setPartners(mappedPartners); ``
             }
         } catch (error) {
             console.error('Failed to fetch data:', error);
@@ -147,7 +147,8 @@ export function PartnersPageContent() {
     // Stats
     const stats = {
         active: partners.filter(p => p.status === 'active').length,
-        inactive: partners.filter(p => p.status === 'inactive').length
+        inactive: partners.filter(p => p.status === 'inactive').length,
+        requests: pendingInvites.length + partners.filter(p => p.rawStatus === 'PENDING').length
     };
 
     // Filter Data
@@ -233,6 +234,20 @@ export function PartnersPageContent() {
         }
     };
 
+    const handleDeclineInvite = async (inviteId: number) => {
+        try {
+            const res = await declineInviteById(inviteId);
+            if (res.success) {
+                message.success('Invite declined successfully');
+                fetchPartners(); // Refresh both lists
+            } else {
+                message.error(res.message || 'Failed to decline invite');
+            }
+        } catch (error: any) {
+            message.error(error?.response?.data?.message || 'Failed to decline invite');
+        }
+    };
+
     const handleModalOk = async () => {
         try {
             const values = await form.validateFields();
@@ -308,62 +323,10 @@ export function PartnersPageContent() {
                 </div>
 
 
-                {/* Pending Invites / Requests */}
-                {pendingInvites.length > 0 && (
-                    <div className="mb-8">
-                        <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-3">Requests ({pendingInvites.length})</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {pendingInvites.map((invite) => (
-                                <div key={invite.id} className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex items-start justify-between gap-4">
-                                    <div className="flex gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-[#EEEEEE] overflow-hidden shrink-0">
-                                            {invite.inviterImage ? (
-                                                <img src={invite.inviterImage} alt="" className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-[#999999]">
-                                                    <UserOutlined />
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <p className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                                                {invite.inviterName}
-                                            </p>
-                                            <p className="text-[12px] text-[#666666] font-['Manrope:Regular',sans-serif]">
-                                                {invite.inviterCompany ? `from ${invite.inviterCompany}` : 'invited you'}
-                                            </p>
-                                            <p className="text-[11px] text-[#999999] mt-1">
-                                                To be a {invite.type?.toLowerCase() || 'partner'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                        <Button
-                                            type="primary"
-                                            size="small"
-                                            className="bg-[#111111] hover:bg-black text-[12px] h-7"
-                                            onClick={() => handleAcceptInvite(invite.id)}
-                                        >
-                                            Accept
-                                        </Button>
-                                        <Button
-                                            size="small"
-                                            className="text-[12px] h-7"
-                                            danger={true} // Ant design danger prop for red text
-                                        // onClick={() => handleDecline(invite.id)} // TODO: Implement decline
-                                        >
-                                            Decline
-                                        </Button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
 
                 {/* Tabs */}
                 <div className="flex items-center gap-6 border-b border-[#EEEEEE]">
-                    {(['active', 'inactive'] as const).map((tab) => (
+                    {(['active', 'inactive', 'requests'] as const).map((tab) => (
                         <button
                             key={tab}
                             onClick={() => { setActiveTab(tab); setPagination(prev => ({ ...prev, current: 1 })); setSelectedPartners([]); }}
@@ -372,7 +335,7 @@ export function PartnersPageContent() {
                                 : 'text-[#666666] hover:text-[#111111]'
                                 }`}
                         >
-                            {tab === 'active' ? 'Active' : 'Deactivated'}
+                            {tab === 'active' ? 'Active' : tab === 'inactive' ? 'Deactivated' : 'Requests'}
                             <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === tab
                                 ? 'bg-[#ff3b3b] text-white'
                                 : 'bg-[#F7F7F7] text-[#666666]'
@@ -387,115 +350,224 @@ export function PartnersPageContent() {
                 </div>
             </div>
 
-            {/* Toolbar / Filters */}
-            <div className="mb-6">
-                <FilterBar
-                    filters={filterOptions}
-                    selectedFilters={filters}
-                    onFilterChange={handleFilterChange}
-                    onClearFilters={clearFilters}
-                    searchPlaceholder="Search partners..."
-                    searchValue={searchQuery}
-                    onSearchChange={setSearchQuery}
-                />
-            </div>
-
-            {/* List Area */}
-            <div className="flex-1 overflow-y-auto relative pb-20">
-                {/* Grid Header */}
-                <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_1.8fr_1.2fr_1fr_1.5fr_1.2fr_0.8fr_40px] gap-4 px-4 py-3 mb-2 items-center">
-                    <div className="flex justify-center">
-                        <Checkbox
-                            checked={paginatedPartners.length > 0 && selectedPartners.length === paginatedPartners.length}
-                            onChange={toggleSelectAll}
-                            className="red-checkbox"
-                        />
-                    </div>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Business Name</p>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Contact Person</p>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Type</p>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Email</p>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Onboarding</p>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Country</p>
-                    <p></p>
-                </div>
-
-                <div className="space-y-2">
-                    {paginatedPartners.map(partner => (
-                        <PartnerRow
-                            key={partner.id}
-                            partner={partner}
-                            selected={selectedPartners.includes(partner.id)}
-                            onSelect={() => toggleSelect(partner.id)}
-                            onEdit={() => handleEdit(partner)}
-                            onStatusUpdate={(isActive) => handleStatusUpdate(partner, isActive)}
-                        />
-                    ))}
-                </div>
-
-                {filteredPartners.length === 0 && (
-                    <div className="text-center py-12">
-                        <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">
-                            No partners found
-                        </p>
-                    </div>
-                )}
-
-                {/* Bulk Action Bar */}
-                {selectedPartners.length > 0 && (
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#111111] text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-6 z-20 animate-in slide-in-from-bottom-4 duration-200">
-                        <div className="flex items-center gap-2 border-r border-white/20 pr-6">
-                            <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
-                                {selectedPartners.length}
+            {/* Conditional Content Based on Active Tab */}
+            {activeTab === 'requests' ? (
+                <div className="flex-1 overflow-y-auto pb-20 px-4">
+                    {/* Received Invites */}
+                    {pendingInvites.length > 0 && (
+                        <div className="mb-8">
+                            <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-3">
+                                Received Invites ({pendingInvites.length})
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {pendingInvites.map((invite) => (
+                                    <div key={invite.id} className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex items-start justify-between gap-4">
+                                        <div className="flex gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-[#EEEEEE] overflow-hidden shrink-0">
+                                                {invite.inviterImage ? (
+                                                    <img src={invite.inviterImage} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-[#999999]">
+                                                        <UserOutlined />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                                    {invite.inviterName}
+                                                </p>
+                                                <p className="text-[12px] text-[#666666] font-['Manrope:Regular',sans-serif]">
+                                                    {invite.inviterCompany ? `from ${invite.inviterCompany}` : 'invited you'}
+                                                </p>
+                                                <p className="text-[11px] text-[#999999] mt-1">
+                                                    To be a {invite.type?.toLowerCase() || 'partner'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-2">
+                                            <Button
+                                                type="primary"
+                                                size="small"
+                                                className="bg-[#111111] hover:bg-black text-[12px] h-7"
+                                                onClick={() => handleAcceptInvite(invite.id)}
+                                            >
+                                                Accept
+                                            </Button>
+                                            <Button
+                                                size="small"
+                                                className="text-[12px] h-7"
+                                                danger={true}
+                                                onClick={() => handleDeclineInvite(invite.id)}
+                                            >
+                                                Decline
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
                         </div>
+                    )}
 
-                        <div className="flex items-center gap-2">
-                            <button className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Export">
-                                <Download className="w-4 h-4" />
-                            </button>
-                            <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]" title="Deactivate">
-                                <Trash2 className="w-4 h-4" />
-                            </button>
+                    {/* Sent Invites */}
+                    {partners.filter(p => p.rawStatus === 'PENDING').length > 0 && (
+                        <div className="mb-8">
+                            <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-3">
+                                Sent Invites ({partners.filter(p => p.rawStatus === 'PENDING').length})
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {partners.filter(p => p.rawStatus === 'PENDING').map((partner) => (
+                                    <div key={partner.id} className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA]">
+                                        <div className="flex items-start justify-between gap-3 mb-3">
+                                            <div>
+                                                <p className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                                    {partner.name || partner.email}
+                                                </p>
+                                                {partner.company && (
+                                                    <p className="text-[12px] text-[#666666] font-['Manrope:Regular',sans-serif]">
+                                                        {partner.company}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <Tag color="orange" className="text-[11px]">Pending</Tag>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <p className="text-[11px] text-[#666666] flex items-center gap-2">
+                                                <MailOutlined /> {partner.email}
+                                            </p>
+                                            {partner.phone && (
+                                                <p className="text-[11px] text-[#666666] flex items-center gap-2">
+                                                    <PhoneOutlined /> {partner.phone}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
+                    )}
 
-                        <button onClick={() => setSelectedPartners([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
-                            Cancel
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            {/* Pagination */}
-            {totalItems > 0 && (
-                <div className="mt-6 flex items-center justify-between border-t border-[#EEEEEE] pt-6">
-                    <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">
-                        {startIndex + 1}-{Math.min(startIndex + pagination.pageSize, totalItems)} of {totalItems} partners
-                    </p>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => setPagination(prev => ({ ...prev, current: prev.current - 1 }))}
-                            disabled={pagination.current === 1}
-                            className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                            <ChevronLeft className="w-4 h-4 text-[#666666]" />
-                        </button>
-
-                        {/* Simplified Pagination Digits */}
-                        <button className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#ff3b3b] text-white font-['Manrope:SemiBold',sans-serif] text-[13px]">
-                            {pagination.current}
-                        </button>
-
-                        <button
-                            onClick={() => setPagination(prev => ({ ...prev, current: prev.current + 1 }))}
-                            disabled={startIndex + pagination.pageSize >= totalItems}
-                            className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                            <ChevronRight className="w-4 h-4 text-[#666666]" />
-                        </button>
-                    </div>
+                    {/* Empty State */}
+                    {pendingInvites.length === 0 && partners.filter(p => p.rawStatus === 'PENDING').length === 0 && (
+                        <div className="text-center py-12">
+                            <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">
+                                No pending requests
+                            </p>
+                        </div>
+                    )}
                 </div>
+            ) : (
+                <>
+                    {/* Toolbar / Filters */}
+                    <div className="mb-6">
+                        <FilterBar
+                            filters={filterOptions}
+                            selectedFilters={filters}
+                            onFilterChange={handleFilterChange}
+                            onClearFilters={clearFilters}
+                            searchPlaceholder="Search partners..."
+                            searchValue={searchQuery}
+                            onSearchChange={setSearchQuery}
+                        />
+                    </div>
+
+                    {/* List Area */}
+                    <div className="flex-1 overflow-y-auto relative pb-20">
+                        {/* Grid Header */}
+                        <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_1.8fr_1.2fr_1fr_1.5fr_1.2fr_0.8fr_40px] gap-4 px-4 py-3 mb-2 items-center">
+                            <div className="flex justify-center">
+                                <Checkbox
+                                    checked={paginatedPartners.length > 0 && selectedPartners.length === paginatedPartners.length}
+                                    onChange={toggleSelectAll}
+                                    className="red-checkbox"
+                                />
+                            </div>
+                            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Business Name</p>
+                            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Contact Person</p>
+                            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Type</p>
+                            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Email</p>
+                            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Onboarding</p>
+                            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Country</p>
+                            <p></p>
+                        </div>
+
+                        <div className="space-y-2">
+                            {paginatedPartners.map(partner => (
+                                <PartnerRow
+                                    key={partner.id}
+                                    partner={partner}
+                                    selected={selectedPartners.includes(partner.id)}
+                                    onSelect={() => toggleSelect(partner.id)}
+                                    onEdit={() => handleEdit(partner)}
+                                    onStatusUpdate={(isActive) => handleStatusUpdate(partner, isActive)}
+                                />
+                            ))}
+                        </div>
+
+                        {filteredPartners.length === 0 && (
+                            <div className="text-center py-12">
+                                <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">
+                                    No partners found
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Bulk Action Bar */}
+                        {selectedPartners.length > 0 && (
+                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#111111] text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-6 z-20 animate-in slide-in-from-bottom-4 duration-200">
+                                <div className="flex items-center gap-2 border-r border-white/20 pr-6">
+                                    <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
+                                        {selectedPartners.length}
+                                    </div>
+                                    <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <button className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Export">
+                                        <Download className="w-4 h-4" />
+                                    </button>
+                                    <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]" title="Deactivate">
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                <button onClick={() => setSelectedPartners([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Pagination */}
+                    {totalItems > 0 && (
+                        <div className="mt-6 flex items-center justify-between border-t border-[#EEEEEE] pt-6">
+                            <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                                {startIndex + 1}-{Math.min(startIndex + pagination.pageSize, totalItems)} of {totalItems} partners
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setPagination(prev => ({ ...prev, current: prev.current - 1 }))}
+                                    disabled={pagination.current === 1}
+                                    className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                    <ChevronLeft className="w-4 h-4 text-[#666666]" />
+                                </button>
+
+                                {/* Simplified Pagination Digits */}
+                                <button className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#ff3b3b] text-white font-['Manrope:SemiBold',sans-serif] text-[13px]">
+                                    {pagination.current}
+                                </button>
+
+                                <button
+                                    onClick={() => setPagination(prev => ({ ...prev, current: prev.current + 1 }))}
+                                    disabled={startIndex + pagination.pageSize >= totalItems}
+                                    className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                >
+                                    <ChevronRight className="w-4 h-4 text-[#666666]" />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
 
             {/* Modal */}
