@@ -25,7 +25,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import axiosApi from '../../../config/axios';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { PartnerRow, Partner } from './rows/PartnerRow';
-import { acceptInvitation, updateAssociationStatus } from '@/services/user';
+import { acceptInvitation, updateAssociationStatus, getReceivedInvites, acceptInviteById } from '@/services/user';
 import { BankOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined } from '@ant-design/icons';
 
 // Mock Data
@@ -43,6 +43,7 @@ const countryCodes = [
 
 export function PartnersPageContent() {
     const [partners, setPartners] = useState<Partner[]>([]);
+    const [pendingInvites, setPendingInvites] = useState<any[]>([]); // New state
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
@@ -58,9 +59,17 @@ export function PartnersPageContent() {
     const fetchPartners = async () => {
         try {
             setLoading(true);
-            const response = await axiosApi.get('/user/outsource');
-            if (response.data.success) {
-                const mappedPartners: Partner[] = response.data.result.map((item: any) => {
+            const [partnersRes, invitesRes] = await Promise.all([
+                axiosApi.get('/user/outsource'),
+                getReceivedInvites() // Fetch invites
+            ]);
+
+            if (invitesRes.success) {
+                setPendingInvites(invitesRes.result as any[]);
+            }
+
+            if (partnersRes.data.success) {
+                const mappedPartners: Partner[] = partnersRes.data.result.map((item: any) => {
                     const isAccepted = item.status === 'ACCEPTED';
                     const isActive = item.is_active === true;
 
@@ -81,18 +90,11 @@ export function PartnersPageContent() {
                         isOrgAccount: !!item.company
                     };
                 });
-                // Filter out pending invites if needed, or show them. User asked to connect data, so we show all.
-                // Assuming 'status' logic: active = connected, inactive = pending/deactivated? 
-                // The current tabs are 'active' | 'inactive'. 
-                // Let's map pending/invited to 'inactive' or maybe keep them visible. 
-                // For now, mapping PENDING status from backend to 'inactive' tab might be confusing if they are just invited.
-                // But the UI only has Active/Deactivated. Let's start with this mapping.
-
                 setPartners(mappedPartners);
             }
         } catch (error) {
-            console.error('Failed to fetch partners:', error);
-            message.error('Failed to load partners');
+            console.error('Failed to fetch data:', error);
+            message.error('Failed to load data');
         } finally {
             setLoading(false);
         }
@@ -217,6 +219,20 @@ export function PartnersPageContent() {
         });
     };
 
+    const handleAcceptInvite = async (inviteId: number) => {
+        try {
+            const res = await acceptInviteById(inviteId);
+            if (res.success) {
+                message.success('Invite accepted successfully');
+                fetchPartners(); // Refresh both lists
+            } else {
+                message.error(res.message || 'Failed to accept invite');
+            }
+        } catch (error: any) {
+            message.error(error?.response?.data?.message || 'Failed to accept invite');
+        }
+    };
+
     const handleModalOk = async () => {
         try {
             const values = await form.validateFields();
@@ -225,7 +241,7 @@ export function PartnersPageContent() {
             await axiosApi.post('/user/invite', {
                 email: values.email,
                 name: `${values.firstName} ${values.lastName}`.trim(),
-                requestSentFor: 'OUTSOURCE'
+                requestSentFor: 'PARTNER'
             });
 
             message.success('Invitation sent successfully');
@@ -290,6 +306,60 @@ export function PartnersPageContent() {
                         </button>
                     </div>
                 </div>
+
+
+                {/* Pending Invites / Requests */}
+                {pendingInvites.length > 0 && (
+                    <div className="mb-8">
+                        <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-3">Requests ({pendingInvites.length})</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {pendingInvites.map((invite) => (
+                                <div key={invite.id} className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex items-start justify-between gap-4">
+                                    <div className="flex gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-[#EEEEEE] overflow-hidden shrink-0">
+                                            {invite.inviterImage ? (
+                                                <img src={invite.inviterImage} alt="" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-[#999999]">
+                                                    <UserOutlined />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <p className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                                {invite.inviterName}
+                                            </p>
+                                            <p className="text-[12px] text-[#666666] font-['Manrope:Regular',sans-serif]">
+                                                {invite.inviterCompany ? `from ${invite.inviterCompany}` : 'invited you'}
+                                            </p>
+                                            <p className="text-[11px] text-[#999999] mt-1">
+                                                To be a {invite.type?.toLowerCase() || 'partner'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <Button
+                                            type="primary"
+                                            size="small"
+                                            className="bg-[#111111] hover:bg-black text-[12px] h-7"
+                                            onClick={() => handleAcceptInvite(invite.id)}
+                                        >
+                                            Accept
+                                        </Button>
+                                        <Button
+                                            size="small"
+                                            className="text-[12px] h-7"
+                                            danger={true} // Ant design danger prop for red text
+                                        // onClick={() => handleDecline(invite.id)} // TODO: Implement decline
+                                        >
+                                            Decline
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Tabs */}
                 <div className="flex items-center gap-6 border-b border-[#EEEEEE]">
