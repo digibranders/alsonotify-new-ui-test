@@ -203,16 +203,7 @@ export function ProductivityWidget() {
         // Filter out if no keys provided (security)
         if (!user || !user.id) return false;
 
-        // Check estimate status - use String() to handle type mismatch (number vs string)
-        const myMember = t.task_members?.find((m: any) => String(m.user_id) === String(user.id));
-        const hasProvidedEstimate = myMember ? (myMember.estimated_time !== null && myMember.estimated_time > 0) : false;
-
-        // Debug: temporarily log if we're filtering tasks out
-        if (myMember && !hasProvidedEstimate) {
-          console.log('[Dashboard Filter] Task filtered out - no estimate:', t.name, 'estimate:', myMember?.estimated_time);
-        }
-
-        return (isAssigned || isInProgress || isImpediment) && !isReview && !isCompleted && hasProvidedEstimate;
+        return (isAssigned || isInProgress || isImpediment) && !isReview && !isCompleted;
       })
       .map((t: any) => ({
         id: t.id,
