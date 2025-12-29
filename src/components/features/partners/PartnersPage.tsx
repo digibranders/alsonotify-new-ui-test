@@ -24,7 +24,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import axiosApi from '../../../config/axios';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { PartnerRow, Partner } from './rows/PartnerRow';
-import { acceptInvitation } from '@/services/user';
+import { acceptInvitation, updateAssociationStatus } from '@/services/user';
 import { BankOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined } from '@ant-design/icons';
 
 // Mock Data
@@ -49,18 +49,25 @@ export function PartnersPageContent() {
             setLoading(true);
             const response = await axiosApi.get('/user/outsource');
             if (response.data.success) {
-                const mappedPartners: Partner[] = response.data.result.map((item: any) => ({
-                    id: item.association_id || item.invite_id, // Handle both active and pending
-                    name: item.name || '',
-                    company: item.company || '',
-                    type: 'ORGANIZATION', // Default or derived if available
-                    email: item.email || '',
-                    phone: '', // Not in simplified response
-                    country: '', // Not in simplified response
-                    status: item.is_active || item.status === 'ACCEPTED' ? 'active' : 'inactive', // Simplified status mapping
-                    requirements: 0,
-                    onboarding: item.associated_date ? new Date(item.associated_date).toLocaleDateString() : '-'
-                }));
+                const mappedPartners: Partner[] = response.data.result.map((item: any) => {
+                    const isAccepted = item.status === 'ACCEPTED';
+                    const isActive = item.is_active === true;
+
+                    return {
+                        id: item.association_id || item.invite_id,
+                        association_id: item.association_id, // Keep track of association_id for updates
+                        name: item.name || '',
+                        company: item.company || '',
+                        type: 'ORGANIZATION',
+                        email: item.email || '',
+                        phone: '',
+                        country: '',
+                        status: (isAccepted && isActive) ? 'active' : 'inactive',
+                        requirements: 0,
+                        onboarding: item.associated_date ? new Date(item.associated_date).toLocaleDateString() : '-',
+                        rawStatus: item.status // Keep raw status to distinguish between pending and deactivated
+                    };
+                });
                 // Filter out pending invites if needed, or show them. User asked to connect data, so we show all.
                 // Assuming 'status' logic: active = connected, inactive = pending/deactivated? 
                 // The current tabs are 'active' | 'inactive'. 
@@ -159,16 +166,35 @@ export function PartnersPageContent() {
         setIsModalOpen(true);
     };
 
-    const handleDelete = (id: number) => {
+    const handleStatusUpdate = async (partner: Partner, isActive: boolean) => {
+        if (!partner.association_id) {
+            message.warning('Cannot change status of a pending invitation');
+            return;
+        }
+
+        const action = isActive ? 'activate' : 'deactivate';
         Modal.confirm({
-            title: 'Deactivate Partner',
-            content: 'Are you sure you want to deactivate this partner?',
-            okText: 'Deactivate',
-            okType: 'danger',
+            title: `${isActive ? 'Activate' : 'Deactivate'} Partner`,
+            content: `Are you sure you want to ${action} this partner?`,
+            okText: isActive ? 'Activate' : 'Deactivate',
+            okType: isActive ? 'primary' : 'danger',
             cancelText: 'Cancel',
-            onOk() {
-                setPartners(prev => prev.map(p => p.id === id ? { ...p, status: 'inactive' } : p));
-                message.success('Partner deactivated');
+            async onOk() {
+                try {
+                    const result = await updateAssociationStatus({
+                        association_id: partner.association_id!,
+                        is_active: isActive
+                    });
+                    if (result.success) {
+                        message.success(`Partner ${isActive ? 'activated' : 'deactivated'}`);
+                        fetchPartners();
+                    } else {
+                        message.error(result.message || `Failed to ${action} partner`);
+                    }
+                } catch (error) {
+                    console.error(`Failed to ${action} partner:`, error);
+                    message.error(`Failed to ${action} partner`);
+                }
             }
         });
     };
@@ -314,7 +340,7 @@ export function PartnersPageContent() {
                             selected={selectedPartners.includes(partner.id)}
                             onSelect={() => toggleSelect(partner.id)}
                             onEdit={() => handleEdit(partner)}
-                            onDelete={() => handleDelete(partner.id)}
+                            onStatusUpdate={(isActive) => handleStatusUpdate(partner, isActive)}
                         />
                     ))}
                 </div>

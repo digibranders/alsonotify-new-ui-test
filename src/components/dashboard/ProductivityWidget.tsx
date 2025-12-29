@@ -203,7 +203,11 @@ export function ProductivityWidget() {
         // Filter out if no keys provided (security)
         if (!user || !user.id) return false;
 
-        return (isAssigned || isInProgress || isImpediment) && !isReview && !isCompleted;
+        // Check if current user is a member and has provided an estimate
+        const myMember = t.task_members?.find((m: any) => String(m.user_id) === String(user.id));
+        const hasProvidedEstimate = myMember ? (myMember.estimated_time !== null && myMember.estimated_time > 0) : false;
+
+        return (isAssigned || isInProgress || isImpediment) && !isReview && !isCompleted && hasProvidedEstimate;
       })
       .map((t: any) => ({
         id: t.id,

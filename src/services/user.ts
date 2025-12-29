@@ -211,6 +211,16 @@ export const updateUserStatus = async (params: { user_id: number; is_active: boo
   }
 };
 
+// Update user association status (activate/deactivate client/outsource)
+export const updateAssociationStatus = async (params: { association_id: number; is_active: boolean }): Promise<ApiResponse<any>> => {
+  try {
+    const { data } = await axiosApi.patch<ApiResponse<any>>(`/user/association/status`, params);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Get all roles
 export const getRoles = async (): Promise<ApiResponse<{ id: number; name: string }[]>> => {
   try {

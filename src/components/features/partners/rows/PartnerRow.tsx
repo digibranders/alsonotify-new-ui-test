@@ -4,6 +4,7 @@ import Link from "next/link";
 
 export interface Partner {
     id: number;
+    association_id?: number | null;
     name: string; // Contact Person
     company: string; // Business Name
     type: 'INDIVIDUAL' | 'ORGANIZATION';
@@ -13,6 +14,7 @@ export interface Partner {
     status: 'active' | 'inactive';
     requirements: number;
     onboarding: string;
+    rawStatus?: string;
 }
 
 interface PartnerRowProps {
@@ -20,7 +22,7 @@ interface PartnerRowProps {
     selected: boolean;
     onSelect: () => void;
     onEdit: () => void;
-    onDelete: () => void;
+    onStatusUpdate: (isActive: boolean) => void;
 }
 
 export function PartnerRow({
@@ -28,7 +30,7 @@ export function PartnerRow({
     selected,
     onSelect,
     onEdit,
-    onDelete
+    onStatusUpdate
 }: PartnerRowProps) {
 
     const getInitials = (name: string) => {
@@ -148,11 +150,11 @@ export function PartnerRow({
                                     className: "text-[13px] font-['Manrope:Medium',sans-serif]"
                                 },
                                 {
-                                    key: 'delete',
-                                    label: 'Deactivate',
-                                    icon: <Trash2 className="w-3.5 h-3.5" />,
-                                    onClick: onDelete,
-                                    danger: true,
+                                    key: 'status',
+                                    label: partner.status === 'active' ? 'Deactivate' : 'Activate',
+                                    icon: partner.status === 'active' ? <Trash2 className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />,
+                                    onClick: () => onStatusUpdate(partner.status !== 'active'),
+                                    danger: partner.status === 'active',
                                     className: "text-[13px] font-['Manrope:Medium',sans-serif]"
                                 }
                             ] as MenuProps['items']
