@@ -19,7 +19,8 @@ function RegisterForm() {
   const inviteEmail = searchParams.get("email") ?? null;
 
   const [formData, setFormData] = useState({
-    fullName: "",
+    firstName: "",
+    lastName: "",
     email: inviteEmail || "",
     password: "",
     accountType: "Individual" as "Individual" | "Organization",
@@ -30,7 +31,7 @@ function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.fullName || !formData.email || !formData.password) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
       message.error("Please fill in all fields");
       return;
     }
@@ -42,7 +43,8 @@ function RegisterForm() {
 
     registerMutation.mutate(
       {
-        name: formData.fullName,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
         password: formData.password,
         token: inviteToken,
@@ -124,16 +126,29 @@ function RegisterForm() {
           </motion.div>
 
           <motion.div variants={itemVariants} className="space-y-5">
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">Full Name</label>
-              <input
-                type="text"
-                placeholder="John Doe"
-                className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
-                value={formData.fullName}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                required
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">First Name</label>
+                <input
+                  type="text"
+                  placeholder="John"
+                  className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">Last Name</label>
+                <input
+                  type="text"
+                  placeholder="Doe"
+                  className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  required
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
