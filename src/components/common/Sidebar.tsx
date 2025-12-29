@@ -128,13 +128,7 @@ export function Sidebar({ userRole, permissions }: SidebarProps) {
       icon: <Notepad24Filled />,
       allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
     },
-    {
-      id: 'meetings',
-      path: '/dashboard/meetings',
-      label: 'Meetings',
-      icon: <Video24Filled />,
-      allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
-    },
+
   ];
 
   const filteredNavItems = navItems.filter(item => {
@@ -235,37 +229,10 @@ function NavItem({ href, icon, label, active = false }: { href: string; icon: Re
 
 function PremiumCard() {
   return (
-    <div className="relative w-full overflow-hidden rounded-[16px] bg-gradient-to-br from-[#ff3b3b] via-[#cc2f2f] to-[#1a0000]">
-      {/* Decorative accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-white/20" />
-
-      <div className="p-6 flex flex-col gap-4">
-        {/* Icon and Badge */}
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Sparkle24Filled className="w-5 h-5 text-white fill-white" />
-            </div>
-            <div className="px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-sm border border-white/30">
-              <span className="text-[10px] font-['Manrope:Bold',sans-serif] text-white uppercase tracking-wide">
-                Pro
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Title */}
-        <div>
-          <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-white leading-tight">
-            Upgrade to Premium
-          </h3>
-        </div>
-
-        {/* CTA Button */}
-        <button className="w-full bg-white hover:bg-white/90 active:bg-white/80 text-[#ff3b3b] font-['Manrope:Bold',sans-serif] text-[14px] px-4 py-2.5 rounded-full transition-all transform active:scale-[0.98] shadow-lg shadow-black/30">
-          Upgrade Now
-        </button>
-      </div>
+    <div className="w-full">
+      <button className="w-full bg-[#ff3b3b] hover:bg-[#e63535] active:bg-[#cc2f2f] text-white font-['Manrope:Bold',sans-serif] text-[14px] px-4 py-3 rounded-full transition-all transform active:scale-[0.98] shadow-sm">
+        Upgrade Now
+      </button>
     </div>
   );
 }
