@@ -310,18 +310,6 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
             </button>
           </div>
           <div className="flex items-center gap-2">
-            {!isLoadingTeamsStatus && !isConnected && (
-              <Button
-                type="primary"
-                icon={<Video className="w-4 h-4" />}
-                loading={connecting}
-                onClick={connectToTeams}
-                className="h-8 px-3 text-[12px] font-['Manrope:SemiBold',sans-serif] bg-[#111111] hover:bg-[#000000]/90 border-none"
-                size="small"
-              >
-                Connect to Teams
-              </Button>
-            )}
             <button className="flex items-center gap-1 text-[#666666] text-[14px] font-['Manrope:SemiBold',sans-serif] hover:text-[#111111] transition-colors" onClick={() => onNavigate && onNavigate('calendar')}>
               <span>View All</span>
               <svg className="size-[17px]" fill="none" viewBox="0 0 17 17">
@@ -707,8 +695,8 @@ function AttendeesField({
                 key={idx}
                 onClick={() => handleSelectSuggestion(suggestion)}
                 className={`px-4 py-2.5 cursor-pointer transition-colors ${idx === selectedIndex
-                    ? 'bg-[#F7F7F7]'
-                    : 'hover:bg-[#FAFAFA]'
+                  ? 'bg-[#F7F7F7]'
+                  : 'hover:bg-[#FAFAFA]'
                   }`}
               >
                 <div className="flex items-center gap-2">
@@ -915,8 +903,8 @@ function MeetingItem({
             {/* Date Badge - Rounded Square */}
             <div className="flex-shrink-0">
               <div className={`w-[48px] h-[48px] rounded-[12px] flex flex-col items-center justify-center ${isRedDate
-                  ? 'bg-[#ff3b3b]'
-                  : 'bg-[#E5E5E5]'
+                ? 'bg-[#ff3b3b]'
+                : 'bg-[#E5E5E5]'
                 }`}>
                 <span className={`text-[10px] font-['Manrope:Medium',sans-serif] uppercase leading-none mb-0.5 ${isRedDate ? 'text-white' : 'text-[#666666]'
                   }`}>
