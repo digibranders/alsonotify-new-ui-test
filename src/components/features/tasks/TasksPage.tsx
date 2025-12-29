@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, CheckSquare, Trash2, Users, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PaginationBar } from '../../ui/PaginationBar';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { Modal, Checkbox, Popover, App } from "antd";
 import { TaskForm } from '../../modals/TaskForm';
@@ -1268,68 +1269,14 @@ export function TasksPage() {
 
       {/* Pagination - Fixed at bottom */}
       {!isLoading && totalTasks > 0 && (
-        <div className="mt-6 flex items-center justify-between border-t border-[#EEEEEE] pt-6">
-          <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">
-            {pagination.skip + 1}-{Math.min(pagination.skip + pagination.pageSize, totalTasks)} of {totalTasks} tasks
-          </p>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handlePaginationChange(pagination.current - 1, pagination.pageSize)}
-              disabled={pagination.current === 1}
-              className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="w-4 h-4 text-[#666666]" />
-            </button>
-
-            {Array.from({ length: Math.min(5, Math.ceil(totalTasks / pagination.pageSize)) }, (_, i) => {
-              const totalPages = Math.ceil(totalTasks / pagination.pageSize);
-              let pageNum: number;
-
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (pagination.current <= 3) {
-                pageNum = i + 1;
-              } else if (pagination.current >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = pagination.current - 2 + i;
-              }
-
-              return (
-                <button
-                  key={pageNum}
-                  onClick={() => handlePaginationChange(pageNum, pagination.pageSize)}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all font-['Manrope:SemiBold',sans-serif] text-[13px] ${pagination.current === pageNum
-                    ? 'bg-[#ff3b3b] text-white'
-                    : 'border border-[#EEEEEE] text-[#666666] hover:bg-[#F7F7F7]'
-                    }`}
-                >
-                  {pageNum}
-                </button>
-              );
-            })}
-
-            <button
-              onClick={() => handlePaginationChange(pagination.current + 1, pagination.pageSize)}
-              disabled={pagination.current >= Math.ceil(totalTasks / pagination.pageSize)}
-              className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ChevronRight className="w-4 h-4 text-[#666666]" />
-            </button>
-
-            <select
-              value={pagination.pageSize}
-              onChange={(e) => handlePaginationChange(1, Number(e.target.value))}
-              className="ml-2 px-2 py-1 rounded-lg border border-[#EEEEEE] text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666] bg-white hover:bg-[#F7F7F7] hover:border-[#EEEEEE] focus:outline-none focus:border-[#ff3b3b] transition-colors cursor-pointer"
-            >
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-          </div>
-        </div>
+        <PaginationBar
+          currentPage={pagination.current}
+          totalItems={totalTasks}
+          pageSize={pagination.pageSize}
+          onPageChange={(page) => handlePaginationChange(page, pagination.pageSize)}
+          onPageSizeChange={(size) => handlePaginationChange(1, size)}
+          itemLabel="tasks"
+        />
       )}
     </div>
   );

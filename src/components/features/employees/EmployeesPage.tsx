@@ -6,6 +6,7 @@ import { ShieldCheck, Briefcase, Download, Trash2, User as UserIcon, Users } fro
 import { EmployeeForm, EmployeeFormData } from '../../modals/EmployeesForm';
 import { EmployeeDetailsModal } from '../../modals/EmployeeDetailsModal';
 import { EmployeeRow } from './rows/EmployeeRow';
+import { PaginationBar } from '../../ui/PaginationBar';
 import {
   useEmployees,
   useCreateEmployee,
@@ -59,6 +60,11 @@ export function EmployeesPage() {
   const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
   const accessDropdownRef = useRef<HTMLDivElement>(null);
   const departmentDropdownRef = useRef<HTMLDivElement>(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+
 
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -129,6 +135,12 @@ export function EmployeesPage() {
     });
   }, [employees, activeTab, searchQuery, filters]);
 
+  // Pagination
+  const paginatedEmployees = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredEmployees.slice(startIndex, startIndex + pageSize);
+  }, [filteredEmployees, currentPage, pageSize]);
+
   // Get unique roles and departments
   const uniqueRoles = useMemo(() => ['All', ...Array.from(new Set(employees.map(emp => emp.role)))], [employees]);
 
@@ -176,11 +188,13 @@ export function EmployeesPage() {
 
   const handleFilterChange = (filterId: string, value: string) => {
     setFilters(prev => ({ ...prev, [filterId]: value }));
+    setCurrentPage(1);
   };
 
   const clearFilters = () => {
     setFilters({ role: 'All', department: 'All', access: 'All', employmentType: 'All' });
     setSearchQuery('');
+    setCurrentPage(1);
   };
 
   const handleOpenDialog = (employee?: Employee) => {
@@ -335,19 +349,13 @@ export function EmployeesPage() {
   };
 
   const toggleSelectAll = () => {
-    // Check if all filtered employees are selected
-    const allFilteredSelected = filteredEmployees.length > 0 &&
-      filteredEmployees.every(emp => selectedEmployees.includes(emp.id));
+    const currentIds = paginatedEmployees.map(e => e.id);
+    const allCurrentSelected = currentIds.every(id => selectedEmployees.includes(id));
 
-    if (allFilteredSelected) {
-      // Deselect all filtered employees (but keep selections from other filters)
-      const filteredIds = new Set(filteredEmployees.map(e => e.id));
-      setSelectedEmployees(selectedEmployees.filter(id => !filteredIds.has(id)));
+    if (allCurrentSelected) {
+      setSelectedEmployees(selectedEmployees.filter(id => !currentIds.includes(id)));
     } else {
-      // Select all filtered employees (merge with existing selections)
-      const filteredIds = filteredEmployees.map(e => e.id);
-      const combined = [...new Set([...selectedEmployees, ...filteredIds])];
-      setSelectedEmployees(combined);
+      setSelectedEmployees([...new Set([...selectedEmployees, ...currentIds])]);
     }
   };
 
@@ -865,8 +873,8 @@ export function EmployeesPage() {
           <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2fr_1.8fr_1.2fr_1fr_1fr_1.2fr_40px] gap-4 px-4 py-3 mb-2 items-center">
             <div className="flex justify-center">
               <Checkbox
-                checked={filteredEmployees.length > 0 &&
-                  filteredEmployees.every(emp => selectedEmployees.includes(emp.id))}
+                checked={paginatedEmployees.length > 0 &&
+                  paginatedEmployees.every(emp => selectedEmployees.includes(emp.id))}
                 onChange={toggleSelectAll}
                 className="red-checkbox"
               />
@@ -881,7 +889,7 @@ export function EmployeesPage() {
           </div>
 
           <div className="space-y-2">
-            {filteredEmployees.map((employee) => (
+            {paginatedEmployees.map((employee) => (
               <EmployeeRow
                 key={employee.id}
                 employee={employee}
@@ -905,6 +913,20 @@ export function EmployeesPage() {
               </p>
             </div>
           ) : null}
+
+          {filteredEmployees.length > 0 && (
+            <PaginationBar
+              currentPage={currentPage}
+              totalItems={filteredEmployees.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+              itemLabel="employees"
+            />
+          )}
         </div>
 
         {/* Bulk Action Bar */}

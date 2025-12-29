@@ -1,0 +1,99 @@
+import React from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+interface PaginationBarProps {
+    currentPage: number;
+    totalItems: number;
+    pageSize: number;
+    onPageChange: (page: number) => void;
+    onPageSizeChange: (size: number) => void;
+    itemLabel?: string;
+    className?: string;
+}
+
+export function PaginationBar({
+    currentPage,
+    totalItems,
+    pageSize,
+    onPageChange,
+    onPageSizeChange,
+    itemLabel = 'items',
+    className = ''
+}: PaginationBarProps) {
+    const totalPages = Math.ceil(totalItems / pageSize);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, totalItems);
+
+    if (totalItems === 0) return null;
+
+    const handlePageChange = (page: number) => {
+        if (page >= 1 && page <= totalPages) {
+            onPageChange(page);
+        }
+    };
+
+    return (
+        <div className={`mt-4 pt-4 flex items-center justify-between border-t border-[#EEEEEE] ${className}`}>
+            <p className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                {startIndex + 1}-{endIndex} of {totalItems} {itemLabel}
+            </p>
+
+            <div className="flex items-center gap-2">
+                <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                    <ChevronLeft className="w-4 h-4 text-[#666666]" />
+                </button>
+
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+
+                    if (totalPages <= 5) {
+                        pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                    } else {
+                        pageNum = currentPage - 2 + i;
+                    }
+
+                    return (
+                        <button
+                            key={pageNum}
+                            onClick={() => handlePageChange(pageNum)}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all font-['Manrope:SemiBold',sans-serif] text-[13px] ${currentPage === pageNum
+                                ? 'bg-[#ff3b3b] text-white'
+                                : 'border border-[#EEEEEE] text-[#666666] hover:bg-[#F7F7F7]'
+                                }`}
+                        >
+                            {pageNum}
+                        </button>
+                    );
+                })}
+
+                <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                    <ChevronRight className="w-4 h-4 text-[#666666]" />
+                </button>
+
+                <select
+                    value={pageSize}
+                    onChange={(e) => onPageSizeChange(Number(e.target.value))}
+                    className="ml-2 px-2 py-1 h-8 rounded-lg border border-[#EEEEEE] text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666] bg-white hover:bg-[#F7F7F7] hover:border-[#EEEEEE] focus:outline-none focus:border-[#ff3b3b] transition-colors cursor-pointer"
+                >
+                    <option value={10}>10</option>
+                    <option value={12}>12</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                </select>
+            </div>
+        </div>
+    );
+}

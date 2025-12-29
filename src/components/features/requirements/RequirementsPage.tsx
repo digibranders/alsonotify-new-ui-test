@@ -8,6 +8,7 @@ import {
   Check, X, Calendar as CalendarIcon, Clock, CheckCircle, CheckSquare, Users, Trash2,
   FilePlus, Edit, Receipt, MoreHorizontal, Play, XCircle, RotateCcw, Upload
 } from 'lucide-react';
+import { PaginationBar } from '../../ui/PaginationBar';
 import { Modal, Button, Input, Select, Tooltip, Popover, Checkbox, App } from 'antd';
 import { useWorkspaces, useCreateRequirement, useUpdateRequirement, useDeleteRequirement, useApproveRequirement } from '@/hooks/useWorkspace';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
@@ -431,6 +432,9 @@ export function RequirementsPage() {
     assignee: 'All'
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingReq, setEditingReq] = useState<Requirement | undefined>(undefined);
 
@@ -661,6 +665,7 @@ export function RequirementsPage() {
 
   const handleFilterChange = (filterId: string, value: string) => {
     setFilters(prev => ({ ...prev, [filterId]: value }));
+    setCurrentPage(1);
   };
 
   const clearFilters = () => {
@@ -674,6 +679,7 @@ export function RequirementsPage() {
     });
     setSearchQuery('');
     setDateRange(null);
+    setCurrentPage(1);
   };
 
   const toggleSelect = (id: number) => {
@@ -858,11 +864,10 @@ export function RequirementsPage() {
         />
       </div>
 
-      {/* Requirements Content */}
       <div className="flex-1 min-h-0 relative">
         <div className="h-full overflow-y-auto pb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {finalFilteredReqs.map((requirement) => (
+            {finalFilteredReqs.slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize).map((requirement) => (
               <RequirementCard
                 key={requirement.id}
                 requirement={requirement}
@@ -913,6 +918,20 @@ export function RequirementsPage() {
                 {isLoading ? "Loading requirements..." : "No requirements found"}
               </p>
             </div>
+          )}
+
+          {finalFilteredReqs.length > 0 && (
+            <PaginationBar
+              currentPage={currentPage}
+              totalItems={finalFilteredReqs.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+              itemLabel="requirements"
+            />
           )}
         </div>
 

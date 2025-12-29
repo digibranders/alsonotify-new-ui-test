@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FolderOpen, ChevronLeft, ChevronRight, Plus, UploadCloud, LayoutGrid, List, MoreVertical, Edit, Trash2, Archive, Users, RotateCcw } from 'lucide-react';
+import { PaginationBar } from '../../ui/PaginationBar';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { Modal, Button, Input, Select, Dropdown, MenuProps, Checkbox, App, DatePicker } from "antd";
 import { WorkspaceForm } from '@/components/modals/WorkspaceForm';
@@ -35,7 +36,7 @@ export function WorkspacePage() {
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const itemsPerPage = 12;
+  const [pageSize, setPageSize] = useState(10);
 
   // Get all workspace IDs
   const workspaceIds = useMemo(() => {
@@ -142,9 +143,8 @@ export function WorkspacePage() {
   }, [workspaces.length, filteredWorkspaces.length, activeTab, searchQuery, filters, currentPage]);
 
   // Pagination
-  const totalPages = Math.ceil(filteredWorkspaces.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
   const currentWorkspaces = filteredWorkspaces.slice(startIndex, endIndex);
 
   const toggleSelectAllWorkspaces = () => {
@@ -323,43 +323,18 @@ export function WorkspacePage() {
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-6 pt-6 border-t border-[#EEEEEE]">
-          <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">
-            {startIndex + 1}-{Math.min(endIndex, filteredWorkspaces.length)} of {filteredWorkspaces.length} workspaces
-          </p>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="w-4 h-4 text-[#666666]" />
-            </button>
-
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all font-['Manrope:SemiBold',sans-serif] text-[13px] ${currentPage === page
-                  ? 'bg-[#ff3b3b] text-white'
-                  : 'border border-[#EEEEEE] text-[#666666] hover:bg-[#F7F7F7]'
-                  }`}
-              >
-                {page}
-              </button>
-            ))}
-
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ChevronRight className="w-4 h-4 text-[#666666]" />
-            </button>
-          </div>
-        </div>
+      {filteredWorkspaces.length > 0 && (
+        <PaginationBar
+          currentPage={currentPage}
+          totalItems={filteredWorkspaces.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setCurrentPage(1);
+          }}
+          itemLabel="workspaces"
+        />
       )}
     </div>
   );
