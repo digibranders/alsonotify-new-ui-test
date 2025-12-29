@@ -232,9 +232,10 @@ export function PartnersPageContent() {
             setIsModalOpen(false);
             form.resetFields();
             fetchPartners();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to send invitation:', error);
-            // message.error('Failed to send invitation'); // Optional: Generic error handling usually handled by interceptors
+            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send invitation. Please check your connection and try again.';
+            message.error(errorMessage);
         }
     };
 
@@ -531,7 +532,11 @@ export function PartnersPageContent() {
                             </Form.Item>
                         </div>
 
-                        <Form.Item name="email" label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Email Address</span>} rules={[{ required: true, type: 'email', message: 'Valid email is required' }]}>
+                        <Form.Item
+                            name="email"
+                            label={<span className="font-['Manrope:Bold',sans-serif] text-[13px]">Email Address</span>}
+                            rules={[{ required: true, type: 'email', message: 'Valid email is required' }]}
+                        >
                             <Input
                                 prefix={<MailOutlined className="text-gray-400" />}
                                 className="h-10"
