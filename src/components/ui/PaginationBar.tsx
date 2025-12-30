@@ -24,8 +24,6 @@ export function PaginationBar({
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = Math.min(startIndex + pageSize, totalItems);
 
-    if (totalItems === 0) return null;
-
     const handlePageChange = (page: number) => {
         if (page >= 1 && page <= totalPages) {
             onPageChange(page);
@@ -35,7 +33,7 @@ export function PaginationBar({
     return (
         <div className={`mt-2 pt-2 flex items-center justify-between border-t border-[#EEEEEE] ${className}`}>
             <p className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
-                {startIndex + 1}-{endIndex} of {totalItems} {itemLabel}
+                {Math.min(startIndex + 1, totalItems)}-{endIndex} of {totalItems} {itemLabel}
             </p>
 
             <div className="flex items-center gap-2">

@@ -963,7 +963,7 @@ export function TasksPage() {
       </div>
 
       {/* Pagination - Fixed at bottom */}
-      {!isLoading && totalTasks > 0 && (
+      {!isLoading && (
         <PaginationBar
           currentPage={pagination.current}
           totalItems={totalTasks}

@@ -305,10 +305,10 @@ export function NoteComposerModal({ open, onClose, onSave, initialNote }: NoteCo
               {/* Formatting Buttons (only for text notes) - Google Keep style: minimal formatting */}
               {noteType === 'TEXT_NOTE' && (
                 <div className="flex gap-1">
-                  <button onClick={() => handleFormat('bold')} className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Bold">
+                  <button type="button" onClick={() => handleFormat('bold')} className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Bold" aria-label="Bold">
                     <Bold className="size-4 text-[#666666]" />
                   </button>
-                  <button onClick={() => handleFormat('italic')} className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Italic">
+                  <button type="button" onClick={() => handleFormat('italic')} className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Italic" aria-label="Italic">
                     <Italic className="size-4 text-[#666666]" />
                   </button>
                 </div>
@@ -364,6 +364,9 @@ export function NoteComposerModal({ open, onClose, onSave, initialNote }: NoteCo
                     key={c}
                     className={`w-10 h-10 rounded-lg border-2 transition-colors ${color === c ? 'border-[#111111]' : 'border-transparent hover:border-[#ff3b3b]'}`}
                     style={{ backgroundColor: c }}
+                    aria-label={`Select color ${c}`}
+                    aria-pressed={color === c}
+                    type="button"
                     onClick={() => {
                       setColor(c);
                       hasChangesRef.current = true;

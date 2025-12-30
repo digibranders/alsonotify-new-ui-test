@@ -533,7 +533,7 @@ export function ReportsPage() {
               </thead>
               <tbody>
                 {filteredRequirements.map((row, idx) => {
-                  const percentage = Math.min((row.engagedHrs / row.allottedHrs) * 100, 100);
+                  const percentage = row.allottedHrs > 0 ? Math.min((row.engagedHrs / row.allottedHrs) * 100, 100) : 0;
                   const isOverBudget = row.engagedHrs > row.allottedHrs;
 
                   return (

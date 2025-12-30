@@ -49,6 +49,12 @@ export function useTabSync<T extends string>({
 
     // Handler to update state and URL
     const setActiveTab = useCallback((newTab: T) => {
+        // Validation: Bail out if invalid tab
+        if (!stableValidTabs.includes(newTab)) {
+            console.warn(`Invalid tab requested: ${newTab}`);
+            return;
+        }
+
         setActiveTabState(newTab);
 
         const params = new URLSearchParams(searchParams.toString());
@@ -59,8 +65,10 @@ export function useTabSync<T extends string>({
             params.set(paramName, newTab);
         }
 
-        router.push(`?${params.toString()}`);
-    }, [router, searchParams, paramName, defaultTab]);
+        // Use window.location.pathname to ensure we stay on the same page
+        const newPath = `${window.location.pathname}?${params.toString()}`;
+        router.push(newPath);
+    }, [router, searchParams, paramName, defaultTab, stableValidTabs]);
 
     return [activeTab, setActiveTab] as const;
 }
