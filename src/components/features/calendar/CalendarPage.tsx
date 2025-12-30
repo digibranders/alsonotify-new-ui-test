@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useTabSync } from '@/hooks/useTabSync';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Info, Video, X } from 'lucide-react';
 import { PageLayout } from '../../layout/PageLayout';
 import { Popover, Spin, Tag, Badge, Avatar, Tooltip, Button, Modal, Input, Select, DatePicker, App } from 'antd';
@@ -45,7 +47,15 @@ interface CalendarEvent {
 
 export function CalendarPage() {
   const { message } = App.useApp();
-  const [activeView, setActiveView] = useState<'month' | 'week' | 'day' | 'agenda'>('month');
+  const router = useRouter();
+  /* Manual router/params removed */
+  const [activeView, setActiveView] = useTabSync<'month' | 'week' | 'day' | 'agenda'>({
+    defaultTab: 'month',
+    validTabs: ['month', 'week', 'day', 'agenda']
+  });
+
+  // Sync activeView with URL - handled by useTabSync
+  /* useEffect(() => { ... }) removed */
   const [currentDate, setCurrentDate] = useState(dayjs());
   const [selectedDate, setSelectedDate] = useState<string | null>(dayjs().format('YYYY-MM-DD'));
   const [connecting, setConnecting] = useState(false);
@@ -577,18 +587,29 @@ export function CalendarPage() {
         <div className="flex items-center gap-3">
           {/* Month Navigation */}
           <div className="flex items-center gap-2">
-            <button onClick={handlePrevMonth} className="w-9 h-9 rounded-[8px] border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors">
+            <button
+              onClick={handlePrevMonth}
+              className="w-9 h-9 rounded-[8px] border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors focus:ring-2 focus:ring-[#111111] focus:outline-none"
+              aria-label="Previous month"
+            >
               <ChevronLeft className="w-4 h-4 text-[#666666]" />
             </button>
-            <div className="px-4 py-2 bg-[#F7F7F7] rounded-[8px] border border-[#EEEEEE]">
+            <div className="px-4 py-2 bg-[#F7F7F7] rounded-[8px] border border-[#EEEEEE]" role="status">
               <span className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111]">
                 {currentDate.format('MMMM YYYY')}
               </span>
             </div>
-            <button onClick={handleNextMonth} className="w-9 h-9 rounded-[8px] border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors">
+            <button
+              onClick={handleNextMonth}
+              className="w-9 h-9 rounded-[8px] border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors focus:ring-2 focus:ring-[#111111] focus:outline-none"
+              aria-label="Next month"
+            >
               <ChevronRight className="w-4 h-4 text-[#666666]" />
             </button>
-            <button onClick={handleToday} className="px-4 py-2 text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666] hover:text-[#111111] transition-colors">
+            <button
+              onClick={handleToday}
+              className="px-4 py-2 text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666] hover:text-[#111111] transition-colors focus:ring-2 focus:ring-[#111111] focus:outline-none"
+            >
               Today
             </button>
           </div>
@@ -648,33 +669,76 @@ export function CalendarPage() {
                 </div>
 
                 {/* Calendar Days */}
-                <div className="grid grid-cols-7 gap-2">
+                <div
+                  className="grid grid-cols-7 gap-2"
+                  role="grid"
+                  aria-label="Calendar Month View"
+                >
                   {calendarDays.map((dayObj, index) => {
                     const dayEvents = getEventsForDate(dayObj.date);
                     const isToday = dayObj.date === dayjs().format('YYYY-MM-DD');
                     const isSelected = selectedDate === dayObj.date;
+                    const dateDesc = dayjs(dayObj.date).format('dddd, MMMM D, YYYY');
+                    const label = isToday ? `Today, ${dateDesc}` : dateDesc;
 
                     return (
                       <div
                         key={index}
-                        className={`min-h-[100px] p-2 rounded-[8px] border transition-all cursor-pointer flex flex-col ${dayObj.isCurrentMonth
+                        role="gridcell"
+                        aria-label={label}
+                        aria-selected={isSelected}
+                        tabIndex={0}
+                        className={`min-h-[100px] p-2 rounded-[8px] border transition-all cursor-pointer flex flex-col focus:ring-2 focus:ring-[#111111] focus:outline-none ${dayObj.isCurrentMonth
                           ? 'bg-white border-[#EEEEEE] hover:border-[#ff3b3b] hover:bg-[#FFF5F5]'
                           : 'bg-[#F7F7F7] border-transparent'
                           } ${isToday ? 'border-[#ff3b3b] bg-[#FFF5F5]' : ''} ${isSelected && !isToday ? 'border-gray-400' : ''}`}
                         onClick={() => setSelectedDate(dayObj.date)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelectedDate(dayObj.date);
+                          }
+                          // Simple arrow key navigation within the grid
+                          const grid = e.currentTarget.parentElement;
+                          if (!grid) return;
+                          const cells = Array.from(grid.children) as HTMLElement[];
+                          const currentIndex = cells.indexOf(e.currentTarget);
+
+                          let nextIndex = -1;
+                          if (e.key === 'ArrowRight') nextIndex = currentIndex + 1;
+                          if (e.key === 'ArrowLeft') nextIndex = currentIndex - 1;
+                          if (e.key === 'ArrowDown') nextIndex = currentIndex + 7;
+                          if (e.key === 'ArrowUp') nextIndex = currentIndex - 7;
+
+                          if (nextIndex >= 0 && nextIndex < cells.length) {
+                            e.preventDefault();
+                            cells[nextIndex].focus();
+                          }
+                        }}
                       >
                         <div className={`font-['Manrope:SemiBold',sans-serif] text-[13px] mb-1 flex justify-between items-center ${dayObj.isCurrentMonth ? 'text-[#111111]' : 'text-[#999999]'
                           } ${isToday ? 'text-[#ff3b3b]' : ''}`}>
-                          <span>{dayObj.day}</span>
-                          {isToday && <span className="text-[10px] bg-[#ff3b3b] text-white px-1.5 rounded">Today</span>}
+                          <span aria-hidden="true">{dayObj.day}</span>
+                          {isToday && <span className="text-[10px] bg-[#ff3b3b] text-white px-1.5 rounded" aria-hidden="true">Today</span>}
                         </div>
                         <div className="space-y-1 flex-1">
                           {dayEvents.slice(0, 3).map((event) => (
                             <Popover key={event.id} content={renderEventPopup(event)} trigger="click">
                               <div
-                                className="px-2 py-1 rounded-[4px] text-[10px] font-['Manrope:Medium',sans-serif] text-white truncate cursor-pointer hover:opacity-80 transition-opacity"
+                                role="button"
+                                tabIndex={0}
+                                aria-label={`Event: ${event.title}`}
+                                className="px-2 py-1 rounded-[4px] text-[10px] font-['Manrope:Medium',sans-serif] text-white truncate cursor-pointer hover:opacity-80 transition-opacity focus:ring-1 focus:ring-white focus:outline-none"
                                 style={{ backgroundColor: event.color }}
                                 onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    // Trigger click to open popover (Antd Popover triggers on click)
+                                    e.currentTarget.click();
+                                  }
+                                }}
                               >
                                 {event.title}
                               </div>

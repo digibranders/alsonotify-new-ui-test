@@ -9,8 +9,10 @@ import {
     Form,
     Checkbox,
     Tag,
-    message
+    message,
+    Dropdown
 } from 'antd';
+import { PageLayout } from '../../layout/PageLayout';
 import {
     Plus,
     Trash2,
@@ -19,9 +21,17 @@ import {
     ChevronLeft,
     ChevronRight,
     Loader2,
-    Globe
+    Globe,
+    Mail,
+    MoreVertical,
+    Building,
+    User,
+    Check,
+    X
 } from 'lucide-react';
+import { PaginationBar } from '../../ui/PaginationBar';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTabSync } from '@/hooks/useTabSync';
 import axiosApi from '../../../config/axios';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { PartnerRow, Partner } from './rows/PartnerRow';
@@ -47,13 +57,19 @@ export function PartnersPageContent() {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
-    const [activeTab, setActiveTab] = useState<'active' | 'inactive' | 'requests'>('active');
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const [activeTab, setActiveTab] = useTabSync<'active' | 'inactive' | 'requests'>({
+        defaultTab: 'active',
+        validTabs: ['active', 'inactive', 'requests']
+    });
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState({
         type: 'All',
         country: 'All'
     });
     const [selectedPartners, setSelectedPartners] = useState<number[]>([]);
+    const [requestTypeFilter, setRequestTypeFilter] = useState<'All' | 'Sent' | 'Received'>('All');
     const [form] = Form.useForm();
 
     const fetchPartners = async () => {
@@ -70,12 +86,14 @@ export function PartnersPageContent() {
 
             if (partnersRes.data.success) {
                 const mappedPartners: Partner[] = partnersRes.data.result.map((item: any) => {
-                    const isAccepted = item.status === 'ACCEPTED';
-                    const isActive = item.is_active === true;
+                    let status: 'active' | 'inactive' | 'pending' = 'pending';
+                    if (item.status === 'ACCEPTED') {
+                        status = item.is_active ? 'active' : 'inactive';
+                    }
 
                     return {
                         id: item.association_id || item.invite_id,
-                        association_id: item.association_id, // Keep track of association_id for updates
+                        association_id: item.association_id,
                         name: item.name || '',
                         company: item.company || '',
                         type: item.company ? 'ORGANIZATION' : 'INDIVIDUAL',
@@ -83,10 +101,10 @@ export function PartnersPageContent() {
                         phone: item.phone || '',
                         country: item.country || '',
                         timezone: item.timezone || '',
-                        status: (isAccepted && isActive) ? 'active' : 'inactive',
+                        status,
                         requirements: 0,
                         onboarding: item.associated_date ? new Date(item.associated_date).toLocaleDateString() : '-',
-                        rawStatus: item.status, // Keep raw status to distinguish between pending and deactivated
+                        rawStatus: item.status,
                         isOrgAccount: !!item.company
                     };
                 });
@@ -104,9 +122,16 @@ export function PartnersPageContent() {
         fetchPartners();
     }, []);
 
+    // Sync activeTab with URL
+    // Sync activeTab with URL - handled by useTabSync
+    // useEffect(() => {
+    //     const tab = searchParams.get('tab');
+    //     if (tab === 'active' || tab === 'inactive' || tab === 'requests') {
+    //         setActiveTab(tab);
+    //     }
+    // }, [searchParams]);
+
     // Handle invitation acceptance from URL
-    const searchParams = useSearchParams();
-    const router = useRouter();
     const inviteToken = searchParams.get('invite');
 
     useEffect(() => {
@@ -148,7 +173,7 @@ export function PartnersPageContent() {
     const stats = {
         active: partners.filter(p => p.status === 'active').length,
         inactive: partners.filter(p => p.status === 'inactive').length,
-        requests: pendingInvites.length + partners.filter(p => p.rawStatus === 'PENDING').length
+        requests: pendingInvites.length + partners.filter(p => p.status === 'pending').length
     };
 
     // Filter Data
@@ -187,13 +212,15 @@ export function PartnersPageContent() {
         setIsModalOpen(true);
     };
 
-    const handleStatusUpdate = async (partner: Partner, isActive: boolean) => {
+    const handleStatusUpdate = async (partner: Partner, newStatus: string) => {
         if (!partner.association_id) {
             message.warning('Cannot change status of a pending invitation');
             return;
         }
 
+        const isActive = newStatus === 'active';
         const action = isActive ? 'activate' : 'deactivate';
+
         Modal.confirm({
             title: `${isActive ? 'Activate' : 'Deactivate'} Partner`,
             content: `Are you sure you want to ${action} this partner?`,
@@ -304,176 +331,206 @@ export function PartnersPageContent() {
         }
     };
 
+    // Tab-specific Filter Options
+    const requestsFilterOptions: FilterOption[] = [
+        { id: 'requestType', label: 'Show', options: ['All', 'Received', 'Sent'], defaultValue: 'All' }
+    ];
+
+    const activeFilterOptions: FilterOption[] = [
+        { id: 'type', label: 'Type', options: ['All', 'Individual', 'Organization'], defaultValue: 'All' },
+        { id: 'country', label: 'Country', options: countries, defaultValue: 'All' }
+    ];
+
     return (
-        <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] p-8 flex flex-col overflow-hidden relative">
-            {/* Header Section */}
-            <div className="mb-6">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                        <h2 className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">
-                            Partners
-                        </h2>
-                        <button
-                            onClick={handleAdd}
-                            className="hover:scale-110 active:scale-95 transition-transform"
-                        >
-                            <Plus className="size-5 text-[#ff3b3b]" strokeWidth={2} />
-                        </button>
-                    </div>
-                </div>
-
-
-
-                {/* Tabs */}
-                <div className="flex items-center gap-6 border-b border-[#EEEEEE]">
-                    {(['active', 'inactive', 'requests'] as const).map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => { setActiveTab(tab); setPagination(prev => ({ ...prev, current: 1 })); setSelectedPartners([]); }}
-                            className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors flex items-center gap-2 ${activeTab === tab
-                                ? 'text-[#ff3b3b]'
-                                : 'text-[#666666] hover:text-[#111111]'
-                                }`}
-                        >
-                            {tab === 'active' ? 'Active' : tab === 'inactive' ? 'Deactivated' : 'Requests'}
-                            <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === tab
-                                ? 'bg-[#ff3b3b] text-white'
-                                : 'bg-[#F7F7F7] text-[#666666]'
-                                }`}>
-                                {stats[tab]}
-                            </span>
-                            {activeTab === tab && (
-                                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />
-                            )}
-                        </button>
-                    ))}
-                </div>
+        <PageLayout
+            title="Partners"
+            titleAction={{
+                onClick: handleAdd,
+                label: "Add Partner"
+            }}
+            tabs={[
+                { id: 'active', label: 'Active', count: stats.active },
+                { id: 'inactive', label: 'Deactivated', count: stats.inactive },
+                { id: 'requests', label: 'Requests', count: stats.requests }
+            ]}
+            activeTab={activeTab}
+            onTabChange={(tabId) => {
+                setActiveTab(tabId as any);
+                setPagination(prev => ({ ...prev, current: 1 }));
+                setSelectedPartners([]);
+            }}
+        >
+            {/* Toolbar / Filters */}
+            <div className="mt-4 mb-6">
+                <FilterBar
+                    filters={activeTab === 'requests' ? requestsFilterOptions : activeFilterOptions}
+                    selectedFilters={activeTab === 'requests' ? { requestType: requestTypeFilter } : filters}
+                    onFilterChange={(id, val) => {
+                        if (id === 'requestType') {
+                            setRequestTypeFilter(val as any);
+                        } else {
+                            handleFilterChange(id, val);
+                        }
+                    }}
+                    onClearFilters={clearFilters}
+                    searchPlaceholder="Search partners..."
+                    searchValue={searchQuery}
+                    onSearchChange={setSearchQuery}
+                />
             </div>
 
             {/* Conditional Content Based on Active Tab */}
             {activeTab === 'requests' ? (
-                <div className="flex-1 overflow-y-auto pb-20 px-4">
-                    {/* Received Invites */}
-                    {pendingInvites.length > 0 && (
-                        <div className="mb-8">
-                            <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-3">
-                                Received Invites ({pendingInvites.length})
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {pendingInvites.map((invite) => (
-                                    <div key={invite.id} className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex items-start justify-between gap-4">
-                                        <div className="flex gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-[#EEEEEE] overflow-hidden shrink-0">
-                                                {invite.inviterImage ? (
-                                                    <img src={invite.inviterImage} alt="" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-[#999999]">
-                                                        <UserOutlined />
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div>
-                                                <p className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                                                    {invite.inviterName}
-                                                </p>
-                                                <p className="text-[12px] text-[#666666] font-['Manrope:Regular',sans-serif]">
-                                                    {invite.inviterCompany ? `from ${invite.inviterCompany}` : 'invited you'}
-                                                </p>
-                                                <p className="text-[11px] text-[#999999] mt-1">
-                                                    To be a {invite.type?.toLowerCase() || 'partner'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex flex-col gap-2">
-                                            <Button
-                                                type="primary"
-                                                size="small"
-                                                className="bg-[#111111] hover:bg-black text-[12px] h-7"
-                                                onClick={() => handleAcceptInvite(invite.id)}
-                                            >
-                                                Accept
-                                            </Button>
-                                            <Button
-                                                size="small"
-                                                className="text-[12px] h-7"
-                                                danger={true}
-                                                onClick={() => handleDeclineInvite(invite.id)}
-                                            >
-                                                Decline
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                <div className="flex-1 overflow-y-auto relative pb-20">
+                    {/* Grid Header - Simplified for Requests */}
+                    <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_1.5fr_1.5fr_1fr_80px] gap-4 px-4 py-3 mb-2 items-center">
+                        <div className="flex justify-center">
+                            {/* Empty for status bullet alignment */}
                         </div>
-                    )}
+                        <div className="pl-[44px]">
+                            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Contact Person</p>
+                        </div>
+                        <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Email</p>
+                        <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Status</p>
+                        <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide text-right">Actions</p>
+                    </div>
 
-                    {/* Sent Invites */}
-                    {partners.filter(p => p.rawStatus === 'PENDING').length > 0 && (
-                        <div className="mb-8">
-                            <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-3">
-                                Sent Invites ({partners.filter(p => p.rawStatus === 'PENDING').length})
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {partners.filter(p => p.rawStatus === 'PENDING').map((partner) => (
-                                    <div key={partner.id} className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA]">
-                                        <div className="flex items-start justify-between gap-3 mb-3">
-                                            <div>
-                                                <p className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                                                    {partner.name || partner.email}
-                                                </p>
-                                                {partner.company && (
-                                                    <p className="text-[12px] text-[#666666] font-['Manrope:Regular',sans-serif]">
-                                                        {partner.company}
-                                                    </p>
-                                                )}
-                                            </div>
-                                            <Tag color="orange" className="text-[11px]">Pending</Tag>
+                    <div className="px-4 space-y-2">
+                        {/* Received Invites */}
+                        {(requestTypeFilter === 'All' || requestTypeFilter === 'Received') && pendingInvites.map((invite) => (
+                            <div key={invite.id} className="group bg-white border border-[#EEEEEE] rounded-[16px] px-4 py-3 transition-all duration-300 hover:border-[#ff3b3b]/20 hover:shadow-lg flex items-center">
+                                <div className="grid grid-cols-[40px_1.5fr_1.5fr_1fr_80px] gap-4 items-center w-full">
+                                    <div className="flex justify-center">
+                                        <div className={`w-2 h-2 rounded-full ${invite.status === 'REJECTED' ? 'bg-[#EF4444]' : 'bg-[#3b8eff]'}`} title={invite.status === 'REJECTED' ? "Rejected" : "New Invitation"} />
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center text-[10px] font-bold shrink-0">
+                                            {(invite.inviterName || "?")[0].toUpperCase()}
                                         </div>
-                                        <div className="space-y-1">
-                                            <p className="text-[11px] text-[#666666] flex items-center gap-2">
-                                                <MailOutlined /> {partner.email}
-                                            </p>
-                                            {partner.phone && (
-                                                <p className="text-[11px] text-[#666666] flex items-center gap-2">
-                                                    <PhoneOutlined /> {partner.phone}
-                                                </p>
+                                        <div className="flex flex-col">
+                                            <span className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111]">
+                                                {invite.inviterName}
+                                            </span>
+                                            {invite.inviterCompany && (
+                                                <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
+                                                    {invite.inviterCompany}
+                                                </span>
                                             )}
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
 
-                    {/* Empty State */}
-                    {pendingInvites.length === 0 && partners.filter(p => p.rawStatus === 'PENDING').length === 0 && (
-                        <div className="text-center py-12">
-                            <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">
-                                No pending requests
-                            </p>
-                        </div>
-                    )}
+                                    <div className="flex items-center gap-2 text-[#666666] overflow-hidden">
+                                        <Mail className="w-3.5 h-3.5 shrink-0" />
+                                        <span className="text-[13px] font-['Manrope:Medium',sans-serif] truncate block text-[#111111]">
+                                            {invite.inviterEmail || 'Not provided'}
+                                        </span>
+                                    </div>
+
+                                    <div>
+                                        {invite.status === 'REJECTED' ? (
+                                            <div className="w-2 h-2 rounded-full bg-[#EF4444]" title="Rejected" />
+                                        ) : (
+                                            <Tag color="processing" className="text-[10px] font-bold uppercase rounded-full border-none px-2.5">Action Required</Tag>
+                                        )}
+                                    </div>
+
+                                    <div className="flex justify-end gap-2">
+                                        {invite.status === 'REJECTED' ? (
+                                            <Tag color="error" className="text-[10px] font-bold uppercase rounded-full border-none px-2.5">
+                                                Rejected
+                                            </Tag>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    onClick={() => handleAcceptInvite(invite.id)}
+                                                    className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#DCFCE7] text-[#16A34A] transition-colors"
+                                                    title="Accept Invitation"
+                                                >
+                                                    <Check className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeclineInvite(invite.id)}
+                                                    className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#FEE2E2] text-[#DC2626] transition-colors"
+                                                    title="Decline Invitation"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Sent Invites */}
+                        {(requestTypeFilter === 'All' || requestTypeFilter === 'Sent') && partners.filter(p => p.status === 'pending').map((partner) => (
+                            <div key={partner.id} className="group bg-white border border-[#EEEEEE] rounded-[16px] px-4 py-3 transition-all duration-300 hover:border-[#ff3b3b]/20 hover:shadow-lg flex items-center">
+                                <div className="grid grid-cols-[40px_1.5fr_1.5fr_1fr_80px] gap-4 items-center w-full">
+                                    <div className="flex justify-center">
+                                        <div className="w-2 h-2 rounded-full bg-[#f59e0b]" title="Pending" />
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        <div className={`
+                                            w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0
+                                            ${partner.company ? 'bg-[#FEF2F2] text-[#DC2626]' : 'bg-[#EFF6FF] text-[#2563EB]'}
+                                        `}>
+                                            {(partner.name || "?")[0].toUpperCase()}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111]">
+                                                {partner.name || partner.email}
+                                            </span>
+                                            {partner.company && (
+                                                <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
+                                                    {partner.company}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 text-[#666666] overflow-hidden">
+                                        <Mail className="w-3.5 h-3.5 shrink-0" />
+                                        <span className="text-[13px] font-['Manrope:Medium',sans-serif] truncate block text-[#111111]">
+                                            {partner.email}
+                                        </span>
+                                    </div>
+
+                                    <div>
+                                        <Tag color="orange" className="text-[10px] font-bold uppercase rounded-full border-none px-2.5">Pending</Tag>
+                                    </div>
+
+                                    <div className="flex justify-end pr-1">
+                                        <button disabled className="w-8 h-8 flex items-center justify-center rounded-full opacity-30">
+                                            <MoreVertical className="w-4 h-4 text-[#666666]" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Empty State */}
+                        {((requestTypeFilter === 'All' || requestTypeFilter === 'Received') ? pendingInvites : []).length === 0 &&
+                            ((requestTypeFilter === 'All' || requestTypeFilter === 'Sent') ? partners.filter(p => p.status === 'pending') : []).length === 0 && (
+                                <div className="text-center py-20 bg-[#FAFAFA] rounded-2xl border border-dashed border-[#EEEEEE] mx-4">
+                                    <Users className="w-10 h-10 text-[#CCCCCC] mx-auto mb-3" />
+                                    <p className="text-[#999999] font-['Manrope:Medium',sans-serif]">
+                                        {requestTypeFilter === 'All'
+                                            ? 'No pending requests'
+                                            : requestTypeFilter === 'Received'
+                                                ? 'No received invitations'
+                                                : 'No sent invitations'}
+                                    </p>
+                                </div>
+                            )}
+                    </div>
                 </div>
             ) : (
                 <>
-                    {/* Toolbar / Filters */}
-                    <div className="mb-6">
-                        <FilterBar
-                            filters={filterOptions}
-                            selectedFilters={filters}
-                            onFilterChange={handleFilterChange}
-                            onClearFilters={clearFilters}
-                            searchPlaceholder="Search partners..."
-                            searchValue={searchQuery}
-                            onSearchChange={setSearchQuery}
-                        />
-                    </div>
-
-                    {/* List Area */}
-                    <div className="flex-1 overflow-y-auto relative pb-20">
+                    <div className="flex-1 overflow-y-auto relative pb-5">
                         {/* Grid Header */}
-                        <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_1.8fr_1.2fr_1fr_1.5fr_1.2fr_0.8fr_40px] gap-4 px-4 py-3 mb-2 items-center">
+                        <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_1.5fr_1.1fr_1fr_1.3fr_0.7fr_0.8fr_0.8fr_40px] gap-4 px-4 py-3 items-center">
                             <div className="flex justify-center">
                                 <Checkbox
                                     checked={paginatedPartners.length > 0 && selectedPartners.length === paginatedPartners.length}
@@ -481,11 +538,14 @@ export function PartnersPageContent() {
                                     className="red-checkbox"
                                 />
                             </div>
-                            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Business Name</p>
+                            <div className="pl-[48px]">
+                                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Business Name</p>
+                            </div>
                             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Contact Person</p>
                             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Type</p>
                             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Email</p>
                             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Onboarding</p>
+                            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Status</p>
                             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Country</p>
                             <p></p>
                         </div>
@@ -535,38 +595,24 @@ export function PartnersPageContent() {
                                 </button>
                             </div>
                         )}
+
                     </div>
 
                     {/* Pagination */}
                     {totalItems > 0 && (
-                        <div className="mt-6 flex items-center justify-between border-t border-[#EEEEEE] pt-6">
-                            <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">
-                                {startIndex + 1}-{Math.min(startIndex + pagination.pageSize, totalItems)} of {totalItems} partners
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setPagination(prev => ({ ...prev, current: prev.current - 1 }))}
-                                    disabled={pagination.current === 1}
-                                    className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                >
-                                    <ChevronLeft className="w-4 h-4 text-[#666666]" />
-                                </button>
-
-                                {/* Simplified Pagination Digits */}
-                                <button className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#ff3b3b] text-white font-['Manrope:SemiBold',sans-serif] text-[13px]">
-                                    {pagination.current}
-                                </button>
-
-                                <button
-                                    onClick={() => setPagination(prev => ({ ...prev, current: prev.current + 1 }))}
-                                    disabled={startIndex + pagination.pageSize >= totalItems}
-                                    className="w-8 h-8 rounded-lg border border-[#EEEEEE] flex items-center justify-center hover:bg-[#F7F7F7] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                >
-                                    <ChevronRight className="w-4 h-4 text-[#666666]" />
-                                </button>
-                            </div>
+                        <div className="shrink-0 bg-white border-t border-[#EEEEEE] px-6 z-10 w-full">
+                            <PaginationBar
+                                currentPage={pagination.current}
+                                totalItems={totalItems}
+                                pageSize={pagination.pageSize}
+                                onPageChange={(page) => setPagination(prev => ({ ...prev, current: page }))}
+                                onPageSizeChange={(size) => setPagination(prev => ({ ...prev, pageSize: size, current: 1 }))}
+                                itemLabel="partners"
+                                className="!border-none !mt-0 !pt-3 !pb-3"
+                            />
                         </div>
                     )}
+
                 </>
             )}
 
@@ -687,7 +733,8 @@ export function PartnersPageContent() {
                         </Form.Item>
                     </Form>
                 )}
+
             </Modal>
-        </div>
+        </PageLayout >
     );
 }

@@ -256,6 +256,11 @@ export const getTaskById = async (id: number): Promise<ApiResponse<TaskDetailTyp
       throw new ApiError('Invalid response format from server', 500);
     }
 
+    // Normalizing name (ensure name is set, fallback to title)
+    if (data.result) {
+      data.result.name = data.result.name || data.result.title;
+    }
+
     return data;
   } catch (error) {
     if (error instanceof ApiError) {

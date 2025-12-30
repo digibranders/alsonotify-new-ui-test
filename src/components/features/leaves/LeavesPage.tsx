@@ -1,5 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Calendar, User, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useTabSync } from '@/hooks/useTabSync';
 import { PageLayout } from '../../layout/PageLayout';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { Spin, Modal, Form, DatePicker, Select, Input, Button, App } from 'antd';
@@ -53,7 +55,14 @@ interface ApplyLeaveFormValues {
 
 export function LeavesPage() {
   const { message } = App.useApp();
-  const [activeTab, setActiveTab] = useState<'requests' | 'balance'>('requests');
+  /* Manual router/params removed */
+  const [activeTab, setActiveTab] = useTabSync<'requests' | 'balance'>({
+    defaultTab: 'requests',
+    validTabs: ['requests', 'balance']
+  });
+
+  // Sync activeTab with URL - handled by useTabSync
+  /* useEffect(() => { ... }) removed */
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({
@@ -72,11 +81,11 @@ export function LeavesPage() {
     if (!leavesData?.result) return [];
 
     return leavesData.result.map((leave: LeaveType) => {
-      const daysValue = typeof leave.days === 'number' 
-        ? leave.days 
-        : typeof leave.days === 'string' 
-        ? parseFloat(leave.days) 
-        : leave.days_count || 0;
+      const daysValue = typeof leave.days === 'number'
+        ? leave.days
+        : typeof leave.days === 'string'
+          ? parseFloat(leave.days)
+          : leave.days_count || 0;
 
       return {
         id: String(leave.id),
@@ -119,7 +128,7 @@ export function LeavesPage() {
   const availableLeaveTypes = useMemo(() => {
     if (!leavesData?.result) return ['Sick Leave', 'Casual Leave', 'Vacation'];
     const types = new Set(leavesData.result.map((leave: LeaveType) => leave.leave_type));
-    return Array.from(types).filter(Boolean).length > 0 
+    return Array.from(types).filter(Boolean).length > 0
       ? Array.from(types).filter(Boolean) as string[]
       : ['Sick Leave', 'Casual Leave', 'Vacation'];
   }, [leavesData]);
@@ -229,7 +238,7 @@ export function LeavesPage() {
         { id: 'balance', label: 'Leave Balance' }
       ]}
       activeTab={activeTab}
-      onTabChange={(tabId) => setActiveTab(tabId as 'requests' | 'balance')}
+      onTabChange={(tabId) => setActiveTab(tabId as any)}
       searchPlaceholder="Search leave requests..."
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
@@ -381,7 +390,7 @@ export function LeavesPage() {
 
                         {request.status === 'pending' && (
                           <div className="flex items-center gap-2">
-                            <button 
+                            <button
                               onClick={() => handleApprove(request.rawLeave.id)}
                               disabled={updateStatusMutation.isPending}
                               className="px-4 py-2 bg-[#4CAF50] text-white rounded-[8px] hover:bg-[#45a049] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -390,7 +399,7 @@ export function LeavesPage() {
                                 Approve
                               </span>
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleReject(request.rawLeave.id)}
                               disabled={updateStatusMutation.isPending}
                               className="px-4 py-2 bg-[#ff3b3b] text-white rounded-[8px] hover:bg-[#e63535] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

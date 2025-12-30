@@ -17,13 +17,17 @@ function RegisterForm() {
 
   const inviteToken = searchParams.get("invite") ?? null;
   const inviteEmail = searchParams.get("email") ?? null;
+  const inviteName = searchParams.get("name") ?? null;
 
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: inviteEmail || "",
-    password: "",
-    accountType: "Individual" as "Individual" | "Organization",
+  const [formData, setFormData] = useState(() => {
+    const nameParts = (inviteName || "").trim().split(/\s+/).filter(Boolean);
+    return {
+      firstName: nameParts[0] || "",
+      lastName: nameParts.slice(1).join(" ") || "",
+      email: inviteEmail || "",
+      password: "",
+      accountType: "Individual" as "Individual" | "Organization",
+    };
   });
 
   const [showPassword, setShowPassword] = useState(false);

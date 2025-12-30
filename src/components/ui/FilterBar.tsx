@@ -59,7 +59,7 @@ export function FilterBar({
   }
 
   return (
-    <div className="flex items-center gap-3 pb-6 border-b border-[#EEEEEE]">
+    <div className="flex items-center gap-3 pb-4 border-b border-[#EEEEEE]">
       {/* Filter Dropdowns */}
       {filters.map((filter, index) => {
         const selectedValue = selectedFilters[filter.id] || filter.defaultValue || filter.options[0];

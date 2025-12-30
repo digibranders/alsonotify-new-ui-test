@@ -218,7 +218,7 @@ export function TaskRow({
         router.push(targetUrl);
       }}
       className={`
-        group bg-white border rounded-[16px] p-4 transition-all duration-300 cursor-pointer relative z-10
+        group bg-white border rounded-[16px] px-4 py-3 transition-all duration-300 cursor-pointer relative z-10
         ${selected
           ? 'border-[#ff3b3b] shadow-[0_0_0_1px_#ff3b3b] bg-[#FFF5F5]'
           : 'border-[#EEEEEE] hover:border-[#ff3b3b]/20 hover:shadow-lg'
@@ -240,7 +240,7 @@ export function TaskRow({
 
         {/* Task Info */}
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2">
             <span className="font-['Manrope:Bold',sans-serif] text-[14px] !text-[#111111] group-hover:text-[#ff3b3b] transition-colors">
               {task.name}
             </span>

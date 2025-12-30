@@ -1,5 +1,7 @@
 import { PageLayout } from '../../layout/PageLayout';
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useTabSync } from '@/hooks/useTabSync';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Archive, Trash2, FileText, ArchiveRestore } from 'lucide-react';
 import { Checkbox, App } from 'antd';
@@ -24,7 +26,20 @@ interface NoteSaveData {
 export function NotesPage() {
   const queryClient = useQueryClient();
   const { message: messageApi, modal } = App.useApp();
-  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const router = useRouter();
+  /* Manual router/params removed */
+  const [activeTab, setActiveTab] = useTabSync<TabType>({
+    defaultTab: 'all',
+    validTabs: ['all', 'text', 'checklist', 'archive']
+  });
+
+  // Sync activeTab with URL - handled by useTabSync
+  /* useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'all' || tab === 'text' || tab === 'checklist' || tab === 'archive') {
+      setActiveTab(tab as TabType);
+    }
+  }, [searchParams]); */
   const [searchQuery, setSearchQuery] = useState('');
   const [showDialog, setShowDialog] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);

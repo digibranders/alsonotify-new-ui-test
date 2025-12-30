@@ -17,7 +17,8 @@ import {
   useRoles,
   useCurrentUserCompany,
 } from '../../../hooks/useUser';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useTabSync } from '@/hooks/useTabSync';
 import { Employee } from '@/types/genericTypes';
 import { useQueryClient } from '@tanstack/react-query';
 import { getRoleFromUser } from '@/utils/roleUtils';
@@ -26,7 +27,16 @@ export function EmployeesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { modal, message } = App.useApp();
-  const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
+  // searchParams/router now handled by useTabSync, keeping searchParams if needed for other hooks or manual check
+  // actually useTabSync handles activeTab sync, but queryParams depends on activeTab, which is fine.
+
+  const [activeTab, setActiveTab] = useTabSync<'active' | 'inactive'>({
+    defaultTab: 'active',
+    validTabs: ['active', 'inactive']
+  });
+
+  // Sync activeTab with URL - handled by useTabSync
+  // useEffect(() => { ... }) removed
 
   // Build query parameters based on active tab
   const queryParams = useMemo(() => {
@@ -848,7 +858,12 @@ export function EmployeesPage() {
         { id: 'inactive', label: 'Deactivated' }
       ]}
       activeTab={activeTab}
-      onTabChange={(tabId) => setActiveTab(tabId as 'active' | 'inactive')}
+      onTabChange={(tabId) => {
+        const id = tabId as 'active' | 'inactive';
+        setActiveTab(id);
+        setCurrentPage(1);
+        setSelectedEmployees([]);
+      }}
       titleAction={{
         onClick: () => handleOpenDialog(),
         label: "Add Employee"

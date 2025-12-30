@@ -842,7 +842,16 @@ export function RequirementsPage() {
       }}
       tabs={tabs}
       activeTab={activeStatusTab}
-      onTabChange={setActiveStatusTab}
+      onTabChange={(tabId) => {
+        setActiveStatusTab(tabId);
+        const params = new URLSearchParams(searchParams.toString());
+        if (tabId === 'active') {
+          params.delete('tab');
+        } else {
+          params.set('tab', tabId);
+        }
+        router.push(`?${params.toString()}`);
+      }}
       customFilters={
         <DateRangeSelector
           value={dateRange}
