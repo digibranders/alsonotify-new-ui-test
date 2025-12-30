@@ -533,7 +533,7 @@ export function PartnersPageContent() {
                 {/* 2. Standard View (Active/Inactive) (Toggle Visibility) */}
                 <div style={{ display: activeTab !== 'requests' ? 'block' : 'none' }}>
                     {/* Header */}
-                    <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_1.5fr_1.1fr_1fr_2fr_0.7fr_0.8fr_0.6fr_40px] gap-4 px-4 py-3 items-center">
+                    <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2fr_1fr_0.8fr_1.5fr_0.8fr_0.7fr_0.7fr_40px] gap-4 px-4 py-3 items-center">
                         <div className="flex justify-center">
                             <Checkbox
                                 checked={paginatedPartners.length > 0 && selectedPartners.length === paginatedPartners.length}
