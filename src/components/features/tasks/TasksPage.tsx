@@ -181,10 +181,11 @@ export function TasksPage() {
   // Set initial filter to current user when page loads (only once)
   // Skip auto-filter for Admin users - they should see all tasks by default
   useEffect(() => {
-    if (!filterInitialized && currentUserName && usersDropdown.length > 0) {
+    // Wait for user details to be sure about the role
+    if (!filterInitialized && currentUserName && usersDropdown.length > 0 && userDetailsData) {
       // Check if current user is Admin
-      const localUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem("user") || "{}") : {};
-      const userRole = getRoleFromUser(localUser);
+      const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
+      const userRole = getRoleFromUser(apiUser);
       const isAdmin = userRole?.toLowerCase() === 'admin';
 
       if (!isAdmin) {
@@ -193,7 +194,7 @@ export function TasksPage() {
       }
       setFilterInitialized(true);
     }
-  }, [currentUserName, filterInitialized, usersDropdown]);
+  }, [currentUserName, filterInitialized, usersDropdown, userDetailsData]);
 
   // Build query params for API call
   const queryParams = useMemo(() => {

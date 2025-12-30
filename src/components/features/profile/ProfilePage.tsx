@@ -386,10 +386,11 @@ export function ProfilePage() {
 
     return (
         <PageLayout
-            title={
-                <div className="flex items-center gap-4">
-                    <span className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">My Profile</span>
-                    <div className="flex-1 min-w-[200px] max-w-xs bg-[#FAFAFA] rounded-lg px-4 py-2.5 border border-[#EEEEEE]">
+            title="My Profile"
+            titleExtra={
+                <div className="flex items-center gap-8">
+                    {/* Profile Completion - Back in header, no background */}
+                    <div className="min-w-[180px]">
                         <div className="flex items-center justify-between mb-1.5">
                             <span className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666]">
                                 Profile Completion
@@ -413,488 +414,491 @@ export function ProfilePage() {
                                         ? "#3b8eff"
                                         : "#ff3b3b"
                             }
-                            trailColor="#E5E5E5"
-                            className="profile-completion-progress"
-                            style={{
-                                height: '6px',
-                            }}
+                            trailColor="#EEEEEE"
+                            strokeWidth={6}
+                            className="m-0"
                         />
                     </div>
-                </div>
-            }
-            action={
-                !isEditing ? (
-                    <Button
-                        onClick={handleEdit}
-                        className="bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px] flex items-center gap-2 border-none"
-                    >
-                        <Pencil className="w-4 h-4" />
-                        Edit
-                    </Button>
-                ) : (
-                    <div className="flex items-center gap-3">
+
+                    {/* Actions */}
+                    {!isEditing ? (
                         <Button
-                            onClick={handleCancelEdit}
-                            type="text"
-                            className="text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px]"
+                            onClick={handleEdit}
+                            className="bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px] flex items-center gap-2 border-none"
                         >
-                            Cancel
+                            <Pencil className="w-4 h-4" />
+                            Edit
                         </Button>
-                        <Button
-                            onClick={handleSaveChanges}
-                            loading={updateProfileMutation.isPending}
-                            className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-8 h-10 rounded-full shadow-lg shadow-[#ff3b3b]/20 text-[13px] border-none"
-                        >
-                            Save Changes
-                        </Button>
-                    </div>
-                )
-            }
-        >
-            <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] mb-6">
-                Manage your account settings and preferences
-            </p>
-
-            <div className="flex-1 overflow-y-auto pr-2 pb-10">
-                {/* Personal Details */}
-                <section className="mb-10">
-                    <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
-                        Personal Details
-                    </h2>
-
-                    <div className="flex flex-col md:flex-row gap-10 items-start mb-8">
-                        {/* Avatar */}
-                        <div className="shrink-0">
-                            <div className="relative group cursor-pointer">
-                                <div className="w-32 h-32 rounded-full overflow-hidden border border-[#EEEEEE] shadow-sm">
-                                    <Image
-                                        src={
-                                            user?.user_profile?.profile_pic ||
-                                            user?.profile_pic ||
-                                            "https://github.com/shadcn.png"
-                                        }
-                                        alt="Profile"
-                                        width={128}
-                                        height={128}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                                <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <Camera className="w-8 h-8 text-white" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Fields Grid */}
-                        <div className="flex-1 w-full space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {renderField(
-                                    "First Name",
-                                    profile.firstName,
-                                    "firstName"
-                                )}
-                                {renderField(
-                                    "Middle Name",
-                                    profile.middleName,
-                                    "middleName"
-                                )}
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {renderField(
-                                    "Last Name",
-                                    profile.lastName,
-                                    "lastName"
-                                )}
-                                {renderField(
-                                    "Designation",
-                                    profile.designation,
-                                    "designation"
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        {renderField("Email Address", profile.email, "email")}
-                        <div className="space-y-2">
-                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                                Phone Number
-                            </div>
-                            <div className="flex gap-2">
-                                <Select
-                                    value={profile.countryCode}
-                                    onChange={(v) =>
-                                        setProfile({ ...profile, countryCode: String(v) })
-                                    }
-                                    disabled={!isEditing}
-                                    className={`w-[85px] h-11 ${!isEditing ? "bg-[#FAFAFA]" : ""}`}
-                                    suffixIcon={<div className="text-gray-400">⌄</div>}
-                                >
-                                    {countryCodes.map((c) => (
-                                        <Option key={c.code} value={c.code}>{c.code} {c.country}</Option>
-                                    ))}
-                                </Select>
-                                <Input
-                                    value={profile.phone}
-                                    onChange={(e) =>
-                                        setProfile({ ...profile, phone: e.target.value })
-                                    }
-                                    placeholder="123 456 7890"
-                                    disabled={!isEditing}
-                                    className={`flex-1 h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Manrope:Medium',sans-serif] text-[13px] ${!isEditing ? "bg-[#FAFAFA] text-[#666666]" : "bg-white"
-                                        }`}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {renderField("DOB", profile.dob, "dob", "date")}
-                        {renderSelect("Gender", profile.gender, "gender", [
-                            "Male",
-                            "Female",
-                            "Other",
-                        ])}
-                        {renderField(
-                            "Employee ID",
-                            profile.employeeId,
-                            "employeeId"
-                        )}
-                    </div>
-                </section>
-
-                <Divider className="my-8 bg-[#EEEEEE]" />
-
-                {/* Employment Details */}
-                <section className="mb-10">
-                    <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
-                        Employment Details
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        {/* Employment Type - Read Only */}
-                        <div className="space-y-2">
-                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                                Employment Type
-                            </div>
-                            <Input
-                                value={profile.employmentType}
-                                disabled={true}
-                                className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
-                            />
-                        </div>
-                        {/* Date of Joining - Read Only */}
-                        <div className="space-y-2">
-                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                                Date of Joining
-                            </div>
-                            <Input
-                                value={profile.dateOfJoining}
-                                type="date"
-                                disabled={true}
-                                className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        {/* Experience */}
-                        <div className="space-y-2">
-                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                                Experience (Years)
-                            </div>
-                            <Input
-                                value={profile.experience}
-                                disabled={true}
-                                className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
-                            />
-                        </div>
-                        {/* Working Hours */}
-                        <div className="col-span-2 space-y-2">
-                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                                Working Hours
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Input
-                                    value={profile.startTime}
-                                    disabled={true}
-                                    className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
-                                />
-                                <span className="text-[#666666] text-sm">to</span>
-                                <Input
-                                    value={profile.endTime}
-                                    disabled={true}
-                                    className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Salary */}
-                        <div className="space-y-2">
-                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                                Salary (Yearly)
-                            </div>
-                            <Input
-                                value={profile.salary}
-                                disabled={true}
-                                prefix="$"
-                                className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
-                            />
-                        </div>
-                        {/* Hourly Rate */}
-                        <div className="space-y-2">
-                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                                Hourly Rate
-                            </div>
-                            <Input
-                                value={profile.hourlyRate}
-                                disabled={true}
-                                suffix="/Hr"
-                                className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
-                            />
-                        </div>
-                        {/* Leaves Balance */}
-                        <div className="space-y-2">
-                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                                Leaves Balance
-                            </div>
-                            <Input
-                                value={profile.leaves}
-                                disabled={true}
-                                className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
-                            />
-                        </div>
-                    </div>
-                </section>
-
-                <Divider className="my-8 bg-[#EEEEEE]" />
-
-                {/* Address Information */}
-                <section className="mb-10">
-                    <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
-                        Address Information
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {renderField(
-                            "Address Line 1",
-                            profile.addressLine1,
-                            "addressLine1"
-                        )}
-                        {renderField(
-                            "Address Line 2",
-                            profile.addressLine2,
-                            "addressLine2"
-                        )}
-                        {renderField("City", profile.city, "city")}
-                        {renderField("State", profile.state, "state")}
-                        {renderField("ZIP Code", profile.zipCode, "zipCode")}
-                        {renderField("Country", profile.country, "country")}
-                    </div>
-                </section>
-
-                <Divider className="my-8 bg-[#EEEEEE]" />
-
-                {/* Emergency Contact Information */}
-                <section className="mb-10">
-                    <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
-                        Emergency Contact Information
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {renderField(
-                            "Emergency Contact Name",
-                            profile.emergencyContactName,
-                            "emergencyContactName"
-                        )}
-                        {renderField(
-                            "Relationship",
-                            profile.emergencyRelationship,
-                            "emergencyRelationship"
-                        )}
-                        {renderField(
-                            "Emergency Contact Number",
-                            profile.emergencyContactNumber,
-                            "emergencyContactNumber"
-                        )}
-                    </div>
-                </section>
-
-                <Divider className="my-8 bg-[#EEEEEE]" />
-
-                {/* Professional Documents */}
-                <section className="mb-10">
-                    <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
-                        Professional Documents
-                    </h2>
-                    {documentTypes && documentTypes.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {documentTypes.map((docType) => {
-                                const matchingDoc = documents?.find(
-                                    (doc: UserDocument) =>
-                                        doc.documentTypeId === docType.id
-                                );
-
-                                const documentForCard: UserDocument =
-                                    matchingDoc ||
-                                    ({
-                                        id: docType.id,
-                                        documentTypeId: docType.id,
-                                        documentTypeName: docType.name,
-                                        fileName: "",
-                                        fileSize: 0,
-                                        fileUrl: "",
-                                        uploadedDate: "",
-                                        fileType: "pdf",
-                                        isRequired: docType.required,
-                                    } as UserDocument);
-
-                                return (
-                                    <div key={docType.id} className="space-y-3">
-                                        <div className="flex items-center gap-2">
-                                            <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                                                {docType.name}
-                                            </div>
-                                            {!docType.required && (
-                                                <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
-                                                    Optional
-                                                </span>
-                                            )}
-                                        </div>
-                                        <DocumentCard
-                                            document={documentForCard}
-                                            onPreview={handleDocumentPreview}
-                                            onDownload={handleDocumentDownload}
-                                            showUpload={!documentForCard.fileUrl}
-                                            onUpload={handleDocumentUpload}
-                                        />
-                                    </div>
-                                );
-                            })}
-                        </div>
                     ) : (
-                        <div className="border border-[#EEEEEE] border-dashed rounded-lg p-8 bg-[#FAFAFA] text-center">
-                            <FileText className="w-12 h-12 text-[#CCCCCC] mx-auto mb-3" />
-                            <p className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-1">
-                                No documents configured
-                            </p>
-                            <p className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
-                                Add required documents in Settings to manage employee files.
-                            </p>
+                        <div className="flex items-center gap-3">
+                            <Button
+                                onClick={handleCancelEdit}
+                                type="text"
+                                className="text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px]"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleSaveChanges}
+                                loading={updateProfileMutation.isPending}
+                                className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-8 h-10 rounded-full shadow-lg shadow-[#ff3b3b]/20 text-[13px] border-none"
+                            >
+                                Save Changes
+                            </Button>
                         </div>
                     )}
-                </section>
+                </div>
+            }
+        >
+            <div className="flex flex-col h-full">
+                {/* Header Info - Static area */}
+                <div className="mb-4">
+                    <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif]">
+                        Manage your account settings and preferences
+                    </p>
+                </div>
 
-                <Divider className="my-8 bg-[#EEEEEE]" />
+                <div className="flex-1 overflow-y-auto pr-2 pb-10">
+                    {/* Personal Details */}
+                    <section className="mb-6">
+                        <div className="flex flex-col md:flex-row gap-10 items-stretch mb-8">
+                            {/* Left Sidebar: Heading & Avatar */}
+                            <div className="shrink-0 w-32 flex flex-col justify-between">
+                                <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] whitespace-nowrap self-start">
+                                    Personal Details
+                                </h2>
 
-                {/* Password */}
-                <section className="mb-10">
-                    <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
-                        Change Password
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {renderField(
-                            "New Password",
-                            profile.newPassword,
-                            "newPassword",
-                            "password"
-                        )}
-                        {renderField(
-                            "Confirm Password",
-                            profile.confirmPassword,
-                            "confirmPassword",
-                            "password"
-                        )}
-                    </div>
-                </section>
-
-                <Divider className="my-8 bg-[#EEEEEE]" />
-
-                {/* Notification Preferences */}
-                <section className="mb-6">
-                    <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
-                        Notification Preferences
-                    </h2>
-                    <div className="space-y-6">
-                        {/* Email Notifications */}
-                        <div className="flex items-center justify-between p-4 bg-[#FAFAFA] rounded-lg border border-[#EEEEEE]">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-[#FFF4F4] rounded-lg flex items-center justify-center">
-                                    <Bell className="w-5 h-5 text-[#ff3b3b]" />
-                                </div>
-                                <div>
-                                    <div className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-1">
-                                        Email Notifications
+                                <div className="relative group cursor-pointer self-center">
+                                    <div className="w-32 h-32 rounded-full overflow-hidden border border-[#EEEEEE] shadow-sm">
+                                        <Image
+                                            src={
+                                                user?.user_profile?.profile_pic ||
+                                                user?.profile_pic ||
+                                                "https://github.com/shadcn.png"
+                                            }
+                                            alt="Profile"
+                                            width={128}
+                                            height={128}
+                                            className="w-full h-full object-cover"
+                                        />
                                     </div>
-                                    <div className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666]">
-                                        Receive updates via email for important activities.
+                                    <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <Camera className="w-8 h-8 text-white" />
                                     </div>
                                 </div>
                             </div>
-                            <Switch
-                                checked={notificationPreferences.emailNotifications}
-                                onChange={(checked) =>
-                                    setNotificationPreferences({
-                                        ...notificationPreferences,
-                                        emailNotifications: checked,
-                                    })
-                                }
-                                className="bg-[#CCCCCC]"
-                                checkedChildren="ON"
-                                unCheckedChildren="OFF"
-                                style={{
-                                    backgroundColor: notificationPreferences.emailNotifications
-                                        ? "#ff3b3b"
-                                        : undefined,
-                                }}
-                            />
-                        </div>
 
-                        {/* Security Alerts */}
-                        <div className="flex items-center justify-between p-4 bg-[#FAFAFA] rounded-lg border border-[#EEEEEE]">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-[#FFF4F4] rounded-lg flex items-center justify-center">
-                                    <Shield className="w-5 h-5 text-[#ff3b3b]" />
+                            {/* Fields Grid */}
+                            <div className="flex-1 w-full space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {renderField(
+                                        "First Name",
+                                        profile.firstName,
+                                        "firstName"
+                                    )}
+                                    {renderField(
+                                        "Middle Name",
+                                        profile.middleName,
+                                        "middleName"
+                                    )}
                                 </div>
-                                <div>
-                                    <div className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-1">
-                                        Security Alerts
-                                    </div>
-                                    <div className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666]">
-                                        Get notified about new sign-ins and suspicious activity.
-                                    </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {renderField(
+                                        "Last Name",
+                                        profile.lastName,
+                                        "lastName"
+                                    )}
+                                    {renderField(
+                                        "Designation",
+                                        profile.designation,
+                                        "designation"
+                                    )}
                                 </div>
                             </div>
-                            <Switch
-                                checked={notificationPreferences.securityAlerts}
-                                onChange={(checked) =>
-                                    setNotificationPreferences({
-                                        ...notificationPreferences,
-                                        securityAlerts: checked,
-                                    })
-                                }
-                                className="bg-[#CCCCCC]"
-                                checkedChildren="ON"
-                                unCheckedChildren="OFF"
-                                style={{
-                                    backgroundColor: notificationPreferences.securityAlerts
-                                        ? "#ff3b3b"
-                                        : undefined,
-                                }}
-                            />
                         </div>
-                    </div>
-                </section>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            {renderField("Email Address", profile.email, "email")}
+                            <div className="space-y-2">
+                                <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                    Phone Number
+                                </div>
+                                <div className="flex gap-2">
+                                    <Select
+                                        value={profile.countryCode}
+                                        onChange={(v) =>
+                                            setProfile({ ...profile, countryCode: String(v) })
+                                        }
+                                        disabled={!isEditing}
+                                        className={`w-[85px] h-11 ${!isEditing ? "bg-[#FAFAFA]" : ""}`}
+                                        suffixIcon={<div className="text-gray-400">⌄</div>}
+                                    >
+                                        {countryCodes.map((c) => (
+                                            <Option key={c.code} value={c.code}>{c.code} {c.country}</Option>
+                                        ))}
+                                    </Select>
+                                    <Input
+                                        value={profile.phone}
+                                        onChange={(e) =>
+                                            setProfile({ ...profile, phone: e.target.value })
+                                        }
+                                        placeholder="123 456 7890"
+                                        disabled={!isEditing}
+                                        className={`flex-1 h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Manrope:Medium',sans-serif] text-[13px] ${!isEditing ? "bg-[#FAFAFA] text-[#666666]" : "bg-white"
+                                            }`}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {renderField("DOB", profile.dob, "dob", "date")}
+                            {renderSelect("Gender", profile.gender, "gender", [
+                                "Male",
+                                "Female",
+                                "Other",
+                            ])}
+                            {renderField(
+                                "Employee ID",
+                                profile.employeeId,
+                                "employeeId"
+                            )}
+                        </div>
+                    </section>
+
+                    <Divider className="my-8 bg-[#EEEEEE]" />
+
+                    {/* Employment Details */}
+                    <section className="mb-10">
+                        <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
+                            Employment Details
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            {/* Employment Type - Read Only */}
+                            <div className="space-y-2">
+                                <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                    Employment Type
+                                </div>
+                                <Input
+                                    value={profile.employmentType}
+                                    disabled={true}
+                                    className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                                />
+                            </div>
+                            {/* Date of Joining - Read Only */}
+                            <div className="space-y-2">
+                                <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                    Date of Joining
+                                </div>
+                                <Input
+                                    value={profile.dateOfJoining}
+                                    type="date"
+                                    disabled={true}
+                                    className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            {/* Experience */}
+                            <div className="space-y-2">
+                                <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                    Experience (Years)
+                                </div>
+                                <Input
+                                    value={profile.experience}
+                                    disabled={true}
+                                    className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                                />
+                            </div>
+                            {/* Working Hours */}
+                            <div className="col-span-2 space-y-2">
+                                <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                    Working Hours
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Input
+                                        value={profile.startTime}
+                                        disabled={true}
+                                        className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                                    />
+                                    <span className="text-[#666666] text-sm">to</span>
+                                    <Input
+                                        value={profile.endTime}
+                                        disabled={true}
+                                        className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Salary */}
+                            <div className="space-y-2">
+                                <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                    Salary (Yearly)
+                                </div>
+                                <Input
+                                    value={profile.salary}
+                                    disabled={true}
+                                    prefix="$"
+                                    className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                                />
+                            </div>
+                            {/* Hourly Rate */}
+                            <div className="space-y-2">
+                                <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                    Hourly Rate
+                                </div>
+                                <Input
+                                    value={profile.hourlyRate}
+                                    disabled={true}
+                                    suffix="/Hr"
+                                    className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                                />
+                            </div>
+                            {/* Leaves Balance */}
+                            <div className="space-y-2">
+                                <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                    Leaves Balance
+                                </div>
+                                <Input
+                                    value={profile.leaves}
+                                    disabled={true}
+                                    className="h-11 rounded-lg border-[#EEEEEE] font-['Manrope:Medium',sans-serif] text-[13px] bg-[#FAFAFA] text-[#666666]"
+                                />
+                            </div>
+                        </div>
+                    </section>
+
+                    <Divider className="my-8 bg-[#EEEEEE]" />
+
+                    {/* Address Information */}
+                    <section className="mb-10">
+                        <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
+                            Address Information
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {renderField(
+                                "Address Line 1",
+                                profile.addressLine1,
+                                "addressLine1"
+                            )}
+                            {renderField(
+                                "Address Line 2",
+                                profile.addressLine2,
+                                "addressLine2"
+                            )}
+                            {renderField("City", profile.city, "city")}
+                            {renderField("State", profile.state, "state")}
+                            {renderField("ZIP Code", profile.zipCode, "zipCode")}
+                            {renderField("Country", profile.country, "country")}
+                        </div>
+                    </section>
+
+                    <Divider className="my-8 bg-[#EEEEEE]" />
+
+                    {/* Emergency Contact Information */}
+                    <section className="mb-10">
+                        <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
+                            Emergency Contact Information
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {renderField(
+                                "Emergency Contact Name",
+                                profile.emergencyContactName,
+                                "emergencyContactName"
+                            )}
+                            {renderField(
+                                "Relationship",
+                                profile.emergencyRelationship,
+                                "emergencyRelationship"
+                            )}
+                            {renderField(
+                                "Emergency Contact Number",
+                                profile.emergencyContactNumber,
+                                "emergencyContactNumber"
+                            )}
+                        </div>
+                    </section>
+
+                    <Divider className="my-8 bg-[#EEEEEE]" />
+
+                    {/* Professional Documents */}
+                    <section className="mb-10">
+                        <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
+                            Professional Documents
+                        </h2>
+                        {documentTypes && documentTypes.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                {documentTypes.map((docType) => {
+                                    const matchingDoc = documents?.find(
+                                        (doc: UserDocument) =>
+                                            doc.documentTypeId === docType.id
+                                    );
+
+                                    const documentForCard: UserDocument =
+                                        matchingDoc ||
+                                        ({
+                                            id: docType.id,
+                                            documentTypeId: docType.id,
+                                            documentTypeName: docType.name,
+                                            fileName: "",
+                                            fileSize: 0,
+                                            fileUrl: "",
+                                            uploadedDate: "",
+                                            fileType: "pdf",
+                                            isRequired: docType.required,
+                                        } as UserDocument);
+
+                                    return (
+                                        <div key={docType.id} className="space-y-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                                    {docType.name}
+                                                </div>
+                                                {!docType.required && (
+                                                    <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
+                                                        Optional
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <DocumentCard
+                                                document={documentForCard}
+                                                onPreview={handleDocumentPreview}
+                                                onDownload={handleDocumentDownload}
+                                                showUpload={!documentForCard.fileUrl}
+                                                onUpload={handleDocumentUpload}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="border border-[#EEEEEE] border-dashed rounded-lg p-8 bg-[#FAFAFA] text-center">
+                                <FileText className="w-12 h-12 text-[#CCCCCC] mx-auto mb-3" />
+                                <p className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-1">
+                                    No documents configured
+                                </p>
+                                <p className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
+                                    Add required documents in Settings to manage employee files.
+                                </p>
+                            </div>
+                        )}
+                    </section>
+
+                    <Divider className="my-8 bg-[#EEEEEE]" />
+
+                    {/* Password */}
+                    <section className="mb-10">
+                        <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
+                            Change Password
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {renderField(
+                                "New Password",
+                                profile.newPassword,
+                                "newPassword",
+                                "password"
+                            )}
+                            {renderField(
+                                "Confirm Password",
+                                profile.confirmPassword,
+                                "confirmPassword",
+                                "password"
+                            )}
+                        </div>
+                    </section>
+
+                    <Divider className="my-8 bg-[#EEEEEE]" />
+
+                    {/* Notification Preferences */}
+                    <section className="mb-6">
+                        <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
+                            Notification Preferences
+                        </h2>
+                        <div className="space-y-6">
+                            {/* Email Notifications */}
+                            <div className="flex items-center justify-between p-4 bg-[#FAFAFA] rounded-lg border border-[#EEEEEE]">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-[#FFF4F4] rounded-lg flex items-center justify-center">
+                                        <Bell className="w-5 h-5 text-[#ff3b3b]" />
+                                    </div>
+                                    <div>
+                                        <div className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-1">
+                                            Email Notifications
+                                        </div>
+                                        <div className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                                            Receive updates via email for important activities.
+                                        </div>
+                                    </div>
+                                </div>
+                                <Switch
+                                    checked={notificationPreferences.emailNotifications}
+                                    onChange={(checked) =>
+                                        setNotificationPreferences({
+                                            ...notificationPreferences,
+                                            emailNotifications: checked,
+                                        })
+                                    }
+                                    className="bg-[#CCCCCC]"
+                                    checkedChildren="ON"
+                                    unCheckedChildren="OFF"
+                                    style={{
+                                        backgroundColor: notificationPreferences.emailNotifications
+                                            ? "#ff3b3b"
+                                            : undefined,
+                                    }}
+                                />
+                            </div>
+
+                            {/* Security Alerts */}
+                            <div className="flex items-center justify-between p-4 bg-[#FAFAFA] rounded-lg border border-[#EEEEEE]">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-[#FFF4F4] rounded-lg flex items-center justify-center">
+                                        <Shield className="w-5 h-5 text-[#ff3b3b]" />
+                                    </div>
+                                    <div>
+                                        <div className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-1">
+                                            Security Alerts
+                                        </div>
+                                        <div className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                                            Get notified about new sign-ins and suspicious activity.
+                                        </div>
+                                    </div>
+                                </div>
+                                <Switch
+                                    checked={notificationPreferences.securityAlerts}
+                                    onChange={(checked) =>
+                                        setNotificationPreferences({
+                                            ...notificationPreferences,
+                                            securityAlerts: checked,
+                                        })
+                                    }
+                                    className="bg-[#CCCCCC]"
+                                    checkedChildren="ON"
+                                    unCheckedChildren="OFF"
+                                    style={{
+                                        backgroundColor: notificationPreferences.securityAlerts
+                                            ? "#ff3b3b"
+                                            : undefined,
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                {/* Document Preview Modal */}
+                <DocumentPreviewModal
+                    open={isPreviewModalOpen}
+                    onClose={() => {
+                        setIsPreviewModalOpen(false);
+                        setSelectedDocument(null);
+                    }}
+                    document={selectedDocument}
+                />
             </div>
-
-            {/* Document Preview Modal */}
-            <DocumentPreviewModal
-                open={isPreviewModalOpen}
-                onClose={() => {
-                    setIsPreviewModalOpen(false);
-                    setSelectedDocument(null);
-                }}
-                document={selectedDocument}
-            />
         </PageLayout>
     );
 }
