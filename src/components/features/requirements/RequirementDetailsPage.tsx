@@ -20,6 +20,7 @@ import {
   Legend,
 } from 'recharts';
 import { Breadcrumb, Checkbox, Button, Tooltip, App } from 'antd';
+import DOMPurify from 'dompurify';
 import { useWorkspace, useRequirements } from '@/hooks/useWorkspace';
 import { useTasks } from '@/hooks/useTask';
 import { SubTask } from '@/types/genericTypes';
@@ -235,16 +236,20 @@ export function RequirementDetailsPage() {
                 {/* Parse description to extract sections */}
                 {(() => {
                   const desc = requirement.description || '';
-                  const overviewMatch = desc.match(/Overview:\s*(.+?)(?=\n\nKey Deliverables:|$)/s);
-                  const deliverablesMatch = desc.match(/Key Deliverables:\s*([\s\S]+?)(?=\n\nTechnical Requirements:|$)/s);
-                  const technicalMatch = desc.match(/Technical Requirements:\s*([\s\S]+?)$/s);
+                  // Create a clean version without HTML tags for parsing logic
+                  const cleanDesc = desc.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
+                  const overviewMatch = cleanDesc.match(/Overview:\s*(.+?)(?=\s*Key Deliverables:|$)/i);
+                  const deliverablesMatch = cleanDesc.match(/Key Deliverables:\s*([\s\S]+?)(?=\s*Technical Requirements:|$)/i);
+                  const technicalMatch = cleanDesc.match(/Technical Requirements:\s*([\s\S]+?)$/i);
 
                   const overview = overviewMatch ? overviewMatch[1].trim() : '';
+                  const listPattern = /•|\s-\s|\s-|-\s|\d+\./;
                   const deliverables = deliverablesMatch
-                    ? deliverablesMatch[1].split(/\n/).filter(line => line.trim() && (line.includes('•') || line.includes('-')))
+                    ? deliverablesMatch[1].split(listPattern).filter(line => line.trim())
                     : [];
                   const technical = technicalMatch
-                    ? technicalMatch[1].split(/\n/).filter(line => line.trim() && (line.includes('•') || line.includes('-')))
+                    ? technicalMatch[1].split(listPattern).filter(line => line.trim())
                     : [];
 
                   return (
@@ -295,11 +300,12 @@ export function RequirementDetailsPage() {
                         </div>
                       )}
 
-                      {/* Fallback: if no structured format, show as-is */}
+                      {/* Fallback: if no structured format, show as-is but render as sanitized HTML */}
                       {!overview && deliverables.length === 0 && technical.length === 0 && (
-                        <p className="text-[14px] text-[#444444] font-['Inter:Regular',sans-serif] leading-relaxed whitespace-pre-wrap">
-                          {requirement.description}
-                        </p>
+                        <div
+                          className="text-[14px] text-[#444444] font-['Inter:Regular',sans-serif] leading-relaxed prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(requirement.description || '') }}
+                        />
                       )}
                     </div>
                   );
