@@ -315,3 +315,13 @@ export const acceptInviteById = async (inviteId: number): Promise<ApiResponse<an
     throw error;
   }
 };
+
+// Decline invite by ID
+export const declineInviteById = async (inviteId: number): Promise<ApiResponse<any>> => {
+  try {
+    const { data } = await axiosApi.post("/user/invite/decline-id", { inviteId });
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
