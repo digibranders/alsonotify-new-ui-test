@@ -3,6 +3,8 @@ import { MoreVertical, Edit, Trash2, Mail, Phone, Globe, User, Briefcase, Buildi
 import { EyeOutlined } from '@ant-design/icons';
 import Link from "next/link";
 
+export type PartnerStatus = 'active' | 'inactive' | 'pending';
+
 export interface Partner {
     id: number;
     association_id?: number | null;
@@ -13,7 +15,7 @@ export interface Partner {
     phone: string;
     country: string;
     timezone?: string;
-    status: 'active' | 'inactive' | 'pending';
+    status: PartnerStatus;
     requirements: number;
     onboarding: string;
     rawStatus?: string;
@@ -25,7 +27,7 @@ interface PartnerRowProps {
     selected: boolean;
     onSelect: () => void;
     onEdit: () => void;
-    onStatusUpdate: (status: string) => void;
+    onStatusUpdate: (status: PartnerStatus) => void;
 }
 
 export function PartnerRow({
@@ -58,7 +60,7 @@ export function PartnerRow({
                 }
       `}
         >
-            <div className="grid grid-cols-[40px_1.5fr_1.1fr_1fr_1.3fr_0.7fr_0.8fr_0.8fr_40px] gap-4 items-center">
+            <div className="grid grid-cols-[40px_1.5fr_1.1fr_1fr_2fr_0.7fr_0.8fr_0.6fr_40px] gap-4 items-center">
                 {/* Checkbox */}
                 <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
                     <Checkbox
@@ -141,7 +143,14 @@ export function PartnerRow({
                 <div className="flex items-center gap-2 text-[#666666]">
                     <Globe className="w-3.5 h-3.5 shrink-0" />
                     <span className="text-[13px] font-['Inter:Medium',sans-serif]">
-                        {partner.country}
+                        {(() => {
+                            if (!partner.country) return 'N/A';
+                            try {
+                                return new Intl.DisplayNames(['en'], { type: 'region' }).of(partner.country);
+                            } catch (e) {
+                                return partner.country;
+                            }
+                        })()}
                     </span>
                 </div>
 
@@ -157,14 +166,20 @@ export function PartnerRow({
                                     onClick: onEdit,
                                     className: "text-[13px] font-['Manrope:Medium',sans-serif]"
                                 },
-                                {
+                                ...(partner.status !== 'pending' ? [{
                                     key: 'status',
                                     label: partner.status === 'active' ? 'Deactivate' : 'Activate',
                                     icon: partner.status === 'active' ? <Trash2 className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />,
                                     onClick: () => onStatusUpdate(partner.status === 'active' ? 'inactive' : 'active'),
                                     danger: partner.status === 'active',
                                     className: "text-[13px] font-['Manrope:Medium',sans-serif]"
-                                }
+                                }] : [{
+                                    key: 'pending',
+                                    label: 'Invitation Pending',
+                                    icon: <Globe className="w-3.5 h-3.5" />,
+                                    disabled: true,
+                                    className: "text-[13px] font-['Manrope:Medium',sans-serif]"
+                                }])
                             ] as MenuProps['items']
                         }}
                         trigger={['click']}

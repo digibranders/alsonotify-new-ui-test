@@ -932,21 +932,19 @@ export function EmployeesPage() {
           )}
         </div>
 
-        {filteredEmployees.length > 0 && (
-          <div className="bg-white">
-            <PaginationBar
-              currentPage={currentPage}
-              totalItems={filteredEmployees.length}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={(size) => {
-                setPageSize(size);
-                setCurrentPage(1);
-              }}
-              itemLabel="employees"
-            />
-          </div>
-        )}
+        <div className="bg-white">
+          <PaginationBar
+            currentPage={currentPage}
+            totalItems={filteredEmployees.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+            itemLabel="employees"
+          />
+        </div>
 
         {/* Bulk Action Bar */}
         {selectedEmployees.length > 0 && (

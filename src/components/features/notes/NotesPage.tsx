@@ -1,6 +1,5 @@
 import { PageLayout } from '../../layout/PageLayout';
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useTabSync } from '@/hooks/useTabSync';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Archive, Trash2, FileText, ArchiveRestore } from 'lucide-react';
@@ -26,7 +25,6 @@ interface NoteSaveData {
 export function NotesPage() {
   const queryClient = useQueryClient();
   const { message: messageApi, modal } = App.useApp();
-  const router = useRouter();
   /* Manual router/params removed */
   const [activeTab, setActiveTab] = useTabSync<TabType>({
     defaultTab: 'all',

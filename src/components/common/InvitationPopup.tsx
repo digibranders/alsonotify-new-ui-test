@@ -7,8 +7,19 @@ import { Check, X, Building2, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export function InvitationPopup() {
+    interface Invite {
+        id: number;
+        inviterName: string;
+        inviterCompany?: string;
+        inviterImage?: string;
+        type?: string;
+        created_at?: string;
+        status: string;
+        [key: string]: any;
+    }
+
     const [isVisible, setIsVisible] = useState(false);
-    const [invites, setInvites] = useState<any[]>([]);
+    const [invites, setInvites] = useState<Invite[]>([]);
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
@@ -25,7 +36,7 @@ export function InvitationPopup() {
                     const pending = res.result.filter((i: any) => i.status !== 'REJECTED' && i.status !== 'ACCEPTED');
 
                     if (pending.length > 0) {
-                        setInvites(pending);
+                        setInvites(pending as unknown as Invite[]);
                         setIsVisible(true);
                         sessionStorage.setItem('invitationPopupShown', 'true');
                     }
@@ -71,10 +82,13 @@ export function InvitationPopup() {
             const res = await declineInviteById(id);
             if (res.success) {
                 message.success('Invitation declined');
-                setInvites(prev => prev.filter(i => i.id !== id));
-                if (invites.length <= 1) {
-                    setIsVisible(false);
-                }
+                setInvites(prev => {
+                    const remaining = prev.filter(i => i.id !== id);
+                    if (remaining.length === 0) {
+                        setIsVisible(false);
+                    }
+                    return remaining;
+                });
             } else {
                 message.error(res.message || 'Failed to decline invitation');
             }

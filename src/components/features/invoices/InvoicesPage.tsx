@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 import { useTabSync } from '@/hooks/useTabSync';
 import { Download, Send, Eye, MoreVertical, Calendar, DollarSign } from 'lucide-react';
 import { PageLayout } from '../../layout/PageLayout';

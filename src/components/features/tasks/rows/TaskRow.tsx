@@ -293,15 +293,15 @@ export function TaskRow({
 
         {/* Assigned To (Avatar Stack) */}
         <div className="flex items-center justify-center">
-          <Avatar.Group maxCount={3} maxStyle={{ color: '#f56a00', backgroundColor: '#fde3cf' }}>
+          <Avatar.Group max={{ count: 3, style: { color: '#666666', backgroundColor: '#EEEEEE' } }}>
             {task.task_members && task.task_members.length > 0 ? (
               task.task_members.map((member) => (
                 <Tooltip key={member.id} title={`${member.user.name} (${member.status})`}>
-                  <div className={`relative ${member.is_current_turn ? 'ring-2 ring-blue-500 rounded-full z-20 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : ''}`}>
+                  <div className="relative">
                     {member.user.profile_pic ? (
                       <Avatar src={member.user.profile_pic} />
                     ) : (
-                      <Avatar style={{ backgroundColor: '#ff3b3b' }}>
+                      <Avatar style={{ backgroundColor: '#CCCCCC' }}>
                         {member.user.name ? member.user.name.charAt(0).toUpperCase() : 'U'}
                       </Avatar>
                     )}
@@ -310,7 +310,7 @@ export function TaskRow({
               ))
             ) : (
               <Tooltip title={task.assignedTo}>
-                <Avatar style={{ backgroundColor: '#ff3b3b' }}>
+                <Avatar style={{ backgroundColor: '#CCCCCC' }}>
                   {task.assignedTo ? task.assignedTo.charAt(0).toUpperCase() : 'U'}
                 </Avatar>
               </Tooltip>
