@@ -13,6 +13,7 @@ import { navPermissionMap } from '@/utils/navUtils';
 import { Shield24Regular } from '@fluentui/react-icons';
 import { Button } from 'antd';
 import Link from 'next/link';
+import { InvitationPopup } from '../components/common/InvitationPopup';
 
 interface AlsonotifyLayoutWrapperProps {
   children: ReactNode;
@@ -122,8 +123,9 @@ export function AlsonotifyLayoutWrapper({ children }: AlsonotifyLayoutWrapperPro
             {renderContent()}
           </div>
         </div>
-        <GlobalTimerPlayer />
       </div>
+      <GlobalTimerPlayer />
+      <InvitationPopup />
     </TimerProvider>
   );
 }

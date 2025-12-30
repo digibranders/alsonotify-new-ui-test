@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useTabSync } from '@/hooks/useTabSync';
 import { Download, Send, Eye, MoreVertical, Calendar, DollarSign } from 'lucide-react';
 import { PageLayout } from '../../layout/PageLayout';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
@@ -78,7 +80,14 @@ const invoicesData: Invoice[] = [
 ];
 
 export function InvoicesPage() {
-  const [activeTab, setActiveTab] = useState<'all' | 'paid' | 'pending' | 'overdue' | 'draft'>('all');
+  /* Manual router/params removed */
+  const [activeTab, setActiveTab] = useTabSync<'all' | 'paid' | 'pending' | 'overdue' | 'draft'>({
+    defaultTab: 'all',
+    validTabs: ['all', 'paid', 'pending', 'overdue', 'draft']
+  });
+
+  // Sync activeTab with URL - handled by useTabSync
+  /* useEffect(() => { ... }) removed */
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({
     client: 'All',
@@ -172,7 +181,7 @@ export function InvoicesPage() {
       onSearchChange={setSearchQuery}
       showExport
       titleAction={{
-        onClick: () => {}
+        onClick: () => { }
       }}
     >
       {/* Summary Cards */}

@@ -13,7 +13,7 @@ export interface Partner {
     phone: string;
     country: string;
     timezone?: string;
-    status: 'active' | 'inactive';
+    status: 'active' | 'inactive' | 'pending';
     requirements: number;
     onboarding: string;
     rawStatus?: string;
@@ -25,7 +25,7 @@ interface PartnerRowProps {
     selected: boolean;
     onSelect: () => void;
     onEdit: () => void;
-    onStatusUpdate: (isActive: boolean) => void;
+    onStatusUpdate: (status: string) => void;
 }
 
 export function PartnerRow({
@@ -51,14 +51,14 @@ export function PartnerRow({
         <div
             onClick={onEdit}
             className={`
-        group bg-white border rounded-[16px] p-4 transition-all duration-300 cursor-pointer relative z-10
+        group bg-white border rounded-[16px] px-4 py-3 transition-all duration-300 cursor-pointer relative z-10
         ${selected
                     ? 'border-[#ff3b3b] shadow-[0_0_0_1px_#ff3b3b] bg-[#FFF5F5]'
                     : 'border-[#EEEEEE] hover:border-[#ff3b3b]/20 hover:shadow-lg'
                 }
       `}
         >
-            <div className="grid grid-cols-[40px_1.8fr_1.2fr_1fr_1.5fr_1.2fr_0.8fr_40px] gap-4 items-center">
+            <div className="grid grid-cols-[40px_1.5fr_1.1fr_1fr_1.3fr_0.7fr_0.8fr_0.8fr_40px] gap-4 items-center">
                 {/* Checkbox */}
                 <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
                     <Checkbox
@@ -117,12 +117,24 @@ export function PartnerRow({
                     </span>
                 </div>
 
-
                 {/* Onboarding */}
                 <div>
                     <span className="text-[13px] text-[#111111] font-['Inter:Medium',sans-serif]">
                         {partner.onboarding}
                     </span>
+                </div>
+
+                {/* Status */}
+                <div>
+                    <Tag
+                        color={
+                            partner.status === 'active' ? 'success' :
+                                partner.status === 'pending' ? 'warning' : 'default'
+                        }
+                        className="capitalize"
+                    >
+                        {partner.status}
+                    </Tag>
                 </div>
 
                 {/* Country */}
@@ -149,7 +161,7 @@ export function PartnerRow({
                                     key: 'status',
                                     label: partner.status === 'active' ? 'Deactivate' : 'Activate',
                                     icon: partner.status === 'active' ? <Trash2 className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />,
-                                    onClick: () => onStatusUpdate(partner.status !== 'active'),
+                                    onClick: () => onStatusUpdate(partner.status === 'active' ? 'inactive' : 'active'),
                                     danger: partner.status === 'active',
                                     className: "text-[13px] font-['Manrope:Medium',sans-serif]"
                                 }

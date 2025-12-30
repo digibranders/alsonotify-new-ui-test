@@ -12,6 +12,7 @@ import { useTask, useTaskTimer } from '@/hooks/useTask';
 import { useWorkspaces, useRequirements } from '@/hooks/useWorkspace';
 import { useEmployees } from '@/hooks/useUser';
 import { format } from 'date-fns';
+import { PageLayout } from '../../layout/PageLayout';
 
 export function TaskDetailsPage() {
   const params = useParams();
@@ -199,295 +200,274 @@ export function TaskDetailsPage() {
   );
 
   return (
-    <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] flex overflow-hidden">
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="p-8 pb-0">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-2">
-              <Breadcrumb
-                separator={<span className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#999999]">/</span>}
-                items={[
-                  {
-                    title: (
-                      <span
-                        onClick={() => router.push('/dashboard/tasks')}
-                        className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors"
-                      >
-                        Tasks
-                      </span>
-                    ),
-                  },
-                  {
-                    title: (
-                      <span className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111] line-clamp-1 max-w-[300px]">
-                        {task.name || task.title || 'Untitled Task'}
-                      </span>
-                    ),
-                  },
-                ]}
-              />
-            </div>
-
-            <div className="flex items-center gap-4">
-              <StatusBadge status={task.status || 'todo'} showLabel />
-              {task.priority && (
-                <span className={`px-3 py-1.5 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide ${getPriorityColor(task.priority)}`}>
-                  {task.priority}
+    <PageLayout
+      title={
+        <Breadcrumb
+          separator={<span className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#999999]">/</span>}
+          items={[
+            {
+              title: (
+                <span
+                  onClick={() => router.push('/dashboard/tasks')}
+                  className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors"
+                >
+                  Tasks
                 </span>
-              )}
+              ),
+            },
+            {
+              title: (
+                <span className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111] line-clamp-1 max-w-[300px]">
+                  {task.name || 'Untitled Task'}
+                </span>
+              ),
+            },
+          ]}
+        />
+      }
+      action={
+        <div className="flex items-center gap-4">
+          <StatusBadge status={task.status || 'todo'} showLabel />
+          {task.priority && (
+            <span className={`px-3 py-1.5 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide ${getPriorityColor(task.priority)}`}>
+              {task.priority}
+            </span>
+          )}
+        </div>
+      }
+      tabs={[
+        { id: 'details', label: 'Details' },
+        { id: 'steps', label: `Steps (${steps.length})` }
+      ]}
+      activeTab={activeTab}
+      onTabChange={(id) => setActiveTab(id as any)}
+      sideContent={rightDrawer}
+    >
+      <div className="h-full overflow-y-auto p-0 bg-[#FAFAFA]">
+        {activeTab === 'details' && (
+          <div className="space-y-8">
+            {/* Description Section */}
+            <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
+              <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-[#ff3b3b]" />
+                Description
+              </h3>
+              <p className="text-[14px] text-[#444444] font-['Inter:Regular',sans-serif] leading-relaxed whitespace-pre-wrap">
+                {task.description || "No description provided."}
+              </p>
             </div>
-          </div>
-        </div>
 
-        {/* Tabs */}
-        <div className="border-b border-[#EEEEEE]">
-          <div className="flex items-center gap-8 pl-8">
-            <TabButton
-              active={activeTab === 'details'}
-              onClick={() => setActiveTab('details')}
-              icon={FileText}
-              label="Details"
-            />
-            <TabButton
-              active={activeTab === 'steps'}
-              onClick={() => setActiveTab('steps')}
-              icon={ListTodo}
-              label={`Steps (${steps.length})`}
-            />
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-8 bg-[#FAFAFA]">
-          {activeTab === 'details' && (
-            <div className="max-w-5xl mx-auto space-y-8">
-              {/* Description Section */}
-              <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
-                <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-[#ff3b3b]" />
-                  Description
+            {/* Task Metadata */}
+            <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-[#ff3b3b]" />
+                  Task Overview
                 </h3>
-                <p className="text-[14px] text-[#444444] font-['Inter:Regular',sans-serif] leading-relaxed whitespace-pre-wrap">
-                  {task.description || "No description provided."}
-                </p>
               </div>
 
-              {/* Task Metadata */}
-              <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] flex items-center gap-2">
-                    <Briefcase className="w-5 h-5 text-[#ff3b3b]" />
-                    Task Overview
-                  </h3>
-                </div>
-
-                {/* Top Row: Context & People */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                  {/* Assigned To */}
-                  <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#F5F5F5]">
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Assigned To</p>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm text-white font-['Manrope:Bold',sans-serif] text-[14px]">
-                        {assignee?.name ? assignee.name.charAt(0).toUpperCase() : '?'}
-                      </div>
-                      <div className="overflow-hidden">
-                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate" title={assignee?.name || 'Unassigned'}>
-                          {assignee?.name || 'Unassigned'}
-                        </p>
-                        <p className="text-[11px] text-[#666666] truncate">Member</p>
-                      </div>
+              {/* Top Row: Context & People */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                {/* Assigned To */}
+                <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#F5F5F5]">
+                  <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Assigned To</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm text-white font-['Manrope:Bold',sans-serif] text-[14px]">
+                      {assignee?.name ? assignee.name.charAt(0).toUpperCase() : '?'}
                     </div>
-                  </div>
-
-                  {/* Leader */}
-                  <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#F5F5F5]">
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Leader</p>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#E0E0E0] border border-[#CCCCCC] flex items-center justify-center shadow-sm text-[#666666] font-['Manrope:Bold',sans-serif] text-[14px]">
-                        {leader?.name ? leader.name.charAt(0) : 'U'}
-                      </div>
-                      <div className="overflow-hidden">
-                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate">{leader?.name || 'Unknown'}</p>
-                        <p className="text-[11px] text-[#666666] truncate">Creator</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Workspace */}
-                  <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#F5F5F5]">
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Workspace</p>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-white border border-[#EEEEEE] flex items-center justify-center text-[#111111]">
-                        <Briefcase className="w-4 h-4" />
-                      </div>
-                      <div className="overflow-hidden">
-                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate">
-                          {workspace?.name || 'No Workspace'}
-                        </p>
-                        <p className="text-[11px] text-[#666666] truncate">Project</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Requirement */}
-                  <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#F5F5F5]">
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Requirement</p>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-white border border-[#EEEEEE] flex items-center justify-center text-[#111111]">
-                        <FolderOpen className="w-4 h-4" />
-                      </div>
-                      <div className="overflow-hidden">
-                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate">
-                          {requirement?.name || (task?.requirement_id ? `Req ${task.requirement_id}` : 'None')}
-                        </p>
-                        <p className="text-[11px] text-[#666666] truncate">Scope</p>
-                      </div>
+                    <div className="overflow-hidden">
+                      <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate" title={assignee?.name || 'Unassigned'}>
+                        {assignee?.name || 'Unassigned'}
+                      </p>
+                      <p className="text-[11px] text-[#666666] truncate">Member</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Bottom Row: Timeline & Progress */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-[#EEEEEE]">
-                  {/* Timeline */}
-                  <div className="flex flex-col">
-                    <h4 className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4 flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-[#999999]" />
-                      Timeline
-                    </h4>
-                    <div className="bg-[#FAFAFA] p-5 rounded-xl border border-[#F5F5F5] flex items-center justify-between flex-1 h-full">
+                {/* Leader */}
+                <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#F5F5F5]">
+                  <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Leader</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#E0E0E0] border border-[#CCCCCC] flex items-center justify-center shadow-sm text-[#666666] font-['Manrope:Bold',sans-serif] text-[14px]">
+                      {leader?.name ? leader.name.charAt(0) : 'U'}
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate">{leader?.name || 'Unknown'}</p>
+                      <p className="text-[11px] text-[#666666] truncate">Creator</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Workspace */}
+                <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#F5F5F5]">
+                  <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Workspace</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-white border border-[#EEEEEE] flex items-center justify-center text-[#111111]">
+                      <Briefcase className="w-4 h-4" />
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate">
+                        {workspace?.name || 'No Workspace'}
+                      </p>
+                      <p className="text-[11px] text-[#666666] truncate">Project</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Requirement */}
+                <div className="bg-[#FAFAFA] rounded-xl p-4 border border-[#F5F5F5]">
+                  <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">Requirement</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-white border border-[#EEEEEE] flex items-center justify-center text-[#111111]">
+                      <FolderOpen className="w-4 h-4" />
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] truncate">
+                        {requirement?.name || (task?.requirement_id ? `Req ${task.requirement_id}` : 'None')}
+                      </p>
+                      <p className="text-[11px] text-[#666666] truncate">Scope</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Row: Timeline & Progress */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-[#EEEEEE]">
+                {/* Timeline */}
+                <div className="flex flex-col">
+                  <h4 className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4 flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-[#999999]" />
+                    Timeline
+                  </h4>
+                  <div className="bg-[#FAFAFA] p-5 rounded-xl border border-[#F5F5F5] flex items-center justify-between flex-1 h-full">
+                    <div>
+                      <p className="text-[11px] text-[#999999] mb-1">Start Date</p>
+                      <p className="text-[14px] font-['Inter:SemiBold',sans-serif] text-[#111111]">
+                        {task.start_date ? format(new Date(task.start_date), 'MMM d, yyyy') : 'Not set'}
+                      </p>
+                    </div>
+                    <div className="flex flex-col items-center px-4 opacity-30">
+                      <span className="h-[1px] w-12 bg-black mb-1"></span>
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] text-[#999999] mb-1">Due Date</p>
+                      <p className="text-[14px] font-['Inter:SemiBold',sans-serif] text-[#111111]">
+                        {task.end_date ? format(new Date(task.end_date), 'MMM d, yyyy') : 'Not set'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress Metrics */}
+                <div className="flex flex-col">
+                  <h4 className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-[#999999]" />
+                    Progress Tracking
+                  </h4>
+                  <div className="bg-[#FAFAFA] p-5 rounded-xl border border-[#F5F5F5] space-y-4 flex-1 h-full flex flex-col justify-center">
+                    <div className="flex justify-between items-end w-full">
                       <div>
-                        <p className="text-[11px] text-[#999999] mb-1">Start Date</p>
-                        <p className="text-[14px] font-['Inter:SemiBold',sans-serif] text-[#111111]">
-                          {task.start_date ? format(new Date(task.start_date), 'MMM d, yyyy') : 'Not set'}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-center px-4 opacity-30">
-                        <span className="h-[1px] w-12 bg-black mb-1"></span>
-                        <ArrowRight className="w-4 h-4" />
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-[24px] font-['Manrope:Bold',sans-serif] text-[#111111] leading-none">{estimatedHours}</span>
+                          <span className="text-[13px] text-[#666666] font-['Inter:Medium',sans-serif]">hrs estimated</span>
+                        </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-[11px] text-[#999999] mb-1">Due Date</p>
-                        <p className="text-[14px] font-['Inter:SemiBold',sans-serif] text-[#111111]">
-                          {task.end_date ? format(new Date(task.end_date), 'MMM d, yyyy') : 'Not set'}
+                        <p className={`text-[18px] font-['Manrope:Bold',sans-serif] leading-none ${task.status === 'delayed' ? 'text-[#ff3b3b]' :
+                          task.status === 'completed' ? 'text-[#0F9D58]' :
+                            'text-[#2F80ED]'
+                          }`}>
+                          {progressPercent}%
                         </p>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Progress Metrics */}
-                  <div className="flex flex-col">
-                    <h4 className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4 flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-[#999999]" />
-                      Progress Tracking
-                    </h4>
-                    <div className="bg-[#FAFAFA] p-5 rounded-xl border border-[#F5F5F5] space-y-4 flex-1 h-full flex flex-col justify-center">
-                      <div className="flex justify-between items-end w-full">
-                        <div>
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-[24px] font-['Manrope:Bold',sans-serif] text-[#111111] leading-none">{estimatedHours}</span>
-                            <span className="text-[13px] text-[#666666] font-['Inter:Medium',sans-serif]">hrs estimated</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className={`text-[18px] font-['Manrope:Bold',sans-serif] leading-none ${task.status === 'delayed' ? 'text-[#ff3b3b]' :
-                            task.status === 'completed' ? 'text-[#0F9D58]' :
-                              'text-[#2F80ED]'
-                            }`}>
-                            {progressPercent}%
-                          </p>
-                        </div>
+                    <div className="relative pt-2 w-full">
+                      <div className="flex justify-between text-[10px] font-['Inter:SemiBold',sans-serif] text-[#999999] mb-1.5 uppercase tracking-wide">
+                        <span>0h</span>
+                        <span>{formattedLogged}h logged</span>
                       </div>
-
-                      <div className="relative pt-2 w-full">
-                        <div className="flex justify-between text-[10px] font-['Inter:SemiBold',sans-serif] text-[#999999] mb-1.5 uppercase tracking-wide">
-                          <span>0h</span>
-                          <span>{formattedLogged}h logged</span>
-                        </div>
-                        <div className="w-full h-2 bg-[#E0E0E0] rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${task.status === 'delayed' ? 'bg-[#ff3b3b]' :
-                              task.status === 'completed' ? 'bg-[#0F9D58]' :
-                                'bg-[#2F80ED]'
-                              }`}
-                            style={{ width: `${progressPercent}%` }}
-                          />
-                        </div>
+                      <div className="w-full h-2 bg-[#E0E0E0] rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${task.status === 'delayed' ? 'bg-[#ff3b3b]' :
+                            task.status === 'completed' ? 'bg-[#0F9D58]' :
+                              'bg-[#2F80ED]'
+                            }`}
+                          style={{ width: `${progressPercent}%` }}
+                        />
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {activeTab === 'steps' && (
-            <div className="max-w-5xl mx-auto space-y-8">
-              <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] flex items-center gap-2">
-                    <ListTodo className="w-5 h-5 text-[#ff3b3b]" />
-                    Steps Breakdown
-                  </h3>
-                  <button className="h-8 px-3 text-[12px] border border-[#EEEEEE] rounded-md hover:bg-[#FAFAFA] transition-colors flex items-center gap-2">
-                    <Plus className="w-4 h-4" /> Add Step
-                  </button>
+        {activeTab === 'steps' && (
+          <div className="space-y-8">
+            <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] flex items-center gap-2">
+                  <ListTodo className="w-5 h-5 text-[#ff3b3b]" />
+                  Steps Breakdown
+                </h3>
+                <button className="h-8 px-3 text-[12px] border border-[#EEEEEE] rounded-md hover:bg-[#FAFAFA] transition-colors flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> Add Step
+                </button>
+              </div>
+
+              {/* Table Header */}
+              <div className="grid grid-cols-[40px_1fr_1.5fr_1fr_1fr] gap-4 px-4 pb-3 mb-2 border-b border-[#EEEEEE] items-center">
+                <div className="flex justify-center">
+                  <Checkbox
+                    checked={steps.length > 0 && selectedSteps.length === steps.length}
+                    onChange={(e) => {
+                      if (e.target.checked && steps.length > 0) {
+                        setSelectedSteps(steps.map((s: any) => s.id));
+                      } else {
+                        setSelectedSteps([]);
+                      }
+                    }}
+                    className="border-[#DDDDDD] [&.ant-checkbox-checked]:bg-[#ff3b3b] [&.ant-checkbox-checked]:border-[#ff3b3b]"
+                  />
                 </div>
-
-                {/* Table Header */}
-                <div className="grid grid-cols-[40px_1fr_1.5fr_1fr_1fr] gap-4 px-4 pb-3 mb-2 border-b border-[#EEEEEE] items-center">
-                  <div className="flex justify-center">
-                    <Checkbox
-                      checked={steps.length > 0 && selectedSteps.length === steps.length}
-                      onChange={(e) => {
-                        if (e.target.checked && steps.length > 0) {
-                          setSelectedSteps(steps.map((s: any) => s.id));
-                        } else {
-                          setSelectedSteps([]);
-                        }
-                      }}
-                      className="border-[#DDDDDD] [&.ant-checkbox-checked]:bg-[#ff3b3b] [&.ant-checkbox-checked]:border-[#ff3b3b]"
-                    />
-                  </div>
-                  <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Assignee</p>
-                  <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Role</p>
-                  <div className="flex justify-center">
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Est. Hours</p>
-                  </div>
-                  <div className="flex justify-center">
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Status</p>
-                  </div>
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Assignee</p>
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Role</p>
+                <div className="flex justify-center">
+                  <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Est. Hours</p>
                 </div>
-
-                <div className="space-y-2">
-                  {steps.length > 0 ? (
-                    steps.map((step: any) => (
-                      <StepRow
-                        key={step.id}
-                        step={step}
-                        selected={selectedSteps.includes(step.id)}
-                        onSelect={() => {
-                          if (selectedSteps.includes(step.id)) {
-                            setSelectedSteps(selectedSteps.filter(id => id !== step.id));
-                          } else {
-                            setSelectedSteps([...selectedSteps, step.id]);
-                          }
-                        }}
-                      />
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-[#999999] text-[13px]">No steps defined</div>
-                  )}
+                <div className="flex justify-center">
+                  <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Status</p>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
 
-      {rightDrawer}
-    </div>
+              <div className="space-y-2">
+                {steps.length > 0 ? (
+                  steps.map((step: any) => (
+                    <StepRow
+                      key={step.id}
+                      step={step}
+                      selected={selectedSteps.includes(step.id)}
+                      onSelect={() => {
+                        if (selectedSteps.includes(step.id)) {
+                          setSelectedSteps(selectedSteps.filter(id => id !== step.id));
+                        } else {
+                          setSelectedSteps([...selectedSteps, step.id]);
+                        }
+                      }}
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-[#999999] text-[13px]">No steps defined</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </PageLayout>
   );
 }
 

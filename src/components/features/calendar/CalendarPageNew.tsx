@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useTabSync } from '@/hooks/useTabSync';
 import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, MapPin } from 'lucide-react';
 import { PageLayout } from '../../layout/PageLayout';
 
@@ -62,7 +64,14 @@ const eventsData: CalendarEvent[] = [
 ];
 
 export function CalendarPage() {
-  const [activeView, setActiveView] = useState<'month' | 'week' | 'day' | 'agenda'>('month');
+  /* Manual router/params removed */
+  const [activeView, setActiveView] = useTabSync<'month' | 'week' | 'day' | 'agenda'>({
+    defaultTab: 'month',
+    validTabs: ['month', 'week', 'day', 'agenda']
+  });
+
+  // Sync activeView with URL - handled by useTabSync
+  /* useEffect(() => { ... }) removed */
   const [currentMonth, setCurrentMonth] = useState('November 2025');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -103,7 +112,7 @@ export function CalendarPage() {
       activeTab={activeView}
       onTabChange={(tabId) => setActiveView(tabId as any)}
       titleAction={{
-        onClick: () => {}
+        onClick: () => { }
       }}
     >
       {/* Month Navigation */}

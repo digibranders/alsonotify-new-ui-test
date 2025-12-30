@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useTabSync } from '@/hooks/useTabSync';
 import { Users, TrendingUp, Clock, AlertCircle } from 'lucide-react';
 import { PageLayout } from '../../layout/PageLayout';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
@@ -301,7 +303,10 @@ const employeeWorkloadData: EmployeeWorkload[] = [
 ];
 
 export function WorkloadChartPage() {
-  const [activeTab, setActiveTab] = useState<'daily' | 'week' | 'analytics' | 'monthly'>('analytics');
+  const [activeTab, setActiveTab] = useTabSync<'daily' | 'week' | 'analytics' | 'monthly'>({
+    defaultTab: 'analytics',
+    validTabs: ['daily', 'week', 'analytics', 'monthly']
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({
     role: 'All',
@@ -839,3 +844,5 @@ export function WorkloadChartPage() {
     </PageLayout>
   );
 }
+
+export default WorkloadChartPage;

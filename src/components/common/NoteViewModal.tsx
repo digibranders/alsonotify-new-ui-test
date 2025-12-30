@@ -20,7 +20,7 @@ interface NoteViewModalProps {
 export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete }: NoteViewModalProps) {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
-  
+
   // Editable state
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -28,7 +28,7 @@ export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete
   const [noteType, setNoteType] = useState<NoteType>('TEXT_NOTE');
   const [color, setColor] = useState('#ff3b3b');
   const [hasChanges, setHasChanges] = useState(false);
-  
+
   const titleInputRef = useRef<any>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -41,7 +41,7 @@ export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete
       const normalizedType = (note.type === 'TEXT_NOTE' || (note.type as any) === 'text') ? 'TEXT_NOTE' : 'CHECKLIST_NOTE';
       setNoteType(normalizedType);
       setColor(note.color || '#ff3b3b');
-      
+
       // Convert items to ChecklistItem format
       if (note.items && Array.isArray(note.items) && note.items.length > 0) {
         const convertedItems = note.items.map((item: any, index: number) => {
@@ -65,7 +65,7 @@ export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete
         setItems([createEmptyChecklistItem(0)]);
       }
       setHasChanges(false);
-      
+
       // Focus title input when modal opens
       setTimeout(() => {
         if (titleInputRef.current) {
@@ -87,7 +87,7 @@ export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete
   // Auto-save with debounce
   const handleSave = async () => {
     if (!note || !hasChanges) return;
-    
+
     // Convert ChecklistItem[] to backend format
     let backendItems = undefined;
     if (noteType === 'CHECKLIST_NOTE' && items.length > 0) {
@@ -124,7 +124,7 @@ export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete
         handleSave();
       }, 1000); // Auto-save after 1 second of no changes
     }
-    
+
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
@@ -157,12 +157,12 @@ export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete
         if (selection && selection.rangeCount > 0) {
           const range = selection.getRangeAt(0);
           const container = range.commonAncestorContainer;
-          const editor = container.nodeType === Node.TEXT_NODE 
+          const editor = container.nodeType === Node.TEXT_NODE
             ? container.parentElement?.closest('.rich-text-editor')
-            : container.nodeType === Node.ELEMENT_NODE 
+            : container.nodeType === Node.ELEMENT_NODE
               ? (container as Element).closest('.rich-text-editor')
               : null;
-          
+
           if (editor) {
             setContent(editor.innerHTML);
             setHasChanges(true);
@@ -205,7 +205,7 @@ export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete
       styles={{
         body: {
           height: 'auto',
-          maxHeight: '80vh',
+          maxHeight: '85vh',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
@@ -214,75 +214,66 @@ export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete
       }}
     >
       <div onKeyDown={handleKeyDown} tabIndex={-1}>
-      {/* Editable Title */}
-      <div className="mb-4 flex-shrink-0">
-        <Input
-          ref={titleInputRef}
-          value={title}
-          onChange={(e) => {
-            setTitle(e.target.value);
-            setHasChanges(true);
-          }}
-          placeholder="Title"
-          className="text-[20px] font-['Manrope:SemiBold',sans-serif] border-none p-0 shadow-none focus:shadow-none hover:border-none"
-          style={{ fontSize: '20px', fontWeight: 600 }}
-        />
-      </div>
+        {/* Editable Title */}
+        <div className="mb-4 flex-shrink-0">
+          <Input
+            ref={titleInputRef}
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setHasChanges(true);
+            }}
+            placeholder="Title"
+            className="text-[20px] font-['Manrope:SemiBold',sans-serif] border-none p-0 shadow-none focus:shadow-none hover:border-none"
+            style={{ fontSize: '20px', fontWeight: 600 }}
+          />
+        </div>
 
-      {/* Type Toggle and Formatting Buttons */}
-      <div className="flex items-center justify-between mb-3 flex-shrink-0">
-        <Button
-          type="text"
-          onClick={handleTypeToggle}
-          className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666] hover:text-[#111111] p-0 h-auto"
-        >
-          {isTextNote ? (
-            <>
-              <CheckSquare className="size-4 inline mr-1" />
-              Show checkboxes
-            </>
-          ) : (
-            <>
-              <List className="size-4 inline mr-1" />
-              Hide checkboxes
-            </>
+        {/* Type Toggle and Formatting Buttons */}
+        <div className="flex items-center justify-between mb-3 flex-shrink-0">
+          <Button
+            type="text"
+            onClick={handleTypeToggle}
+            className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666] hover:text-[#111111] p-0 h-auto"
+          >
+            {isTextNote ? (
+              <>
+                <CheckSquare className="size-4 inline mr-1" />
+                Show checkboxes
+              </>
+            ) : (
+              <>
+                <List className="size-4 inline mr-1" />
+                Hide checkboxes
+              </>
+            )}
+          </Button>
+
+          {/* Formatting Buttons (only for text notes) */}
+          {isTextNote && (
+            <div className="flex gap-1">
+              <button onClick={() => handleFormat('bold')} className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Bold">
+                <Bold className="size-4 text-[#666666]" />
+              </button>
+              <button onClick={() => handleFormat('italic')} className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Italic">
+                <Italic className="size-4 text-[#666666]" />
+              </button>
+            </div>
           )}
-        </Button>
+        </div>
 
-        {/* Formatting Buttons (only for text notes) */}
-        {isTextNote && (
-          <div className="flex gap-1">
-            <button onClick={() => handleFormat('bold')} className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Bold">
-              <Bold className="size-4 text-[#666666]" />
-            </button>
-            <button onClick={() => handleFormat('italic')} className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Italic">
-              <Italic className="size-4 text-[#666666]" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Editable Content Area - Scrollable */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <div 
-          className="flex-1 overflow-y-auto overflow-x-hidden"
-          style={{ minHeight: 0 }}
-        >
-          {isTextNote ? (
-            <div 
-              className="border border-[#d9d9d9] rounded-lg overflow-hidden"
-              style={{ 
-                minHeight: '200px',
-                maxHeight: '400px'
-              }}
-            >
-              <div 
-                style={{ 
-                  height: '100%',
-                  overflowY: 'auto', 
-                  overflowX: 'hidden',
-                  flex: 1,
-                  minHeight: 0
+        {/* Editable Content Area - Scrollable */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <div
+            className="flex-1 overflow-y-auto overflow-x-hidden"
+            style={{ minHeight: 0 }}
+          >
+            {isTextNote ? (
+              <div
+                className="border border-[#d9d9d9] rounded-lg overflow-hidden flex flex-col"
+                style={{
+                  minHeight: '200px',
+                  maxHeight: '550px'
                 }}
               >
                 <RichTextEditor
@@ -292,69 +283,60 @@ export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete
                     setHasChanges(true);
                   }}
                   placeholder="Note content..."
-                  style={{ minHeight: '200px' }}
+                  style={{ height: '100%', maxHeight: '550px' }}
                 />
               </div>
-            </div>
-          ) : (
-            <div 
-              className="border border-[#d9d9d9] rounded-lg overflow-hidden"
-              style={{ 
-                minHeight: '200px',
-                maxHeight: '400px'
-              }}
-            >
-              <div 
-                className="p-3" 
-                style={{ 
-                  height: '100%',
-                  overflowY: 'auto', 
-                  overflowX: 'hidden',
-                  flex: 1,
-                  minHeight: 0
+            ) : (
+              <div
+                className="border border-[#d9d9d9] rounded-lg overflow-hidden flex flex-col"
+                style={{
+                  minHeight: '200px',
+                  maxHeight: '550px',
+                  overflowY: 'auto'
                 }}
               >
-                <ChecklistEditor
-                  items={items}
-                  onChange={(newItems) => {
-                    setItems(newItems);
+                <div className="p-3">
+                  <ChecklistEditor
+                    items={items}
+                    onChange={(newItems) => {
+                      setItems(newItems);
+                      setHasChanges(true);
+                    }}
+                    placeholder="List"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Color Picker */}
+          <div className="mt-4 flex-shrink-0">
+            <div className="flex gap-2">
+              {['#ff3b3b', '#3b8eff', '#9b59b6', '#FFA500', '#2ecc71', '#e74c3c'].map((c) => (
+                <button
+                  key={c}
+                  className={`w-10 h-10 rounded-lg border-2 transition-colors ${color === c ? 'border-[#111111]' : 'border-transparent hover:border-[#ff3b3b]'}`}
+                  style={{ backgroundColor: c }}
+                  onClick={() => {
+                    setColor(c);
                     setHasChanges(true);
                   }}
-                  placeholder="List"
                 />
-              </div>
+              ))}
             </div>
-          )}
-        </div>
-
-        {/* Color Picker */}
-        <div className="mt-4 flex-shrink-0">
-          <div className="flex gap-2">
-            {['#ff3b3b', '#3b8eff', '#9b59b6', '#FFA500', '#2ecc71', '#e74c3c'].map((c) => (
-              <button
-                key={c}
-                className={`w-10 h-10 rounded-lg border-2 transition-colors ${color === c ? 'border-[#111111]' : 'border-transparent hover:border-[#ff3b3b]'}`}
-                style={{ backgroundColor: c }}
-                onClick={() => {
-                  setColor(c);
-                  setHasChanges(true);
-                }}
-              />
-            ))}
           </div>
         </div>
-      </div>
 
-      {/* Action Buttons - Always Visible */}
-      <div className="flex items-center justify-end gap-4 pt-4 mt-6 border-t border-[#EEEEEE] flex-shrink-0">
-        <Button
-          type="text"
-          onClick={handleClose}
-          className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
-        >
-          Close
-        </Button>
-      </div>
+        {/* Action Buttons - Always Visible */}
+        <div className="flex items-center justify-end gap-4 pt-4 mt-6 border-t border-[#EEEEEE] flex-shrink-0">
+          <Button
+            type="text"
+            onClick={handleClose}
+            className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
+          >
+            Close
+          </Button>
+        </div>
       </div>
     </Modal>
   );

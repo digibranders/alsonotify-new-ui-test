@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Plus, CheckSquare, Trash2, Users, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PageLayout } from '../../layout/PageLayout';
 import { PaginationBar } from '../../ui/PaginationBar';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
-import { Modal, Checkbox, Popover, App } from "antd";
+import { Modal, Checkbox, App } from "antd";
+import { DateRangeSelector } from '../../common/DateRangeSelector';
 import { TaskForm } from '../../modals/TaskForm';
 import { TaskRow } from './rows/TaskRow';
 import { useTasks, useCreateTask, useDeleteTask, useUpdateTask } from '@/hooks/useTask';
@@ -68,38 +70,6 @@ type UITask = {
 };
 
 type StatusTab = 'all' | 'In_Progress' | 'Completed' | 'Delayed';
-
-// Helper functions for date presets
-const getPresetDateRangeHelper = (preset: string, now: Date): [Date, Date] | null => {
-  let from: Date, to: Date;
-
-  switch (preset) {
-    case "This week":
-      from = startOfWeek(now, { weekStartsOn: 1 });
-      to = endOfWeek(now, { weekStartsOn: 1 });
-      return [from, to];
-    case "This month":
-      from = startOfMonth(now);
-      to = endOfMonth(now);
-      return [from, to];
-    case "Last Month":
-      const lastMonth = subMonths(now, 1);
-      from = startOfMonth(lastMonth);
-      to = endOfMonth(lastMonth);
-      return [from, to];
-    case "This Year":
-      from = startOfYear(now);
-      to = endOfYear(now);
-      return [from, to];
-    default:
-      return null;
-  }
-};
-
-const datesMatchHelper = (date1: Date | null, date2: Date | null): boolean => {
-  if (!date1 || !date2) return false;
-  return date1.getTime() === date2.getTime();
-};
 
 // Helper function to convert filter object to query params
 const toQueryParams = (params: Record<string, any>): string => {
@@ -206,12 +176,6 @@ export function TasksPage() {
 
   // Date Picker State
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
-  const [dateLabel, setDateLabel] = useState<string>("All time");
-  const [isDateOpen, setIsDateOpen] = useState(false);
-  const [dateView, setDateView] = useState<'presets' | 'calendar'>('presets');
-  const [startDate, setStartDate] = useState<Dayjs | null>(null);
-  const [endDate, setEndDate] = useState<Dayjs | null>(null);
-  const [currentMonth, setCurrentMonth] = useState<Dayjs>(dayjs());
 
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -718,7 +682,7 @@ export function TasksPage() {
 
   useEffect(() => {
     // side-effects after filters, search, or date label change (currently none)
-  }, [tasks.length, filteredTasks.length, activeTab, searchQuery, filters, dateLabel]);
+  }, [tasks.length, filteredTasks.length, activeTab, searchQuery, filters]);
 
   // Note: Stats are now fetched separately without status filter for stable tab counts
   // Use statsData (global counts) instead of tasksData (filtered)
@@ -776,382 +740,113 @@ export function TasksPage() {
     }
   };
 
-  // Date Presets
-  const datePresets = [
-    "This week",
-    "This month",
-    "Last Month",
-    "This Year",
-    "All time",
-    "Custom"
-  ];
-
-  // Helper function to get date range for a preset
-  const getPresetDateRange = (preset: string): [Date, Date] | null => {
-    return getPresetDateRangeHelper(preset, new Date());
-  };
-
-  // Update label when dateRange changes or dropdown opens
-  const updateDateLabel = useCallback((range: [Dayjs | null, Dayjs | null] | null) => {
-    let detectedPreset: string | null = null;
-    if (range && range[0] && range[1]) {
-      const from = range[0].toDate();
-      const to = range[1].toDate();
-
-      for (const preset of ["This week", "This month", "Last Month", "This Year"]) {
-        const presetRange = getPresetDateRangeHelper(preset, new Date());
-        if (presetRange && datesMatchHelper(from, presetRange[0]) && datesMatchHelper(to, presetRange[1])) {
-          detectedPreset = preset;
-          break;
-        }
-      }
-    } else {
-      detectedPreset = "All time";
-    }
-
-    if (detectedPreset) {
-      setDateLabel(detectedPreset);
-    } else if (range && range[0] && range[1]) {
-      setDateLabel(`${format(range[0].toDate(), "MMM d")} - ${format(range[1].toDate(), "MMM d")}`);
-    } else {
-      setDateLabel("All time");
-    }
-  }, []);
-
-  const handleSelectDatePreset = (preset: string) => {
-    if (preset === "Custom") {
-      setDateView('calendar');
-      if (dateRange && dateRange[0] && dateRange[1]) {
-        setStartDate(dateRange[0]);
-        setEndDate(dateRange[1]);
-        setCurrentMonth(dateRange[0]);
-      } else {
-        setStartDate(null);
-        setEndDate(null);
-        setCurrentMonth(dayjs());
-      }
-    } else {
-      setDateView('presets');
-      if (preset === "All time") {
-        setDateRange(null);
-        setDateLabel("All time");
-        setStartDate(null);
-        setEndDate(null);
-      } else {
-        const presetRange = getPresetDateRange(preset);
-        if (presetRange) {
-          const newRange: [Dayjs, Dayjs] = [dayjs(presetRange[0]), dayjs(presetRange[1])];
-          setDateRange(newRange);
-          setDateLabel(preset);
-          setStartDate(newRange[0]);
-          setEndDate(newRange[1]);
-        }
-      }
-      setIsDateOpen(false);
-    }
-  };
-
-  // Get calendar days for current month
-  const getCalendarDays = () => {
-    const start = currentMonth.startOf('month').startOf('week');
-    const end = currentMonth.endOf('month').endOf('week');
-    const days: Dayjs[] = [];
-    let current = start;
-    while (current.isSameOrBefore(end, 'day')) {
-      days.push(current);
-      current = current.add(1, 'day');
-    }
-    return days;
-  };
-
-  // Check if date is in selected range (for highlighting)
-  const isDateInRange = (date: Dayjs) => {
-    if (!startDate || !endDate) {
-      return false;
-    }
-    const start = startDate.isBefore(endDate) ? startDate : endDate;
-    const end = startDate.isBefore(endDate) ? endDate : startDate;
-    return date.isAfter(start.startOf('day')) && date.isBefore(end.endOf('day'));
-  };
-
-  // Check if date is start or end of range
-  const isDateStartOrEnd = (date: Dayjs) => {
-    if (!startDate || !endDate) {
-      if (startDate) {
-        return date.isSame(startDate, 'day');
-      }
-      return false;
-    }
-    return date.isSame(startDate, 'day') || date.isSame(endDate, 'day');
-  };
-
-  // Handle Manual Date Selection (custom calendar)
-  const handleDateClick = (date: Dayjs) => {
-    if (!startDate || (startDate && endDate)) {
-      setStartDate(date);
-      setEndDate(null);
-    } else if (startDate && !endDate) {
-      let finalStart = startDate;
-      let finalEnd = date;
-
-      if (date.isBefore(startDate)) {
-        finalStart = date;
-        finalEnd = startDate;
-      }
-
-      setStartDate(finalStart);
-      setEndDate(finalEnd);
-      const newRange: [Dayjs, Dayjs] = [finalStart, finalEnd];
-      setDateRange(newRange);
-      updateDateLabel(newRange);
-      setIsDateOpen(false);
-      setDateView('presets');
-    }
-  };
-
-  // Reset date view when popover closes
-  useEffect(() => {
-    if (!isDateOpen && dateView === 'calendar') {
-      setDateView('presets');
-    }
-  }, [isDateOpen, dateView]);
-
-  // Date Filter Component
   const DateFilter = (
-    <Popover
-      open={isDateOpen}
-      onOpenChange={setIsDateOpen}
-      trigger="click"
-      placement="bottomRight"
-      overlayClassName={dateView === 'calendar' ? 'date-range-popover-calendar' : 'date-range-popover-presets'}
-      content={
-        <div className="w-auto">
-          {dateView === 'calendar' ? (
-            <div className="bg-white border border-[#EEEEEE] rounded-[12px] shadow-lg w-[280px] p-3">
-              {/* Select Range Header */}
-              <div className="flex items-center gap-2 mb-3">
-                <button
-                  onClick={() => {
-                    setDateView('presets');
-                  }}
-                  className="w-5 h-5 flex items-center justify-center hover:bg-[#F7F7F7] rounded transition-colors"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5 text-[#666666]" />
-                </button>
-                <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111]">
-                  Select Range
-                </h4>
-              </div>
-
-              {/* Month Navigation */}
-              <div className="flex items-center justify-between mb-3">
-                <button
-                  onClick={() => setCurrentMonth(currentMonth.subtract(1, 'month'))}
-                  className="w-7 h-7 rounded-lg bg-[#F7F7F7] hover:bg-[#EEEEEE] flex items-center justify-center transition-colors"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5 text-[#111111]" />
-                </button>
-                <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111]">
-                  {currentMonth.format('MMMM YYYY')}
-                </h4>
-                <button
-                  onClick={() => setCurrentMonth(currentMonth.add(1, 'month'))}
-                  className="w-7 h-7 rounded-lg bg-[#F7F7F7] hover:bg-[#EEEEEE] flex items-center justify-center transition-colors"
-                >
-                  <ChevronRight className="w-3.5 h-3.5 text-[#111111]" />
-                </button>
-              </div>
-
-              {/* Day Headers */}
-              <div className="grid grid-cols-7 gap-0.5 mb-1.5">
-                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
-                  <div key={day} className="text-center text-[11px] font-['Manrope:Regular',sans-serif] text-[#999999] py-0.5">
-                    {day}
-                  </div>
-                ))}
-              </div>
-
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-0.5">
-                {getCalendarDays().map((date, index) => {
-                  const isCurrentMonth = date.month() === currentMonth.month();
-                  const isInRange = isDateInRange(date);
-                  const isStartOrEnd = isDateStartOrEnd(date);
-
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => handleDateClick(date)}
-                      className={`
-                        w-8 h-8 rounded-lg text-[12px] font-['Manrope:Regular',sans-serif] transition-colors
-                        ${!isCurrentMonth ? 'text-[#CCCCCC]' : 'text-[#111111]'}
-                        ${isStartOrEnd
-                          ? 'bg-[#111111] text-white'
-                          : isInRange
-                            ? 'bg-[#F7F7F7]'
-                            : 'hover:bg-[#F7F7F7]'
-                        }
-                      `}
-                    >
-                      {date.date()}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col py-1 min-w-[140px]">
-              {datePresets.map((preset) => {
-                const isActive =
-                  (preset === "All time" && !dateRange) ||
-                  (preset !== "All time" && preset !== "Custom" && dateLabel === preset);
-
-                return (
-                  <button
-                    key={preset}
-                    onClick={() => handleSelectDatePreset(preset)}
-                    className={`text-left px-4 py-2 text-[13px] hover:bg-gray-50 transition-colors ${isActive
-                      ? 'text-[#ff3b3b] font-medium bg-gray-50'
-                      : 'text-[#111111]'
-                      }`}
-                  >
-                    {preset}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      }
-    >
-      <button className="h-9 px-3 text-[12px] font-medium rounded-lg bg-white border border-[#EEEEEE] hover:border-[#ff3b3b] hover:text-[#ff3b3b] transition-all flex items-center gap-2 outline-none min-w-[140px] justify-between">
-        <span className="truncate">{dateLabel}</span>
-        <ChevronDown className="h-3 w-3 opacity-50" />
-      </button>
-    </Popover>
+    <DateRangeSelector
+      value={dateRange}
+      onChange={setDateRange}
+      availablePresets={['today', 'yesterday', 'this_week', 'this_month', 'last_month', 'this_year', 'all_time', 'custom']}
+    />
   );
 
   return (
-    <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] p-8 flex flex-col overflow-hidden relative">
-      {/* Header Section */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          {/* Left: Title + Add button */}
-          <div className="flex items-center gap-2">
-            <h2 className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">
-              Tasks
-            </h2>
+    <PageLayout
+      title="Tasks"
+      titleAction={{
+        onClick: () => {
+          setEditingTask(null);
+          setIsDialogOpen(true);
+        },
+        label: "Add Task"
+      }}
+      tabs={[
+        { id: 'all', label: 'All Tasks', count: stats.all },
+        { id: 'In_Progress', label: 'In Progress', count: stats.In_Progress },
+        { id: 'Completed', label: 'Completed', count: stats.Completed },
+        { id: 'Delayed', label: 'Delayed', count: stats.Delayed },
+      ]}
+      activeTab={activeTab}
+      onTabChange={(tabId) => {
+        setActiveTab(tabId as StatusTab);
+        const params = new URLSearchParams(searchParams.toString());
+        if (tabId === 'all') {
+          params.delete('tab');
+        } else {
+          params.set('tab', tabId);
+        }
+        router.push(`?${params.toString()}`);
+      }}
 
-            <button
-              onClick={() => {
-                setEditingTask(null); // Reset editing task for new task
-                setIsDialogOpen(true);
-              }}
-              className="hover:scale-110 active:scale-95 transition-transform"
-            >
-              <Plus className="size-5 text-[#ff3b3b]" strokeWidth={2} />
-            </button>
-
-            <Modal
-              open={isDialogOpen}
-              onCancel={() => {
-                setIsDialogOpen(false);
-                setEditingTask(null);
-              }}
-              footer={null}
-              width={600}
-              centered
-              className="rounded-[16px] overflow-hidden"
-              styles={{
-                body: {
-                  padding: 0,
-                },
-              }}
-            >
-              <TaskForm
-                key={editingTask ? `edit-${editingTask.id}` : `new-${Date.now()}`}
-                initialData={editingTask ? {
-                  name: editingTask.name,
-                  project_id: String(editingTask.project_id || ''),
-                  requirement_id: String(editingTask.requirement_id || ''),
-                  assigned_members: [],
-                  execution_mode: 'parallel',
-                  member_id: String(editingTask.member_id || ''),
-                  leader_id: String(editingTask.leader_id || ''),
-                  end_date: editingTask.endDateIso || '',
-                  estimated_time: String(editingTask.estTime || ''),
-                  high_priority: editingTask.priority === 'high',
-                  description: editingTask.description || '',
-                } : undefined}
-                isEditing={!!editingTask}
-                onSubmit={(data) => {
-                  if (editingTask) {
-                    // Update task
-                    updateTaskMutation.mutate({
-                      id: parseInt(editingTask.id),
-                      ...data,
-                    } as any, {
-                      onSuccess: () => {
-                        message.success("Task updated successfully!");
-                        setIsDialogOpen(false);
-                        setEditingTask(null);
-                      },
-                      onError: (error: any) => {
-                        const errorMessage =
-                          error?.response?.data?.message || error?.message || "Failed to update task";
-                        message.error(errorMessage);
-                      },
-                    });
-                  } else {
-                    // Create task
-                    handleCreateTask(data);
-                  }
-                }}
-                onCancel={() => {
+      customFilters={DateFilter}
+    >
+      <Modal
+        open={isDialogOpen}
+        onCancel={() => {
+          setIsDialogOpen(false);
+          setEditingTask(null);
+        }}
+        footer={null}
+        width={600}
+        centered
+        className="rounded-[16px] overflow-hidden"
+        styles={{
+          body: {
+            padding: 0,
+          },
+        }}
+      >
+        <TaskForm
+          key={editingTask ? `edit-${editingTask.id}` : `new-${Date.now()}`}
+          initialData={editingTask ? {
+            name: editingTask.name,
+            project_id: String(editingTask.project_id || ''),
+            requirement_id: String(editingTask.requirement_id || ''),
+            assigned_members: [],
+            execution_mode: 'parallel',
+            member_id: String(editingTask.member_id || ''),
+            leader_id: String(editingTask.leader_id || ''),
+            end_date: editingTask.endDateIso || '',
+            estimated_time: String(editingTask.estTime || ''),
+            high_priority: editingTask.priority === 'high',
+            description: editingTask.description || '',
+          } : undefined}
+          isEditing={!!editingTask}
+          onSubmit={(data) => {
+            if (editingTask) {
+              // Update task
+              updateTaskMutation.mutate({
+                id: parseInt(editingTask.id),
+                ...data,
+              } as any, {
+                onSuccess: () => {
+                  message.success("Task updated successfully!");
                   setIsDialogOpen(false);
                   setEditingTask(null);
-                }}
-                users={usersDropdown}
-                requirements={requirementsDropdown}
-                workspaces={workspacesData?.result?.projects?.map((p: any) => ({
-                  id: p.id,
-                  name: p.name,
-                })) || []}
-              />
-            </Modal>
-          </div>
+                },
+                onError: (error: any) => {
+                  const errorMessage =
+                    error?.response?.data?.message || error?.message || "Failed to update task";
+                  message.error(errorMessage);
+                },
+              });
+            } else {
+              // Create task
+              handleCreateTask(data);
+            }
+          }}
+          onCancel={() => {
+            setIsDialogOpen(false);
+            setEditingTask(null);
+          }}
+          users={usersDropdown}
+          requirements={requirementsDropdown}
+          workspaces={workspacesData?.result?.projects?.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+          })) || []}
+        />
+      </Modal>
 
-          {/* Right: Date range selector */}
-          {DateFilter}
-        </div>
-
-        {/* Status Tabs */}
-        <div className="flex items-center">
-          <div className="flex items-center gap-6 border-b border-[#EEEEEE]">
-            {(['all', 'In_Progress', 'Completed', 'Delayed'] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors flex items-center gap-2 ${activeTab === tab
-                  ? 'text-[#ff3b3b]'
-                  : 'text-[#666666] hover:text-[#111111]'
-                  }`}
-              >
-                {tab === 'all' ? 'All Tasks' : tab === 'In_Progress' ? 'In Progress' : tab === 'Completed' ? 'Completed' : 'Delayed'}
-                <span className={`px-2 py-0.5 rounded-full text-[11px] ${activeTab === tab
-                  ? 'bg-[#ff3b3b] text-white'
-                  : 'bg-[#F7F7F7] text-[#666666]'
-                  }`}>
-                  {tab === 'all' ? stats.all : stats[tab]}
-                </span>
-                {activeTab === tab && (
-                  <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Filters Bar */}
 
       {/* Filters Bar */}
       <div className="mb-6">
@@ -1278,6 +973,6 @@ export function TasksPage() {
           itemLabel="tasks"
         />
       )}
-    </div>
+    </PageLayout>
   );
 }

@@ -46,7 +46,7 @@ export function DateRangeSelector({
             // For now, just sync start/end dates for calendar
             setStartDate(value[0]);
             setEndDate(value[1]);
-            if (value[0]) setCurrentMonth(value[0]);
+            setCurrentMonth(value[0]);
         }
     }, [value]);
 
@@ -194,12 +194,12 @@ export function DateRangeSelector({
         <div className={`relative ${className}`} ref={dropdownRef}>
             <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-[#E5E5E5] rounded-full hover:border-[#CCCCCC] transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#EEEEEE] rounded-full hover:bg-[#F7F7F7] transition-all duration-200 outline-none h-10 min-w-[140px] justify-between"
             >
-                <span className="font-['Manrope:Regular',sans-serif] text-[14px] text-[#111111]">
+                <span className="font-['Manrope',sans-serif] font-semibold text-[13px] text-[#111111] truncate">
                     {getRangeLabel()}
                 </span>
-                <ChevronDown className="w-4 h-4 text-[#111111]" />
+                <ChevronDown className="w-3.5 h-3.5 text-[#999999] shrink-0" />
             </button>
 
             {isDropdownOpen && (
@@ -220,9 +220,9 @@ export function DateRangeSelector({
                             <button
                                 key={option.value}
                                 onClick={() => handleRangeTypeChange(option.value)}
-                                className="w-full text-left px-3 py-2.5 font-['Manrope:Regular',sans-serif] text-[14px] text-[#111111] hover:bg-[#F7F7F7] transition-colors flex items-center justify-between"
+                                className="w-full text-left px-4 py-2.5 font-['Manrope',sans-serif] font-medium text-[13px] text-[#444444] hover:bg-[#F7F7F7] hover:text-[#111111] transition-colors flex items-center justify-between group"
                             >
-                                <span>{option.label}</span>
+                                <span className={selectedRangeType === option.value ? 'text-[#ff3b3b] font-semibold' : ''}>{option.label}</span>
                                 {selectedRangeType === option.value && (
                                     <CheckSquare className="w-4 h-4 text-[#ff3b3b] flex-shrink-0" />
                                 )}
@@ -232,7 +232,7 @@ export function DateRangeSelector({
             )}
 
             {calendarOpen && (
-                <div className="absolute top-full right-0 mt-2 bg-white border border-[#EEEEEE] rounded-[12px] shadow-lg z-50 w-[280px] p-3" ref={calendarRef}>
+                <div className="absolute top-full right-0 mt-2 bg-white border border-[#EEEEEE] rounded-[16px] shadow-2xl z-50 w-[300px] p-4 animate-in fade-in zoom-in-95 duration-200" ref={calendarRef}>
                     <div className="flex items-center gap-2 mb-3">
                         <button
                             onClick={() => {
@@ -243,57 +243,60 @@ export function DateRangeSelector({
                         >
                             <ChevronLeft className="w-3.5 h-3.5 text-[#666666]" />
                         </button>
-                        <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111]">
+                        <h4 className="font-['Manrope',sans-serif] font-semibold text-[14px] text-[#111111]">
                             Select Range
                         </h4>
                     </div>
 
-                    <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center justify-between mb-4">
                         <button
                             onClick={() => setCurrentMonth(currentMonth.subtract(1, 'month'))}
-                            className="w-7 h-7 rounded-lg bg-[#F7F7F7] hover:bg-[#EEEEEE] flex items-center justify-center transition-colors"
+                            className="w-8 h-8 rounded-full hover:bg-[#F7F7F7] flex items-center justify-center transition-colors"
                         >
-                            <ChevronLeft className="w-3.5 h-3.5 text-[#111111]" />
+                            <ChevronLeft className="w-4 h-4 text-[#111111]" />
                         </button>
-                        <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111]">
+                        <h4 className="font-['Manrope',sans-serif] font-bold text-[15px] text-[#111111]">
                             {currentMonth.format('MMMM YYYY')}
                         </h4>
                         <button
                             onClick={() => setCurrentMonth(currentMonth.add(1, 'month'))}
-                            className="w-7 h-7 rounded-lg bg-[#F7F7F7] hover:bg-[#EEEEEE] flex items-center justify-center transition-colors"
+                            className="w-8 h-8 rounded-full hover:bg-[#F7F7F7] flex items-center justify-center transition-colors"
                         >
-                            <ChevronRight className="w-3.5 h-3.5 text-[#111111]" />
+                            <ChevronRight className="w-4 h-4 text-[#111111]" />
                         </button>
                     </div>
 
-                    <div className="grid grid-cols-7 gap-0.5 mb-1.5">
+                    <div className="grid grid-cols-7 gap-1 mb-2">
                         {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
-                            <div key={day} className="text-center text-[11px] font-['Manrope:Regular',sans-serif] text-[#999999] py-0.5">
+                            <div key={day} className="text-center text-[11px] font-['Manrope',sans-serif] font-bold text-[#999999] uppercase tracking-wider py-1">
                                 {day}
                             </div>
                         ))}
                     </div>
 
-                    <div className="grid grid-cols-7 gap-0.5">
+                    <div className="grid grid-cols-7 gap-1">
                         {getCalendarDays().map((date, index) => {
                             const isCurrentMonth = date.month() === currentMonth.month();
                             const isInRange = isDateInRange(date);
                             const isStartOrEnd = isDateStartOrEnd(date);
+                            const isToday = date.isSame(dayjs(), 'day');
+                            const isSelected = isStartOrEnd;
 
                             return (
                                 <button
                                     key={index}
                                     onClick={() => handleDateClick(date)}
                                     className={`
-                    w-8 h-8 rounded-lg text-[12px] font-['Manrope:Regular',sans-serif] transition-colors
-                    ${!isCurrentMonth ? 'text-[#CCCCCC]' : 'text-[#111111]'}
-                    ${isStartOrEnd
-                                            ? 'bg-[#111111] text-white'
+                                        w-9 h-9 rounded-full text-[12px] font-['Inter',sans-serif] font-medium transition-all duration-200 relative
+                                        ${!isCurrentMonth ? 'text-[#CCCCCC]' : 'text-[#111111]'}
+                                        ${isSelected
+                                            ? 'bg-[#111111] text-white shadow-lg'
                                             : isInRange
-                                                ? 'bg-[#F7F7F7]'
+                                                ? 'bg-[#F7F7F7] text-[#111111] rounded-none'
                                                 : 'hover:bg-[#F7F7F7]'
                                         }
-                  `}
+                                        ${isToday && !isSelected ? 'text-[#ff3b3b] font-bold' : ''}
+                                    `}
                                 >
                                     {date.date()}
                                 </button>

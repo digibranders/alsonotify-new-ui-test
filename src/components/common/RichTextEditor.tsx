@@ -231,7 +231,7 @@ export function RichTextEditor({ value, onChange, placeholder = "Note content...
           boxSizing: 'border-box',
           position: 'relative',
           width: '100%',
-          overflow: 'visible',
+          overflowY: 'auto',
           wordWrap: 'break-word',
           overflowWrap: 'break-word',
           whiteSpace: 'pre-wrap',
@@ -282,9 +282,9 @@ export const formatText = (type: string) => {
 
 const applyFormatToSelection = (type: string, selection: Selection) => {
   if (typeof document === 'undefined') return;
-  
+
   const range = selection.getRangeAt(0);
-  
+
   // For block formats, apply even if collapsed
   if (['list', 'checklist', 'heading', 'quote'].includes(type)) {
     if (range.collapsed) {
@@ -373,12 +373,12 @@ const applyFormatToSelection = (type: string, selection: Selection) => {
 
 const insertBlockFormat = (type: string, editor: HTMLElement) => {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  
+
   const selection = window.getSelection();
   if (!selection) return;
 
   const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : document.createRange();
-  
+
   switch (type) {
     case 'list':
       document.execCommand('insertUnorderedList', false);

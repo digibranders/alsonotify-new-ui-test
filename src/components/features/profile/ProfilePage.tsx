@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { Button, Input, Select, Divider, Upload, Switch, Progress, App } from "antd";
 import { Camera, Pencil, Upload as UploadIcon, FileText, Bell, Shield } from "lucide-react";
 import Image from "next/image";
+import { PageLayout } from "../../layout/PageLayout";
 import { useUserDetails, useUpdateProfile } from "@/hooks/useUser";
 import { DocumentCard } from "@/components/ui/DocumentCard";
 import { DocumentPreviewModal } from "@/components/ui/DocumentPreviewModal";
@@ -384,78 +385,75 @@ export function ProfilePage() {
     }, [profile]);
 
     return (
-        <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] p-8 flex flex-col overflow-hidden relative font-['Manrope',sans-serif]">
-            {/* Header Section */}
-            <div className="flex-none mb-6">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-4 flex-1">
-                        <h1 className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
-                            My Profile
-                        </h1>
-                        {/* Profile Completion Progress Bar */}
-                        <div className="flex-1 max-w-xs bg-[#FAFAFA] rounded-lg px-4 py-2.5 border border-[#EEEEEE]">
-                            <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666]">
-                                    Profile Completion
-                                </span>
-                                <span className={`text-[12px] font-['Manrope:SemiBold',sans-serif] ${profileCompletion === 100
-                                    ? 'text-[#2ecc71]'
+        <PageLayout
+            title={
+                <div className="flex items-center gap-4">
+                    <span className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">My Profile</span>
+                    <div className="flex-1 min-w-[200px] max-w-xs bg-[#FAFAFA] rounded-lg px-4 py-2.5 border border-[#EEEEEE]">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666]">
+                                Profile Completion
+                            </span>
+                            <span className={`text-[12px] font-['Manrope:SemiBold',sans-serif] ${profileCompletion === 100
+                                ? 'text-[#2ecc71]'
+                                : profileCompletion >= 50
+                                    ? 'text-[#3b8eff]'
+                                    : 'text-[#ff3b3b]'
+                                }`}>
+                                {profileCompletion}%
+                            </span>
+                        </div>
+                        <Progress
+                            percent={profileCompletion}
+                            showInfo={false}
+                            strokeColor={
+                                profileCompletion === 100
+                                    ? "#2ecc71"
                                     : profileCompletion >= 50
-                                        ? 'text-[#3b8eff]'
-                                        : 'text-[#ff3b3b]'
-                                    }`}>
-                                    {profileCompletion}%
-                                </span>
-                            </div>
-                            <Progress
-                                percent={profileCompletion}
-                                showInfo={false}
-                                strokeColor={
-                                    profileCompletion === 100
-                                        ? "#2ecc71"
-                                        : profileCompletion >= 50
-                                            ? "#3b8eff"
-                                            : "#ff3b3b"
-                                }
-                                trailColor="#E5E5E5"
-                                className="profile-completion-progress"
-                                style={{
-                                    height: '6px',
-                                }}
-                            />
-                        </div>
+                                        ? "#3b8eff"
+                                        : "#ff3b3b"
+                            }
+                            trailColor="#E5E5E5"
+                            className="profile-completion-progress"
+                            style={{
+                                height: '6px',
+                            }}
+                        />
                     </div>
-                    {!isEditing ? (
-                        <Button
-                            onClick={handleEdit}
-                            className="bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px] flex items-center gap-2 border-none"
-                        >
-                            <Pencil className="w-4 h-4" />
-                            Edit
-                        </Button>
-                    ) : (
-                        <div className="flex items-center gap-3">
-                            <Button
-                                onClick={handleCancelEdit}
-                                type="text"
-                                className="text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px]"
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={handleSaveChanges}
-                                loading={updateProfileMutation.isPending}
-                                className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-8 h-10 rounded-full shadow-lg shadow-[#ff3b3b]/20 text-[13px] border-none"
-                            >
-                                Save Changes
-                            </Button>
-                        </div>
-                    )}
                 </div>
-                <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif]">
-                    Manage your account settings and preferences
-                </p>
-            </div>
+            }
+            action={
+                !isEditing ? (
+                    <Button
+                        onClick={handleEdit}
+                        className="bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px] flex items-center gap-2 border-none"
+                    >
+                        <Pencil className="w-4 h-4" />
+                        Edit
+                    </Button>
+                ) : (
+                    <div className="flex items-center gap-3">
+                        <Button
+                            onClick={handleCancelEdit}
+                            type="text"
+                            className="text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] font-['Manrope:SemiBold',sans-serif] px-6 h-10 rounded-full text-[13px]"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleSaveChanges}
+                            loading={updateProfileMutation.isPending}
+                            className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-8 h-10 rounded-full shadow-lg shadow-[#ff3b3b]/20 text-[13px] border-none"
+                        >
+                            Save Changes
+                        </Button>
+                    </div>
+                )
+            }
+        >
+            <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] mb-6">
+                Manage your account settings and preferences
+            </p>
 
             <div className="flex-1 overflow-y-auto pr-2 pb-10">
                 {/* Personal Details */}
@@ -897,6 +895,6 @@ export function ProfilePage() {
                 }}
                 document={selectedDocument}
             />
-        </div>
+        </PageLayout>
     );
 }

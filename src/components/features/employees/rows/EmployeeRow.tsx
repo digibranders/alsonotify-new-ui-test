@@ -44,10 +44,10 @@ export function EmployeeRow({
     <div
       onClick={() => onViewDetails?.()}
       className={`
-        group bg-white border rounded-[12px] px-4 py-4 transition-all duration-300 cursor-pointer relative z-10
+        group bg-white border rounded-[16px] px-4 py-3 transition-all duration-300 cursor-pointer relative z-10
         ${selected
-          ? 'border-[#ff3b3b] shadow-md bg-[#FFF5F5]'
-          : 'border-[#E5E7EB] hover:border-[#ff3b3b] hover:shadow-md'
+          ? 'border-[#ff3b3b] shadow-[0_0_0_1px_#ff3b3b] bg-[#FFF5F5]'
+          : 'border-[#EEEEEE] hover:border-[#ff3b3b]/20 hover:shadow-lg'
         }
       `}
     >
@@ -66,17 +66,17 @@ export function EmployeeRow({
 
         {/* Employee Info - Name, Role & Dept */}
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2">
             <span className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111] group-hover:text-[#ff3b3b] transition-colors">
               {employee.name}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+            <span className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666]">
               {employee.role}
             </span>
-            <span className="text-[#DDDDDD]">|</span>
-            <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+            <span className="text-[#DDDDDD] text-[11px]">|</span>
+            <span className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666]">
               {employee.department}
             </span>
           </div>
