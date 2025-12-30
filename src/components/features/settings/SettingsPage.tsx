@@ -6,6 +6,7 @@ import { usePublicHolidays, useCreateHoliday, useUpdateHoliday, useDeleteHoliday
 import { DEFAULT_DOCUMENT_TYPES, DOCUMENT_TYPES_STORAGE_KEY } from '@/constants/documentTypes';
 import { getRoleFromUser } from '@/utils/roleUtils';
 import { People24Filled } from "@fluentui/react-icons";
+import { commonCountries } from '@/data/defaultData';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
@@ -245,6 +246,7 @@ export function SettingsPage() {
   const [taxId, setTaxId] = useState(companyData?.result?.tax_id || '');
   const [timeZone, setTimeZone] = useState(companyData?.result?.timezone || 'Asia/Kolkata');
   const [currency, setCurrency] = useState(companyData?.result?.currency || 'USD');
+  const [country, setCountry] = useState(companyData?.result?.country || '');
   const [address, setAddress] = useState(companyData?.result?.address || '');
   const [defaultEmployeePassword, setDefaultEmployeePassword] = useState(companyData?.result?.default_employee_password || 'Pass@123');
 
@@ -255,6 +257,7 @@ export function SettingsPage() {
       setTaxId(companyData.result.tax_id || '');
       setTimeZone(companyData.result.timezone || 'Asia/Kolkata');
       setCurrency(companyData.result.currency || 'USD');
+      setCountry(companyData.result.country || '');
       setAddress(companyData.result.address || '');
       setDefaultEmployeePassword(companyData.result.default_employee_password || 'Pass@123');
     }
@@ -512,6 +515,7 @@ export function SettingsPage() {
         payload.tax_id = taxId;
         payload.timezone = timeZone;
         payload.currency = currency;
+        payload.country = country;
         payload.address = address;
       }
 
@@ -761,6 +765,32 @@ export function SettingsPage() {
                     <Option value="USD">USD</Option>
                     <Option value="EUR">EUR</Option>
                     <Option value="INR">INR</Option>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <div className="space-y-2">
+                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Country</span>
+                  <Select
+                    value={country || undefined}
+                    onChange={(v) => setCountry(String(v))}
+                    disabled={!isEditing}
+                    className="w-full h-11"
+                    showSearch
+                    filterOption={(input, option) => {
+                      const label = String(option?.label ?? '').toLowerCase();
+                      const value = String(option?.value ?? '').toLowerCase();
+                      return label.includes(input.toLowerCase()) || value.includes(input.toLowerCase());
+                    }}
+                    placeholder="Select country"
+                    optionFilterProp="label"
+                  >
+                    {commonCountries.map((c) => (
+                      <Option key={c.code} value={c.name} label={c.name}>
+                        {c.name}
+                      </Option>
+                    ))}
                   </Select>
                 </div>
               </div>
