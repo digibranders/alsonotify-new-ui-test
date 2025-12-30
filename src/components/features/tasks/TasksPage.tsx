@@ -10,6 +10,7 @@ import { TaskRow } from './rows/TaskRow';
 import { useTasks, useCreateTask, useDeleteTask, useUpdateTask } from '@/hooks/useTask';
 import { useWorkspaces } from '@/hooks/useWorkspace';
 import { searchUsersByName } from '@/services/user';
+import { getRoleFromUser } from '@/utils/roleUtils';
 import { useUserDetails, useCurrentUserCompany } from '@/hooks/useUser';
 import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -157,13 +158,6 @@ export function TasksPage() {
   // Track if filter has been initialized to avoid resetting user's manual changes
   const [filterInitialized, setFilterInitialized] = useState(false);
 
-  // Set initial filter to current user when page loads (only once)
-  useEffect(() => {
-    if (currentUserName && !filterInitialized) {
-      setFilters(prev => ({ ...prev, user: currentUserName }));
-      setFilterInitialized(true);
-    }
-  }, [currentUserName, filterInitialized]);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
 
   // Pagination state
@@ -183,6 +177,23 @@ export function TasksPage() {
   // Fetch users and requirements for form dropdowns
   const [usersDropdown, setUsersDropdown] = useState<Array<{ id: number; name: string }>>([]);
   const [requirementsDropdown, setRequirementsDropdown] = useState<Array<{ id: number; name: string }>>([]);
+
+  // Set initial filter to current user when page loads (only once)
+  // Skip auto-filter for Admin users - they should see all tasks by default
+  useEffect(() => {
+    if (!filterInitialized && currentUserName && usersDropdown.length > 0) {
+      // Check if current user is Admin
+      const localUser = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem("user") || "{}") : {};
+      const userRole = getRoleFromUser(localUser);
+      const isAdmin = userRole?.toLowerCase() === 'admin';
+
+      if (!isAdmin) {
+        // Only auto-apply user filter for non-admin users
+        setFilters(prev => ({ ...prev, user: currentUserName }));
+      }
+      setFilterInitialized(true);
+    }
+  }, [currentUserName, filterInitialized, usersDropdown]);
 
   // Build query params for API call
   const queryParams = useMemo(() => {

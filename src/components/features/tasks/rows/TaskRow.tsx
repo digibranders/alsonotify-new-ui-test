@@ -239,7 +239,7 @@ export function TaskRow({
         </div>
 
         {/* Task Info */}
-        <div>
+        <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
             <span className="font-['Manrope:Bold',sans-serif] text-[14px] !text-[#111111] group-hover:text-[#ff3b3b] transition-colors">
               {task.name}
@@ -273,12 +273,10 @@ export function TaskRow({
         )}
 
         {/* Timeline */}
-        <div>
-          <div className="mb-0.5">
-            <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111]">
-              {task.timelineDate}
-            </span>
-          </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111]">
+            {task.timelineDate}
+          </span>
           <span
             className={`text-[11px] font-['Manrope:Regular',sans-serif] ${task.status === 'Delayed' || task.status === 'Impediment' || task.status === 'Stuck'
               ? 'text-[#dc2626]'
