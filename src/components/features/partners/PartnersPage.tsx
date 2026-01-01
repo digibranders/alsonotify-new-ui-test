@@ -310,9 +310,10 @@ export function PartnersPageContent() {
             const values = await form.validateFields();
 
             // Sending invitation
+            const fullName = [values.firstName, values.lastName].filter(Boolean).join(' ').trim();
             await axiosApi.post('/user/invite', {
                 email: values.email,
-                name: `${values.firstName} ${values.lastName}`.trim(),
+                name: fullName,
                 requestSentFor: 'PARTNER'
             });
 
@@ -464,7 +465,7 @@ export function PartnersPageContent() {
                                                         </div>
                                                         <div className="flex flex-col">
                                                             <span className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111]">
-                                                                {item.data.inviterName}
+                                                                {item.data.inviterName?.replace(' undefined', '')}
                                                             </span>
                                                             {item.data.inviterCompany && (
                                                                 <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
@@ -508,7 +509,9 @@ export function PartnersPageContent() {
                                                             {(item.data.name || "?")[0].toUpperCase()}
                                                         </div>
                                                         <div className="flex flex-col">
-                                                            <span className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111]">{item.data.name || item.data.email}</span>
+                                                            <span className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111]">
+                                                                {(item.data.name || item.data.email)?.replace(' undefined', '')}
+                                                            </span>
                                                             {item.data.company && <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">{item.data.company}</span>}
                                                         </div>
                                                     </div>

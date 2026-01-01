@@ -150,6 +150,15 @@ export const getRequirementsByWorkspaceId = async (workspaceId: number): Promise
   }
 };
 
+export const getCollaborativeRequirements = async (): Promise<ApiResponse<RequirementType[]>> => {
+  try {
+    const { data } = await axiosApi.get<ApiResponse<RequirementType[]>>(`/requirement/collaborative`);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Get requirements dropdown by workspace ID
 export const getRequirementsDropdownByWorkspaceId = async (workspaceId: number): Promise<ApiResponse<{ name: string; id: number }[]>> => {
   try {

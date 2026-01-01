@@ -167,16 +167,16 @@ export function TaskForm({
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Fixed Header */}
-      <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-6">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-            <div className="p-2 rounded-full bg-[#F7F7F7]">
-              <CheckSquare className="w-5 h-5 text-[#666666]" />
+      <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-[17px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+            <div className="p-1.5 rounded-full bg-[#F7F7F7]">
+              <CheckSquare className="w-3.5 h-3.5 text-[#666666]" />
             </div>
             {isEditing ? 'Edit Task' : 'New Task'}
           </div>
         </div>
-        <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
+        <p className="text-[11px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-9">
           {isEditing ? 'Update task parameters and squad.' : 'Define objective and assemble your squad.'}
         </p>
       </div>
@@ -194,7 +194,7 @@ export function TaskForm({
             </span>
             <Input
               placeholder="e.g. Implement Payment Gateway"
-              className="w-full h-10 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-medium text-sm"
+              className="w-full h-11 rounded-lg border-[#EEEEEE] text-sm"
               value={formData.name}
               onChange={(e) => {
                 setFormData({ ...formData, name: e.target.value });
@@ -208,7 +208,7 @@ export function TaskForm({
               Requirement
             </span>
             <Select
-              className={`w-full h-10 employee-form-select ${formData.requirement_id ? 'employee-form-select-filled' : ''}`}
+              className="w-full h-11"
               placeholder="Select requirement"
               value={formData.requirement_id || undefined}
               onChange={(val) => {
@@ -247,7 +247,7 @@ export function TaskForm({
               Workspace <span className="text-red-500">*</span>
             </span>
             <Select
-              className={`w-full h-10 employee-form-select ${formData.project_id ? 'employee-form-select-filled' : ''}`}
+              className="w-full h-11"
               placeholder="Select workspace"
               value={formData.project_id || undefined}
               onChange={(val) => {
@@ -280,7 +280,7 @@ export function TaskForm({
               Due Date <span className="text-red-500">*</span>
             </span>
             <DatePicker
-              className={`w-full h-10 employee-form-datepicker ${formData.end_date ? 'employee-form-datepicker-filled' : ''}`}
+              className="w-full h-11 rounded-lg"
               value={formData.end_date ? dayjs(formData.end_date) : null}
               onChange={(date) => {
                 setFormData({ ...formData, end_date: date ? date.toISOString() : '' });
@@ -295,10 +295,10 @@ export function TaskForm({
             <Radio.Group
               value={formData.high_priority ? 'high' : 'medium'}
               onChange={(e) => setFormData({ ...formData, high_priority: e.target.value === 'high' })}
-              className="flex w-full h-10"
+              className="flex w-full h-11"
             >
-              <Radio.Button value="high" className="flex-1 text-center text-xs leading-[38px] px-0 h-10">High</Radio.Button>
-              <Radio.Button value="medium" className="flex-1 text-center text-xs leading-[38px] px-0 h-10">Med</Radio.Button>
+              <Radio.Button value="high" className="flex-1 text-center text-xs leading-[42px] px-0 h-11">High</Radio.Button>
+              <Radio.Button value="medium" className="flex-1 text-center text-xs leading-[42px] px-0 h-11">Med</Radio.Button>
             </Radio.Group>
           </div>
 
@@ -312,7 +312,7 @@ export function TaskForm({
               step="0.1"
               min="0"
               placeholder={formData.assigned_members.includes(parseInt(currentUserId)) ? "0" : "-"}
-              className={`w-full h-10 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-medium text-sm ${formData.estimated_time ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+              className="w-full h-11 rounded-lg border border-[#EEEEEE] text-sm"
               value={formData.estimated_time}
               onChange={(e) => {
                 setFormData({ ...formData, estimated_time: e.target.value });
@@ -352,7 +352,7 @@ export function TaskForm({
           {/* Member Selection */}
           <div className="space-y-3">
             <Select
-              className="w-full member-select-compact"
+              className="w-full"
               placeholder={
                 <div className="flex items-center gap-2 text-gray-400 text-[13px]">
                   <UserPlus className="w-4 h-4" /> <span>Add squad members...</span>
@@ -419,7 +419,7 @@ export function TaskForm({
           <span className="text-[12px] font-bold text-[#111111]">Description</span>
           <TextArea
             placeholder="Describe the mission objectives..."
-            className={`font-['Manrope:Regular',sans-serif] rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] transition-all duration-300 ${formData.description ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+            className="font-['Manrope:Regular',sans-serif] rounded-lg border border-[#EEEEEE]"
             rows={formData.description ? 3 : 1}
             onFocus={(e) => e.target.rows = 3}
             value={formData.description}
@@ -431,76 +431,22 @@ export function TaskForm({
       </div>
 
       {/* Fixed Footer */}
-      <div className="flex-shrink-0 border-t border-[#EEEEEE] px-6 py-6 flex items-center justify-end bg-white gap-4">
+      <div className="flex-shrink-0 border-t border-[#EEEEEE] px-6 py-4 flex items-center justify-end bg-white gap-4">
         <Button
           type="text"
           onClick={handleReset}
-          className="h-[44px] px-4 text-[14px] font-semibold text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
+          className="h-[40px] px-4 text-[14px] font-semibold text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
         >
           Reset Data
         </Button>
         <Button
           type="primary"
           onClick={handleSubmit}
-          className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-semibold transition-transform active:scale-95 border-none"
+          className="h-[40px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-semibold transition-transform active:scale-95 border-none"
         >
           {isEditing ? 'Update Task' : 'Submit'}
         </Button>
       </div>
-      <style jsx global>{`
-        /* Gray background for all Select dropdowns (default) */
-        .employee-form-select .ant-select-selector {
-          background-color: #F9FAFB !important;
-          border-color: #EEEEEE !important;
-          display: flex;
-          align-items: center;
-          height: 40px !important;
-          border-radius: 8px !important;
-        }
-        .member-select-compact .ant-select-selector {
-            height: 40px !important;
-            padding-top: 4px !important;
-            border-radius: 8px !important;
-        }
-        .employee-form-select .ant-select-selector:hover {
-          border-color: #EEEEEE !important;
-        }
-        .employee-form-select.ant-select-focused .ant-select-selector {
-          border-color: #EEEEEE !important;
-          box-shadow: none !important;
-        }
-        
-        /* White background for filled Select dropdowns */
-        .employee-form-select-filled .ant-select-selector {
-          background-color: white !important;
-        }
-        
-        /* Gray background for DatePicker (default) */
-        .employee-form-datepicker .ant-picker {
-          background-color: #F9FAFB !important;
-          border-color: #EEEEEE !important;
-          height: 40px !important;
-          border-radius: 8px !important;
-        }
-        .employee-form-datepicker .ant-picker:hover {
-          border-color: #EEEEEE !important;
-        }
-        .employee-form-datepicker .ant-picker-focused {
-          border-color: #EEEEEE !important;
-          box-shadow: none !important;
-        }
-        
-        /* White background for filled DatePicker */
-        .employee-form-datepicker-filled .ant-picker {
-          background-color: white !important;
-        }
-        
-        /* Remove extra borders on Input focus */
-        .ant-input:focus {
-          border-color: #EEEEEE !important;
-          box-shadow: none !important;
-        }
-      `}</style>
     </div >
   );
 }

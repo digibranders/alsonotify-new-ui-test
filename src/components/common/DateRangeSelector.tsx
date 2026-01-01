@@ -288,7 +288,7 @@ export function DateRangeSelector({
                                     onClick={() => handleDateClick(date)}
                                     className={`
                                         w-9 h-9 rounded-full text-[12px] font-['Inter',sans-serif] font-medium transition-all duration-200 relative
-                                        ${!isCurrentMonth ? 'text-[#CCCCCC]' : 'text-[#111111]'}
+                                        ${!isCurrentMonth ? 'invisible pointer-events-none' : 'text-[#111111]'}
                                         ${isSelected
                                             ? 'bg-[#111111] text-white shadow-lg'
                                             : isInRange

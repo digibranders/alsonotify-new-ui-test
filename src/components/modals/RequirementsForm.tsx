@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 import { Input, Select, Button, Upload, DatePicker } from 'antd';
-import { Upload as UploadIcon, FileText } from 'lucide-react';
+import { Upload as UploadIcon, FileText, ChevronDown, User } from 'lucide-react';
+import { useOutsourcePartners, useEmployees } from '@/hooks/useUser';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -13,11 +14,13 @@ export interface RequirementFormData {
     workspace: string | number | undefined;
     type: 'inhouse' | 'outsourced';
     contactPerson?: string;
+    contact_person_id?: number;
     dueDate: string;
     budget?: string;
     priority?: string;
     description: string;
     status?: string;
+    receiver_company_id?: number;
 }
 
 interface RequirementsFormProps {
@@ -36,7 +39,37 @@ export function RequirementsForm({
     workspaces,
     isLoading = false,
     isEditing = false,
-}: RequirementsFormProps) {
+}: Readonly<RequirementsFormProps>) {
+    const { data: partnersData, isLoading: isLoadingPartners } = useOutsourcePartners();
+    const { data: employeesData, isLoading: isLoadingEmployees } = useEmployees();
+
+    // Process partners - filter for active and ensure unique IDs
+    const partners = (partnersData?.result || [])
+        .filter((item: any) => item.status === 'ACCEPTED' && item.is_active !== false)
+        .map((item: any) => {
+            const id = item.user_id ?? item.user_client_id ?? item.user_outsource_id ?? item.id;
+            return {
+                id: typeof id === 'number' ? id : undefined,
+                name: item.name || item.company || 'Unknown Partner',
+                company: item.company,
+                company_id: item.company_id // Preserve company_id for receiver_company_id logic
+            };
+        })
+        .filter((p: any) => p.id !== undefined);
+
+    // Process employees
+    const employees = (employeesData?.result || [])
+        .filter((item: any) => item.user_employee?.is_active !== false)
+        .map((item: any) => {
+            const id = item.user_id ?? item.id;
+            return {
+                id: typeof id === 'number' ? id : undefined,
+                name: item.name || 'Unknown Employee',
+                designation: item.designation
+            };
+        })
+        .filter((e: any) => e.id !== undefined);
+
     const [formData, setFormData] = useState<RequirementFormData>({
         title: '',
         workspace: undefined,
@@ -52,54 +85,73 @@ export function RequirementsForm({
     // Reset form when initialData changes (for editing mode switching)
     useEffect(() => {
         if (initialData) {
-            setFormData((prev) => ({ ...prev, ...initialData }));
+            setFormData((prev) => ({ 
+                ...prev, 
+                ...initialData,
+                contact_person_id: initialData.contact_person_id ?? undefined,
+                workspace: initialData.workspace ?? undefined
+            }));
         }
     }, [initialData]);
 
     const handleSubmit = () => {
-        onSubmit(formData);
+        // Find the selected partner to extract receiver_company_id
+        const selectedPartner = partners.find(p => p.id === formData.contact_person_id);
+        
+        console.log('RequirementsForm handleSubmit DEBUG:', {
+            formDataType: formData.type,
+            formDataContactPersonId: formData.contact_person_id,
+            partnersCount: partners.length,
+            selectedPartner,
+            derivedReceiverCompanyId: selectedPartner?.company_id,
+        });
+     
+        onSubmit({
+            ...formData,
+            receiver_company_id: selectedPartner?.company_id 
+        });
     };
+
 
     return (
         <div className="flex flex-col h-full bg-white">
             {/* Fixed Header */}
-            <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-6">
-                <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                        <div className="p-2 rounded-full bg-[#F7F7F7]">
-                            <FileText className="w-5 h-5 text-[#666666]" />
+            <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-3">
+                <div className="flex items-center justify-between mb-0.5">
+                    <div className="flex items-center gap-2 text-[17px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                        <div className="p-1.5 rounded-full bg-[#F7F7F7]">
+                            <FileText className="w-3.5 h-3.5 text-[#666666]" />
                         </div>
                         {isEditing ? 'Edit Requirement' : 'New Requirement'}
                     </div>
                 </div>
-                <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
+                <p className="text-[11px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-9">
                     Define a new requirement and send it for approval/processing.
                 </p>
             </div>
 
             {/* Scrollable Body */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+            <div className="flex-1 overflow-y-auto px-6 py-5 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
                 {/* Row 1: Title & Workspace */}
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                    <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-4">
+                    <div className="space-y-1.5">
                         <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Requirement Title</span>
                         <Input
                             placeholder="Enter requirement title"
-                            className={`h-[46px] rounded-lg border-[#EEEEEE] bg-[#F7F7F7] focus:bg-white transition-colors font-['Manrope:Medium',sans-serif] ${formData.title ? 'bg-white' : ''}`}
+                            className="h-11 rounded-lg border border-[#EEEEEE]"
                             value={formData.title}
                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                         />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                         <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Workspace</span>
                         <Select
-                            className="w-full h-[46px] custom-modal-select"
+                            className="w-full h-11"
                             placeholder="Select workspace"
-                            variant="borderless"
                             value={formData.workspace ? String(formData.workspace) : undefined}
                             onChange={(v) => setFormData({ ...formData, workspace: v })}
-                            style={{ backgroundColor: '#F7F7F7', borderRadius: '8px', border: '1px solid #EEEEEE' }}
-                            dropdownStyle={{ zIndex: 2000 }}
+                            popupStyle={{ zIndex: 2000 }}
+                            suffixIcon={<ChevronDown className="w-4 h-4 text-gray-400" />}
                         >
                             {workspaces && workspaces.length > 0 ? (
                                 workspaces.map((w) => (
@@ -116,113 +168,95 @@ export function RequirementsForm({
                     </div>
                 </div>
 
-                {/* Row 2: Type & (Contact Person OR Due Date) */}
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                    <div className="space-y-2">
+                {/* Row 2: Requirement Type & Contact Person */}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-4">
+                    <div className="space-y-1.5">
                         <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Requirement Type</span>
                         <Select
-                            className="w-full h-[46px] custom-modal-select"
+                            className="w-full h-11"
                             placeholder="Select type"
-                            variant="borderless"
                             value={formData.type}
-                            onChange={(v) => setFormData({ ...formData, type: v })}
-                            style={{ backgroundColor: '#F7F7F7', borderRadius: '8px', border: '1px solid #EEEEEE' }}
+                            onChange={(v) => setFormData({ ...formData, type: v, contact_person_id: undefined, contactPerson: undefined })}
+                            suffixIcon={<ChevronDown className="w-4 h-4 text-gray-400" />}
                         >
                             <Option value="inhouse">In-house (Internal / Client)</Option>
                             <Option value="outsourced">Outsourced (Vendor)</Option>
                         </Select>
                     </div>
 
-                    {/* Contact Person (Visible for Outsourced) */}
-                    {formData.type === 'outsourced' ? (
-                        <div className="space-y-2">
-                            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Contact Person</span>
-                            <Select
-                                className="w-full h-[46px] custom-modal-select"
-                                placeholder="Select contact"
-                                variant="borderless"
-                                value={formData.contactPerson}
-                                onChange={(v) => setFormData({ ...formData, contactPerson: v })}
-                                style={{ backgroundColor: '#F7F7F7', borderRadius: '8px', border: '1px solid #EEEEEE' }}
-                            >
-                                <Option value="Sarah Wilson">Sarah Wilson</Option>
-                                <Option value="John Smith">John Smith</Option>
-                                <Option value="David Brown">David Brown</Option>
-                                <Option value="Emily Chen">Emily Chen</Option>
-                            </Select>
-                        </div>
-                    ) : (
-                        /* Due Date (Visible for In-house) */
-                        <div className="space-y-2">
-                            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Due Date</span>
-                            <DatePicker
-                                placeholder="Select due date"
-                                className={`w-full h-[46px] rounded-lg border-[#EEEEEE] bg-[#F7F7F7] focus:bg-white transition-colors font-['Manrope:Medium',sans-serif] ${formData.dueDate ? 'bg-white' : ''}`}
-                                value={formData.dueDate ? dayjs(formData.dueDate) : null}
-                                onChange={(date, dateString) => setFormData({ ...formData, dueDate: Array.isArray(dateString) ? dateString[0] : dateString })}
-                            />
-                        </div>
-                    )}
+                    <div className="space-y-1.5" id="contact-person-selection">
+                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Contact Person</span>
+                        <Select
+                            className="w-full h-11"
+                            placeholder={`Select ${formData.type === 'inhouse' ? 'employee' : 'partner'}`}
+                            value={typeof formData.contact_person_id === 'number' ? formData.contact_person_id : undefined}
+                            onChange={(v, option: any) => setFormData({
+                                ...formData,
+                                contact_person_id: typeof v === 'number' ? v : undefined,
+                                contactPerson: option?.label
+                            })}
+                            loading={formData.type === 'inhouse' ? isLoadingEmployees : isLoadingPartners}
+                            suffixIcon={<ChevronDown className="w-4 h-4 text-gray-400" />}
+                        >
+                            {formData.type === 'inhouse' ? (
+                                employees.map((e: any) => (
+                                    <Option key={e.id} value={e.id} label={e.name}>
+                                        <div className="flex flex-col py-1">
+                                            <span className="font-semibold">{e.name}</span>
+                                            {e.designation && <span className="text-[10px] text-gray-400 font-normal">{e.designation}</span>}
+                                        </div>
+                                    </Option>
+                                ))
+                            ) : (
+                                partners.map((p: any) => (
+                                    <Option key={p.id} value={p.id} label={p.name}>
+                                        <div className="flex flex-col py-1">
+                                            <span className="font-semibold">{p.name}</span>
+                                            {p.company && <span className="text-[10px] text-gray-400 font-normal">{p.company}</span>}
+                                        </div>
+                                    </Option>
+                                ))
+                            )}
+                        </Select>
+                    </div>
                 </div>
-
-                {/* Row 3: Outsourced (Due Date & Priority) / In-house (Priority) */}
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                    {formData.type === 'outsourced' ? (
-                        <>
-                            <div className="space-y-2">
-                                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Due Date</span>
-                                <DatePicker
-                                    placeholder="Select due date"
-                                    className={`w-full h-[46px] rounded-lg border-[#EEEEEE] bg-[#F7F7F7] focus:bg-white transition-colors font-['Manrope:Medium',sans-serif] ${formData.dueDate ? 'bg-white' : ''}`}
-                                    value={formData.dueDate ? dayjs(formData.dueDate) : null}
-                                    onChange={(date, dateString) => setFormData({ ...formData, dueDate: Array.isArray(dateString) ? dateString[0] : dateString })}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Priority</span>
-                                <Select
-                                    className="w-full h-[46px] custom-modal-select"
-                                    placeholder="Select priority"
-                                    variant="borderless"
-                                    value={formData.priority}
-                                    onChange={(v) => setFormData({ ...formData, priority: v })}
-                                    style={{ backgroundColor: '#F7F7F7', borderRadius: '8px', border: '1px solid #EEEEEE' }}
-                                >
-                                    <Option value="low">Low</Option>
-                                    <Option value="medium">Medium</Option>
-                                    <Option value="high">High</Option>
-                                </Select>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="space-y-2">
-                            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Priority</span>
-                            <Select
-                                className="w-full h-[46px] custom-modal-select"
-                                placeholder="Select priority"
-                                variant="borderless"
-                                value={formData.priority}
-                                onChange={(v) => setFormData({ ...formData, priority: v })}
-                                style={{ backgroundColor: '#F7F7F7', borderRadius: '8px', border: '1px solid #EEEEEE' }}
-                            >
-                                <Option value="low">Low</Option>
-                                <Option value="medium">Medium</Option>
-                                <Option value="high">High</Option>
-                            </Select>
-                        </div>
-                    )}
+                {/* Row 3: Standard Fields (Due Date & Priority) */}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-4">
+                    <div className="space-y-1.5">
+                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Due Date</span>
+                        <DatePicker
+                            placeholder="Select due date"
+                            className="w-full h-11 rounded-lg border-[#EEEEEE]"
+                            value={formData.dueDate ? dayjs(formData.dueDate) : null}
+                            onChange={(date, dateString) => setFormData({ ...formData, dueDate: Array.isArray(dateString) ? dateString[0] : dateString })}
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Priority</span>
+                        <Select
+                            className="w-full h-11"
+                            placeholder="Select priority"
+                            value={formData.priority}
+                            onChange={(v) => setFormData({ ...formData, priority: v })}
+                            suffixIcon={<ChevronDown className="w-4 h-4 text-gray-400" />}
+                        >
+                            <Option value="high">High Priority</Option>
+                            <Option value="medium">Medium Priority</Option>
+                            <Option value="low">Low Priority</Option>
+                        </Select>
+                    </div>
                 </div>
 
                 {/* Row 4: Budget (Outsourced only) - Only show when editing */}
                 {formData.type === 'outsourced' && isEditing && (
-                    <div className="grid grid-cols-2 gap-6 mb-6">
-                        <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-4">
+                        <div className="space-y-1.5">
                             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Target Budget</span>
                             <Input
                                 type="number"
                                 prefix="$"
                                 placeholder="0.00"
-                                className="h-[46px] rounded-lg border-[#EEEEEE] bg-[#F7F7F7] focus:bg-white transition-colors font-['Manrope:Medium',sans-serif]"
+                                className="h-11 rounded-lg border border-[#EEEEEE]"
                                 value={formData.budget}
                                 onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
                             />
@@ -231,31 +265,31 @@ export function RequirementsForm({
                 )}
 
                 {/* Description */}
-                <div className="space-y-2 mb-6">
+                <div className="space-y-1.5 mb-4">
                     <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</span>
                     <TextArea
                         placeholder="Describe the requirement..."
-                        className={`min-h-[120px] rounded-lg border-[#EEEEEE] bg-[#F7F7F7] focus:bg-white transition-colors font-['Manrope:Regular',sans-serif] resize-none p-4 ${formData.description ? 'bg-white' : ''}`}
-                        rows={4}
+                        className="min-h-[100px] rounded-lg border border-[#EEEEEE] resize-none p-3.5"
+                        rows={3}
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     />
                 </div>
 
                 {/* Upload Documents */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                     <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Upload Documents</span>
-                    <div className="border-2 border-dashed border-[#EEEEEE] rounded-xl p-4 flex flex-col items-center justify-center text-center hover:border-[#ff3b3b]/30 hover:bg-[#FFFAFA] transition-colors cursor-pointer bg-white group">
-                        <div className="w-10 h-10 rounded-full bg-[#F7F7F7] group-hover:bg-white flex items-center justify-center mb-2 transition-colors">
-                            <UploadIcon className="w-5 h-5 text-[#999999] group-hover:text-[#ff3b3b] transition-colors" />
+                    <div className="border-2 border-dashed border-[#EEEEEE] rounded-xl p-3 flex flex-col items-center justify-center text-center hover:border-[#ff3b3b]/30 hover:bg-[#FFFAFA] transition-colors cursor-pointer bg-white group">
+                        <div className="w-8 h-8 rounded-full bg-[#F7F7F7] group-hover:bg-white flex items-center justify-center mb-1.5 transition-colors">
+                            <UploadIcon className="w-4 h-4 text-[#999999] group-hover:text-[#ff3b3b] transition-colors" />
                         </div>
-                        <p className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-0.5">
+                        <p className="text-[12px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-0.5">
                             Choose a file or drag & drop it here
                         </p>
-                        <p className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">
+                        <p className="text-[10px] text-[#999999] font-['Inter:Regular',sans-serif]">
                             txt, docx, pdf, jpeg, xlsx - Up to 50MB
                         </p>
-                        <Button className="mt-3 h-8 bg-white border border-[#EEEEEE] text-[12px] font-['Manrope:SemiBold',sans-serif] text-[#111111] hover:bg-[#F7F7F7] hover:text-[#ff3b3b] hover:border-[#ff3b3b]/20">
+                        <Button className="mt-2.5 h-7 px-4 bg-white border border-[#EEEEEE] text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#111111] hover:bg-[#F7F7F7] hover:text-[#ff3b3b] hover:border-[#ff3b3b]/20 rounded-md">
                             Browse files
                         </Button>
                     </div>
@@ -263,11 +297,11 @@ export function RequirementsForm({
             </div>
 
             {/* Fixed Footer */}
-            <div className="flex-shrink-0 border-t border-[#EEEEEE] px-6 py-6 flex items-center justify-end bg-white gap-4">
+            <div className="flex-shrink-0 border-t border-[#EEEEEE] px-6 py-4 flex items-center justify-end bg-white gap-4">
                 <Button
                     type="text"
                     onClick={onCancel}
-                    className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
+                    className="h-[40px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
                 >
                     Cancel
                 </Button>
@@ -276,7 +310,7 @@ export function RequirementsForm({
                     onClick={handleSubmit}
                     loading={isLoading}
                     disabled={isLoading}
-                    className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="h-[40px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {isEditing ? 'Update Requirement' : 'Save Requirement'}
                 </Button>

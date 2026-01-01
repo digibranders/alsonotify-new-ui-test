@@ -731,7 +731,7 @@ export function ReportsPage() {
               </div>
             </div>
           }
-          width={600}
+          size={600}
           onClose={() => setSelectedMemberId(null)}
           open={!!selectedMemberId}
           extra={

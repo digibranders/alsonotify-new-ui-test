@@ -6,7 +6,7 @@ export interface Employee {
   phone: string;
   hourlyRate: string;
   dateOfJoining: string;
-  experience: number;
+  experience: string;
   skillsets: string;
   status: 'active' | 'inactive';
   department: string;
@@ -19,6 +19,14 @@ export interface Employee {
   roleColor?: string;
   employmentType?: 'In-house' | 'Freelancer' | 'Agency';
   rawWorkingHours?: { start_time: string; end_time: string };
+  profile_pic?: string;
+  bio?: string;
+  linkedin?: string;
+  github?: string;
+  portfolio?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  timezone?: string;
 }
 
 export interface Client {
