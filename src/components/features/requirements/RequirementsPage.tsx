@@ -688,12 +688,12 @@ export function RequirementsPage() {
     });
   };
 
-  const handleCreateRequirement = (data: RequirementFormData) => {
+  const handleCreateRequirement = (data: any) => {
     if (!data.title) {
       messageApi.error("Requirement title is required");
       return;
     }
-    if (!data.workspace) {
+    if (!data.project_id) {
       messageApi.error("Please select a workspace");
       return;
     }
@@ -703,10 +703,11 @@ export function RequirementsPage() {
       contact_person_id: data.contact_person_id,
       receiver_company_id: data.receiver_company_id,
       priority: data.priority,
+      project_id: data.project_id,
     });
 
     createRequirementMutation.mutate({
-      project_id: Number(data.workspace),
+      project_id: Number(data.project_id),
       name: data.title,
       description: data.description || '',
       start_date: new Date().toISOString(),

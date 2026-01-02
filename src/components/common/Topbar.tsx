@@ -215,20 +215,20 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
 
 
   // Handle requirement creation
-  const handleCreateRequirement = async (data: RequirementFormData) => {
+  const handleCreateRequirement = async (data: any) => {
     if (!data.title) {
       message.error("Requirement title is required");
       return;
     }
 
-    if (!data.workspace) {
+    if (!data.project_id) {
       message.error("Please select a workspace");
       return;
     }
 
     createRequirementMutation.mutate(
       {
-        project_id: Number(data.workspace),
+        project_id: Number(data.project_id),
         name: data.title,
         description: data.description || '',
         start_date: new Date().toISOString(),
@@ -237,6 +237,8 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         priority: data.priority?.toUpperCase() || 'MEDIUM',
         type: data.type,
         contact_person: data.contactPerson,
+        contact_person_id: data.contact_person_id,
+        receiver_company_id: data.receiver_company_id,
         budget: Number(data.budget) || 0,
       } as any,
       {
