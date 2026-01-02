@@ -1,7 +1,7 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
-  Download, Calendar, FileText,
+  Download, Calendar,
   Clock, CheckCircle2, AlertCircle, Loader2,
   ChevronDown
 } from 'lucide-react';
@@ -12,7 +12,6 @@ import { Drawer, Tooltip, Button } from "antd";
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from "date-fns";
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useTabSync } from '@/hooks/useTabSync';
 
 // Initialize dayjs plugins
