@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, Button, Input, Select, Checkbox, DatePicker, App } from "antd";
+import { Modal, Button, Input, Select, DatePicker, App } from "antd";
 import { FolderOpen } from 'lucide-react';
 import { useCreateWorkspace } from '@/hooks/useWorkspace';
 import { useClients as useGetClients, useEmployees } from '@/hooks/useUser';
@@ -68,12 +68,9 @@ export function WorkspaceForm({ open, onCancel, onSuccess }: WorkspaceFormProps)
                 client_id: selectedClient?.id || null,
                 manager_id: managerId,
                 leader_id: leaderId,
-                start_date: newWorkspace.startDate ? new Date(newWorkspace.startDate).toISOString() : new Date().toISOString(),
-                end_date: newWorkspace.dueDate ? new Date(newWorkspace.dueDate).toISOString() : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+                start_date: new Date().toISOString(),
+                end_date: null,
                 document_link: newWorkspace.documentLink,
-                high_priority: newWorkspace.highPriority,
-                in_house: newWorkspace.inHouse,
-                contact_person: newWorkspace.contactPerson,
             } as any,
             {
                 onSuccess: (data: any) => {
@@ -103,7 +100,6 @@ export function WorkspaceForm({ open, onCancel, onSuccess }: WorkspaceFormProps)
             styles={{
                 body: {
                     padding: 0,
-                    height: 'calc(100vh - 100px)',
                     maxHeight: 'calc(100vh - 100px)',
                     display: 'flex',
                     flexDirection: 'column',
@@ -140,50 +136,7 @@ export function WorkspaceForm({ open, onCancel, onSuccess }: WorkspaceFormProps)
                             />
                         </div>
 
-                        {/* Description */}
-                        <div className="space-y-1.5">
-                            <label className="text-[12px] font-bold text-[#111111]">Description</label>
-                            <TextArea
-                                placeholder="Enter workspace description..."
-                                className="font-['Manrope:Regular',sans-serif] rounded-lg border border-[#EEEEEE]"
-                                rows={4}
-                                value={newWorkspace.description}
-                                onChange={(e) => setNewWorkspace({ ...newWorkspace, description: e.target.value })}
-                            />
-                            <div className="text-right text-[11px] text-[#999999]">0/5000 characters</div>
-                        </div>
 
-                        {/* Checkboxes */}
-                        <div className="flex items-center gap-6">
-                            <Checkbox
-                                checked={newWorkspace.highPriority}
-                                onChange={(e) => setNewWorkspace({ ...newWorkspace, highPriority: e.target.checked })}
-                                className="font-['Manrope:Medium',sans-serif] text-[13px]"
-                            >
-                                High Priority
-                            </Checkbox>
-                            <Checkbox
-                                checked={newWorkspace.inHouse}
-                                onChange={(e) => setNewWorkspace({ ...newWorkspace, inHouse: e.target.checked })}
-                                className="font-['Manrope:Medium',sans-serif] text-[13px]"
-                            >
-                                In House
-                            </Checkbox>
-                        </div>
-
-                        {/* Contact Person */}
-                        <div className="space-y-1.5">
-                            <label className="text-[12px] font-bold text-[#111111]">Contact Person</label>
-                            <Select
-                                className="w-full h-11"
-                                placeholder="Contact person"
-                                value={newWorkspace.contactPerson || undefined}
-                                onChange={(val) => setNewWorkspace({ ...newWorkspace, contactPerson: String(val) })}
-                            >
-                                <Option value="Sarah Wilson">Sarah Wilson</Option>
-                                <Option value="John Smith">John Smith</Option>
-                            </Select>
-                        </div>
 
                         {/* Manager & Leader */}
                         <div className="grid grid-cols-2 gap-4">
@@ -219,36 +172,20 @@ export function WorkspaceForm({ open, onCancel, onSuccess }: WorkspaceFormProps)
                             </div>
                         </div>
 
-                        {/* Dates */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                                <label className="text-[12px] font-bold text-[#111111]">Start Date <span className="text-[#ff3b3b]">*</span></label>
-                                <DatePicker
-                                    placeholder="Start Date"
-                                    className="w-full h-11 rounded-lg"
-                                    onChange={(_, dateString) => setNewWorkspace({ ...newWorkspace, startDate: Array.isArray(dateString) ? dateString[0] : dateString })}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[12px] font-bold text-[#111111]">Due Date</label>
-                                <DatePicker
-                                    placeholder="Due Date"
-                                    className="w-full h-11 rounded-lg"
-                                    onChange={(_, dateString) => setNewWorkspace({ ...newWorkspace, dueDate: Array.isArray(dateString) ? dateString[0] : dateString })}
-                                />
-                            </div>
+                        {/* Description */}
+                        <div className="space-y-1.5">
+                            <label className="text-[12px] font-bold text-[#111111]">Description</label>
+                            <TextArea
+                                placeholder="Enter workspace description..."
+                                className="font-['Manrope:Regular',sans-serif] rounded-lg border border-[#EEEEEE]"
+                                rows={4}
+                                value={newWorkspace.description}
+                                onChange={(e) => setNewWorkspace({ ...newWorkspace, description: e.target.value })}
+                            />
+                            <div className="text-right text-[11px] text-[#999999]">0/5000 characters</div>
                         </div>
 
-                        {/* Document Link */}
-                        <div className="space-y-1.5">
-                            <label className="text-[12px] font-bold text-[#111111]">Document Link</label>
-                            <Input
-                                placeholder="e.g. Google Drive, Figma..."
-                                className="h-11 rounded-lg border-[#EEEEEE]"
-                                value={newWorkspace.documentLink}
-                                onChange={(e) => setNewWorkspace({ ...newWorkspace, documentLink: e.target.value })}
-                            />
-                        </div>
+
                     </div>
                 </div>
 

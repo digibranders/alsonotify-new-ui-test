@@ -58,6 +58,7 @@ interface Requirement {
   contactPerson?: string;
   rejectionReason?: string;
   headerContact?: string;
+  project_id?: number;
   headerCompany?: string;
   quotedPrice?: number;
   rawStatus?: string;
@@ -426,15 +427,6 @@ export function RequirementsPage() {
   // Transform backend data to UI format with placeholder/mock data where API data is not available
   const requirements = useMemo(() => {
     const mappedData = allRequirements.map((req: any) => {
-      if (req.id === 12 || req.title?.includes('Test 2')) {
-         console.log('DEBUG Test 2 Req:', {
-            id: req.id, 
-            receiver_project_id: req.receiver_project_id,
-            status: req.status, 
-            rawStatus: req.rawStatus,
-            isReceiver: true // mocked for log check
-         });
-      }
       // Get workspace data for this requirement to access client/company information
       // NOTE: The requirement API (getRequirements.sql) doesn't include project/client data
       // It only returns: requirement fields, department, manager, leader, created_user, approved_by
@@ -1352,6 +1344,7 @@ export function RequirementsPage() {
           if (!pendingReqId) return;
           updateRequirementMutation.mutate({
             id: pendingReqId,
+            project_id: allRequirements.find(r => r.id === pendingReqId)?.project_id || 0, // Required field
             receiver_project_id: workspaceId,
             status: 'In_Progress'
           } as any, {
