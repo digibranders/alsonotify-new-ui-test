@@ -108,15 +108,23 @@ export function RequirementsForm({
         console.log('RequirementsForm handleSubmit DEBUG:', {
             formDataType: formData.type,
             formDataContactPersonId: formData.contact_person_id,
+            formDataWorkspace: formData.workspace,
             partnersCount: partners.length,
             selectedPartner,
             derivedReceiverCompanyId: selectedPartner?.company_id,
         });
-     
-        onSubmit({
+
+        // Build payload with project_id (backend expects this instead of 'workspace')
+        const payload = {
             ...formData,
+            project_id: formData.workspace ? Number(formData.workspace) : undefined,
             receiver_company_id: selectedPartner?.company_id 
-        });
+        };
+
+        // Remove the 'workspace' key as the backend uses 'project_id'
+        delete (payload as any).workspace;
+
+        onSubmit(payload as any);
     };
 
 
