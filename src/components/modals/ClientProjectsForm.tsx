@@ -79,8 +79,71 @@ export function ClientForm({
     }
   }, [initialData]);
 
+  // Email regex for validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // Validate form and return true if valid, false otherwise
+  const validateForm = (): boolean => {
+    const trimmedEmail = formData.email.trim();
+    const trimmedFirstName = formData.firstName.trim();
+
+    // Email is always required
+    if (!trimmedEmail) {
+      message.error("Email address is required");
+      return false;
+    }
+
+    // Validate email format
+    if (!emailRegex.test(trimmedEmail)) {
+      message.error("Please enter a valid email address");
+      return false;
+    }
+
+    // First name is required when editing
+    if (isEditing && !trimmedFirstName) {
+      message.error("First name is required");
+      return false;
+    }
+
+    return true;
+  };
+
+  // Check if form is valid (for button disabled state)
+  const isFormValid = (): boolean => {
+    const trimmedEmail = formData.email.trim();
+    const trimmedFirstName = formData.firstName.trim();
+
+    // Email must be present and valid
+    if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
+      return false;
+    }
+
+    // First name required when editing
+    if (isEditing && !trimmedFirstName) {
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = () => {
-    onSubmit(formData);
+    // Validate form before submitting
+    if (!validateForm()) {
+      return;
+    }
+
+    // Trim values before submitting
+    const trimmedData: ClientFormData = {
+      ...formData,
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim(),
+      company: formData.company.trim(),
+      email: formData.email.trim(),
+      phone: formData.phone.trim(),
+      country: formData.country.trim(),
+    };
+
+    onSubmit(trimmedData);
   };
 
   return (
@@ -109,7 +172,7 @@ export function ClientForm({
               <label
                 className="text-[12px] font-bold text-[#111111] block"
               >
-                Client Email Address
+                Client Email Address <span className="text-[#ff3b3b]">*</span>
               </label>
               <Input
                 placeholder="email@company.com"
@@ -177,7 +240,7 @@ export function ClientForm({
                 <label
                   className="text-[12px] font-bold text-[#111111] block"
                 >
-                  Email
+                  Email <span className="text-[#ff3b3b]">*</span>
                 </label>
                 <Input
                   placeholder="email@company.com"
@@ -290,7 +353,8 @@ export function ClientForm({
         <Button
           type="primary"
           onClick={handleSubmit}
-          className="h-[40px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
+          disabled={!isFormValid()}
+          className="h-[40px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
           {isEditing ? "Update Client" : "Send Invitation"}
         </Button>

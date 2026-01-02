@@ -3,6 +3,7 @@ import { Manrope } from 'next/font/google';
 import '../styles/globals.css';
 import { AntDesignProvider } from '../components/AntDesignProvider';
 import ReactQueryProvider from '../provider/ReactQueryClient';
+import BrowserPolyfills from '../components/BrowserPolyfills';
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -25,6 +26,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={manrope.className} suppressHydrationWarning>
+        <BrowserPolyfills />
         <ReactQueryProvider>
           <AntDesignProvider>
             {children}

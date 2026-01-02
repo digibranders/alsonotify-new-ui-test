@@ -74,7 +74,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
       },
       dueDate: t.end_date,
       status: t.status,
-      priority: t.high_priority ? 'High' : 'Medium', // Simplify for demo
+      priority: t.priority ? t.priority.charAt(0).toUpperCase() + t.priority.slice(1).toLowerCase() : 'Medium',
       comments: 0,
       attachments: 0,
       description: t.description
@@ -122,7 +122,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
       start_date: new Date().toISOString(),
       end_date: newTask.dueDate ? newTask.dueDate.toISOString() : new Date().toISOString(),
       status: newTask.status,
-      high_priority: newTask.priority === 'High',
+      priority: newTask.priority.toUpperCase(),
     } as any, {
       onSuccess: () => {
         message.success('Task created successfully');
