@@ -422,8 +422,8 @@ export function RequirementDetailsPage() {
                     </div>
                   )}
 
-                  {/* High Priority */}
-                  {requirement.high_priority && (
+                  {/* Priority */}
+                  {requirement.priority && requirement.priority.toUpperCase() === 'HIGH' && (
                     <div>
                       <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Priority</p>
                       <span className="px-2 py-1 bg-[#FFF5F5] text-[#ff3b3b] text-[12px] font-['Manrope:Bold',sans-serif] rounded-full">
