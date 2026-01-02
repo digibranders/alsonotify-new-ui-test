@@ -58,6 +58,7 @@ interface Requirement {
   contactPerson?: string;
   rejectionReason?: string;
   headerContact?: string;
+  project_id?: number;
   headerCompany?: string;
   quotedPrice?: number;
   rawStatus?: string;
@@ -430,7 +431,20 @@ export function RequirementsPage() {
       // NOTE: The requirement API (getRequirements.sql) doesn't include project/client data
       // It only returns: requirement fields, department, manager, leader, created_user, approved_by
       // So we must get client/company from the workspace data we already fetched
-      const workspace = workspaceMap.get(req.project_id);
+      // Determine which workspace to show
+      // If I am the receiver (Vendor) and I have mapped this to an internal project (receiver_project_id),
+      // I should see MY internal workspace, not the client's source workspace.
+      const myCompanyId = currentUser?.company_id ? Number(currentUser.company_id) : null;
+      const reqReceiverCompanyId = req.receiver_company_id ? Number(req.receiver_company_id) : null;
+      const reqSenderCompanyId = req.sender_company_id ? Number(req.sender_company_id) : null;
+      const isReceiver = myCompanyId !== null && reqReceiverCompanyId === myCompanyId;
+      const isSender = myCompanyId !== null && reqSenderCompanyId === myCompanyId;
+      
+      const effectiveWorkspaceId = (isReceiver && req.receiver_project_id) 
+        ? req.receiver_project_id 
+        : req.project_id;
+        
+      const workspace = workspaceMap.get(effectiveWorkspaceId);
 
       // PLACEHOLDER DATA: Invoice status - not directly available in requirement API
       // In real implementation, this would come from a separate invoice API or join query
@@ -467,12 +481,7 @@ export function RequirementsPage() {
       // Determine roles - STRICT checks with type coercion for safety
       // A is Sender: sender_company_id matches current user's company
       // B is Receiver: receiver_company_id matches current user's company
-      const myCompanyId = currentUser?.company_id ? Number(currentUser.company_id) : null;
-      const reqSenderCompanyId = req.sender_company_id ? Number(req.sender_company_id) : null;
-      const reqReceiverCompanyId = req.receiver_company_id ? Number(req.receiver_company_id) : null;
-      
-      const isReceiver = myCompanyId !== null && reqReceiverCompanyId === myCompanyId;
-      const isSender = myCompanyId !== null && reqSenderCompanyId === myCompanyId;
+
       
       // For outsourced requirements:
       // - Sender sees: OUTSOURCED badge, shows Receiver's name/company
@@ -1335,8 +1344,9 @@ export function RequirementsPage() {
           if (!pendingReqId) return;
           updateRequirementMutation.mutate({
             id: pendingReqId,
+            project_id: allRequirements.find(r => r.id === pendingReqId)?.project_id || 0, // Required field
             receiver_project_id: workspaceId,
-            // status: 'Assigned' -- Removed to avoid invalid transition error (Assigned -> Assigned)
+            status: 'In_Progress'
           } as any, {
             onSuccess: () => {
               messageApi.success("Requirement mapped and activated!");
