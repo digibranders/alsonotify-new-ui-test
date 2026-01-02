@@ -40,8 +40,13 @@ export function RequirementsForm({
     isLoading = false,
     isEditing = false,
 }: Readonly<RequirementsFormProps>) {
-    const { data: partnersData, isLoading: isLoadingPartners } = useOutsourcePartners();
+    const { data: partnersData, isLoading: isLoadingPartners, refetch: refetchPartners } = useOutsourcePartners();
     const { data: employeesData, isLoading: isLoadingEmployees } = useEmployees();
+
+    // Refetch partners when form opens to ensure fresh data (especially after status changes)
+    useEffect(() => {
+        refetchPartners();
+    }, [refetchPartners]);
 
     // Process partners - filter for active and ensure unique IDs
     const partners = (partnersData?.result || [])
