@@ -50,9 +50,11 @@ export function RequirementsForm({
 
     // Process partners - filter for active and ensure unique IDs
     const partners = (partnersData?.result || [])
-        .filter((item: any) => item.status === 'ACCEPTED' && item.is_active !== false)
+        // Relaxed filter: Allow if status is ACCEPTED OR if is_active is explicitly true (handling potential missing status in legacy data)
+        .filter((item: any) => (item.status === 'ACCEPTED' || item.is_active === true) && item.is_active !== false)
         .map((item: any) => {
-            const id = item.user_id ?? item.user_client_id ?? item.user_outsource_id ?? item.id;
+            // Fix: Backend returns client_id/outsource_id/association_id/invite_id, not user_... prefixes
+            const id = item.user_id ?? item.client_id ?? item.outsource_id ?? item.association_id ?? item.invite_id ?? item.id;
             return {
                 id: typeof id === 'number' ? id : undefined,
                 name: item.name || item.company || 'Unknown Partner',
