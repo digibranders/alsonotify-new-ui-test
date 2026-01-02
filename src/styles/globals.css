@@ -500,6 +500,11 @@
   transition: all 0.2s ease !important;
 }
 
+.ant-input-affix-wrapper .ant-input {
+  border: none !important;
+  box-shadow: none !important;
+}
+
 /* Black Focus State for all fields */
 .ant-input:focus,
 .ant-input-focused,
