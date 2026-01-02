@@ -18,7 +18,7 @@ export interface TaskFormData {
   leader_id: string; // Leader
   end_date: string; // Due Date (replaced start_date)
   estimated_time: string; // Estimated Time (in hours)
-  high_priority: boolean; // High Priority
+  priority: 'HIGH' | 'MEDIUM' | 'LOW'; // Priority enum
   description: string; // Description
 }
 
@@ -46,7 +46,7 @@ const defaultFormData: TaskFormData = {
   leader_id: "",
   end_date: "",
   estimated_time: "",
-  high_priority: false,
+  priority: 'MEDIUM',
   description: "",
 };
 
@@ -130,7 +130,7 @@ export function TaskForm({
       end_date: formData.end_date, // Map to end_date
       start_date: new Date().toISOString(), // Default start_date to now if required by backend/schema (user said remove from UI only)
       estimated_time: (formData.estimated_time && isCurrentUserAssigned) ? parseFloat(formData.estimated_time) : 0,
-      high_priority: formData.high_priority || false,
+      priority: formData.priority || 'MEDIUM',
       description: formData.description || "",
       execution_mode: formData.execution_mode,
       assigned_members: formData.assigned_members,
@@ -293,12 +293,13 @@ export function TaskForm({
           <div className="col-span-12 sm:col-span-4 space-y-1.5 flex flex-col">
             <span className="text-[12px] font-bold text-[#111111]">Priority</span>
             <Radio.Group
-              value={formData.high_priority ? 'high' : 'medium'}
-              onChange={(e) => setFormData({ ...formData, high_priority: e.target.value === 'high' })}
+              value={formData.priority?.toLowerCase() || 'medium'}
+              onChange={(e) => setFormData({ ...formData, priority: e.target.value.toUpperCase() as 'HIGH' | 'MEDIUM' | 'LOW' })}
               className="flex w-full h-11"
             >
               <Radio.Button value="high" className="flex-1 text-center text-xs leading-[42px] px-0 h-11">High</Radio.Button>
               <Radio.Button value="medium" className="flex-1 text-center text-xs leading-[42px] px-0 h-11">Med</Radio.Button>
+              <Radio.Button value="low" className="flex-1 text-center text-xs leading-[42px] px-0 h-11">Low</Radio.Button>
             </Radio.Group>
           </div>
 

@@ -533,7 +533,21 @@
   pointer-events: none !important;
 }
 
-/* Hide the entire 6th row if it doesn't contain any current-month days (using modern :has selector) */
-.ant-picker-content tbody tr:nth-child(6):not(:has(.ant-picker-cell-in-view)) {
+/* 
+   Hide the entire 6th row if it doesn't contain any current-month days.
+   Progressive enhancement: 
+   - Modern browsers use native :has() via @supports
+   - Older browsers use JS-applied .calendar-empty-row class
+*/
+
+/* Fallback for browsers without :has() support - JS adds this class */
+.calendar-empty-row {
   display: none !important;
+}
+
+/* Native :has() for modern browsers that support it */
+@supports selector(:has(*)) {
+  .ant-picker-content tbody tr:nth-child(6):not(:has(.ant-picker-cell-in-view)) {
+    display: none !important;
+  }
 }

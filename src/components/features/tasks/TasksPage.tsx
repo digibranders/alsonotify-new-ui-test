@@ -821,7 +821,7 @@ export function TasksPage() {
             leader_id: String(editingTask.leader_id || ''),
             end_date: editingTask.endDateIso || '',
             estimated_time: String(editingTask.estTime || ''),
-            high_priority: editingTask.priority === 'high',
+            priority: (editingTask.priority?.toUpperCase() as 'HIGH' | 'MEDIUM' | 'LOW') || 'MEDIUM',
             description: editingTask.description || '',
           } : undefined}
           isEditing={!!editingTask}

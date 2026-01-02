@@ -492,7 +492,7 @@ export function RequirementDetailsPage() {
                         total_seconds_spent: task.total_seconds_spent || 0,
                         activities: 0,
                         status: task.status || 'Assigned',
-                        priority: task.high_priority ? 'high' : 'low',
+                        priority: task.priority?.toLowerCase() || 'medium',
                         timelineDate: task.end_date ? format(new Date(task.end_date), 'MMM dd') : 'N/A',
                         timelineLabel: task.status === 'Delayed' ? 'Overdue' : '',
                         execution_mode: task.execution_mode,
