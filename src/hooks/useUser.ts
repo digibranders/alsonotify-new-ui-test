@@ -13,6 +13,7 @@ import {
   updateCurrentUserCompany,
   getCurrentUserCompany,
   getRoles,
+  getOutsource,
   type UserType,
   type ClientOrOutsourceType,
   type CompanyDepartmentType,
@@ -199,5 +200,13 @@ export const useUpdateRolePermissions = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["rolePermissions", variables.roleId] });
     },
+  });
+};
+
+export const useOutsourcePartners = (options: string = "") => {
+  return useQuery({
+    queryKey: ["outsourcePartners", options],
+    queryFn: () => getOutsource(options),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };

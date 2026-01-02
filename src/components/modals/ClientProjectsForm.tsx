@@ -86,16 +86,16 @@ export function ClientForm({
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Fixed Header */}
-      <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-6">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-            <div className="p-2 rounded-full bg-[#F7F7F7]">
-              <Briefcase className="w-5 h-5 text-[#666666]" />
+      <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-[17px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+            <div className="p-1.5 rounded-full bg-[#F7F7F7]">
+              <Briefcase className="w-3.5 h-3.5 text-[#666666]" />
             </div>
             {isEditing ? 'Edit Client Details' : 'Invite Client'}
           </div>
         </div>
-        <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
+        <p className="text-[12px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-9">
           {isEditing ? 'Update client profile and contact information.' : 'An invitation link will be sent to this email for the client to complete their profile.'}
         </p>
       </div>
@@ -105,15 +105,15 @@ export function ClientForm({
         {!isEditing ? (
           // Simplified Add Flow: Only Email
           <div className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label
-                className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
+                className="text-[12px] font-bold text-[#111111] block"
               >
                 Client Email Address
               </label>
               <Input
                 placeholder="email@company.com"
-                className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.email ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                className="h-11 rounded-lg border border-[#EEEEEE]"
                 value={formData.email}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
@@ -127,39 +127,39 @@ export function ClientForm({
             {/* Row 1 */}
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2">
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-bold text-[#111111] block">
                     First Name <span className="text-[#ff3b3b]">*</span>
                   </label>
                   <Input
                     placeholder="John"
-                    className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.firstName ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                    className="h-11 rounded-lg border border-[#EEEEEE]"
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2">
+                <div className="space-y-1.5">
+                  <label className="text-[12px] font-bold text-[#111111] block">
                     Last Name
                   </label>
                   <Input
                     placeholder="Doe"
-                    className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.lastName ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                    className="h-11 rounded-lg border border-[#EEEEEE]"
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   />
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label
-                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
+                  className="text-[12px] font-bold text-[#111111] block"
                 >
                   Business Name
                 </label>
                 <Select
                   value={formData.company}
                   onChange={(v) => setFormData({ ...formData, company: String(v) })}
-                  className={`w-full h-11 employee-form-select ${formData.company ? 'employee-form-select-filled' : ''}`}
+                  className="w-full h-11"
                   placeholder="Select company"
                   suffixIcon={<div className="text-gray-400">⌄</div>}
                 >
@@ -173,30 +173,30 @@ export function ClientForm({
 
             {/* Row 2 */}
             <div className="grid grid-cols-2 gap-6 mb-6">
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label
-                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
+                  className="text-[12px] font-bold text-[#111111] block"
                 >
                   Email
                 </label>
                 <Input
                   placeholder="email@company.com"
-                  className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.email ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  className="h-11 rounded-lg border border-[#EEEEEE]"
                   value={formData.email}
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label
-                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
+                  className="text-[12px] font-bold text-[#111111] block"
                 >
                   Contact (Phone)
                 </label>
                 <div className="flex gap-2">
                   <Select
-                    className={`w-[85px] h-11 employee-form-select ${formData.countryCode ? 'employee-form-select-filled' : ''}`}
+                    className="w-[85px] h-11"
                     value={formData.countryCode}
                     onChange={(v) => setFormData({ ...formData, countryCode: String(v) })}
                     suffixIcon={<div className="text-gray-400">⌄</div>}
@@ -209,7 +209,7 @@ export function ClientForm({
                   </Select>
                   <Input
                     placeholder="8698027152"
-                    className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.phone ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                    className="flex-1 h-11 rounded-lg border border-[#EEEEEE]"
                     value={formData.phone}
                     onChange={(e) =>
                       setFormData({ ...formData, phone: e.target.value })
@@ -221,16 +221,16 @@ export function ClientForm({
 
             {/* Row 3 */}
             <div className="grid grid-cols-2 gap-6 mb-6">
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label
-                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
+                  className="text-[12px] font-bold text-[#111111] block"
                 >
                   Country
                 </label>
                 <Select
                   value={formData.country}
                   onChange={(v) => setFormData({ ...formData, country: String(v) })}
-                  className={`w-full h-11 employee-form-select ${formData.country ? 'employee-form-select-filled' : ''}`}
+                  className="w-full h-11"
                   placeholder="Select country"
                   suffixIcon={<div className="text-gray-400">⌄</div>}
                 >
@@ -240,15 +240,15 @@ export function ClientForm({
                   <Option value="UAE">UAE</Option>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <label
-                  className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
+                  className="text-[12px] font-bold text-[#111111] block"
                 >
                   Onboarding Date
                 </label>
                 <Input
                   placeholder="DD-MMM-YYYY"
-                  className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.onboarding ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  className="h-11 rounded-lg border border-[#EEEEEE]"
                   value={formData.onboarding}
                   onChange={(e) =>
                     setFormData({ ...formData, onboarding: e.target.value })
@@ -258,16 +258,16 @@ export function ClientForm({
             </div>
 
             {/* Row 4 */}
-            <div className="space-y-2 mb-6">
+            <div className="space-y-1.5 mb-6">
               <label
-                className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] block mb-2"
+                className="text-[12px] font-bold text-[#111111] block"
               >
                 Requirements (Count)
               </label>
               <Input
                 type="number"
                 placeholder="Number of requirements"
-                className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.requirements ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                className="h-11 rounded-lg border border-[#EEEEEE]"
                 value={formData.requirements}
                 onChange={(e) =>
                   setFormData({ ...formData, requirements: e.target.value })
@@ -279,47 +279,22 @@ export function ClientForm({
       </div>
 
       {/* Fixed Footer */}
-      <div className="flex-shrink-0 border-t border-[#EEEEEE] px-6 py-6 flex items-center justify-end bg-white gap-4">
+      <div className="flex-shrink-0 border-t border-[#EEEEEE] px-6 py-4 flex items-center justify-end bg-white gap-4">
         <Button
           type="text"
           onClick={onCancel}
-          className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
+          className="h-[40px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
         >
           Cancel
         </Button>
         <Button
           type="primary"
           onClick={handleSubmit}
-          className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
+          className="h-[40px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
         >
           {isEditing ? "Update Client" : "Send Invitation"}
         </Button>
       </div>
-      <style jsx global>{`
-        /* Gray background for all Select dropdowns (default) */
-        .employee-form-select .ant-select-selector {
-          background-color: #F9FAFB !important;
-          border-color: #EEEEEE !important;
-        }
-        .employee-form-select .ant-select-selector:hover {
-          border-color: #EEEEEE !important;
-        }
-        .employee-form-select.ant-select-focused .ant-select-selector {
-          border-color: #EEEEEE !important;
-          box-shadow: none !important;
-        }
-        
-        /* White background for filled Select dropdowns */
-        .employee-form-select-filled .ant-select-selector {
-          background-color: white !important;
-        }
-        
-        /* Remove extra borders on Input focus */
-        .ant-input:focus {
-          border-color: #EEEEEE !important;
-          box-shadow: none !important;
-        }
-      `}</style>
     </div>
   );
 }

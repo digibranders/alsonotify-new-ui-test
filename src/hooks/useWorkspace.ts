@@ -10,6 +10,7 @@ import {
   updateRequirementById,
   deleteRequirementById,
   approveRequirement,
+  getCollaborativeRequirements,
   type WorkspaceType,
   type RequirementType,
 } from "../services/workspace";
@@ -80,6 +81,14 @@ export const useRequirements = (workspaceId: number) => {
     queryKey: ["requirements", workspaceId],
     queryFn: () => getRequirementsByWorkspaceId(workspaceId),
     enabled: !!workspaceId,
+  });
+};
+
+
+export const useCollaborativeRequirements = () => {
+  return useQuery({
+    queryKey: ["requirements", "collaborative"],
+    queryFn: () => getCollaborativeRequirements(),
   });
 };
 

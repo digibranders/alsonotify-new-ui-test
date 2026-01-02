@@ -5,12 +5,14 @@ import { PageLayout } from '../../layout/PageLayout';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { DateRangeSelector } from '../../common/DateRangeSelector';
 import {
-  Check, X, Calendar as CalendarIcon, Clock, CheckCircle, CheckSquare, Users, Trash2,
-  FilePlus, Edit, Receipt, MoreHorizontal, Play, XCircle, RotateCcw, Upload
+  Check, X, Calendar as CalendarIcon, Clock, CheckCircle, CheckCircle as CheckCircleIcon, CheckSquare, Users, Trash2,
+  FilePlus, Edit, Receipt, MoreHorizontal, Play, XCircle, RotateCcw, Upload, ChevronDown, AlertCircle
 } from 'lucide-react';
+
 import { PaginationBar } from '../../ui/PaginationBar';
 import { Modal, Button, Input, Select, Tooltip, Popover, Checkbox, App } from 'antd';
-import { useWorkspaces, useCreateRequirement, useUpdateRequirement, useDeleteRequirement, useApproveRequirement } from '@/hooks/useWorkspace';
+import { useWorkspaces, useCreateRequirement, useUpdateRequirement, useDeleteRequirement, useApproveRequirement, useCollaborativeRequirements } from '@/hooks/useWorkspace';
+import { useEmployees, useUserDetails } from '@/hooks/useUser';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { format, isPast, isToday, differenceInDays } from 'date-fns';
@@ -21,8 +23,8 @@ import dayjs, { Dayjs } from 'dayjs';
 const { TextArea } = Input;
 const { Option } = Select;
 
-import { useEmployees } from '@/hooks/useUser';
 import { RequirementsForm, RequirementFormData } from '../../modals/RequirementsForm';
+import { WorkspaceForm } from '../../modals/WorkspaceForm';
 
 
 
@@ -47,7 +49,7 @@ interface Requirement {
   workspaceId: number;
   workspace: string;
   approvalStatus?: 'pending' | 'approved' | 'rejected';
-  invoiceStatus?: 'paid' | 'billed';
+  invoiceStatus?: 'unbilled' | 'billed' | 'paid';
   estimatedCost?: number;
   budget?: number;
   hourlyRate?: number;
@@ -59,6 +61,14 @@ interface Requirement {
   headerCompany?: string;
   quotedPrice?: number;
   rawStatus?: string;
+  client_id?: number;
+  contact_person_id?: number;
+  sender_company_id?: number;
+  receiver_company_id?: number;
+  receiver_project_id?: number;
+  negotiation_reason?: string;
+  isReceiver?: boolean;
+  isSender?: boolean;
 }
 
 // Quotation Dialog Component
@@ -191,7 +201,6 @@ function RejectDialog({
     setReason('');
     onOpenChange(false);
   };
-
   return (
     <Modal
       open={open}
@@ -223,6 +232,97 @@ function RejectDialog({
   );
 }
 
+// Internal Mapping Dialog Component
+function InternalMappingModal({
+  open,
+  onOpenChange,
+  onConfirm,
+  workspaces
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: (workspaceId: number) => void;
+  workspaces: { id: number | string; name: string }[];
+}) {
+  const { message: messageApi } = App.useApp();
+  const [selectedWorkspace, setSelectedWorkspace] = useState<number | undefined>(undefined);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  const handleConfirm = () => {
+    if (!selectedWorkspace) {
+      messageApi.error("Please select an internal workspace");
+      return;
+    }
+    onConfirm(selectedWorkspace);
+    setSelectedWorkspace(undefined);
+    onOpenChange(false);
+  };
+
+  return (
+    <>
+      <Modal
+        open={open}
+        onCancel={() => onOpenChange(false)}
+        onOk={handleConfirm}
+        title="Map to Internal Workspace"
+        okText="Activate Requirement"
+        cancelText="Cancel"
+        okButtonProps={{ className: 'bg-[#111111] hover:bg-[#000000]/90 text-white border-none' }}
+        width={400}
+        centered
+      >
+        <div className="space-y-4 py-4">
+          <p className="text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">
+            Select one of your internal workspaces to map this requirement to.
+          </p>
+          <div className="space-y-2">
+            <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Internal Workspace</label>
+            <Select
+              className="w-full h-11"
+              placeholder="Select workspace"
+              value={selectedWorkspace}
+              onChange={(v) => {
+                if (v === 'create_new') {
+                  setIsCreateOpen(true);
+                  // Reset selection until created
+                  setSelectedWorkspace(undefined);
+                } else {
+                  setSelectedWorkspace(v);
+                }
+              }}
+              suffixIcon={<ChevronDown className="w-4 h-4 text-gray-400" />}
+            >
+              <Option key="create_new" value="create_new" className="text-[#ff3b3b] font-medium border-b border-gray-100 pb-2 mb-2">
+                + Create New Workspace
+              </Option>
+              {workspaces.map((w: any) => (
+                <Option key={String(w.id)} value={w.id}>
+                  {w.name}
+                </Option>
+              ))}
+            </Select>
+          </div>
+        </div>
+      </Modal>
+
+      <WorkspaceForm
+        open={isCreateOpen}
+        onCancel={() => setIsCreateOpen(false)}
+        onSuccess={(data: any) => {
+           // data needs to be inspected. Usually creation returns result object.
+           // Assuming standard hook return { result: { id, name, ... } } or just result.
+           // We will try to extract ID.
+           const newId = data?.result?.id || data?.id;
+           if (newId) {
+             setSelectedWorkspace(newId);
+           }
+           setIsCreateOpen(false);
+        }}
+      />
+    </>
+  );
+}
+
 export function RequirementsPage() {
   const { message: messageApi } = App.useApp();
   const router = useRouter();
@@ -250,20 +350,34 @@ export function RequirementsPage() {
     })),
   });
 
+  // Fetch collaborative requirements (where my company is receiver)
+  const { data: collaborativeData, isLoading: isLoadingCollaborative } = useCollaborativeRequirements();
+  const { data: userData } = useUserDetails();
+  // userData.result = { user, access, token }
+  // We need user.company_id for role detection
+  const currentUser = userData?.result?.user;
+  
+  console.log('CurrentUser DEBUG:', {
+    rawUserData: userData,
+    resultUser: userData?.result?.user,
+    companyId: userData?.result?.user?.company_id,
+  });
+
+
   const isLoadingRequirements = requirementQueries.some(q => q.isLoading);
   const isLoading = isLoadingWorkspaces || isLoadingRequirements;
 
   // Helper function to strip HTML tags from text
-  const stripHtmlTags = (html: string): string => {
-    if (!html) return '';
-    if (typeof document !== 'undefined') {
-      const tmp = document.createElement('div');
+  const stripHtmlTags = useMemo(() => {
+    // Return a function that uses a single cached div for performance
+    if (typeof document === 'undefined') return (html: string) => html.replace(/<[^>]*>/g, '').trim();
+    const tmp = document.createElement('div');
+    return (html: string): string => {
+      if (!html) return '';
       tmp.innerHTML = html;
-      const stripped = tmp.textContent || tmp.innerText || '';
-      return stripped.trim();
-    }
-    return html.replace(/<[^>]*>/g, '').trim();
-  };
+      return (tmp.textContent || tmp.innerText || '').trim();
+    };
+  }, []);
 
   const mapRequirementStatus = (status: string): 'in-progress' | 'completed' | 'delayed' | 'draft' => {
     const statusLower = status?.toLowerCase() || '';
@@ -273,27 +387,31 @@ export function RequirementsPage() {
     return 'in-progress';
   };
 
-  // Combine all requirements and ensure each record is tagged with its workspace/project ID.
-  // The backend `getRequirementsByWorkspaceId` endpoint may not always include `project_id`
-  // in the requirement payload, so we fall back to the workspace ID used for the query.
   const allRequirements = useMemo(() => {
-    const combined: any[] = [];
+    const combined: Requirement[] = [];
 
     requirementQueries.forEach((query, index) => {
       const workspaceIdFromQuery = workspaceIds[index];
-
       if (query.data?.result && workspaceIdFromQuery) {
         const requirementsWithWorkspace = query.data.result.map((req: any) => ({
           ...req,
           project_id: req.project_id ?? workspaceIdFromQuery,
         }));
-
         combined.push(...requirementsWithWorkspace);
       }
     });
 
+    // Add collaborative requirements (avoid duplicates if possible)
+    if (collaborativeData?.result) {
+      collaborativeData.result.forEach((collab: any) => {
+        if (!combined.some(req => req.id === collab.id)) {
+          combined.push(collab as Requirement);
+        }
+      });
+    }
+
     return combined;
-  }, [requirementQueries, workspaceIds]);
+  }, [requirementQueries.map(q => q.data), workspaceIds, collaborativeData]);
 
   // Create a map of workspace ID to workspace data for client/company lookup
   // Workspace API returns: { client: {id, name}, client_company_name, company_name }
@@ -307,7 +425,7 @@ export function RequirementsPage() {
 
   // Transform backend data to UI format with placeholder/mock data where API data is not available
   const requirements = useMemo(() => {
-    return allRequirements.map((req: any) => {
+    const mappedData = allRequirements.map((req: any) => {
       // Get workspace data for this requirement to access client/company information
       // NOTE: The requirement API (getRequirements.sql) doesn't include project/client data
       // It only returns: requirement fields, department, manager, leader, created_user, approved_by
@@ -320,10 +438,11 @@ export function RequirementsPage() {
         ? (req.invoice?.status === 'paid' ? 'paid' : req.invoice?.status === 'open' ? 'billed' : undefined)
         : undefined;
 
-      // PLACEHOLDER DATA: Contact person for outsourced requirements (if not in API)
-      const mockContactPerson = req.type === 'outsourced' && !req.contact_person
-        ? 'External Vendor' // Placeholder - would need separate API call to get vendor contacts
-        : req.contact_person;
+      // Contact Person: Use the name from the joined user record (or placeholder if missing)
+      const contactPersonName = req.contact_person?.name || null;
+      const mockContactPerson = req.type === 'outsourced' && !contactPersonName
+        ? 'External Vendor' 
+        : contactPersonName;
 
       // PLACEHOLDER DATA: Pricing model - infer from available data if not explicitly set
       const mockPricingModel = req.pricing_model || (req.hourly_rate ? 'hourly' : 'project');
@@ -343,16 +462,53 @@ export function RequirementsPage() {
 
       // Department: Only use actual department name if it exists, don't default to 'General'
       // The old frontend (Requirements.tsx line 772) only shows department tag if record.department?.name exists
-      // API returns department as JSON {id, name} or NULL (see getRequirements.sql line 13-20)
       const departmentName = req.department?.name || null;
 
-      return {
+      // Determine roles - STRICT checks with type coercion for safety
+      // A is Sender: sender_company_id matches current user's company
+      // B is Receiver: receiver_company_id matches current user's company
+      const myCompanyId = currentUser?.company_id ? Number(currentUser.company_id) : null;
+      const reqSenderCompanyId = req.sender_company_id ? Number(req.sender_company_id) : null;
+      const reqReceiverCompanyId = req.receiver_company_id ? Number(req.receiver_company_id) : null;
+      
+      const isReceiver = myCompanyId !== null && reqReceiverCompanyId === myCompanyId;
+      const isSender = myCompanyId !== null && reqSenderCompanyId === myCompanyId;
+      
+      // For outsourced requirements:
+      // - Sender sees: OUTSOURCED badge, shows Receiver's name/company
+      // - Receiver sees: INHOUSE badge, shows Sender's name/company
+      
+      // Header Contact: Who is on the OTHER end of this requirement?
+      // - If I'm Sender (A): Show Receiver's contact (contact_person / receiver)
+      // - If I'm Receiver (B): Show Sender's name (created_user_data / created_user / sender)
+      let headerContact: string;
+      let headerCompany: string | undefined;
+      
+      if (req.type === 'outsourced') {
+        if (isSender) {
+          // Sender views: Show receiver info
+          headerContact = req.contact_person?.name || 'Unknown Vendor';
+          headerCompany = req.receiver_company?.name || 'Unknown Vendor Company';
+        } else if (isReceiver) {
+          // Receiver views: Show sender info
+          headerContact = req.created_user_data?.name || req.created_user?.name || 'Unknown Client';
+          headerCompany = req.sender_company?.name || 'Unknown Client Company';
+        } else {
+          // Not directly involved (shouldn't happen for outsourced)
+          headerContact = 'Unknown';
+          headerCompany = undefined;
+        }
+      } else {
+        // Inhouse requirements - use client/default
+        headerContact = clientName || 'Unknown Contact';
+        headerCompany = undefined;
+      }
+
+      const mappedReq = {
         id: req.id,
         title: req.name || req.title || 'Untitled Requirement',
         description: stripHtmlTags(req.description || 'No description provided'),
         company: companyName,
-        // Client: Get from workspace data, not from req.project (which doesn't exist in API response)
-        // Only show 'N/A' if workspace exists but has no client (in-house project)
         client: clientName || (workspace ? 'N/A' : 'N/A'),
         assignedTo: req.manager ? [req.manager.name] : req.leader ? [req.leader.name] : [],
         dueDate: req.end_date ? format(new Date(req.end_date), 'dd-MMM-yyyy') : 'TBD',
@@ -361,38 +517,64 @@ export function RequirementsPage() {
         priority: (req.priority?.toLowerCase() as 'high' | 'medium' | 'low') || 'medium',
         type: (req.type || 'inhouse') as 'inhouse' | 'outsourced' | 'client',
         status: mapRequirementStatus(req.status),
-        // Department: Only show if it exists, don't default to 'General'
-        // Use null for category if no department - this prevents 'General' from appearing
         category: departmentName || null,
-        departments: departmentName ? [departmentName] : [], // Empty array if no department (don't show 'General' tag)
+        departments: departmentName ? [departmentName] : [],
         progress: req.progress || 0,
         tasksCompleted: req.total_tasks ? Math.floor(req.total_tasks * (req.progress || 0) / 100) : 0,
         tasksTotal: req.total_tasks || 0,
         workspaceId: req.project_id,
         workspace: workspace?.name || 'Unknown Workspace',
-        // Map 'Waiting' and 'Review' to 'pending' for UI logic
-        approvalStatus: (req.approved_by ? 'approved' :
-          (req.status === 'Waiting' || req.status === 'Review' || req.status?.toLowerCase().includes('pending')) ? 'pending' :
-            (req.status === 'Rejected' ? 'rejected' : undefined)
+        approvalStatus: (req.approved_by?.id ? 'approved' :
+          (req.status === 'Waiting' || req.status === 'Review' || req.status === 'Rejected' || req.status?.toLowerCase() === 'review' || req.status?.toLowerCase() === 'waiting' || req.status?.toLowerCase() === 'rejected' || req.status?.toLowerCase().includes('pending')) ? 'pending' :
+            undefined
         ) as 'pending' | 'approved' | 'rejected' | undefined,
-        // Invoice status - placeholder if not available from API
         invoiceStatus: mockInvoiceStatus as 'paid' | 'billed' | undefined,
-        // Pricing and cost information - use placeholder values if not available
         estimatedCost: req.estimated_cost || (req.budget || undefined),
         budget: req.budget || undefined,
+        quotedPrice: req.quoted_price || undefined, // Add quoted_price for vendor quotes
         hourlyRate: req.hourly_rate || undefined,
         estimatedHours: req.estimated_hours || undefined,
         pricingModel: mockPricingModel as 'hourly' | 'project' | undefined,
-        // Contact person for outsourced requirements - placeholder if not available
         contactPerson: mockContactPerson,
-        // Rejection reason - placeholder if not available
         rejectionReason: mockRejectionReason,
-        headerContact: clientName || 'Unknown Contact',
-        headerCompany: (workspace?.client_company_name || (!workspace?.client ? workspace?.company_name : undefined)) || undefined,
-        rawStatus: req.status
+        headerContact,
+        headerCompany,
+        isReceiver,
+        isSender,
+        rawStatus: req.status,
+        sender_company_id: req.sender_company_id,
+        receiver_company_id: req.receiver_company_id,
+        receiver_project_id: req.receiver_project_id,
+        negotiation_reason: req.negotiation_reason,
       };
+
+
+      console.log('RequirementDebug:', {
+        reqId: req.id,
+        rawType: req.type,
+        rawStatus: req.status,
+        myCompanyId,
+
+        reqSenderCompanyId,
+        reqReceiverCompanyId,
+        isSender,
+        isReceiver,
+        headerContact,
+        headerCompany,
+        // Raw data from backend
+        rawContactPerson: req.contact_person,
+        rawCreatedUser: req.created_user,
+        rawCreatedUserData: req.created_user_data,
+        rawSenderCompany: req.sender_company,
+        rawReceiverCompany: req.receiver_company,
+      });
+
+      return mappedReq;
+
     });
-  }, [allRequirements, workspaceMap]);
+    return mappedData;
+
+  }, [allRequirements, workspaceMap, currentUser]);
 
   // Read tab from URL params
   const searchParams = useSearchParams();
@@ -420,6 +602,7 @@ export function RequirementsPage() {
   // Quotation Dialog State
   const [isQuotationOpen, setIsQuotationOpen] = useState(false);
   const [isRejectOpen, setIsRejectOpen] = useState(false);
+  const [isMappingOpen, setIsMappingOpen] = useState(false);
   const [pendingReqId, setPendingReqId] = useState<number | null>(null);
 
   const [filters, setFilters] = useState<Record<string, string>>({
@@ -506,18 +689,27 @@ export function RequirementsPage() {
       return;
     }
 
+    console.log('handleCreateRequirement DEBUG:', {
+      type: data.type,
+      contact_person_id: data.contact_person_id,
+      receiver_company_id: data.receiver_company_id,
+      priority: data.priority,
+    });
+
     createRequirementMutation.mutate({
       project_id: Number(data.workspace),
       name: data.title,
       description: data.description || '',
       start_date: new Date().toISOString(),
       end_date: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
-      status: 'Assigned',
+      // Status is determined by backend based on type (outsourced=Waiting, etc.)
       priority: data.priority?.toUpperCase() || 'MEDIUM',
-      high_priority: data.priority === 'high',
+
       type: data.type,
-      contact_person: data.contactPerson,
       budget: Number(data.budget) || 0,
+      contact_person_id: data.contact_person_id,
+      contact_person: data.contactPerson,
+      receiver_company_id: data.receiver_company_id, // Pass the receiver company ID
     } as any, {
       onSuccess: () => {
         messageApi.success("Requirement created successfully");
@@ -527,6 +719,7 @@ export function RequirementsPage() {
         messageApi.error(error?.response?.data?.message || "Failed to create requirement");
       }
     });
+
   };
 
   const handleUpdateRequirement = (data: RequirementFormData) => {
@@ -542,7 +735,9 @@ export function RequirementsPage() {
       end_date: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
       type: data.type,
       budget: Number(data.budget) || 0,
-      contact_person: data.contactPerson
+      contact_person_id: data.contact_person_id,
+      contact_person: data.contactPerson,
+      receiver_company_id: data.receiver_company_id, // Pass the receiver company ID
     } as any, {
       onSuccess: () => {
         messageApi.success("Requirement updated successfully");
@@ -616,18 +811,28 @@ export function RequirementsPage() {
 
   // 2. Apply Status Tab filter
   const finalFilteredReqs = baseFilteredReqs.filter(req => {
-    if (activeStatusTab === 'draft') return req.status === 'draft';
+    // Draft Tab: Normal drafts
+    if (activeStatusTab === 'draft') {
+      if (req.status === 'draft') return true;
+      return false;
+    }
 
-    // Pending Tab: Includes both Incoming (Needs Approval) and Outgoing (Sent/Waiting)
-    if (activeStatusTab === 'pending') return req.approvalStatus === 'pending';
+    // Pending Tab: Waiting/Review status for either side
+    if (activeStatusTab === 'pending') {
+      const isPendingWorkflow = req.rawStatus === 'Waiting' || req.rawStatus === 'Review';
+      return isPendingWorkflow || req.approvalStatus === 'pending';
+    }
 
-    // Active Tab: Includes In Progress and Delayed
-    if (activeStatusTab === 'active') return (req.status === 'in-progress' || req.status === 'delayed') && req.approvalStatus !== 'pending';
+    // Active Tab: Assigned status (and not review/waiting)
+    if (activeStatusTab === 'active') {
+      const isActiveState = req.rawStatus === 'Assigned' || req.status === 'in-progress' || req.status === 'delayed';
+      const isPendingWorkflow = req.rawStatus === 'Waiting' || req.rawStatus === 'Review';
+      return isActiveState && !isPendingWorkflow && req.approvalStatus !== 'pending';
+    }
 
     // Completed Tab
     if (activeStatusTab === 'completed') return req.status === 'completed';
 
-    // Fallback/All
     return true;
   });
 
@@ -826,9 +1031,25 @@ export function RequirementsPage() {
 
   // Tabs Configuration
   const tabs = [
-    { id: 'draft', label: 'Drafts', count: baseFilteredReqs.filter(r => r.status === 'draft').length },
-    { id: 'pending', label: 'Pending', count: baseFilteredReqs.filter(r => r.approvalStatus === 'pending').length },
-    { id: 'active', label: 'Active', count: baseFilteredReqs.filter(r => (r.status === 'in-progress' || r.status === 'delayed') && r.approvalStatus !== 'pending').length },
+    {
+      id: 'draft', label: 'Drafts', count: baseFilteredReqs.filter(req => {
+        if (req.status === 'draft') return true;
+        return false;
+      }).length
+    },
+    {
+      id: 'pending', label: 'Pending', count: baseFilteredReqs.filter(req => {
+        const isPendingWorkflow = req.rawStatus === 'Waiting' || req.rawStatus === 'Review';
+        return isPendingWorkflow || req.approvalStatus === 'pending';
+      }).length
+    },
+    {
+      id: 'active', label: 'Active', count: baseFilteredReqs.filter(req => {
+        const isActiveState = req.rawStatus === 'Assigned' || req.status === 'in-progress' || req.status === 'delayed';
+        const isPendingWorkflow = req.rawStatus === 'Waiting' || req.rawStatus === 'Review';
+        return isActiveState && !isPendingWorkflow && req.approvalStatus !== 'pending';
+      }).length
+    },
     { id: 'completed', label: 'Completed', count: baseFilteredReqs.filter(r => r.status === 'completed').length },
   ];
 
@@ -883,36 +1104,48 @@ export function RequirementsPage() {
                 selected={selectedReqs.includes(requirement.id)}
                 onSelect={() => toggleSelect(requirement.id)}
                 onAccept={() => {
+                  console.log('onAccept Triggered', {
+                    id: requirement.id,
+                    type: requirement.type,
+                    isSender: requirement.isSender,
+                    rawStatus: requirement.rawStatus
+                  });
                   const req = requirement;
-                  if (req.type === 'outsourced' && req.status !== 'in-progress' && req.status !== 'completed') {
-                    // Check status using rawStatus
-                    if (req.rawStatus === 'Waiting' || (!(req as any).quotedPrice && !req.budget)) {
-                      // Needs Quote
-                      setPendingReqId(requirement.id);
-                      setIsQuotationOpen(true);
-                    } else if (req.rawStatus === 'Review' || (req as any).quotedPrice) {
-                      // Quote Submitted, Client accepts
-                      approveRequirementMutation.mutate({
-                        requirement_id: requirement.id,
-                        status: 'Assigned'
-                      });
-                    } else {
-                      // Fallback (e.g. negotiation)
-                      if ((req as any).quotedPrice) {
+                  if (req.type === 'outsourced') {
+                    if (req.isReceiver) {
+                      const status = req.rawStatus?.toLowerCase();
+                      if (status === 'waiting' || status === 'rejected') {
+                        setPendingReqId(requirement.id);
+                        setIsQuotationOpen(true);
+                      } else if (status === 'assigned' && !req.receiver_project_id) {
+                        setPendingReqId(requirement.id);
+                        setIsMappingOpen(true);
+                      }
+                    } else if (req.isSender) {
+                      const status = req.rawStatus?.toLowerCase();
+                      if (status === 'review') {
+                        console.log('Attempting to approve requirement...', requirement.id);
                         approveRequirementMutation.mutate({
                           requirement_id: requirement.id,
                           status: 'Assigned'
                         });
-                      } else {
-                        setPendingReqId(requirement.id);
-                        setIsQuotationOpen(true);
+                      } else if (status === 'rejected') {
+                        handleEditDraft(requirement);
                       }
                     }
                   } else {
                     handleReqAccept(requirement.id)
                   }
                 }}
-                onReject={() => handleReqReject(requirement.id)}
+                onReject={() => {
+                  const req = requirement;
+                  if (req.type === 'outsourced') {
+                    setPendingReqId(requirement.id);
+                    setIsRejectOpen(true);
+                  } else {
+                    handleReqReject(requirement.id);
+                  }
+                }}
                 onEdit={() => handleEditDraft(requirement)}
                 onNavigate={() =>
                   router.push(`/dashboard/workspace/${requirement.workspaceId}/requirements/${requirement.id}`)
@@ -1051,16 +1284,14 @@ export function RequirementsPage() {
         }}
         footer={null}
         width={700}
-        centered={false}
+        centered
         className="rounded-[16px] overflow-hidden"
-        style={{
-          top: '10px',
-          paddingBottom: '10px',
-        }}
         styles={{
           body: {
             padding: 0,
-            height: 'calc(100vh - 20px)',
+            maxHeight: 'calc(100vh - 100px)',
+            display: 'flex',
+            flexDirection: 'column',
           },
         }}
       >
@@ -1097,6 +1328,25 @@ export function RequirementsPage() {
         onOpenChange={setIsRejectOpen}
         onConfirm={handleRejectConfirm}
       />
+      <InternalMappingModal
+        open={isMappingOpen}
+        onOpenChange={setIsMappingOpen}
+        onConfirm={(workspaceId) => {
+          if (!pendingReqId) return;
+          updateRequirementMutation.mutate({
+            id: pendingReqId,
+            receiver_project_id: workspaceId,
+            // status: 'Assigned' -- Removed to avoid invalid transition error (Assigned -> Assigned)
+          } as any, {
+            onSuccess: () => {
+              messageApi.success("Requirement mapped and activated!");
+              setIsMappingOpen(false);
+              setPendingReqId(null);
+            }
+          });
+        }}
+        workspaces={workspacesData?.result?.projects?.map((w: any) => ({ id: w.id, name: w.name })) || []}
+      />
     </PageLayout>
   );
 }
@@ -1118,7 +1368,29 @@ function RequirementCard({
   onEdit?: () => void,
   onNavigate?: () => void
 }) {
-  const isPending = requirement.approvalStatus === 'pending';
+  const isPending = useMemo(() => {
+    // Special case for Receiver Mapping (Post-Approval)
+    if (requirement.type === 'outsourced' && requirement.isReceiver) {
+       const s = requirement.rawStatus?.toLowerCase();
+       if (s === 'assigned' && !requirement.receiver_project_id) return true;
+    }
+
+    if (requirement.approvalStatus !== 'pending') return false;
+    
+    const status = requirement.rawStatus?.toLowerCase();
+    
+    if (requirement.type === 'outsourced') {
+      if (requirement.isSender) {
+         // Client acts only on 'review'
+         return status === 'review';
+      }
+      if (requirement.isReceiver) {
+         // Vendor acts on 'waiting' (new) or 'rejected' (resubmit)
+         return status === 'waiting' || status === 'rejected';
+      }
+    }
+    return true;
+  }, [requirement]);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -1150,7 +1422,54 @@ function RequirementCard({
       };
     }
 
-    // 2. Project Status
+    // 2. Pending Actions (Workflow)
+    if (requirement.approvalStatus === 'pending') {
+      // Determine label based on role and precise status
+      let label = 'Pending';
+      let isActionNeeded = false;
+
+      if (requirement.type === 'outsourced') {
+        if (requirement.isSender) {
+          // I am Client (Gaurav)
+          // Status 'Review' means Vendor (Jayendra) submitted quote -> Action Needed
+          if (requirement.rawStatus === 'Review' || requirement.rawStatus?.toLowerCase() === 'review') {
+             label = 'Action Needed'; // Vendor submitted quote, I need to approve
+             isActionNeeded = true;
+          } else {
+             label = 'Pending'; // Waiting for vendor (Waiting or Rejected)
+          }
+        } else if (requirement.isReceiver) {
+          // I am Vendor (Jayendra)
+          // Status 'Waiting' means Client created req -> Action Needed
+          // Status 'Rejected' means Client rejected quote -> Action Needed (Resubmit)
+          if (requirement.rawStatus === 'Waiting' || requirement.rawStatus?.toLowerCase() === 'waiting' || 
+              requirement.rawStatus === 'Rejected' || requirement.rawStatus?.toLowerCase() === 'rejected') {
+             label = 'Action Needed'; // Need to submit/resubmit quote
+             isActionNeeded = true;
+          } else {
+             label = 'Pending'; // Waiting for client approval (Review)
+          }
+        }
+      }
+
+      if (isActionNeeded) {
+        return {
+          label: label,
+          icon: <AlertCircle className="w-3 h-3" />,
+          className: 'bg-[#FEFCE8] text-[#D97706] border-[#FEF08A] cursor-pointer hover:bg-[#FEF08A]',
+          onClick: null
+        };
+      } else {
+        return {
+          label: label,
+          icon: <Clock className="w-3 h-3" />,
+          className: 'bg-[#F3F4F6] text-[#6B7280] border-[#D1D5DB]',
+          onClick: null
+        };
+      }
+    }
+
+    // 3. Project Status
     switch (requirement.status) {
       case 'completed':
         if (requirement.type === 'outsourced') {
@@ -1238,35 +1557,56 @@ function RequirementCard({
 
   const getPendingStatusText = () => {
     if (requirement.type === 'outsourced') {
-      // Use placeholder contact person if not available from API
-      const contactName = requirement.contactPerson || 'External Vendor';
-      return `Sent to ${contactName}. Awaiting quote...`;
+      if (requirement.rawStatus === 'Waiting') {
+        return requirement.isReceiver ? 'New outsourced requirement. Needs a quote.' : 'Awaiting quote from vendor...';
+      }
+      if (requirement.rawStatus === 'Review') {
+        return requirement.isSender ? 'Vendor submitted quote. Needs review.' : 'Quote submitted. Awaiting client decision...';
+      }
+      if (requirement.rawStatus === 'Rejected' && requirement.isSender) {
+        return 'Requirement declined by vendor. Please review and resubmit.';
+      }
+      return `Collaborative interaction pending...`;
     }
     if (requirement.type === 'client') {
-      return `Client Request.Awaiting review...`;
+      return `Client Request. Awaiting review...`;
     }
     return 'Waiting for approval...';
   };
 
   const getApproveButtonText = () => {
     if (requirement.type === 'outsourced') {
-      if (requirement.rawStatus === 'Waiting' || !requirement.quotedPrice) return 'Submit Quote';
-      if (requirement.rawStatus === 'Review' || requirement.quotedPrice) return 'Accept Quote';
-      return 'Submit Quote';
+      if (requirement.isReceiver) {
+        if (requirement.rawStatus === 'Waiting' || requirement.rawStatus?.toLowerCase() === 'waiting') return 'Submit Quote';
+        if (requirement.rawStatus === 'Rejected' || requirement.rawStatus?.toLowerCase() === 'rejected') return 'Resubmit Quote';
+        if (requirement.rawStatus === 'Assigned' && !requirement.receiver_project_id) return 'Map Workspace';
+        return 'Action Needed';
+      }
+      if (requirement.isSender) {
+        if (requirement.rawStatus === 'Review') return 'Accept Quote';
+        if (requirement.rawStatus === 'Rejected') return 'Edit & Resubmit';
+        return 'Action Needed';
+      }
+      return 'Pending';
     }
     if (requirement.type === 'client') return 'Accept Job';
     return 'Approve';
   };
 
   const getCostDisplay = () => {
+    // Priority: quotedPrice (vendor quote) > estimatedCost > budget
+    if (requirement.quotedPrice) {
+      return `$${requirement.quotedPrice.toLocaleString()}`;
+    }
     if (requirement.estimatedCost) {
-      return `$${requirement.estimatedCost.toLocaleString()} `;
+      return `$${requirement.estimatedCost.toLocaleString()}`;
     }
     if (requirement.budget) {
-      return `$${requirement.budget.toLocaleString()} `;
+      return `$${requirement.budget.toLocaleString()}`;
     }
     return null;
   };
+
 
   const costDisplay = getCostDisplay();
 
@@ -1325,7 +1665,7 @@ function RequirementCard({
         <div className="flex items-center gap-1.5 mb-2.5 flex-wrap">
           {/* Badge */}
           <span className="px-1.5 py-0.5 rounded text-[9px] font-['Inter:Medium',sans-serif] bg-[#F5F5F5] text-[#666666] uppercase border border-[#EEEEEE]">
-            {requirement.type === 'outsourced' ? 'OUTSOURCED' : 'INHOUSE'}
+            {requirement.isSender && requirement.type === 'outsourced' ? 'OUTSOURCED' : 'INHOUSE'}
           </span>
 
           {/* Separator */}
@@ -1452,20 +1792,17 @@ function RequirementCard({
 
         {/* Right: Cost & Status/Action */}
         <div className="flex items-center gap-3">
-          {/* Cost Display */}
-          {(costDisplay || (!isPending && !requirement.estimatedCost && !requirement.budget)) && (
-            <span className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#0F9D58]">
-              {costDisplay || '$12,500'}
-            </span>
-          )}
-          {costDisplay && !isPending && requirement.status !== 'draft' && (
-            <span className={`text-[12px] font-['Manrope:Bold',sans-serif] ${requirement.type === 'outsourced' ? 'text-[#ff3b3b]' : 'text-[#0F9D58]'} `}>
+          {/* Cost Display - only show if we have actual price data */}
+          {costDisplay && (
+            <span className={`text-[12px] font-['Manrope:Bold',sans-serif] ${requirement.type === 'outsourced' ? 'text-[#ff3b3b]' : 'text-[#0F9D58]'}`}>
               {costDisplay}
             </span>
           )}
 
+
           {isPending ? (
             <div className="flex gap-2">
+              {!(requirement.isReceiver && requirement.type === 'outsourced' && requirement.rawStatus?.toLowerCase() === 'assigned') && (
               <button
                 onClick={handleRejectClick}
                 className="w-6 h-6 flex items-center justify-center rounded-full bg-white border border-[#ff3b3b] text-[#ff3b3b] hover:bg-[#ff3b3b] hover:text-white transition-all shadow-sm"
@@ -1473,6 +1810,7 @@ function RequirementCard({
               >
                 <X className="w-3 h-3" />
               </button>
+              )}
               <button
                 onClick={handleApproveClick}
                 className="px-2 h-6 flex items-center justify-center rounded-full bg-[#0F9D58] text-white hover:bg-[#0B8043] transition-all shadow-sm text-[10px] font-bold whitespace-nowrap"

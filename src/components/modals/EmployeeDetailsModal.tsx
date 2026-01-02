@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Modal, Button, App } from 'antd';
-import { Briefcase, Mail, Phone, Calendar, DollarSign, Clock, CalendarDays, X, FileText } from 'lucide-react';
+import { Briefcase, Mail, Phone, Calendar, DollarSign, Clock, CalendarDays, X, FileText, Users, Globe, ShieldAlert, Linkedin, Github } from 'lucide-react';
 import { AccessBadge } from '../ui/AccessBadge';
 import { Employee, UserDocument } from '@/types/genericTypes';
 import { DocumentCard } from '@/components/ui/DocumentCard';
@@ -87,12 +87,10 @@ export function EmployeeDetailsModal({
   const formatDate = (dateString: string) => {
     if (!dateString || dateString === 'N/A') return 'N/A';
     try {
-      // Handle formats like "01-Jan-2024" or "30-Jun-2025"
       const parts = dateString.split('-');
       if (parts.length === 3) {
-        return dateString; // Already in correct format
+        return dateString;
       }
-      // Try parsing as ISO string
       const date = new Date(dateString);
       if (!isNaN(date.getTime())) {
         const day = date.getDate().toString().padStart(2, '0');
@@ -146,7 +144,6 @@ export function EmployeeDetailsModal({
 
   const handleDocumentUpload = (documentTypeId: string) => {
     message.info(`Upload functionality for document type ${documentTypeId} - To be implemented`);
-    // TODO: Implement upload functionality
   };
 
   return (
@@ -154,7 +151,7 @@ export function EmployeeDetailsModal({
       open={open}
       onCancel={onClose}
       footer={null}
-      width={600}
+      width={700}
       centered
       className="rounded-[16px] overflow-hidden"
       closeIcon={<X className="w-5 h-5 text-[#666666]" />}
@@ -164,199 +161,218 @@ export function EmployeeDetailsModal({
         }
       }}
     >
-      <div className="bg-white">
-        {/* Top Section - Employee Identity */}
-        <div className="px-6 pt-6 pb-4 border-b border-[#EEEEEE]">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex-1">
-              <h2 className="text-[24px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-2">
-                {employee.name}
-              </h2>
-              <div className="flex items-center gap-2 text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">
-                <Briefcase className="w-4 h-4" />
-                <span>{employee.role}</span>
-                <span className="text-[#DDDDDD]">•</span>
-                <span>{employee.department}</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <AccessBadge role={employee.access} color={employee.roleColor} />
-              <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] ${employee.status === 'active'
-                  ? 'bg-[#ECFDF3] text-[#12B76A]'
-                  : 'bg-[#FEF3F2] text-[#F04438]'
-                  }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                {employee.status === 'active' ? 'Active' : 'Inactive'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Middle Section - Contact & Employment Details */}
-        <div className="px-6 py-6 border-b border-[#EEEEEE]">
-          <div className="grid grid-cols-2 gap-8">
-            {/* Left Column - Contact Information */}
-            <div>
-              <h3 className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider mb-4">
-                Contact Information
-              </h3>
-              <div className="space-y-5">
-                {/* Email */}
-                <div className="flex items-start gap-3">
-                  <Mail className="w-4 h-4 text-[#666666] mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#6B7280] mb-1">
-                      Email Address
-                    </p>
-                    <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#111111]">
-                      {employee.email || 'N/A'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Phone */}
-                <div className="flex items-start gap-3">
-                  <Phone className="w-4 h-4 text-[#666666] mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#6B7280] mb-1">
-                      Phone Number
-                    </p>
-                    <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#111111]">
-                      {employee.phone || 'N/A'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column - Employment Details */}
-            <div>
-              <h3 className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider mb-4">
-                Employment Details
-              </h3>
-              <div className="space-y-5">
-                {/* Date of Joining */}
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-4 h-4 text-[#666666] mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#6B7280] mb-1">
-                      Date of Joining
-                    </p>
-                    <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#111111]">
-                      {formatDate(employee.dateOfJoining)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Hourly Rate */}
-                <div className="flex items-start gap-3">
-                  <DollarSign className="w-4 h-4 text-[#666666] mt-0.5 flex-shrink-0" />
-                  <div className="flex-1">
-                    <p className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#6B7280] mb-1">
-                      Hourly Rate
-                    </p>
-                    <p className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#111111]">
-                      {hourlyRate}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Statistical Cards */}
-        <div className="px-6 py-6 border-b border-[#EEEEEE]">
-          <div className="grid grid-cols-3 gap-4">
-            {/* Experience */}
-            <div className="bg-[#F9FAFB] rounded-lg px-4 py-4">
-              <p className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#6B7280] mb-1">
-                Experience
-              </p>
-              <p className="text-[18px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                {experience}
-              </p>
-            </div>
-
-            {/* Working Hours */}
-            <div className="bg-[#F9FAFB] rounded-lg px-4 py-4">
-              <p className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#6B7280] mb-1">
-                Working Hours
-              </p>
-              <p className="text-[18px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                {workingHours}
-              </p>
-            </div>
-
-            {/* Leaves Taken */}
-            <div className="bg-[#F9FAFB] rounded-lg px-4 py-4">
-              <p className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#6B7280] mb-1">
-                Leaves Taken
-              </p>
-              <p className="text-[18px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                {leavesTaken}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Skillsets Section */}
-        {skills.length > 0 && (
-          <div className="px-6 py-6 border-b border-[#EEEEEE]">
-            <h3 className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider mb-4">
-              Skillsets
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {skills.map((skill, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1.5 bg-[#F9FAFB] text-[#111111] text-[12px] font-['Manrope:Medium',sans-serif] rounded-lg border border-[#EEEEEE]"
-                >
-                  {skill}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Documents Section */}
-        <div className="px-6 py-6 border-b border-[#EEEEEE]">
-          <h3 className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider mb-4">
-            Attached Documents
-          </h3>
-          {documents && documents.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3">
-              {documents.map((doc: UserDocument) => (
-                <DocumentCard
-                  key={doc.id}
-                  document={doc}
-                  onPreview={handleDocumentPreview}
-                  onDownload={handleDocumentDownload}
-                  showUpload={!doc.fileUrl}
-                  onUpload={handleDocumentUpload}
+      <div className="flex flex-col max-h-[90vh] bg-white">
+        {/* Fixed Header - Reduced padding */}
+        <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-4 bg-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full overflow-hidden border border-[#EEEEEE] bg-[#F7F7F7] flex-shrink-0">
+                <img
+                  src={employee.profile_pic || `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name)}&background=f7f7f7&color=666`}
+                  alt={employee.name}
+                  className="w-full h-full object-cover"
                 />
-              ))}
+              </div>
+              <div>
+                <h2 className="text-[18px] font-['Manrope:Bold',sans-serif] text-[#111111] leading-tight">
+                  {employee.name}
+                </h2>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <AccessBadge role={employee.access} color={employee.roleColor} />
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-['Manrope:SemiBold',sans-serif] ${employee.status === 'active'
+                      ? 'bg-[#ECFDF3] text-[#12B76A]'
+                      : 'bg-[#FEF3F2] text-[#F04438]'
+                      }`}
+                  >
+                    <span className="w-1 h-1 rounded-full bg-current"></span>
+                    {employee.status === 'active' ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+              </div>
             </div>
-          ) : (
-            <div className="border border-[#EEEEEE] border-dashed rounded-lg p-6 bg-[#FAFAFA] text-center">
-              <FileText className="w-10 h-10 text-[#CCCCCC] mx-auto mb-2" />
-              <p className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-1">
-                No documents uploaded
-              </p>
-              <p className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
-                Documents will appear here once uploaded
-              </p>
+
+            <div className="flex items-center gap-1 pr-6">
+              <Button
+                type="text"
+                icon={<Mail className="w-4 h-4 text-[#666666]" />}
+                onClick={() => window.location.href = `mailto:${employee.email}`}
+                className="hover:bg-[#F7F7F7] rounded-full w-8 h-8 flex items-center justify-center p-0"
+                aria-label={`Send email to ${employee.name}`}
+              />
+              <Button
+                type="text"
+                icon={<Phone className="w-4 h-4 text-[#666666]" />}
+                onClick={() => window.location.href = `tel:${employee.phone}`}
+                className="hover:bg-[#F7F7F7] rounded-full w-8 h-8 flex items-center justify-center p-0"
+                aria-label={`Call ${employee.name}`}
+              />
+
+              {(employee.linkedin || employee.github || employee.portfolio) && (
+                <>
+                  <div className="mx-1.5 w-[1px] h-4 bg-[#EEEEEE]"></div>
+                  {employee.linkedin && (
+                    <Button
+                      type="text"
+                      icon={<Linkedin className="w-4 h-4 text-[#0077B5]" />}
+                      onClick={() => window.open(employee.linkedin!.startsWith('http') ? employee.linkedin : `https://linkedin.com/in/${employee.linkedin}`, '_blank')}
+                      className="hover:bg-[#F7F7F7] rounded-full w-8 h-8 flex items-center justify-center p-0"
+                      aria-label={`Visit ${employee.name}'s LinkedIn profile`}
+                    />
+                  )}
+                  {employee.github && (
+                    <Button
+                      type="text"
+                      icon={<Github className="w-4 h-4 text-[#111111]" />}
+                      onClick={() => window.open(employee.github!.startsWith('http') ? employee.github : `https://github.com/${employee.github}`, '_blank')}
+                      className="hover:bg-[#F7F7F7] rounded-full w-8 h-8 flex items-center justify-center p-0"
+                      aria-label={`Visit ${employee.name}'s GitHub profile`}
+                    />
+                  )}
+                  {employee.portfolio && (
+                    <Button
+                      type="text"
+                      icon={<Globe className="w-4 h-4 text-[#666666]" />}
+                      onClick={() => window.open(employee.portfolio!.startsWith('http') ? employee.portfolio : `https://${employee.portfolio}`, '_blank')}
+                      className="hover:bg-[#F7F7F7] rounded-full w-8 h-8 flex items-center justify-center p-0"
+                      aria-label={`Visit ${employee.name}'s portfolio`}
+                    />
+                  )}
+                </>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Bottom Section - Action Buttons */}
-        <div className="px-6 py-6 flex items-center justify-end gap-3">
+        {/* Scrollable Body - Ensuring flex-1 and overflow-y-auto */}
+        <div className="flex-1 overflow-y-auto px-6 py-6 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent space-y-8">
+          {/* Section 1: Basic Information */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1 h-4 bg-[#111111] rounded-full"></div>
+              <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">Basic Information</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-y-5 gap-x-12 pl-3">
+              <DetailItem label="Email Address" value={employee.email} icon={<Mail className="w-3.5 h-3.5" />} />
+              <DetailItem label="Phone Number" value={employee.phone} icon={<Phone className="w-3.5 h-3.5" />} />
+              <DetailItem label="Department" value={employee.department} icon={<Users className="w-3.5 h-3.5" />} />
+              <DetailItem label="Designation" value={employee.role} icon={<Briefcase className="w-3.5 h-3.5" />} />
+            </div>
+            {employee.bio && (
+              <div className="mt-5 pl-3">
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">
+                  Professional Bio
+                </p>
+                <p className="text-[13px] text-[#444444] leading-relaxed font-['Manrope:Regular',sans-serif] bg-[#F9FAFB] p-4 rounded-xl border border-[#EEEEEE]">
+                  {employee.bio}
+                </p>
+              </div>
+            )}
+          </section>
+
+          {/* Section 2: Employment & HR Details */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1 h-4 bg-[#111111] rounded-full"></div>
+              <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">Employment & HR Details</h3>
+            </div>
+            <div className="grid grid-cols-3 gap-4 mb-6 pl-3">
+              <StatCard label="Experience" value={experience} icon={<Briefcase className="w-4 h-4 text-gray-400" />} />
+              <StatCard label="Leaves Balance" value={leavesTaken} icon={<CalendarDays className="w-4 h-4 text-gray-400" />} />
+              <StatCard label="Working Hours" value={workingHours} icon={<Clock className="w-4 h-4 text-gray-400" />} />
+            </div>
+            <div className="grid grid-cols-2 gap-y-5 gap-x-12 pl-3">
+              <DetailItem label="Date of Joining" value={formatDate(employee.dateOfJoining)} icon={<Calendar className="w-3.5 h-3.5" />} />
+              <DetailItem label="Hourly Cost" value={hourlyRate} icon={<DollarSign className="w-3.5 h-3.5" />} />
+              <DetailItem label="Employment Type" value={employee.employmentType || "Full-time"} icon={<Briefcase className="w-3.5 h-3.5" />} />
+              {employee.timezone && (
+                <DetailItem label="Local Timezone" value={employee.timezone} icon={<Globe className="w-3.5 h-3.5" />} />
+              )}
+            </div>
+
+            {/* Emergency Contact Sub-section */}
+            {(employee.emergencyContactName || employee.emergencyContactPhone) && (
+              <div className="mt-6 ml-3 p-4 bg-[#FEF3F2] rounded-xl border border-[#FEE4E2] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#F04438] shadow-sm">
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#B42318] uppercase tracking-wider">Emergency Contact</p>
+                    <p className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#912018]">{employee.emergencyContactName || 'N/A'}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#B42318]">{employee.emergencyContactPhone || '-'}</p>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* Section 3: Skills & Assets */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1 h-4 bg-[#111111] rounded-full"></div>
+              <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">Skills & Documents</h3>
+            </div>
+            <div className="space-y-6 pl-3">
+              {/* Skillsets */}
+              <div>
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">
+                  Professional Skillsets
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {skills.length > 0 ? (
+                    skills.map((skill, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-[#F9FAFB] text-[#111111] text-[12px] font-['Manrope:Medium',sans-serif] rounded-full border border-[#EEEEEE]"
+                      >
+                        {skill}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-[12px] text-[#999999] italic">No skills specified</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Documents */}
+              <div>
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-3">
+                  Uploaded Documents
+                </p>
+                {documents && documents.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3 pb-4">
+                    {documents.map((doc: UserDocument) => (
+                      <DocumentCard
+                        key={doc.id}
+                        document={doc}
+                        onPreview={handleDocumentPreview}
+                        onDownload={handleDocumentDownload}
+                        showUpload={!doc.fileUrl}
+                        onUpload={handleDocumentUpload}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="border border-[#EEEEEE] border-dashed rounded-xl p-6 bg-[#FAFAFA] text-center">
+                    <FileText className="w-8 h-8 text-[#CCCCCC] mx-auto mb-2" />
+                    <p className="text-[12px] font-['Manrope:Medium',sans-serif] text-[#666666]">
+                      No documents available
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* Fixed Footer */}
+        <div className="flex-shrink-0 border-t border-[#EEEEEE] px-6 py-4 flex items-center justify-end bg-white gap-3 rounded-b-[16px]">
           <Button
             onClick={onClose}
-            className="h-10 px-4 font-['Manrope:SemiBold',sans-serif] text-[#666666] border border-[#EEEEEE] hover:bg-[#F9FAFB]"
+            className="h-10 px-6 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] border border-[#EEEEEE] hover:bg-[#F9FAFB] rounded-lg"
           >
             Close
           </Button>
@@ -366,14 +382,13 @@ export function EmployeeDetailsModal({
               onClose();
               onEdit();
             }}
-            className="h-10 px-6 rounded-lg bg-[#111111] hover:bg-[#000000] text-white font-['Manrope:SemiBold',sans-serif] border-none"
+            className="h-10 px-8 rounded-lg bg-[#111111] hover:bg-[#000000] text-white text-[14px] font-['Manrope:SemiBold',sans-serif] border-none active:scale-95 transition-transform"
           >
-            Edit Details
+            Edit Profile
           </Button>
         </div>
       </div>
 
-      {/* Document Preview Modal */}
       <DocumentPreviewModal
         open={isPreviewModalOpen}
         onClose={() => {
@@ -383,5 +398,37 @@ export function EmployeeDetailsModal({
         document={selectedDocument}
       />
     </Modal>
+  );
+}
+
+function DetailItem({ label, value, icon }: { label: string; value: string | null; icon: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mt-1 text-[#666666] flex-shrink-0">
+        {icon}
+      </div>
+      <div>
+        <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-0.5">
+          {label}
+        </p>
+        <p className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">
+          {value || 'N/A'}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
+  return (
+    <div className="bg-[#F9FAFB] rounded-xl p-4 border border-[#EEEEEE] flex items-center gap-3">
+      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center border border-[#EEEEEE] flex-shrink-0">
+        {icon}
+      </div>
+      <div>
+        <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-0.5">{label}</p>
+        <p className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111]">{value}</p>
+      </div>
+    </div>
   );
 }

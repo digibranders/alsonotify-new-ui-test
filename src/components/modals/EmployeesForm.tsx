@@ -149,68 +149,68 @@ export function EmployeeForm({
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Fixed Header */}
-      <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-6">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-            <div className="p-2 rounded-full bg-[#F7F7F7]">
-              <UserIcon className="w-5 h-5 text-[#666666]" />
+      <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-3">
+        <div className="flex items-center justify-between mb-0.5">
+          <div className="flex items-center gap-2 text-[17px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+            <div className="p-1.5 rounded-full bg-[#F7F7F7]">
+              <UserIcon className="w-3.5 h-3.5 text-[#666666]" />
             </div>
             {isEditing ? 'Edit Employee Details' : 'Add Employee'}
           </div>
         </div>
-        <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
+        <p className="text-[11px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-9">
           {isEditing ? 'Update employee profile, access, and HR details.' : 'Onboard a new employee to the organization.'}
         </p>
       </div>
 
       {/* Scrollable Body */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+      <div className="flex-1 overflow-y-auto px-6 py-5 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
         {/* Section: Employee Details */}
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
           {/* Left Column */}
-          <div className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+          <div className="space-y-3.5">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">First Name <span className="text-[#ff3b3b]">*</span></span>
                 <Input
                   placeholder="First name"
-                  className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.firstName ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.firstName ? 'bg-white' : 'bg-[#F9FAFB]'}`}
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Last Name</span>
                 <Input
                   placeholder="Last name"
-                  className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.lastName ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.lastName ? 'bg-white' : 'bg-[#F9FAFB]'}`}
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Designation</span>
               <Input
                 placeholder="e.g. Senior Developer"
-                className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.role ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.role ? 'bg-white' : 'bg-[#F9FAFB]'}`}
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Email</span>
               <Input
                 placeholder="email@company.com"
-                className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.email ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.email ? 'bg-white' : 'bg-[#F9FAFB]'}`}
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Employment Type</span>
               <Select
                 className={`w-full h-11 employee-form-select ${formData.employmentType ? 'employee-form-select-filled' : ''}`}
@@ -226,12 +226,12 @@ export function EmployeeForm({
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Experience (Years)</span>
               <Input
                 type="number"
                 placeholder="e.g. 5"
-                className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.experience ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.experience ? 'bg-white' : 'bg-[#F9FAFB]'}`}
                 value={formData.experience}
                 onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
               />
@@ -239,12 +239,12 @@ export function EmployeeForm({
 
 
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Leaves Balance</span>
               <Input
                 type="number"
                 placeholder="Days"
-                className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.leaves ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.leaves ? 'bg-white' : 'bg-[#F9FAFB]'}`}
                 value={formData.leaves}
                 onChange={(e) => setFormData({ ...formData, leaves: e.target.value })}
               />
@@ -252,20 +252,16 @@ export function EmployeeForm({
           </div>
 
           {/* Right Column */}
-          <div className="space-y-5">
-            <div className="space-y-2">
+          <div className="space-y-3.5">
+            <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Access Level</span>
               <Select
                 className={`w-full h-11 access-level-select employee-form-select ${formData.access ? 'employee-form-select-filled' : ''}`}
+                classNames={{ popup: { root: 'access-level-popup' } }}
                 placeholder="Select access"
                 value={formData.access}
                 onChange={(v) => setFormData({ ...formData, access: v as "Admin" | "Manager" | "Leader" | "Employee" })}
-                suffixIcon={<div className="text-gray-400">⌄</div>}
-                popupRender={(menu) => (
-                  <div className="bg-white overflow-hidden access-level-dropdown">
-                    {menu}
-                  </div>
-                )}
+                suffixIcon={<div className="flex items-center h-full"><div className="text-gray-400">⌄</div></div>}
               >
                 <Option value="Admin">
                   <div className="flex items-center gap-2">
@@ -293,7 +289,90 @@ export function EmployeeForm({
                 </Option>
               </Select>
               <style jsx global>{`
-                /* Gray background for all Select dropdowns (default) */
+                /* Force standard 44px height for all form elements */
+                :global(.ant-input), 
+                :global(.ant-select),
+                :global(.ant-select-selector), 
+                :global(.ant-picker) {
+                  height: 44px !important;
+                }
+                
+                :global(.ant-select-selector), 
+                :global(.ant-picker) {
+                  min-height: 44px !important;
+                  display: flex !important;
+                  align-items: center !important;
+                  padding-top: 0 !important;
+                  padding-bottom: 0 !important;
+                }
+                
+                /* Ensure content inside Select is centered */
+                :global(.ant-select-selection-item), 
+                :global(.ant-select-selection-placeholder),
+                :global(.ant-select-selection-search-input) {
+                  display: flex !important;
+                  align-items: center !important;
+                }
+                
+                :global(.ant-select-selection-placeholder) {
+                  height: 100% !important;
+                  top: 0 !important;
+                  display: flex !important;
+                  align-items: center !important;
+                }
+                
+                :global(.ant-select-selection-search) {
+                  height: 100% !important;
+                  top: 0 !important;
+                  display: flex !important;
+                  align-items: center !important;
+                  margin-top: 0 !important;
+                  margin-bottom: 0 !important;
+                }
+                
+                /* Tags should stay centered */
+                :global(.ant-select-selection-overflow) {
+                  height: 100% !important;
+                  display: flex !important;
+                  align-items: center !important;
+                  flex-wrap: nowrap !important;
+                  padding-top: 0 !important;
+                  padding-bottom: 0 !important;
+                }
+
+                /* LinkedIn Style Skills Tags */
+                :global(.linkedin-skill-select .ant-select-selection-item) {
+                  background: #E7F3FF !important;
+                  border: 1px solid #70B5FF !important;
+                  border-radius: 4px !important;
+                  color: #004182 !important;
+                  font-family: 'Manrope:SemiBold', sans-serif !important;
+                  font-size: 12px !important;
+                  height: 24px !important;
+                  line-height: 22px !important;
+                  margin: 0 4px 0 0 !important;
+                  padding-inline-start: 8px !important;
+                  display: flex !important;
+                  align-items: center !important;
+                }
+                :global(.linkedin-skill-select .ant-select-selection-item-remove) {
+                  color: #004182 !important;
+                  transition: all 0.2s;
+                }
+                :global(.linkedin-skill-select .ant-select-selection-item-remove:hover) {
+                  color: #ff3b3b !important;
+                }
+                :global(.linkedin-skill-select .ant-select-selection-overflow-item) {
+                  display: flex !important;
+                  align-items: center !important;
+                }
+                :global(.linkedin-skill-select .ant-select-selector) {
+                  padding-top: 0 !important;
+                  padding-bottom: 0 !important;
+                  padding-left: 11px !important;
+                  overflow: hidden !important;
+                }
+              /* Gray background for all Select dropdowns (default) */
                 .employee-form-select .ant-select-selector {
                   background-color: #F9FAFB !important;
                   border-color: #EEEEEE !important;
@@ -335,43 +414,42 @@ export function EmployeeForm({
                   box-shadow: none !important;
                 }
                 
-                /* Access Level dropdown styling - remove extra background */
-                .access-level-dropdown {
-                  box-shadow: none !important;
-                  border: none !important;
-                  padding: 0 !important;
-                }
-                .access-level-dropdown .ant-select-dropdown {
-                  box-shadow: none !important;
-                  border: none !important;
-                  padding: 0 !important;
-                }
-                .access-level-dropdown .ant-select-item {
+                /* Access Level dropdown styling - remove extra background and checkboxes */
+                :global(.access-level-popup), :global(.linkedin-skill-dropdown) {
+                  box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+                  border: 1px solid #EEEEEE !important;
+                  border-radius: 8px !important;
+                  padding: 4px !important;
                   background: white !important;
-                  padding: 10px 16px !important;
                 }
-                .access-level-dropdown .ant-select-item:hover {
+                :global(.access-level-popup .ant-select-item), :global(.linkedin-skill-dropdown .ant-select-item) {
+                  background: white !important;
+                  padding: 8px 12px !important;
+                  border-radius: 6px !important;
+                  margin-bottom: 2px !important;
+                }
+                :global(.access-level-popup .ant-select-item:hover), :global(.linkedin-skill-dropdown .ant-select-item:hover) {
                   background: #F7F7F7 !important;
                 }
-                .access-level-dropdown .ant-select-item-option-selected {
-                  background: white !important;
+                :global(.access-level-popup .ant-select-item-option-selected), :global(.linkedin-skill-dropdown .ant-select-item-option-selected) {
+                  background: #F9FAFB !important;
+                  font-weight: 600 !important;
                 }
-                .access-level-dropdown .ant-select-item-option-active {
-                  background: #F7F7F7 !important;
+                /* Show exactly one checkmark - standard antd checkmark is in .ant-select-item-option-state */
+                :global(.access-level-popup .ant-select-item-option-state),
+                :global(.linkedin-skill-dropdown .ant-select-item-option-state) {
+                  display: flex !important;
+                  color: #111111 !important;
+                  font-size: 14px !important;
                 }
-                .access-level-dropdown .ant-select-item-option-selected .ant-select-item-option-content {
-                  background: white !important;
-                }
-                .access-level-dropdown .ant-select-item-option-selected::after {
-                  display: none !important;
-                }
-                .access-level-dropdown .ant-select-item-option-selected .anticon-check {
+                :global(.access-level-popup .ant-select-item-option-selected::after),
+                :global(.linkedin-skill-dropdown .ant-select-item-option-selected::after) {
                   display: none !important;
                 }
               `}</style>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Department</span>
               <Select
                 className={`w-full h-11 employee-form-select ${formData.department ? 'employee-form-select-filled' : ''}`}
@@ -391,7 +469,7 @@ export function EmployeeForm({
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Contact Number</span>
               <div className="flex gap-2">
                 <Select
@@ -413,7 +491,7 @@ export function EmployeeForm({
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Date of Joining</span>
               <DatePicker
                 className={`w-full h-11 employee-form-datepicker ${formData.dateOfJoining ? 'employee-form-datepicker-filled' : ''}`}
@@ -425,7 +503,7 @@ export function EmployeeForm({
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours</span>
               <div className="flex items-center gap-2">
                 <div className="flex-1">
@@ -452,7 +530,7 @@ export function EmployeeForm({
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Hourly Cost</span>
               <Input
                 placeholder="e.g. 25/Hr"
@@ -463,21 +541,51 @@ export function EmployeeForm({
             </div>
           </div>
         </div>
+
+        {/* Full Width Skillsets Field */}
+        <div className="mt-6 space-y-1.5">
+          <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Professional Skillsets</span>
+          <Select
+            mode="tags"
+            className={`w-full employee-form-select linkedin-skill-select ${formData.skillsets ? 'employee-form-select-filled' : ''}`}
+            classNames={{ popup: { root: 'linkedin-skill-dropdown' } }}
+            placeholder="Type and press enter (e.g. React, UX Design, etc.)"
+            value={formData.skillsets ? formData.skillsets.split(',').filter(s => s.trim()) : []}
+            onChange={(v) => setFormData({ ...formData, skillsets: v.join(',') })}
+            suffixIcon={null}
+            maxTagCount="responsive"
+          >
+            <Option value="React">React</Option>
+            <Option value="Node.js">Node.js</Option>
+            <Option value="TypeScript">TypeScript</Option>
+            <Option value="UI/UX Design">UI/UX Design</Option>
+            <Option value="Product Management">Product Management</Option>
+            <Option value="Python">Python</Option>
+            <Option value="AWS">AWS</Option>
+            <Option value="SEO">SEO</Option>
+            <Option value="AI">AI</Option>
+            <Option value="Social Media Marketing">Social Media Marketing</Option>
+            <Option value="Content Marketing">Content Marketing</Option>
+
+
+
+          </Select>
+        </div>
       </div>
 
       {/* Fixed Footer */}
-      <div className="flex-shrink-0 border-t border-[#EEEEEE] px-6 py-6 flex items-center justify-end bg-white gap-4">
+      <div className="flex-shrink-0 border-t border-[#EEEEEE] px-6 py-4 flex items-center justify-end bg-white gap-4">
         <Button
           type="text"
           onClick={onCancel}
-          className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
+          className="h-[40px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
         >
           Cancel
         </Button>
         <Button
           type="primary"
           onClick={handleSubmit}
-          className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
+          className="h-[40px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
         >
           {isEditing ? "Update Profile" : "Create Employee"}
         </Button>

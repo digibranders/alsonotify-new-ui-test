@@ -803,6 +803,9 @@ export function TasksPage() {
         styles={{
           body: {
             padding: 0,
+            maxHeight: 'calc(100vh - 100px)',
+            display: 'flex',
+            flexDirection: 'column',
           },
         }}
       >
