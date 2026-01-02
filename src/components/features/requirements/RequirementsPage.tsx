@@ -281,13 +281,13 @@ function InternalMappingModal({
               className="w-full h-11"
               placeholder="Select workspace"
               value={selectedWorkspace}
-              onChange={(v) => {
+              onChange={(v: string | number) => {
                 if (v === 'create_new') {
                   setIsCreateOpen(true);
                   // Reset selection until created
                   setSelectedWorkspace(undefined);
                 } else {
-                  setSelectedWorkspace(v);
+                  setSelectedWorkspace(v as number);
                 }
               }}
               suffixIcon={<ChevronDown className="w-4 h-4 text-gray-400" />}
