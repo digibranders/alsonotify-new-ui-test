@@ -166,10 +166,10 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
   useEffect(() => {
     const fetchRequirements = async () => {
       try {
-        if (!workspacesData?.result?.projects) return;
+        if (!workspacesData?.result?.workspaces) return;
         const allRequirements: Array<{ id: number; name: string }> = [];
 
-        for (const workspace of workspacesData.result.projects) {
+        for (const workspace of workspacesData.result.workspaces) {
           try {
             const response = await getRequirementsDropdownByWorkspaceId(workspace.id);
             if (response.success && response.result) {
@@ -221,14 +221,15 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
       return;
     }
 
-    if (!data.project_id) {
+    if (!data.workspace_id) {
       message.error("Please select a workspace");
       return;
     }
 
     createRequirementMutation.mutate(
       {
-        project_id: Number(data.project_id),
+        workspace_id: Number(data.workspace_id),
+        project_id: Number(data.workspace_id), // Backward compatibility
         name: data.title,
         description: data.description || '',
         start_date: new Date().toISOString(),
@@ -503,7 +504,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
           onCancel={() => setShowTaskDialog(false)}
           users={usersDropdown}
           requirements={requirementsDropdown}
-          workspaces={workspacesData?.result?.projects?.map((p: any) => ({ id: p.id, name: p.name })) || []}
+          workspaces={workspacesData?.result?.workspaces?.map((p: any) => ({ id: p.id, name: p.name })) || []}
         />
       </Modal>
 
@@ -525,7 +526,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         <RequirementsForm
           onSubmit={handleCreateRequirement}
           onCancel={() => setShowRequirementDialog(false)}
-          workspaces={workspacesData?.result?.projects?.map((w: any) => ({ id: w.id, name: w.name })) || []}
+          workspaces={workspacesData?.result?.workspaces?.map((w: any) => ({ id: w.id, name: w.name })) || []}
           isLoading={createRequirementMutation.isPending}
         />
       </Modal>

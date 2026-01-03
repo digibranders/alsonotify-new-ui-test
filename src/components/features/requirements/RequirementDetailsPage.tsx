@@ -36,7 +36,7 @@ export function RequirementDetailsPage() {
 
   const { data: workspaceData, isLoading: isLoadingWorkspace } = useWorkspace(workspaceId);
   const { data: requirementsData, isLoading: isLoadingRequirements } = useRequirements(workspaceId);
-  const { data: tasksData } = useTasks(`project_id=${workspaceId}`);
+  const { data: tasksData } = useTasks(`workspace_id=${workspaceId}`);
 
   const [activeTab, setActiveTab] = useState<'details' | 'tasks' | 'gantt' | 'kanban' | 'pnl'>('details');
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);

@@ -9,7 +9,7 @@ export interface TaskType {
   description?: string;
   status?: string;
   priority?: string;
-  project_id?: number;
+  workspace_id?: number;
   requirement_id?: number;
   assigned_to?: number;
   member_id?: number;
@@ -51,7 +51,7 @@ export interface TaskDetailType extends TaskType {
   // Pre-populated relation fields from API
   leader_user?: { id: number; name?: string; email?: string };
   member_user?: { id: number; name?: string; email?: string };
-  task_project?: { id: number; name?: string };
+  task_workspace?: { id: number; name?: string };
   task_requirement?: { id: number; name?: string };
   task_members?: Array<{
     id: number;
