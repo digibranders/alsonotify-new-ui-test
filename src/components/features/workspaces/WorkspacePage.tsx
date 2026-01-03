@@ -80,7 +80,6 @@ export function WorkspacePage() {
       return {
         id: w.id,
         name: w.name,
-        client: w.client?.name || w.client_company_name || 'N/A',
         taskCount: w.total_task || 0,
         inProgressCount: w.total_task_in_progress || 0,
         delayedCount: w.total_task_delayed || 0,
@@ -99,43 +98,27 @@ export function WorkspacePage() {
     // side-effects after workspaces change (currently none)
   }, [workspaces]);
 
-  // Extract unique companies from workspace data
-  const companies = useMemo(() => {
-    const clientNames = workspaces.map(w => w.client).filter(c => c !== 'N/A');
-    return ['All', ...Array.from(new Set(clientNames))];
-  }, [workspaces]);
-
   const handleFilterChange = (filterId: string, value: string) => {
     setFilters(prev => ({ ...prev, [filterId]: value }));
     setCurrentPage(1);
   };
 
   const clearFilters = () => {
-    setFilters({ company: 'All' });
+    setFilters({});
     setSearchQuery('');
     setCurrentPage(1);
     setSelectedWorkspaces([]);
   };
 
-  const filterOptions: FilterOption[] = [
-    {
-      id: 'company',
-      label: 'Company',
-      options: companies,
-      placeholder: 'Company',
-      defaultValue: 'All'
-    }
-  ];
+  const filterOptions: FilterOption[] = [];
 
 
 
   const filteredWorkspaces = workspaces.filter(workspace => {
     const matchesTab = workspace.status === activeTab;
     const matchesSearch = searchQuery === '' ||
-      workspace.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      workspace.client.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCompany = filters.company === 'All' || workspace.client === filters.company;
-    return matchesTab && matchesSearch && matchesCompany;
+      workspace.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesTab && matchesSearch;
   });
 
   useEffect(() => {
@@ -167,7 +150,7 @@ export function WorkspacePage() {
     );
   };
 
-  const handleSelectWorkspace = (workspace: { id: number; name: string; client: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; totalRequirements?: number; inProgressRequirements?: number; delayedRequirements?: number; status: string }) => {
+  const handleSelectWorkspace = (workspace: { id: number; name: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; totalRequirements?: number; inProgressRequirements?: number; delayedRequirements?: number; status: string }) => {
     router.push(`/dashboard/workspace/${workspace.id}/requirements`);
   };
 
@@ -264,7 +247,7 @@ export function WorkspacePage() {
         ) : (
           <div className="flex flex-col gap-3">
             {/* List header – aligned with rows, matches dashboard style */}
-            <div className="grid grid-cols-[40px_2.8fr_1.6fr_1.6fr_0.7fr_0.3fr] gap-4 px-4 py-3 items-center bg-white">
+            <div className="grid grid-cols-[40px_2.8fr_3.2fr_0.7fr_0.3fr] gap-4 px-4 py-3 items-center bg-white">
               <div className="flex justify-center">
                 <Checkbox
                   className="red-checkbox"
@@ -281,9 +264,6 @@ export function WorkspacePage() {
               </div>
               <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
                 Workspace Name
-              </p>
-              <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
-                Client
               </p>
               <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
                 Requirements
@@ -370,7 +350,7 @@ function WorkspaceRequirementsSummary({
   );
 }
 
-function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: string; client: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; totalRequirements?: number; inProgressRequirements?: number; delayedRequirements?: number; status: string }; onClick?: () => void }) {
+function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; totalRequirements?: number; inProgressRequirements?: number; delayedRequirements?: number; status: string }; onClick?: () => void }) {
   const items: MenuProps['items'] = [
     {
       key: 'manage',
@@ -418,9 +398,6 @@ function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: 
             <h3 className="font-['Manrope:Bold',sans-serif] text-[15px] text-[#111111] leading-tight mb-1 truncate w-full">
               {workspace.name}
             </h3>
-            <p className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif] truncate w-full">
-              {workspace.client}
-            </p>
           </div>
         </div>
 
@@ -446,7 +423,6 @@ function WorkspaceListItem({
   workspace: {
     id: number;
     name: string;
-    client: string;
     taskCount: number;
     inProgressCount?: number;
     delayedCount?: number;
@@ -484,7 +460,7 @@ function WorkspaceListItem({
       onClick={onClick}
       className="group bg-white border border-[#F3F4F6] rounded-[12px] px-4 py-3 hover:border-[#ff3b3b] hover:shadow-md transition-all cursor-pointer"
     >
-      <div className="grid grid-cols-[40px_2.8fr_1.6fr_1.6fr_0.7fr_0.3fr] items-center gap-4">
+      <div className="grid grid-cols-[40px_2.8fr_3.2fr_0.7fr_0.3fr] items-center gap-4">
         {/* Checkbox */}
         <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
           <Checkbox
@@ -504,13 +480,6 @@ function WorkspaceListItem({
               {workspace.name}
             </h3>
           </div>
-        </div>
-
-        {/* Client */}
-        <div>
-          <p className="text-[13px] text-[#111111] font-['Manrope:Medium',sans-serif] line-clamp-1">
-            {workspace.client}
-          </p>
         </div>
 
         {/* Requirements Stats */}

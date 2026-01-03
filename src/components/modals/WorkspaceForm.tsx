@@ -17,12 +17,8 @@ interface WorkspaceFormProps {
 
 const defaultWorkspaceData = {
     name: '',
-    client_id: null as number | null,
-    type: 'inhouse' as 'inhouse' | 'client',
     description: '',
-    highPriority: false,
-    inHouse: false,
-    contactPerson: '',
+    inHouse: true,
     manager: '',
     leader: '',
     startDate: '', // String for input value
@@ -55,11 +51,6 @@ export function WorkspaceForm({ open, onCancel, onSuccess }: WorkspaceFormProps)
             return;
         }
 
-        if (newWorkspace.type === 'client' && !newWorkspace.client_id) {
-            message.error("Please select a client");
-            return;
-        }
-
         // Find manager/leader ID
         const managerId = newWorkspace.manager ? Number(newWorkspace.manager) : null;
         const leaderId = newWorkspace.leader ? Number(newWorkspace.leader) : null;
@@ -68,8 +59,8 @@ export function WorkspaceForm({ open, onCancel, onSuccess }: WorkspaceFormProps)
             {
                 name: newWorkspace.name,
                 description: newWorkspace.description || '',
-                client_id: newWorkspace.type === 'client' ? newWorkspace.client_id : null,
-                in_house: newWorkspace.type === 'inhouse',
+                client_id: null,
+                in_house: true,
                 manager_id: managerId,
                 leader_id: leaderId,
                 start_date: new Date().toISOString(),
@@ -140,41 +131,7 @@ export function WorkspaceForm({ open, onCancel, onSuccess }: WorkspaceFormProps)
                             />
                         </div>
 
-                        {/* Workspace Type */}
-                        <div className="space-y-1.5">
-                            <label className="text-[12px] font-bold text-[#111111]">Workspace Type <span className="text-[#ff3b3b]">*</span></label>
-                            <Select
-                                className="w-full h-11"
-                                value={newWorkspace.type}
-                                onChange={(val: 'inhouse' | 'client') => setNewWorkspace({ 
-                                    ...newWorkspace, 
-                                    type: val, 
-                                    client_id: val === 'inhouse' ? null : newWorkspace.client_id 
-                                })}
-                            >
-                                <Option value="inhouse">In House</Option>
-                                <Option value="client">Client</Option>
-                            </Select>
-                        </div>
-
-                        {/* Client (Conditional) */}
-                        {newWorkspace.type === 'client' && (
-                            <div className="space-y-1.5">
-                                <label className="text-[12px] font-bold text-[#111111]">Select Client <span className="text-[#ff3b3b]">*</span></label>
-                                <Select
-                                    className="w-full h-11"
-                                    placeholder="Select client"
-                                    value={newWorkspace.client_id || undefined}
-                                    onChange={(val) => setNewWorkspace({ ...newWorkspace, client_id: Number(val) })}
-                                >
-                                    {clientsData?.result?.map((client: any) => (
-                                        <Option key={client.id} value={client.id}>
-                                            {client.name}
-                                        </Option>
-                                    ))}
-                                </Select>
-                            </div>
-                        )}
+                        {/* Manager & Leader */}
 
 
 
