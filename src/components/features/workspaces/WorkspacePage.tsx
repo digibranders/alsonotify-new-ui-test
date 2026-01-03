@@ -40,7 +40,7 @@ export function WorkspacePage() {
 
   // Get all workspace IDs
   const workspaceIds = useMemo(() => {
-    return workspacesData?.result?.projects?.map((w: any) => w.id) || [];
+    return workspacesData?.result?.workspaces?.map((w: any) => w.id) || [];
   }, [workspacesData]);
 
   // Fetch requirements for all workspaces
@@ -54,8 +54,8 @@ export function WorkspacePage() {
 
   // Transform backend data to frontend format with requirements counts
   const workspaces = useMemo(() => {
-    if (!workspacesData?.result?.projects) return [];
-    return workspacesData.result.projects.map((w: any) => {
+    if (!workspacesData?.result?.workspaces) return [];
+    return workspacesData.result.workspaces.map((w: any) => {
       // Find requirements for this workspace
       const reqQuery = requirementQueries.find((q, idx) => workspaceIds[idx] === w.id);
       const requirements = reqQuery?.data?.result || [];
