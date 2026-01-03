@@ -88,7 +88,7 @@ export function WorkspacePage() {
         totalRequirements,
         inProgressRequirements,
         delayedRequirements,
-        status: ['active', 'in_progress', 'assigned'].includes((w.status || '').toLowerCase()) ? 'active' : 'inactive',
+        status: 'active',
         description: w.description || '',
       };
     });
