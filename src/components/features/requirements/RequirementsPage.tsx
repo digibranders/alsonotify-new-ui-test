@@ -58,7 +58,7 @@ interface Requirement {
   contactPerson?: string;
   rejectionReason?: string;
   headerContact?: string;
-  project_id?: number;
+  workspace_id?: number;
   headerCompany?: string;
   quotedPrice?: number;
   rawStatus?: string;
@@ -66,7 +66,7 @@ interface Requirement {
   contact_person_id?: number;
   sender_company_id?: number;
   receiver_company_id?: number;
-  receiver_project_id?: number;
+  receiver_workspace_id?: number;
   negotiation_reason?: string;
   isReceiver?: boolean;
   isSender?: boolean;
@@ -339,7 +339,7 @@ export function RequirementsPage() {
 
   // Get all workspace IDs
   const workspaceIds = useMemo(() => {
-    return workspacesData?.result?.projects?.map((w: any) => w.id) || [];
+    return workspacesData?.result?.workspaces?.map((w: any) => w.id) || [];
   }, [workspacesData]);
 
   // Fetch requirements for all workspaces
@@ -396,7 +396,7 @@ export function RequirementsPage() {
       if (query.data?.result && workspaceIdFromQuery) {
         const requirementsWithWorkspace = query.data.result.map((req: any) => ({
           ...req,
-          project_id: req.project_id ?? workspaceIdFromQuery,
+          workspace_id: req.workspace_id ?? workspaceIdFromQuery,
         }));
         combined.push(...requirementsWithWorkspace);
       }
@@ -418,7 +418,7 @@ export function RequirementsPage() {
   // Workspace API returns: { client: {id, name}, client_company_name, company_name }
   const workspaceMap = useMemo(() => {
     const map = new Map<number, any>();
-    workspacesData?.result?.projects?.forEach((w: any) => {
+    workspacesData?.result?.workspaces?.forEach((w: any) => {
       map.set(w.id, w);
     });
     return map;
@@ -440,9 +440,9 @@ export function RequirementsPage() {
       const isReceiver = myCompanyId !== null && reqReceiverCompanyId === myCompanyId;
       const isSender = myCompanyId !== null && reqSenderCompanyId === myCompanyId;
       
-      const effectiveWorkspaceId = (isReceiver && req.receiver_project_id) 
-        ? req.receiver_project_id 
-        : req.project_id;
+      const effectiveWorkspaceId = (isReceiver && req.receiver_workspace_id) 
+        ? req.receiver_workspace_id 
+        : req.workspace_id;
         
       const workspace = workspaceMap.get(effectiveWorkspaceId);
 
@@ -531,7 +531,7 @@ export function RequirementsPage() {
         progress: req.progress || 0,
         tasksCompleted: req.total_tasks ? Math.floor(req.total_tasks * (req.progress || 0) / 100) : 0,
         tasksTotal: req.total_tasks || 0,
-        workspaceId: req.project_id,
+        workspaceId: req.workspace_id,
         workspace: workspace?.name || 'Unknown Workspace',
         approvalStatus: (req.approved_by?.id ? 'approved' :
           (req.status === 'Waiting' || req.status === 'Review' || req.status === 'Rejected' || req.status?.toLowerCase() === 'review' || req.status?.toLowerCase() === 'waiting' || req.status?.toLowerCase() === 'rejected' || req.status?.toLowerCase().includes('pending')) ? 'pending' :
@@ -553,7 +553,8 @@ export function RequirementsPage() {
         rawStatus: req.status,
         sender_company_id: req.sender_company_id,
         receiver_company_id: req.receiver_company_id,
-        receiver_project_id: req.receiver_project_id,
+        receiver_workspace_id: req.receiver_workspace_id,
+        receiver_project_id: req.receiver_workspace_id, // Backward compat if needed, but safer to rely on new field
         negotiation_reason: req.negotiation_reason,
       };
 
@@ -654,6 +655,7 @@ export function RequirementsPage() {
     updateRequirementMutation.mutate({
       id: reqId,
       project_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
+      quote_workspace_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
       // We only update specific fields for quotation
       quoted_price: amount,
       estimated_hours: hours,
@@ -676,7 +678,7 @@ export function RequirementsPage() {
 
     updateRequirementMutation.mutate({
       id: reqId,
-      project_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
+      workspace_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
       status: 'Rejected',
       rejection_reason: reason
     } as any, {
@@ -693,7 +695,7 @@ export function RequirementsPage() {
       messageApi.error("Requirement title is required");
       return;
     }
-    if (!data.project_id) {
+    if (!data.workspace_id) {
       messageApi.error("Please select a workspace");
       return;
     }
@@ -707,7 +709,8 @@ export function RequirementsPage() {
     });
 
     createRequirementMutation.mutate({
-      project_id: Number(data.project_id),
+      workspace_id: Number(data.workspace_id),
+      project_id: Number(data.workspace_id),
       name: data.title,
       description: data.description || '',
       start_date: new Date().toISOString(),
@@ -739,6 +742,7 @@ export function RequirementsPage() {
       requirement_id: editingReq.id,
       name: data.title,
       description: data.description || '',
+      workspace_id: Number(data.workspace),
       project_id: Number(data.workspace),
       priority: data.priority?.toUpperCase() || 'MEDIUM',
       start_date: editingReq.startDate,
@@ -910,7 +914,7 @@ export function RequirementsPage() {
       const deletePromises = selectedReqs.map(id => {
         const req = requirements.find(r => r.id === id);
         if (!req) return Promise.resolve();
-        return deleteRequirementMutation.mutateAsync({ id, project_id: req.workspaceId });
+        return deleteRequirementMutation.mutateAsync({ id, workspace_id: req.workspaceId });
       });
       await Promise.all(deletePromises);
       messageApi.success(`Deleted ${selectedReqs.length} requirement(s)`);
@@ -927,7 +931,7 @@ export function RequirementsPage() {
         if (!req) return Promise.resolve();
         return updateRequirementMutation.mutateAsync({
           id,
-          project_id: req.workspaceId,
+          workspace_id: req.workspaceId,
           status: 'Completed',
         } as any);
       });
@@ -973,7 +977,7 @@ export function RequirementsPage() {
         if (!req) return Promise.resolve();
         return updateRequirementMutation.mutateAsync({
           id,
-          project_id: req.workspaceId,
+          workspace_id: req.workspaceId,
           status: 'Assigned', // This will trigger pending approval
         } as any);
       });
@@ -992,7 +996,7 @@ export function RequirementsPage() {
         if (!req) return Promise.resolve();
         return updateRequirementMutation.mutateAsync({
           id,
-          project_id: req.workspaceId,
+          workspace_id: req.workspaceId,
           status: 'Assigned', // Reopen by setting back to assigned/in-progress
         } as any);
       });
@@ -1015,7 +1019,7 @@ export function RequirementsPage() {
 
         return updateRequirementMutation.mutateAsync({
           id,
-          project_id: req.workspaceId,
+          workspace_id: req.workspaceId,
           leader_id: leaderId,
         } as any);
       });
@@ -1127,7 +1131,7 @@ export function RequirementsPage() {
                       if (status === 'waiting' || status === 'rejected') {
                         setPendingReqId(requirement.id);
                         setIsQuotationOpen(true);
-                      } else if (status === 'assigned' && !req.receiver_project_id) {
+                      } else if (status === 'assigned' && !req.receiver_workspace_id) {
                         setPendingReqId(requirement.id);
                         setIsMappingOpen(true);
                       }
@@ -1322,7 +1326,7 @@ export function RequirementsPage() {
             setIsDialogOpen(false);
             setEditingReq(undefined);
           }}
-          workspaces={workspacesData?.result?.projects?.map((w: any) => ({ id: w.id, name: w.name })) || []}
+          workspaces={workspacesData?.result?.workspaces?.map((w: any) => ({ id: w.id, name: w.name })) || []}
           isLoading={createRequirementMutation.isPending || updateRequirementMutation.isPending}
         />
       </Modal>
@@ -1345,8 +1349,8 @@ export function RequirementsPage() {
           if (!pendingReqId) return;
           updateRequirementMutation.mutate({
             id: pendingReqId,
-            project_id: allRequirements.find(r => r.id === pendingReqId)?.project_id || 0, // Required field
-            receiver_project_id: workspaceId,
+            workspace_id: allRequirements.find(r => r.id === pendingReqId)?.workspaceId || 0, // Required field
+            receiver_workspace_id: workspaceId,
             status: 'In_Progress'
           } as any, {
             onSuccess: () => {
@@ -1356,7 +1360,7 @@ export function RequirementsPage() {
             }
           });
         }}
-        workspaces={workspacesData?.result?.projects?.map((w: any) => ({ id: w.id, name: w.name })) || []}
+        workspaces={workspacesData?.result?.workspaces?.map((w: any) => ({ id: w.id, name: w.name })) || []}
       />
     </PageLayout>
   );
@@ -1383,7 +1387,7 @@ function RequirementCard({
     // Special case for Receiver Mapping (Post-Approval)
     if (requirement.type === 'outsourced' && requirement.isReceiver) {
        const s = requirement.rawStatus?.toLowerCase();
-       if (s === 'assigned' && !requirement.receiver_project_id) return true;
+       if (s === 'assigned' && !requirement.receiver_workspace_id) return true;
     }
 
     if (requirement.approvalStatus !== 'pending') return false;
@@ -1590,7 +1594,7 @@ function RequirementCard({
       if (requirement.isReceiver) {
         if (requirement.rawStatus === 'Waiting' || requirement.rawStatus?.toLowerCase() === 'waiting') return 'Submit Quote';
         if (requirement.rawStatus === 'Rejected' || requirement.rawStatus?.toLowerCase() === 'rejected') return 'Resubmit Quote';
-        if (requirement.rawStatus === 'Assigned' && !requirement.receiver_project_id) return 'Map Workspace';
+        if (requirement.rawStatus === 'Assigned' && !requirement.receiver_workspace_id) return 'Map Workspace';
         return 'Action Needed';
       }
       if (requirement.isSender) {

@@ -26,13 +26,13 @@ export function TaskDetailsPage() {
   const { data: workspacesData } = useWorkspaces();
 
   const task = taskData?.result;
-  const { data: requirementsData } = useRequirements(task?.project_id || 0);
+  const { data: requirementsData } = useRequirements(task?.workspace_id || 0);
   const timer = timerData?.result;
 
   // Use pre-populated relation data from API
   const assignee = task?.member_user || (task?.task_members?.[0]?.user);
   const leader = task?.leader_user;
-  const workspace = task?.task_project;
+  const workspace = task?.task_workspace;
   const requirement = task?.task_requirement;
 
   // Calculate progress

@@ -114,14 +114,14 @@ export function RequirementsForm({
             derivedReceiverCompanyId: selectedPartner?.company_id,
         });
 
-        // Build payload with project_id (backend expects this instead of 'workspace')
+        // Build payload with workspace_id
         const payload = {
             ...formData,
-            project_id: formData.workspace ? Number(formData.workspace) : undefined,
+            workspace_id: formData.workspace ? Number(formData.workspace) : undefined,
             receiver_company_id: selectedPartner?.company_id 
         };
 
-        // Remove the 'workspace' key as the backend uses 'project_id'
+        // Remove the 'workspace' key as the backend uses 'workspace_id'
         delete (payload as any).workspace;
 
         onSubmit(payload as any);

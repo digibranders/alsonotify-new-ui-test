@@ -10,7 +10,7 @@ const { Option } = Select;
 // Backend fields based on TaskCreateSchema
 export interface TaskFormData {
   name: string;
-  project_id: string; // Workspace
+  workspace_id: string; // Workspace
   requirement_id: string; // Requirement
   member_id: string; // Legacy: Primary Assignee (optional or first member)
   assigned_members: number[]; // New: Squad Members
@@ -38,7 +38,7 @@ interface TaskFormProps {
 
 const defaultFormData: TaskFormData = {
   name: "",
-  project_id: "",
+  workspace_id: "",
   requirement_id: "",
   member_id: "",
   assigned_members: [],
@@ -100,7 +100,7 @@ export function TaskForm({
     // Validate required fields
     const missingFields: string[] = [];
     if (!formData.name) missingFields.push('Task Title');
-    if (!formData.project_id) missingFields.push('Workspace');
+    if (!formData.workspace_id) missingFields.push('Workspace');
     if (!formData.end_date) missingFields.push('Due Date');
     // Estimated time is conditional now, but if visible, it should be validated.
     // However, validation logic needs to know if it's visible. 
@@ -124,7 +124,7 @@ export function TaskForm({
     // Transform form data to backend format
     const backendData = {
       name: formData.name,
-      project_id: formData.project_id ? parseInt(formData.project_id) : undefined,
+      workspace_id: formData.workspace_id ? parseInt(formData.workspace_id) : undefined,
       requirement_id: formData.requirement_id ? parseInt(formData.requirement_id) : null,
       leader_id: parseInt(currentUserId), // STRICTLY current user
       end_date: formData.end_date, // Map to end_date
@@ -217,7 +217,7 @@ export function TaskForm({
                 setFormData(prev => ({
                   ...prev,
                   requirement_id: String(val),
-                  project_id: selectedReq?.project_id ? String(selectedReq.project_id) : prev.project_id
+                  workspace_id: selectedReq?.workspace_id ? String(selectedReq.workspace_id) : prev.workspace_id
                 }));
               }}
               disabled={disabledFields.requirement}
@@ -249,9 +249,9 @@ export function TaskForm({
             <Select
               className="w-full h-11"
               placeholder="Select workspace"
-              value={formData.project_id || undefined}
+              value={formData.workspace_id || undefined}
               onChange={(val) => {
-                setFormData({ ...formData, project_id: String(val) });
+                setFormData({ ...formData, workspace_id: String(val) });
               }}
               disabled={disabledFields.workspace}
               suffixIcon={formData.requirement_id ? null : <div className="text-gray-400">⌄</div>}

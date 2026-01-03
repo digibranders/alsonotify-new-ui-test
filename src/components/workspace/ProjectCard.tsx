@@ -60,7 +60,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
   });
 
   const workspace = useMemo(() => {
-    return workspacesData?.result?.projects?.find((p: any) => String(p.id) === id);
+    return workspacesData?.result?.workspaces?.find((p: any) => String(p.id) === id);
   }, [workspacesData, id]);
 
   const tasks = useMemo(() => {
@@ -117,7 +117,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
     createTaskMutation.mutate({
       title: newTask.name,
       description: newTask.description,
-      project_id: Number(id),
+      workspace_id: Number(id),
       assigned_to: newTask.assigneeId ? Number(newTask.assigneeId) : undefined,
       start_date: new Date().toISOString(),
       end_date: newTask.dueDate ? newTask.dueDate.toISOString() : new Date().toISOString(),

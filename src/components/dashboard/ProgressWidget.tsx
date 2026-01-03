@@ -231,7 +231,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
 
   // Get all workspace IDs
   const workspaceIds = useMemo(() => {
-    return workspacesData?.result?.projects?.map((w: any) => w.id) || [];
+    return workspacesData?.result?.workspaces?.map((w: any) => w.id) || [];
   }, [workspacesData]);
 
   // Fetch requirements for all workspaces in parallel

@@ -8,7 +8,7 @@ interface Invoice {
   id: string;
   invoiceNumber: string;
   client: string;
-  project: string;
+  workspace: string;
   amount: number;
   issueDate: string;
   dueDate: string;
@@ -20,7 +20,7 @@ const invoicesData: Invoice[] = [
     id: '1',
     invoiceNumber: 'INV-2025-001',
     client: 'Triem Security',
-    project: 'Cleanstart - UI',
+    workspace: 'Cleanstart - UI',
     amount: 15000,
     issueDate: '2025-11-01',
     dueDate: '2025-11-15',
@@ -30,7 +30,7 @@ const invoicesData: Invoice[] = [
     id: '2',
     invoiceNumber: 'INV-2025-002',
     client: 'Eventus Security',
-    project: 'Eventus - Documentation',
+    workspace: 'Eventus - Documentation',
     amount: 8500,
     issueDate: '2025-11-05',
     dueDate: '2025-11-20',
@@ -40,7 +40,7 @@ const invoicesData: Invoice[] = [
     id: '3',
     invoiceNumber: 'INV-2025-003',
     client: 'TechCorp Inc.',
-    project: 'Website Redesign',
+    workspace: 'Website Redesign',
     amount: 25000,
     issueDate: '2025-11-10',
     dueDate: '2025-11-25',
@@ -50,7 +50,7 @@ const invoicesData: Invoice[] = [
     id: '4',
     invoiceNumber: 'INV-2025-004',
     client: 'Triem Security',
-    project: 'Mobile App Development',
+    workspace: 'Mobile App Development',
     amount: 18000,
     issueDate: '2025-10-20',
     dueDate: '2025-11-05',
@@ -60,7 +60,7 @@ const invoicesData: Invoice[] = [
     id: '5',
     invoiceNumber: 'INV-2025-005',
     client: 'Eventus Security',
-    project: 'Branding Package',
+    workspace: 'Branding Package',
     amount: 12000,
     issueDate: '2025-10-01',
     dueDate: '2025-10-15',
@@ -70,7 +70,7 @@ const invoicesData: Invoice[] = [
     id: '6',
     invoiceNumber: 'DRAFT-001',
     client: 'New Client',
-    project: 'Consultation Project',
+    workspace: 'Consultation Project',
     amount: 5000,
     issueDate: '',
     dueDate: '',
@@ -98,7 +98,7 @@ export function InvoicesPage() {
     const matchesSearch = searchQuery === '' ||
       invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       invoice.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      invoice.project.toLowerCase().includes(searchQuery.toLowerCase());
+      invoice.workspace.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesClient = filters.client === 'All' || invoice.client === filters.client;
     return matchesTab && matchesSearch && matchesClient;
   });
@@ -264,10 +264,10 @@ export function InvoicesPage() {
                   {/* Project */}
                   <div>
                     <p className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999] mb-1">
-                      Project
+                      Workspace
                     </p>
                     <p className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111] truncate">
-                      {invoice.project}
+                      {invoice.workspace}
                     </p>
                   </div>
 

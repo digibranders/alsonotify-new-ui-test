@@ -17,7 +17,7 @@ export interface RequirementType {
   id: number;
   title: string;
   description?: string;
-  project_id: number;
+  workspace_id: number;
   status?: string;
   priority?: string;
   [key: string]: any;
@@ -63,7 +63,7 @@ export const deleteWorkspace = async (id: number): Promise<ApiResponse<Workspace
 
 // Get workspaces
 type TeamWorkspaceType = {
-  projects: WorkspaceType[];
+  workspaces: WorkspaceType[];
 };
 
 export const getWorkspace = async (options: string = ""): Promise<ApiResponse<TeamWorkspaceType>> => {
@@ -114,11 +114,11 @@ export const updateRequirementById = async (params: RequirementType): Promise<Ap
   }
 };
 
-export const deleteRequirementById = async (id: number, project_id: number): Promise<ApiResponse<RequirementType>> => {
+export const deleteRequirementById = async (id: number, workspace_id: number): Promise<ApiResponse<RequirementType>> => {
   try {
     const { data } = await axiosApi.patch<ApiResponse<RequirementType>>(`/workspace/requirement/update/${id}`, {
       is_deleted: true,
-      project_id: project_id,
+      workspace_id: workspace_id,
     });
     return data;
   } catch (error) {

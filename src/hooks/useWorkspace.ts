@@ -28,7 +28,7 @@ export const useWorkspaces = (options: string = "") => {
 export const useWorkspaceTasks = (workspaceId: number) => {
   return useQuery({
     queryKey: ["tasks", "workspace", workspaceId],
-    queryFn: () => getTasks(`project_id=${workspaceId}`),
+    queryFn: () => getTasks(`workspace_id=${workspaceId}`),
     enabled: !!workspaceId,
   });
 };
@@ -98,8 +98,8 @@ export const useCreateRequirement = () => {
   return useMutation({
     mutationFn: (params: RequirementType) => addRequirementToWorkspace(params),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["requirements", variables.project_id] });
-      queryClient.invalidateQueries({ queryKey: ["workspace", variables.project_id] });
+      queryClient.invalidateQueries({ queryKey: ["requirements", variables.workspace_id] });
+      queryClient.invalidateQueries({ queryKey: ["workspace", variables.workspace_id] });
       // Invalidate all requirements queries
       queryClient.invalidateQueries({ queryKey: ["requirements"] });
     },
@@ -112,8 +112,8 @@ export const useUpdateRequirement = () => {
   return useMutation({
     mutationFn: (params: RequirementType) => updateRequirementById(params),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["requirements", variables.project_id] });
-      queryClient.invalidateQueries({ queryKey: ["workspace", variables.project_id] });
+      queryClient.invalidateQueries({ queryKey: ["requirements", variables.workspace_id] });
+      queryClient.invalidateQueries({ queryKey: ["workspace", variables.workspace_id] });
       // Invalidate all requirements queries
       queryClient.invalidateQueries({ queryKey: ["requirements"] });
     },
@@ -124,11 +124,11 @@ export const useDeleteRequirement = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, project_id }: { id: number; project_id: number }) =>
-      deleteRequirementById(id, project_id),
+    mutationFn: ({ id, workspace_id }: { id: number; workspace_id: number }) =>
+      deleteRequirementById(id, workspace_id),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["requirements", variables.project_id] });
-      queryClient.invalidateQueries({ queryKey: ["workspace", variables.project_id] });
+      queryClient.invalidateQueries({ queryKey: ["requirements", variables.workspace_id] });
+      queryClient.invalidateQueries({ queryKey: ["workspace", variables.workspace_id] });
       // Invalidate all requirements queries
       queryClient.invalidateQueries({ queryKey: ["requirements"] });
     },

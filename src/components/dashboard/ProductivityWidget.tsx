@@ -173,8 +173,8 @@ export function ProductivityWidget() {
   const { data: workspacesData } = useWorkspaces();
   const workspacesMap = useMemo(() => {
     const map = new Map();
-    if (workspacesData?.result?.projects) {
-      workspacesData.result.projects.forEach((p: any) => map.set(p.id, p.name));
+    if (workspacesData?.result?.workspaces) {
+      workspacesData.result.workspaces.forEach((p: any) => map.set(p.id, p.name));
     }
     return map;
   }, [workspacesData]);

@@ -46,7 +46,7 @@ type UITask = {
   // For date-range filtering
   dueDateValue: number | null;
   // For editing
-  project_id?: number;
+  workspace_id?: number;
   requirement_id?: number;
   member_id?: number;
   leader_id?: number;
@@ -216,11 +216,11 @@ export function TasksPage() {
     }
     if (filters.workspace !== 'All') {
       // Find workspace ID from name
-      const selectedWorkspace = workspacesData?.result?.projects?.find(
+      const selectedWorkspace = workspacesData?.result?.workspaces?.find(
         (p: any) => p.name === filters.workspace
       );
       if (selectedWorkspace?.id) {
-        params.project_id = selectedWorkspace.id;
+        params.workspace_id = selectedWorkspace.id;
       }
     }
     if (filters.requirement !== 'All') {
@@ -279,11 +279,11 @@ export function TasksPage() {
       }
     }
     if (filters.workspace !== 'All') {
-      const selectedWorkspace = workspacesData?.result?.projects?.find(
+      const selectedWorkspace = workspacesData?.result?.workspaces?.find(
         (p: any) => p.name === filters.workspace
       );
       if (selectedWorkspace?.id) {
-        params.project_id = selectedWorkspace.id;
+        params.workspace_id = selectedWorkspace.id;
       }
     }
     if (filters.requirement !== 'All') {
@@ -330,10 +330,10 @@ export function TasksPage() {
   useEffect(() => {
     const fetchRequirements = async () => {
       try {
-        if (!workspacesData?.result?.projects) return;
+        if (!workspacesData?.result?.workspaces) return;
         const allRequirements: Array<{ id: number; name: string }> = [];
 
-        for (const workspace of workspacesData.result.projects) {
+        for (const workspace of workspacesData.result.workspaces) {
           try {
             const response = await getRequirementsDropdownByWorkspaceId(workspace.id);
             if (response.success && response.result) {
@@ -513,7 +513,7 @@ export function TasksPage() {
         timelineLabel,
         dueDateValue,
         // Store IDs for editing
-        project_id: t.project_id,
+        workspace_id: t.workspace_id,
         requirement_id: t.requirement_id,
         member_id: (t as any).member_user?.id || t.member_id,
         leader_id: (t as any).leader_user?.id || t.leader_id,
@@ -542,8 +542,8 @@ export function TasksPage() {
   }, [tasks]);
 
   const workspaces = useMemo(() => {
-    if (!workspacesData?.result?.projects) return ['All'];
-    return ['All', ...workspacesData.result.projects.map((p: any) => p.name)];
+    if (!workspacesData?.result?.workspaces) return ['All'];
+    return ['All', ...workspacesData.result.workspaces.map((p: any) => p.name)];
   }, [workspacesData]);
 
   const statuses = useMemo(() => ['All', 'Assigned', 'In Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'], []);
@@ -813,7 +813,7 @@ export function TasksPage() {
           key={editingTask ? `edit-${editingTask.id}` : `new-${Date.now()}`}
           initialData={editingTask ? {
             name: editingTask.name,
-            project_id: String(editingTask.project_id || ''),
+            workspace_id: String(editingTask.workspace_id || ''),
             requirement_id: String(editingTask.requirement_id || ''),
             assigned_members: [],
             execution_mode: 'parallel',
@@ -854,7 +854,7 @@ export function TasksPage() {
           }}
           users={usersDropdown}
           requirements={requirementsDropdown}
-          workspaces={workspacesData?.result?.projects?.map((p: any) => ({
+          workspaces={workspacesData?.result?.workspaces?.map((p: any) => ({
             id: p.id,
             name: p.name,
           })) || []}
