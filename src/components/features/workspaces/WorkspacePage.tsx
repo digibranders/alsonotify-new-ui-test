@@ -88,8 +88,13 @@ export function WorkspacePage() {
         totalRequirements,
         inProgressRequirements,
         delayedRequirements,
-        status: 'active',
+        // Map status dynamically, fallback to active/inactive based on is_active if available, else 'active'
+        status: w.status ? w.status.toLowerCase() : (w.is_active === false ? 'inactive' : 'active'), 
         description: w.description || '',
+        // Add fields for filtering
+        leader_id: w.leader_id,
+        manager_id: w.manager_id,
+        client_id: w.client_id,
       };
     });
   }, [workspacesData, requirementQueries, workspaceIds]);
@@ -110,15 +115,47 @@ export function WorkspacePage() {
     setSelectedWorkspaces([]);
   };
 
-  const filterOptions: FilterOption[] = [];
-
-
+  const filterOptions: FilterOption[] = [
+    {
+      id: 'leader',
+      label: 'Lead',
+      options: ['All', ...(employeesData?.result?.map((e: any) => e.name) || [])],
+      defaultValue: 'All'
+    },
+    {
+      id: 'manager',
+      label: 'Manager',
+      options: ['All', ...(employeesData?.result?.map((e: any) => e.name) || [])],
+      defaultValue: 'All'
+    },
+    {
+      id: 'client',
+      label: 'Client',
+      options: ['All', ...(clientsData?.result?.map((c: any) => c.name) || [])],
+      defaultValue: 'All'
+    }
+  ];
 
   const filteredWorkspaces = workspaces.filter(workspace => {
-    const matchesTab = workspace.status === activeTab;
+    const matchesTab = (workspace.status === 'active' || workspace.status === 'assigned' || workspace.status === 'in_progress') 
+      ? activeTab === 'active' 
+      : activeTab === 'inactive'; // Simplified status mapping for tab
+      
     const matchesSearch = searchQuery === '' ||
       workspace.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesTab && matchesSearch;
+
+    const matchesLeader = filters.leader === 'All' || !filters.leader || 
+      employeesData?.result?.find((e: any) => e.name === filters.leader)?.user_id === workspace.leader_id ||
+        employeesData?.result?.find((e: any) => e.name === filters.leader)?.id === workspace.leader_id;
+
+    const matchesManager = filters.manager === 'All' || !filters.manager ||
+      employeesData?.result?.find((e: any) => e.name === filters.manager)?.user_id === workspace.manager_id ||
+       employeesData?.result?.find((e: any) => e.name === filters.manager)?.id === workspace.manager_id;
+
+    const matchesClient = filters.client === 'All' || !filters.client ||
+      clientsData?.result?.find((c: any) => c.name === filters.client)?.id === workspace.client_id;
+
+    return matchesTab && matchesSearch && matchesLeader && matchesManager && matchesClient;
   });
 
   useEffect(() => {
