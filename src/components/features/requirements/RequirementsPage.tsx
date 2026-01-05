@@ -38,7 +38,7 @@ interface Requirement {
   dueDate: string;
   createdDate: string;
   startDate?: string;
-  priority: 'high' | 'medium' | 'low';
+  is_high_priority: boolean;
   type: 'inhouse' | 'outsourced' | 'client';
   status: 'in-progress' | 'completed' | 'delayed' | 'draft';
   category: string;
@@ -523,7 +523,7 @@ export function RequirementsPage() {
         dueDate: req.end_date ? format(new Date(req.end_date), 'dd-MMM-yyyy') : 'TBD',
         startDate: req.start_date ? format(new Date(req.start_date), 'dd-MMM-yyyy') : undefined,
         createdDate: req.start_date ? format(new Date(req.start_date), 'dd-MMM-yyyy') : 'TBD',
-        priority: (req.priority?.toLowerCase() as 'high' | 'medium' | 'low') || 'medium',
+        is_high_priority: req.is_high_priority ?? false,
         type: (req.type || 'inhouse') as 'inhouse' | 'outsourced' | 'client',
         status: mapRequirementStatus(req.status),
         category: departmentName || null,
@@ -716,7 +716,7 @@ export function RequirementsPage() {
       start_date: new Date().toISOString(),
       end_date: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
       // Status is determined by backend based on type (outsourced=Waiting, etc.)
-      priority: data.priority?.toUpperCase() || 'MEDIUM',
+      is_high_priority: data.is_high_priority,
 
       type: data.type,
       budget: Number(data.budget) || 0,
@@ -744,7 +744,7 @@ export function RequirementsPage() {
       description: data.description || '',
       workspace_id: Number(data.workspace),
       project_id: Number(data.workspace),
-      priority: data.priority?.toUpperCase() || 'MEDIUM',
+      is_high_priority: data.is_high_priority,
       start_date: editingReq.startDate,
       end_date: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
       type: data.type,
@@ -788,7 +788,9 @@ export function RequirementsPage() {
     }
 
     // Priority
-    const priorityMatch = filters.priority === 'All' || req.priority === filters.priority.toLowerCase();
+    const priorityMatch = filters.priority === 'All' || 
+      (filters.priority === 'High Priority' && req.is_high_priority) ||
+      (filters.priority === 'Normal Priority' && !req.is_high_priority);
 
     // Client
     const clientMatch = filters.client === 'All' || req.client === filters.client;
@@ -852,7 +854,7 @@ export function RequirementsPage() {
 
   // Get unique clients for filter options
   const allClients = ['All', ...Array.from(new Set(requirements.map(r => r.client).filter(Boolean)))];
-  const priorities = ['All', 'High', 'Medium', 'Low'];
+  const priorities = ['All', 'High Priority', 'Normal Priority'];
 
   // Get unique departments/categories - only include actual department names from requirements
   const allCategories = useMemo(() => {
@@ -1317,7 +1319,7 @@ export function RequirementsPage() {
             type: editingReq.type === 'client' ? 'inhouse' : (editingReq.type || 'inhouse') as 'inhouse' | 'outsourced',
             description: editingReq.description,
             dueDate: editingReq.dueDate,
-            priority: editingReq.priority,
+            is_high_priority: editingReq.is_high_priority,
             contactPerson: editingReq.contactPerson,
             budget: String(editingReq.budget || ''),
           } : undefined}
@@ -1407,16 +1409,7 @@ function RequirementCard({
     return true;
   }, [requirement]);
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return { bg: 'bg-[#FEE2E2]', text: 'text-[#DC2626]', border: 'border-[#FCA5A5]' };
-      case 'medium': return { bg: 'bg-[#FEF3C7]', text: 'text-[#D97706]', border: 'border-[#FCD34D]' };
-      case 'low': return { bg: 'bg-[#DBEAFE]', text: 'text-[#2563EB]', border: 'border-[#93C5FD]' };
-      default: return { bg: 'bg-[#F3F4F6]', text: 'text-[#6B7280]', border: 'border-[#D1D5DB]' };
-    }
-  };
 
-  const priorityColors = getPriorityColor(requirement.priority);
 
   const getUnifiedStatusConfig = () => {
     // 1. Billing / Financial Status (Highest Priority)
@@ -1786,10 +1779,9 @@ function RequirementCard({
         {/* Left: Priority & Assignees */}
         <div className="flex items-center gap-2">
           {/* Priority Badge */}
-          <div className={`w-2 h-2 rounded-full ${requirement.priority === 'high' ? 'bg-[#ff3b3b]' :
-            requirement.priority === 'medium' ? 'bg-[#F59E0B]' :
-              'bg-[#3B82F6]'
-            } `} title={`Priority: ${requirement.priority}`} />
+          {requirement.is_high_priority && (
+            <div className="w-2 h-2 rounded-full bg-[#ff3b3b]" title="High Priority" />
+          )}
 
           {/* Assignees */}
           <div className="flex -space-x-1.5">

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import DOMPurify from 'dompurify';
 import { Plus, Archive, Trash2 } from 'lucide-react';
 import { Checkbox, App } from 'antd';
 import { getNotes, createNote, deleteNote, archiveNote, Note, NoteType, ChecklistItem } from "@/services/notes";
@@ -86,6 +87,49 @@ export function NotesWidget({ onNavigate }: { onNavigate?: (page: string) => voi
     };
 
 
+    let notesContent;
+    if (isLoading) {
+        notesContent = (
+            <div className="col-span-4 flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#ff3b3b]"></div>
+            </div>
+        );
+    } else if (notesList.length === 0) {
+        notesContent = (
+            <div className="col-span-4 flex flex-col items-center justify-center h-full text-center text-[#999999] text-[13px]">
+                <p>No notes yet</p>
+                <button
+                    onClick={() => setShowDialog(true)}
+                    className="text-[#ff3b3b] hover:underline mt-1"
+                >
+                    Create one
+                </button>
+            </div>
+        );
+    } else {
+        notesContent = notesList.map((note: Note) => (
+            <NoteCard
+                key={note.id}
+                note={note}
+                onArchive={(id) => archiveMutation.mutate(id)}
+                onDelete={(id) => {
+                    modal.confirm({
+                        title: 'Delete Note',
+                        content: 'Are you sure you want to permanently delete this note? This action cannot be undone.',
+                        okText: 'Delete',
+                        okType: 'danger',
+                        cancelText: 'Cancel',
+                        onOk: () => deleteMutation.mutate(id)
+                    });
+                }}
+                onClick={(note) => {
+                    setViewingNote(note);
+                    setShowViewModal(true);
+                }}
+            />
+        ));
+    }
+
     return (
         <>
             <div className="bg-white rounded-[24px] p-5 w-full h-full flex flex-col border border-[#EEEEEE]">
@@ -114,43 +158,7 @@ export function NotesWidget({ onNavigate }: { onNavigate?: (page: string) => voi
 
                 {/* Notes Grid - 4 columns */}
                 <div className="grid grid-cols-4 gap-3 flex-1 mt-2 overflow-y-auto pr-1">
-                    {isLoading ? (
-                        <div className="col-span-4 flex items-center justify-center h-full">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#ff3b3b]"></div>
-                        </div>
-                    ) : notesList.length === 0 ? (
-                        <div className="col-span-4 flex flex-col items-center justify-center h-full text-center text-[#999999] text-[13px]">
-                            <p>No notes yet</p>
-                            <button
-                                onClick={() => setShowDialog(true)}
-                                className="text-[#ff3b3b] hover:underline mt-1"
-                            >
-                                Create one
-                            </button>
-                        </div>
-                    ) : (
-                        notesList.map((note: Note) => (
-                            <NoteCard
-                                key={note.id}
-                                note={note}
-                                onArchive={(id) => archiveMutation.mutate(id)}
-                                onDelete={(id) => {
-                                    modal.confirm({
-                                        title: 'Delete Note',
-                                        content: 'Are you sure you want to permanently delete this note? This action cannot be undone.',
-                                        okText: 'Delete',
-                                        okType: 'danger',
-                                        cancelText: 'Cancel',
-                                        onOk: () => deleteMutation.mutate(id)
-                                    });
-                                }}
-                                onClick={(note) => {
-                                    setViewingNote(note);
-                                    setShowViewModal(true);
-                                }}
-                            />
-                        ))
-                    )}
+                    {notesContent}
                 </div>
             </div>
 
@@ -184,7 +192,7 @@ function NoteCard({ note, onArchive, onDelete, onClick }: {
     onClick?: (note: Note) => void;
 }) {
 
-
+    const titleId = `note-title-${note.id}`;
 
     const noteColor = note.color || '#ff3b3b';
     const borderColorNormal = '#EEEEEE';
@@ -192,8 +200,14 @@ function NoteCard({ note, onArchive, onDelete, onClick }: {
 
     return (
         <div className="relative group aspect-square">
-            <div
-                className="relative h-full w-full bg-white rounded-xl border transition-all duration-300 cursor-pointer p-4 flex flex-col hover:shadow-lg"
+            {/* Main Note Button */}
+            <button
+                aria-labelledby={titleId}
+                onClick={(e) => {
+                    // We don't need to check for action buttons here anymore as they are outside
+                    onClick?.(note);
+                }}
+                className="relative h-full w-full bg-white rounded-xl border transition-all duration-300 cursor-pointer p-4 flex flex-col hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#ff3b3b] focus:ring-opacity-50 text-left"
                 style={{
                     borderColor: borderColorNormal,
                     borderWidth: '1px'
@@ -204,50 +218,23 @@ function NoteCard({ note, onArchive, onDelete, onClick }: {
                 onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = borderColorNormal;
                 }}
-                onClick={(e) => {
-                    // Only trigger if click is not on action buttons
-                    const target = e.target as HTMLElement;
-                    const isActionButton = target.closest('button');
-
-                    if (!isActionButton) {
-                        onClick && onClick(note);
-                    }
-                }}
             >
-                <div className="flex items-start justify-between mb-2 gap-2 flex-shrink-0">
-                    <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] flex-1 line-clamp-2">
+                <div className="flex items-start justify-between mb-2 gap-2 flex-shrink-0 w-full pointer-events-none">
+                    <h4 
+                        id={titleId}
+                        className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] flex-1 line-clamp-2"
+                    >
                         {note.title}
                     </h4>
-                    {/* Action icons - appear on hover */}
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 flex-shrink-0 z-10 relative">
-                        <button
-                            className="p-1.5 hover:bg-[#F7F7F7] rounded-md transition-colors"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onArchive(note.id);
-                            }}
-                            title="Archive"
-                        >
-                            <Archive className="size-3.5 text-[#666666]" strokeWidth={2} />
-                        </button>
-                        <button
-                            className="p-1.5 hover:bg-[#F7F7F7] rounded-md transition-colors"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDelete(note.id);
-                            }}
-                            title="Delete"
-                        >
-                            <Trash2 className="size-3.5 text-[#ff3b3b]" strokeWidth={2} />
-                        </button>
-                    </div>
+                    {/* Spacer to preserve layout where action buttons used to be */}
+                    <div className="w-[56px] flex-shrink-0 h-6"></div>
                 </div>
 
-                <div className="flex-1 overflow-hidden min-h-0">
+                <div className="flex-1 overflow-hidden min-h-0 w-full pointer-events-none">
                     {(note.type === 'TEXT_NOTE' || (note.type as any) === 'text') && note.content && (
                         <div
                             className="font-['Inter:Regular',sans-serif] text-[12px] text-[#666666] line-clamp-4 leading-normal prose prose-sm max-w-none [&>p]:m-0 h-full"
-                            dangerouslySetInnerHTML={{ __html: note.content }}
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.content) }}
                         />
                     )}
                     {(note.type === 'CHECKLIST_NOTE' || (note.type as any) === 'checklist') && note.items && Array.isArray(note.items) && note.items.length > 0 && (
@@ -270,6 +257,30 @@ function NoteCard({ note, onArchive, onDelete, onClick }: {
                         </div>
                     )}
                 </div>
+            </button>
+
+            {/* Action icons - Floating absolutely over the button in top right */}
+            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 z-10">
+                <button
+                    className="p-1.5 hover:bg-[#F7F7F7] rounded-md transition-colors bg-white/80 backdrop-blur-sm"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onArchive(note.id);
+                    }}
+                    title="Archive"
+                >
+                    <Archive className="size-3.5 text-[#666666]" strokeWidth={2} />
+                </button>
+                <button
+                    className="p-1.5 hover:bg-[#F7F7F7] rounded-md transition-colors bg-white/80 backdrop-blur-sm"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(note.id);
+                    }}
+                    title="Delete"
+                >
+                    <Trash2 className="size-3.5 text-[#ff3b3b]" strokeWidth={2} />
+                </button>
             </div>
         </div>
     );

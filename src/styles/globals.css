@@ -2,507 +2,514 @@
 @config "../../tailwind.config.js";
 
 :root {
-  --font-size: 16px;
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
-  --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
-  --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
-  --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+    --font-size: 16px;
+    --background: #ffffff;
+    --foreground: oklch(0.145 0 0);
+    --card: #ffffff;
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: #030213;
+    --primary-foreground: oklch(1 0 0);
+    --secondary: oklch(0.95 0.0058 264.53);
+    --secondary-foreground: #030213;
+    --muted: #ececf0;
+    --muted-foreground: #717182;
+    --accent: #e9ebef;
+    --accent-foreground: #030213;
+    --destructive: #d4183d;
+    --destructive-foreground: #ffffff;
+    --border: rgba(0, 0, 0, 0.1);
+    --input: transparent;
+    --input-background: #f3f3f5;
+    --switch-background: #cbced4;
+    --font-weight-medium: 500;
+    --font-weight-normal: 400;
+    --ring: oklch(0.708 0 0);
+    --chart-1: oklch(0.646 0.222 41.116);
+    --chart-2: oklch(0.6 0.118 184.704);
+    --chart-3: oklch(0.398 0.07 227.392);
+    --chart-4: oklch(0.828 0.189 84.429);
+    --chart-5: oklch(0.769 0.188 70.08);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: #030213;
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.145 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.145 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.985 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.396 0.141 25.723);
+    --destructive-foreground: oklch(0.637 0.237 25.331);
+    --border: oklch(0.269 0 0);
+    --input: oklch(0.269 0 0);
+    --ring: oklch(0.439 0 0);
+    --font-weight-medium: 500;
+    --font-weight-normal: 400;
+    --chart-1: oklch(0.488 0.243 264.376);
+    --chart-2: oklch(0.696 0.17 162.48);
+    --chart-3: oklch(0.769 0.188 70.08);
+    --chart-4: oklch(0.627 0.265 303.9);
+    --chart-5: oklch(0.645 0.246 16.439);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(0.269 0 0);
+    --sidebar-ring: oklch(0.439 0 0);
 }
 
 /* Custom Checkbox Styling - Single border, rounded corners */
 .custom-checkbox-wrapper .ant-checkbox {
-  border: 1px solid #dddddd !important;
-  border-radius: 4px !important;
-  background-color: #f5f5f5 !important;
-  transition: all 0.2s !important;
-  box-shadow: none !important;
+    border: 1px solid #dddddd !important;
+    border-radius: 4px !important;
+    background-color: #f5f5f5 !important;
+    transition: all 0.2s !important;
+    box-shadow: none !important;
 }
 
 .custom-checkbox-wrapper .ant-checkbox::after {
-  display: none !important;
+    display: none !important;
 }
 
 .custom-checkbox-wrapper .ant-checkbox-inner {
-  border: none !important;
-  background-color: transparent !important;
-  border-radius: 4px !important;
+    border: none !important;
+    background-color: transparent !important;
+    border-radius: 4px !important;
 }
 
 /* Checked state - black background with white checkmark (same geometry as default Ant checkbox) */
 .custom-checkbox-wrapper .ant-checkbox-checked {
-  background-color: #030213 !important;
-  border-color: #030213 !important;
+    background-color: #030213 !important;
+    border-color: #030213 !important;
 }
 
 .custom-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner {
-  background-color: #030213 !important;
-  border: none !important;
+    background-color: #030213 !important;
+    border: none !important;
 }
 
 .custom-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner::after {
-  border-color: #ffffff !important;
+    border-color: #ffffff !important;
 }
 
 /* Hover state */
 .custom-checkbox-wrapper .ant-checkbox:hover:not(.ant-checkbox-disabled) {
-  border-color: #bbbbbb !important;
+    border-color: #bbbbbb !important;
 }
 
-.custom-checkbox-wrapper .ant-checkbox-checked:hover:not(.ant-checkbox-disabled) {
-  border-color: #030213 !important;
-  background-color: #030213 !important;
+.custom-checkbox-wrapper
+    .ant-checkbox-checked:hover:not(.ant-checkbox-disabled) {
+    border-color: #030213 !important;
+    background-color: #030213 !important;
 }
 
 /* Focus state */
 .custom-checkbox-wrapper .ant-checkbox:focus-visible {
-  border-color: #030213 !important;
-  box-shadow: 0 0 0 2px rgba(3, 2, 19, 0.1) !important;
-  outline: none !important;
+    border-color: #030213 !important;
+    box-shadow: 0 0 0 2px rgba(3, 2, 19, 0.1) !important;
+    outline: none !important;
 }
 
 /* Disabled state */
 .custom-checkbox-wrapper .ant-checkbox:disabled {
-  cursor: not-allowed !important;
-  opacity: 0.5 !important;
-  background-color: #f5f5f5 !important;
+    cursor: not-allowed !important;
+    opacity: 0.5 !important;
+    background-color: #f5f5f5 !important;
 }
 
 .custom-checkbox-wrapper .ant-checkbox-checked:disabled {
-  background-color: #030213 !important;
-  border-color: #030213 !important;
+    background-color: #030213 !important;
+    border-color: #030213 !important;
 }
 
 /* Dark mode */
 .dark .custom-checkbox-wrapper .ant-checkbox {
-  background-color: #2a2a2a !important;
-  border-color: #444444 !important;
+    background-color: #2a2a2a !important;
+    border-color: #444444 !important;
 }
 
 .dark .custom-checkbox-wrapper .ant-checkbox-checked {
-  background-color: #030213 !important;
-  border-color: #030213 !important;
+    background-color: #030213 !important;
+    border-color: #030213 !important;
 }
 
 .dark .custom-checkbox-wrapper .ant-checkbox-checked .ant-checkbox-inner {
-  background-color: #030213 !important;
+    background-color: #030213 !important;
 }
 
 /* Red Checkbox Styling for Multi-select Pages */
 .red-checkbox .ant-checkbox-checked,
 .red-checkbox .ant-checkbox-checked .ant-checkbox-inner {
-  background-color: #ff3b3b !important;
-  border-color: #ff3b3b !important;
+    background-color: #ff3b3b !important;
+    border-color: #ff3b3b !important;
 }
 
 .red-checkbox .ant-checkbox-checked .ant-checkbox-inner::after {
-  border-color: #ffffff !important;
+    border-color: #ffffff !important;
 }
 
-.red-checkbox .ant-checkbox:hover:not(.ant-checkbox-disabled) .ant-checkbox-inner {
-  border-color: #ff3b3b !important;
+.red-checkbox
+    .ant-checkbox:hover:not(.ant-checkbox-disabled)
+    .ant-checkbox-inner {
+    border-color: #ff3b3b !important;
 }
 
 .red-checkbox .ant-checkbox-checked:hover:not(.ant-checkbox-disabled),
-.red-checkbox .ant-checkbox-checked:hover:not(.ant-checkbox-disabled) .ant-checkbox-inner {
-  background-color: #ff3b3b !important;
-  border-color: #ff3b3b !important;
+.red-checkbox
+    .ant-checkbox-checked:hover:not(.ant-checkbox-disabled)
+    .ant-checkbox-inner {
+    background-color: #ff3b3b !important;
+    border-color: #ff3b3b !important;
 }
 
 /* Custom Select/Dropdown Styling */
 .ant-select-dropdown {
-  background: #ffffff !important;
-  border-radius: 8px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-  border: 1px solid #EEEEEE !important;
-  padding: 4px !important;
+    background: #ffffff !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    border: 1px solid #eeeeee !important;
+    padding: 4px !important;
 }
 
 .ant-select-item {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
-  font-size: 14px !important;
-  color: #111111 !important;
-  padding: 8px 12px !important;
-  border-radius: 6px !important;
-  margin: 2px 0 !important;
-  transition: background-color 0.2s !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+        "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
+        "Helvetica Neue", sans-serif !important;
+    font-size: 14px !important;
+    color: #111111 !important;
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+    margin: 2px 0 !important;
+    transition: background-color 0.2s !important;
 }
 
 .ant-select-item:hover:not(.ant-select-item-disabled) {
-  background-color: #F5F5F5 !important;
+    background-color: #f5f5f5 !important;
 }
 
 .ant-select-item-option-selected {
-  background-color: transparent !important;
-  font-weight: 500 !important;
+    background-color: transparent !important;
+    font-weight: 500 !important;
 }
 
 .ant-select-item-option-selected::after {
-  content: '✓' !important;
-  float: right !important;
-  color: #666666 !important;
-  font-size: 14px !important;
-  font-weight: 600 !important;
+    content: "✓" !important;
+    float: right !important;
+    color: #666666 !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
 }
 
 .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
-  background-color: #F5F5F5 !important;
+    background-color: #f5f5f5 !important;
 }
 
 .ant-select-selector {
-  border: 1px solid #EEEEEE !important;
-  border-radius: 8px !important;
-  height: 44px !important;
-  padding: 0 12px !important;
-  font-family: 'Manrope', sans-serif !important;
-  font-weight: 500 !important;
-  font-size: 14px !important;
+    border: 1px solid #eeeeee !important;
+    border-radius: 8px !important;
+    height: 44px !important;
+    padding: 0 12px !important;
+    font-family: "Manrope", sans-serif !important;
+    font-weight: 500 !important;
+    font-size: 14px !important;
 }
 
 .ant-select-focused .ant-select-selector {
-  border-color: #111111 !important;
-  box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.05) !important;
+    border-color: #111111 !important;
+    box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.05) !important;
 }
 
 .ant-select-selection-placeholder {
-  color: #999999 !important;
-  font-weight: 400 !important;
+    color: #999999 !important;
+    font-weight: 400 !important;
 }
 
 .ant-select-selection-item {
-  color: #111111 !important;
-  font-weight: 500 !important;
-  line-height: 42px !important;
+    color: #111111 !important;
+    font-weight: 500 !important;
+    line-height: 42px !important;
 }
 
 /* Custom Overrides from Clients Page adjustments */
 
 /* Make AntD Select match 42px height and rounded look for custom-select-client */
 .custom-select-client .ant-select-selector {
-  height: 42px !important;
-  border-radius: 8px !important;
-  padding-top: 5px !important;
-  padding-bottom: 5px !important;
-  align-items: center !important;
-  border-color: #E5E7EB !important;
+    height: 42px !important;
+    border-radius: 8px !important;
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+    align-items: center !important;
+    border-color: #e5e7eb !important;
 }
 
 /* Allow border color change on focus/active */
 .custom-select-client.ant-select-focused .ant-select-selector,
 .custom-select-client:hover .ant-select-selector {
-  border-color: #4096ff !important;
-  box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1) !important;
+    border-color: #4096ff !important;
+    box-shadow: 0 0 0 2px rgba(5, 145, 255, 0.1) !important;
 }
 
 /* Ensure inner selection area is vertically centered */
 .custom-select-client .ant-select-selection-item {
-  line-height: 32px !important;
+    line-height: 32px !important;
 }
 
 .custom-select-client .ant-select-selection-placeholder {
-  line-height: 32px !important;
+    line-height: 32px !important;
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;
+    display: none;
 }
 
 /* Hide scrollbar for IE, Edge and Firefox */
 .scrollbar-hide {
-  -ms-overflow-style: none;
-  /* IE and Edge */
-  scrollbar-width: none;
-  /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
 }
 
 /* Date Range Popover - Remove extra background ONLY for calendar view, keep background for presets */
 .date-range-popover-calendar {
-  padding: 0 !important;
+    padding: 0 !important;
 }
 
 .date-range-popover-calendar .ant-popover-content {
-  background: transparent !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 .date-range-popover-calendar .ant-popover-inner {
-  background: transparent !important;
-  padding: 0 !important;
-  box-shadow: none !important;
-  margin: 0 !important;
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
 }
 
 .date-range-popover-calendar .ant-popover-inner-content {
-  padding: 0 !important;
-  background: transparent !important;
+    padding: 0 !important;
+    background: transparent !important;
 }
 
 /* Keep the arrow visible for calendar */
 .date-range-popover-calendar .ant-popover-arrow {
-  display: block !important;
-  opacity: 1 !important;
+    display: block !important;
+    opacity: 1 !important;
 }
 
 /* Presets dropdown - Keep normal background */
 .date-range-popover-presets .ant-popover-content {
-  background: white !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    background: white !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
 .date-range-popover-presets .ant-popover-inner {
-  background: white !important;
+    background: white !important;
 }
 
 .date-range-popover-presets .ant-popover-arrow {
-  display: block !important;
-  opacity: 1 !important;
+    display: block !important;
+    opacity: 1 !important;
 }
 
 /* Override Ant Design and global link colors in auth pages */
 /* Prevent Ant Design from applying blue colors to links in auth layout */
 [data-auth-layout] a {
-  /* Override Ant Design's default link color (#1677ff or colorInfo) */
-  color: inherit;
+    /* Override Ant Design's default link color (#1677ff or colorInfo) */
+    color: inherit;
 }
 
 /* Specific color overrides for auth page links using attribute selectors */
 [data-auth-layout] a[class*="text-[#ff3b3b]"] {
-  color: #ff3b3b !important;
+    color: #ff3b3b !important;
 }
 
 [data-auth-layout] a[class*="text-[#111111]"] {
-  color: #111111 !important;
+    color: #111111 !important;
 }
 
 [data-auth-layout] a[class*="text-[#666666]"] {
-  color: #666666 !important;
+    color: #666666 !important;
 }
 
 [data-auth-layout] a[class*="text-[#999999]"] {
-  color: #999999 !important;
+    color: #999999 !important;
 }
 
 /* Override Ant Design Typography link styles */
 [data-auth-layout] a.ant-typography {
-  color: inherit !important;
+    color: inherit !important;
 }
 
 /* Ant Design DatePicker/Calendar Standardization */
 :root {
-  --ant-picker-active-color: #111111;
-  --ant-picker-hover-color: #F7F7F7;
-  --ant-picker-today-color: #ff3b3b;
+    --ant-picker-active-color: #111111;
+    --ant-picker-hover-color: #f7f7f7;
+    --ant-picker-today-color: #ff3b3b;
 }
 
 /* Dropdown Container */
 .ant-picker-dropdown {
-  border-radius: 16px !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1) !important;
-  border: 1px solid #EEEEEE !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1) !important;
+    border: 1px solid #eeeeee !important;
 }
 
 .ant-picker-panel-container {
-  border-radius: 16px !important;
-  background: #ffffff !important;
+    border-radius: 16px !important;
+    background: #ffffff !important;
 }
 
 /* Header Styling */
 .ant-picker-header {
-  border-bottom: 1px solid #F3F3F4 !important;
-  padding: 8px 12px !important;
+    border-bottom: 1px solid #f3f3f4 !important;
+    padding: 8px 12px !important;
 }
 
 .ant-picker-header button {
-  color: #111111 !important;
-  font-weight: 600 !important;
+    color: #111111 !important;
+    font-weight: 600 !important;
 }
 
 .ant-picker-header-view {
-  font-family: 'Manrope', sans-serif !important;
-  font-weight: 700 !important;
-  font-size: 15px !important;
-  color: #111111 !important;
+    font-family: "Manrope", sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 15px !important;
+    color: #111111 !important;
 }
 
 .ant-picker-header-view button {
-  transition: all 0.2s !important;
+    transition: all 0.2s !important;
 }
 
 .ant-picker-header-view button:hover {
-  color: #ff3b3b !important;
+    color: #ff3b3b !important;
 }
 
 /* Calendar Body */
 .ant-picker-content {
-  width: 100% !important;
-  border-collapse: separate !important;
-  border-spacing: 2px !important;
+    width: 100% !important;
+    border-collapse: separate !important;
+    border-spacing: 2px !important;
 }
 
 /* Day Labels (Su, Mo, etc.) */
 .ant-picker-content th {
-  font-family: 'Manrope', sans-serif !important;
-  font-weight: 700 !important;
-  font-size: 11px !important;
-  color: #999999 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
-  padding-bottom: 8px !important;
+    font-family: "Manrope", sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 11px !important;
+    color: #999999 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    padding-bottom: 8px !important;
 }
 
 /* Day Cells */
 .ant-picker-cell-inner {
-  font-family: 'Inter', sans-serif !important;
-  font-weight: 500 !important;
-  font-size: 12px !important;
-  width: 34px !important;
-  height: 34px !important;
-  line-height: 34px !important;
-  border-radius: 50% !important;
-  transition: all 0.2s !important;
-  position: relative !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  margin: 0 auto !important;
+    font-family: "Inter", sans-serif !important;
+    font-weight: 500 !important;
+    font-size: 12px !important;
+    width: 34px !important;
+    height: 34px !important;
+    line-height: 34px !important;
+    border-radius: 50% !important;
+    transition: all 0.2s !important;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
 }
 
 .ant-picker-cell:hover .ant-picker-cell-inner {
-  background: #F7F7F7 !important;
-  color: #111111 !important;
+    background: #f7f7f7 !important;
+    color: #111111 !important;
 }
 
 /* Today Marker */
 .ant-picker-cell-today .ant-picker-cell-inner {
-  color: #ff3b3b !important;
-  font-weight: 700 !important;
+    color: #ff3b3b !important;
+    font-weight: 700 !important;
 }
 
 .ant-picker-cell-today .ant-picker-cell-inner::before {
-  border: none !important;
+    border: none !important;
 }
 
 /* Selected State */
 .ant-picker-cell-selected .ant-picker-cell-inner {
-  background: #111111 !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 10px rgba(17, 17, 17, 0.2) !important;
+    background: #111111 !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 10px rgba(17, 17, 17, 0.2) !important;
 }
 
 /* Range Selection Styling */
 .ant-picker-cell-in-range::before {
-  background: #F7F7F7 !important;
+    background: #f7f7f7 !important;
 }
 
 .ant-picker-cell-range-start .ant-picker-cell-inner,
 .ant-picker-cell-range-end .ant-picker-cell-inner {
-  background: #111111 !important;
-  color: #ffffff !important;
+    background: #111111 !important;
+    color: #ffffff !important;
 }
 
 .ant-picker-cell-range-hover::before {
-  background: #F3F4F6 !important;
+    background: #f3f4f6 !important;
 }
 
 /* Month/Year Selection Grids */
 .ant-picker-month-panel .ant-picker-cell-inner,
 .ant-picker-year-panel .ant-picker-cell-inner,
 .ant-picker-decade-panel .ant-picker-cell-inner {
-  border-radius: 8px !important;
-  width: auto !important;
-  height: 32px !important;
-  padding: 0 8px !important;
+    border-radius: 8px !important;
+    width: auto !important;
+    height: 32px !important;
+    padding: 0 8px !important;
 }
 
 /* Remove default focus rings */
 .ant-picker-cell:focus .ant-picker-cell-inner {
-  outline: none !important;
+    outline: none !important;
 }
 
 /* Global Ant Design Field Standardization (Input, Select, DatePicker) */
 .ant-input,
 .ant-input-affix-wrapper,
 .ant-picker {
-  border: 1px solid #EEEEEE !important;
-  border-radius: 8px !important;
-  transition: all 0.2s ease !important;
+    border: 1px solid #eeeeee !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
 }
 
 .ant-input-affix-wrapper .ant-input {
-  border: none !important;
-  box-shadow: none !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
 /* Black Focus State for all fields */
@@ -511,15 +518,15 @@
 .ant-input-affix-wrapper:focus,
 .ant-input-affix-wrapper-focused,
 .ant-picker-focused {
-  border-color: #111111 !important;
-  box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.05) !important;
-  outline: none !important;
+    border-color: #111111 !important;
+    box-shadow: 0 0 0 2px rgba(17, 17, 17, 0.05) !important;
+    outline: none !important;
 }
 
 .ant-input-affix-wrapper:hover,
 .ant-input:hover,
 .ant-picker:hover {
-  border-color: #DDDDDD !important;
+    border-color: #dddddd !important;
 }
 
 /* 
@@ -528,9 +535,9 @@
    2. Hide out-of-view days for a cleaner, modern look.
 */
 .ant-picker-cell:not(.ant-picker-cell-in-view) .ant-picker-cell-inner {
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
 /* 
@@ -542,12 +549,32 @@
 
 /* Fallback for browsers without :has() support - JS adds this class */
 .calendar-empty-row {
-  display: none !important;
+    display: none !important;
 }
 
 /* Native :has() for modern browsers that support it */
 @supports selector(:has(*)) {
-  .ant-picker-content tbody tr:nth-child(6):not(:has(.ant-picker-cell-in-view)) {
-    display: none !important;
-  }
+    .ant-picker-content
+        tbody
+        tr:nth-child(6):not(:has(.ant-picker-cell-in-view)) {
+        display: none !important;
+    }
+}
+
+/* Custom Phone Number Input Styling */
+.phone-code-select .ant-select-selector {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    height: 100% !important;
+    padding: 0 0 0 8px !important;
+    display: flex;
+    align-items: center;
+}
+
+.phone-code-select .ant-select-selection-item {
+    font-weight: 600;
+    color: #666;
+    display: flex;
+    align-items: center;
 }

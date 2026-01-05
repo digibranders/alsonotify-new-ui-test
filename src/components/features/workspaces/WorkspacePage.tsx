@@ -8,8 +8,8 @@ import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { Modal, Button, Input, Select, Dropdown, MenuProps, Checkbox, App, DatePicker } from "antd";
 import { WorkspaceForm } from '@/components/modals/WorkspaceForm';
 
-import { useWorkspaces, useCreateWorkspace, useClients } from '@/hooks/useWorkspace';
-import { useClients as useGetClients, useEmployees } from '@/hooks/useUser';
+import { useWorkspaces, useCreateWorkspace } from '@/hooks/useWorkspace';
+import { useEmployees } from '@/hooks/useUser';
 import { useQueries } from '@tanstack/react-query';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
 
@@ -18,8 +18,7 @@ const { Option } = Select;
 
 export function WorkspacePage() {
   const { message } = App.useApp();
-  const { data: workspacesData, isLoading } = useWorkspaces();
-  const { data: clientsData } = useGetClients();
+
   const { data: employeesData } = useEmployees(); // Fetch employees for project lead dropdown
   const createWorkspaceMutation = useCreateWorkspace();
   const router = useRouter();
@@ -28,9 +27,7 @@ export function WorkspacePage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState<Record<string, string>>({
-    company: 'All'
-  });
+  const [filters, setFilters] = useState<Record<string, string>>({});
   const [selectedWorkspaces, setSelectedWorkspaces] = useState<number[]>([]);
 
   // Modal State
@@ -38,10 +35,55 @@ export function WorkspacePage() {
 
   const [pageSize, setPageSize] = useState(10);
 
+  // Build query string for API
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    
+    // Pagination (Backend expects skip/limit, frontend uses page/pageSize)
+    const skip = (currentPage - 1) * pageSize;
+    params.append('skip', skip.toString());
+    params.append('limit', pageSize.toString());
+
+    // Status / Tab
+    if (activeTab === 'active') {
+      params.append('is_active', 'true');
+    } else {
+      params.append('is_active', 'false');
+    }
+
+    // Search
+    if (searchQuery) {
+      params.append('name', searchQuery);
+    }
+
+    // Filters
+    if (filters.leader && filters.leader !== 'All') {
+       const leader = employeesData?.result?.find((e: any) => e.name === filters.leader);
+       if (leader) params.append('leader_id', leader.user_id || leader.id);
+    }
+    if (filters.manager && filters.manager !== 'All') {
+       const manager = employeesData?.result?.find((e: any) => e.name === filters.manager);
+       if (manager) params.append('manager_id', manager.user_id || manager.id);
+    }
+
+
+    return params.toString();
+  }, [activeTab, currentPage, pageSize, searchQuery, filters, employeesData]);
+
+
+  const { data: workspacesData, isLoading, refetch } = useWorkspaces(queryParams);
+
+  useEffect(() => {
+    refetch();
+  }, [queryParams, refetch]);
+
+
   // Get all workspace IDs
   const workspaceIds = useMemo(() => {
     return workspacesData?.result?.workspaces?.map((w: any) => w.id) || [];
   }, [workspacesData]);
+
+  const totalItems = workspacesData?.result?.workspaces?.[0]?.total_count || 0;
 
   // Fetch requirements for all workspaces
   const requirementQueries = useQueries({
@@ -88,20 +130,16 @@ export function WorkspacePage() {
         totalRequirements,
         inProgressRequirements,
         delayedRequirements,
-        // Map status dynamically, fallback to active/inactive based on is_active if available, else 'active'
-        status: w.status ? w.status.toLowerCase() : (w.is_active === false ? 'inactive' : 'active'), 
+        // Use exact status from backend
+        status: w.status || 'Assigned',
+        isActive: w.is_active ?? true, 
         description: w.description || '',
         // Add fields for filtering
         leader_id: w.leader_id,
         manager_id: w.manager_id,
-        client_id: w.client_id,
       };
     });
   }, [workspacesData, requirementQueries, workspaceIds]);
-
-  useEffect(() => {
-    // side-effects after workspaces change (currently none)
-  }, [workspaces]);
 
   const handleFilterChange = (filterId: string, value: string) => {
     setFilters(prev => ({ ...prev, [filterId]: value }));
@@ -127,50 +165,15 @@ export function WorkspacePage() {
       label: 'Manager',
       options: ['All', ...(employeesData?.result?.map((e: any) => e.name) || [])],
       defaultValue: 'All'
-    },
-    {
-      id: 'client',
-      label: 'Client',
-      options: ['All', ...(clientsData?.result?.map((c: any) => c.name) || [])],
-      defaultValue: 'All'
     }
   ];
 
-  const filteredWorkspaces = workspaces.filter(workspace => {
-    const matchesTab = (workspace.status === 'active' || workspace.status === 'assigned' || workspace.status === 'in_progress') 
-      ? activeTab === 'active' 
-      : activeTab === 'inactive'; // Simplified status mapping for tab
-      
-    const matchesSearch = searchQuery === '' ||
-      workspace.name.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesLeader = filters.leader === 'All' || !filters.leader || 
-      employeesData?.result?.find((e: any) => e.name === filters.leader)?.user_id === workspace.leader_id ||
-        employeesData?.result?.find((e: any) => e.name === filters.leader)?.id === workspace.leader_id;
-
-    const matchesManager = filters.manager === 'All' || !filters.manager ||
-      employeesData?.result?.find((e: any) => e.name === filters.manager)?.user_id === workspace.manager_id ||
-       employeesData?.result?.find((e: any) => e.name === filters.manager)?.id === workspace.manager_id;
-
-    const matchesClient = filters.client === 'All' || !filters.client ||
-      clientsData?.result?.find((c: any) => c.name === filters.client)?.id === workspace.client_id;
-
-    return matchesTab && matchesSearch && matchesLeader && matchesManager && matchesClient;
-  });
-
-  useEffect(() => {
-    // side-effects after filters, search, or pagination change (currently none)
-  }, [workspaces.length, filteredWorkspaces.length, activeTab, searchQuery, filters, currentPage]);
-
-  // Pagination
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const currentWorkspaces = filteredWorkspaces.slice(startIndex, endIndex);
+  // No client-side filtering needed anymore as it's handled by API
 
   const toggleSelectAllWorkspaces = () => {
-    if (currentWorkspaces.length === 0) return;
-    const currentIds = currentWorkspaces.map((w) => w.id);
-    const allSelected = currentIds.every((id) => selectedWorkspaces.includes(id));
+    if (workspaces.length === 0) return;
+    const currentIds = workspaces.map((w: any) => w.id);
+    const allSelected = currentIds.every((id: any) => selectedWorkspaces.includes(id));
 
     if (allSelected) {
       // Deselect only the ones on this page
@@ -204,7 +207,10 @@ export function WorkspacePage() {
             <WorkspaceForm
               open={isDialogOpen}
               onCancel={() => setIsDialogOpen(false)}
-              onSuccess={() => setIsDialogOpen(false)}
+              onSuccess={() => {
+                setIsDialogOpen(false);
+                refetch();
+              }}
             />
           </div>
 
@@ -229,7 +235,7 @@ export function WorkspacePage() {
         <div className="flex items-center">
           <div className="flex items-center gap-8 border-b border-[#EEEEEE]">
             <button
-              onClick={() => setActiveTab('active')}
+              onClick={() => { setActiveTab('active'); setCurrentPage(1); }}
               className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === 'active'
                 ? 'text-[#ff3b3b]'
                 : 'text-[#666666] hover:text-[#111111]'
@@ -241,7 +247,7 @@ export function WorkspacePage() {
               )}
             </button>
             <button
-              onClick={() => setActiveTab('inactive')}
+              onClick={() => { setActiveTab('inactive'); setCurrentPage(1); }}
               className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === 'inactive'
                 ? 'text-[#ff3b3b]'
                 : 'text-[#666666] hover:text-[#111111]'
@@ -273,7 +279,7 @@ export function WorkspacePage() {
       <div className="flex-1 overflow-y-auto">
         {viewMode === 'grid' ? (
           <div className="grid grid-cols-4 gap-4">
-            {currentWorkspaces.map((workspace) => (
+            {workspaces.map((workspace: any) => (
               <WorkspaceCard
                 key={workspace.id}
                 workspace={workspace}
@@ -289,12 +295,12 @@ export function WorkspacePage() {
                 <Checkbox
                   className="red-checkbox"
                   checked={
-                    currentWorkspaces.length > 0 &&
-                    currentWorkspaces.every((w) => selectedWorkspaces.includes(w.id))
+                    workspaces.length > 0 &&
+                    workspaces.every((w: any) => selectedWorkspaces.includes(w.id))
                   }
                   indeterminate={
-                    currentWorkspaces.some((w) => selectedWorkspaces.includes(w.id)) &&
-                    !currentWorkspaces.every((w) => selectedWorkspaces.includes(w.id))
+                    workspaces.some((w: any) => selectedWorkspaces.includes(w.id)) &&
+                    !workspaces.every((w: any) => selectedWorkspaces.includes(w.id))
                   }
                   onChange={toggleSelectAllWorkspaces}
                 />
@@ -313,7 +319,7 @@ export function WorkspacePage() {
               <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide" />
             </div>
 
-            {currentWorkspaces.map((workspace) => (
+            {workspaces.map((workspace: any) => (
               <WorkspaceListItem
                 key={workspace.id}
                 workspace={workspace}
@@ -329,7 +335,7 @@ export function WorkspacePage() {
           <div className="text-center py-12">
             <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">Loading workspaces...</p>
           </div>
-        ) : filteredWorkspaces.length === 0 ? (
+        ) : workspaces.length === 0 ? (
           <div className="text-center py-12">
             <FolderOpen className="w-12 h-12 text-[#DDDDDD] mx-auto mb-3" />
             <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">
@@ -340,10 +346,10 @@ export function WorkspacePage() {
       </div>
 
       {/* Pagination */}
-      {filteredWorkspaces.length > 0 && (
+      {totalItems > 0 && (
         <PaginationBar
           currentPage={currentPage}
-          totalItems={filteredWorkspaces.length}
+          totalItems={totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
           onPageSizeChange={(size) => {
@@ -387,7 +393,7 @@ function WorkspaceRequirementsSummary({
   );
 }
 
-function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; totalRequirements?: number; inProgressRequirements?: number; delayedRequirements?: number; status: string }; onClick?: () => void }) {
+function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; totalRequirements?: number; inProgressRequirements?: number; delayedRequirements?: number; status: string; isActive: boolean }; onClick?: () => void }) {
   const items: MenuProps['items'] = [
     {
       key: 'manage',
@@ -396,7 +402,7 @@ function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: 
       children: [
         { key: 'edit', label: 'Edit Details', icon: <Edit className="w-4 h-4" /> },
         { key: 'members', label: 'Manage Members', icon: <Users className="w-4 h-4" /> },
-        workspace.status === 'active'
+        workspace.isActive
           ? { key: 'deactivate', label: 'Deactivate', icon: <Archive className="w-4 h-4" /> }
           : { key: 'reactivate', label: 'Reactivate', icon: <RotateCcw className="w-4 h-4" /> }
       ]
@@ -407,7 +413,15 @@ function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: 
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
       className="group relative bg-white border border-[#EEEEEE] rounded-[16px] p-5 hover:border-[#ff3b3b] hover:shadow-lg hover:shadow-[#ff3b3b]/10 transition-all cursor-pointer overflow-hidden flex flex-col h-[180px]"
     >
       {/* Accent bar */}
@@ -468,6 +482,7 @@ function WorkspaceListItem({
     inProgressRequirements?: number;
     delayedRequirements?: number;
     status: string;
+    isActive: boolean;
   };
   selected: boolean;
   onToggleSelect: () => void;
@@ -481,7 +496,7 @@ function WorkspaceListItem({
       children: [
         { key: 'edit', label: 'Edit Details', icon: <Edit className="w-4 h-4" /> },
         { key: 'members', label: 'Manage Members', icon: <Users className="w-4 h-4" /> },
-        workspace.status === 'active'
+        workspace.isActive
           ? { key: 'deactivate', label: 'Deactivate', icon: <Archive className="w-4 h-4" /> }
           : { key: 'reactivate', label: 'Reactivate', icon: <RotateCcw className="w-4 h-4" /> }
       ]
@@ -490,11 +505,19 @@ function WorkspaceListItem({
     { key: 'delete', label: 'Delete Workspace', icon: <Trash2 className="w-4 h-4" />, danger: true }
   ];
 
-  const isActive = workspace.status === 'active';
+
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
       className="group bg-white border border-[#F3F4F6] rounded-[12px] px-4 py-3 hover:border-[#ff3b3b] hover:shadow-md transition-all cursor-pointer"
     >
       <div className="grid grid-cols-[40px_2.8fr_3.2fr_0.7fr_0.3fr] items-center gap-4">
@@ -550,19 +573,23 @@ function WorkspaceListItem({
         {/* Status */}
         <div className="flex justify-center">
           <span
-            className={`inline-flex items-center px-3 py-1 rounded-full text-[12px] font-['Manrope:SemiBold',sans-serif] ${isActive
-              ? 'bg-[#ECFDF3] text-[#16A34A]'
-              : 'bg-[#F3F4F6] text-[#6B7280]'
+            className={`inline-flex items-center px-3 py-1 rounded-full text-[12px] font-['Manrope:SemiBold',sans-serif] ${
+              workspace.isActive
+                ? 'bg-[#ECFDF3] text-[#16A34A]'
+                : 'bg-[#F3F4F6] text-[#6B7280]'
               }`}
           >
-            {isActive ? 'Active' : 'Deactivated'}
+            {workspace.status.replace(/_/g, ' ')}
           </span>
         </div>
 
         {/* Action */}
-        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-end">
           <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
-            <button className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
+            <button
+              onClick={(e) => e.stopPropagation()}
+              className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
+            >
               <MoreVertical className="w-5 h-5 text-[#666666]" />
             </button>
           </Dropdown>

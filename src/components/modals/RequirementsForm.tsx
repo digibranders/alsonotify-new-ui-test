@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
-import { Input, Select, Button, Upload, DatePicker } from 'antd';
+import { Input, Select, Button, Upload, DatePicker, Checkbox } from 'antd';
 import { Upload as UploadIcon, FileText, ChevronDown, User } from 'lucide-react';
 import { useOutsourcePartners, useEmployees } from '@/hooks/useUser';
 
@@ -17,7 +17,7 @@ export interface RequirementFormData {
     contact_person_id?: number;
     dueDate: string;
     budget?: string;
-    priority?: string;
+    is_high_priority?: boolean;
     description: string;
     status?: string;
     receiver_company_id?: number;
@@ -54,11 +54,11 @@ export function RequirementsForm({
         .filter((item: any) => (item.status === 'ACCEPTED' || item.is_active === true) && item.is_active !== false)
         .map((item: any) => {
             // Fix: Backend returns client_id/outsource_id/association_id/invite_id, not user_... prefixes
-            const id = item.user_id ?? item.client_id ?? item.outsource_id ?? item.association_id ?? item.invite_id ?? item.id;
+            const id = item.partner_user_id ?? item.user_id ?? item.client_id ?? item.outsource_id ?? item.association_id ?? item.invite_id ?? item.id;
             return {
                 id: typeof id === 'number' ? id : undefined,
-                name: item.name || item.company || 'Unknown Partner',
-                company: item.company,
+                name: item.partner_user?.name || item.name || item.partner_user?.company || item.company || 'Unknown Partner',
+                company: item.partner_user?.company || item.company,
                 company_id: item.company_id // Preserve company_id for receiver_company_id logic
             };
         })
@@ -84,7 +84,7 @@ export function RequirementsForm({
         contactPerson: undefined,
         dueDate: '',
         budget: '',
-        priority: undefined,
+        is_high_priority: false,
         description: '',
         ...initialData,
     });
@@ -167,6 +167,7 @@ export function RequirementsForm({
                             onChange={(v) => setFormData({ ...formData, workspace: v })}
                             popupStyle={{ zIndex: 2000 }}
                             suffixIcon={<ChevronDown className="w-4 h-4 text-gray-400" />}
+                            disabled={formData.type === 'outsourced'}
                         >
                             {workspaces && workspaces.length > 0 ? (
                                 workspaces.map((w) => (
@@ -191,11 +192,18 @@ export function RequirementsForm({
                             className="w-full h-11"
                             placeholder="Select type"
                             value={formData.type}
-                            onChange={(v) => setFormData({ ...formData, type: v, contact_person_id: undefined, contactPerson: undefined })}
+                            onChange={(v) => setFormData({ 
+                                ...formData, 
+                                type: v, 
+                                contact_person_id: undefined, 
+                                contactPerson: undefined,
+                                // If outsourced, clear workspace (Receiver assigns it)
+                                workspace: v === 'outsourced' ? undefined : formData.workspace 
+                            })}
                             suffixIcon={<ChevronDown className="w-4 h-4 text-gray-400" />}
                         >
-                            <Option value="inhouse">In-house (Internal / Client)</Option>
-                            <Option value="outsourced">Outsourced (Vendor)</Option>
+                            <Option value="inhouse">In-house</Option>
+                            <Option value="outsourced">Partner (Outsourced)</Option>
                         </Select>
                     </div>
 
@@ -246,19 +254,15 @@ export function RequirementsForm({
                             onChange={(date, dateString) => setFormData({ ...formData, dueDate: Array.isArray(dateString) ? dateString[0] : dateString })}
                         />
                     </div>
-                    <div className="space-y-1.5">
-                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Priority</span>
-                        <Select
-                            className="w-full h-11"
-                            placeholder="Select priority"
-                            value={formData.priority}
-                            onChange={(v) => setFormData({ ...formData, priority: v })}
-                            suffixIcon={<ChevronDown className="w-4 h-4 text-gray-400" />}
+                    <div className="space-y-1.5 flex flex-col justify-center">
+                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-2">Priority</span>
+                        <Checkbox
+                            checked={formData.is_high_priority}
+                            onChange={(e) => setFormData({ ...formData, is_high_priority: e.target.checked })}
+                            className="font-medium text-sm"
                         >
-                            <Option value="high">High Priority</Option>
-                            <Option value="medium">Medium Priority</Option>
-                            <Option value="low">Low Priority</Option>
-                        </Select>
+                            High Priority
+                        </Checkbox>
                     </div>
                 </div>
 

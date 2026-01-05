@@ -19,13 +19,15 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { Breadcrumb, Checkbox, Button, Tooltip, App } from 'antd';
+import { Breadcrumb, Checkbox, Button, Tooltip, App, Input, Select, Modal } from 'antd';
 import DOMPurify from 'dompurify';
-import { useWorkspace, useRequirements } from '@/hooks/useWorkspace';
-import { useTasks } from '@/hooks/useTask';
+import { useWorkspace, useRequirements, useUpdateRequirement, useWorkspaces } from '@/hooks/useWorkspace';
+import { useTasks, useRequestRevision } from '@/hooks/useTask';
+import { useUserDetails } from '@/hooks/useUser';
 import { SubTask } from '@/types/genericTypes';
 import { format } from 'date-fns';
 import { TaskRow } from '@/components/features/tasks/rows/TaskRow';
+const { Option } = Select;
 
 export function RequirementDetailsPage() {
   const { message } = App.useApp();
@@ -37,12 +39,49 @@ export function RequirementDetailsPage() {
   const { data: workspaceData, isLoading: isLoadingWorkspace } = useWorkspace(workspaceId);
   const { data: requirementsData, isLoading: isLoadingRequirements } = useRequirements(workspaceId);
   const { data: tasksData } = useTasks(`workspace_id=${workspaceId}`);
+  const { data: userData } = useUserDetails();
 
   const [activeTab, setActiveTab] = useState<'details' | 'tasks' | 'gantt' | 'kanban' | 'pnl'>('details');
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [messageText, setMessageText] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [ganttView, setGanttView] = useState<'day' | 'week' | 'month'>('week');
+
+  // Partner / Receiver Logic
+  const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
+  const [selectedReceiverWorkspace, setSelectedReceiverWorkspace] = useState<string | undefined>(undefined);
+  const { mutate: updateRequirement } = useUpdateRequirement();
+  const { data: myWorkspacesData } = useWorkspaces();
+  const { mutate: requestRevision } = useRequestRevision();
+
+  const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
+  const [revisionNotes, setRevisionNotes] = useState('');
+  const [targetTaskId, setTargetTaskId] = useState<number | null>(null);
+
+
+  const handleAcceptRequirement = () => {
+     if (!selectedReceiverWorkspace) {
+        message.error("Please select a workspace to import this requirement into.");
+        return;
+     }
+     if (!requirement) return;
+
+     updateRequirement({
+        id: reqId,
+        workspace_id: requirement.workspace_id,
+        title: requirement.title,
+        status: 'Assigned',
+        receiver_workspace_id: Number(selectedReceiverWorkspace)
+     } as any, {
+        onSuccess: () => {
+           message.success("Requirement accepted and assigned to workspace.");
+           setIsAcceptModalOpen(false);
+        },
+        onError: (err: any) => {
+           message.error(err.message || "Failed to accept requirement");
+        }
+     });
+  };
 
   const workspace = useMemo(() => {
     if (!workspaceData?.result) return null;
@@ -53,6 +92,11 @@ export function RequirementDetailsPage() {
     if (!requirementsData?.result) return null;
     return requirementsData.result.find((r: any) => r.id === reqId);
   }, [requirementsData, reqId]);
+
+  const isSender = useMemo(() => {
+    if (!requirement || !userData?.result) return false;
+    return requirement.sender_company_id === userData.result.company_id;
+  }, [requirement, userData]);
 
   const mapRequirementStatus = (status: string): 'in-progress' | 'completed' | 'delayed' => {
     const statusLower = status?.toLowerCase() || '';
@@ -79,14 +123,7 @@ export function RequirementDetailsPage() {
     return <div className="p-8">Requirement or Workspace not found</div>;
   }
 
-  const getPriorityColor = (priority?: string) => {
-    switch (priority?.toLowerCase()) {
-      case 'high': return 'bg-[#FFF5F5] text-[#ff3b3b]';
-      case 'medium': return 'bg-[#FFF8E1] text-[#F59E0B]';
-      case 'low': return 'bg-[#F0F9FF] text-[#2F80ED]';
-      default: return 'bg-[#F3F4F6] text-[#6B7280]';
-    }
-  };
+
 
   const handleSendMessage = () => {
     if (messageText.trim() || attachments.length > 0) {
@@ -164,10 +201,47 @@ export function RequirementDetailsPage() {
             </div>
 
             <div className="flex items-center gap-4">
+              {/* Receiver Confirmation Action */}
+              {requirement.status === 'Waiting' && (
+                 <>
+                   <Button 
+                      type="primary" 
+                      className="bg-[#111111] hover:bg-[#000000]/90"
+                      onClick={() => setIsAcceptModalOpen(true)}
+                   >
+                     Accept & Assign Workspace
+                   </Button>
+                   <Modal
+                      open={isAcceptModalOpen}
+                      onCancel={() => setIsAcceptModalOpen(false)}
+                      title="Accept Requirement"
+                      onOk={handleAcceptRequirement}
+                      okText="Accept & Import"
+                      okButtonProps={{ className: "bg-[#111111]" }}
+                   >
+                      <div className="py-4">
+                         <p className="text-sm text-gray-600 mb-2">
+                           Select one of your existing workspaces to assign this requirement to.
+                         </p>
+                         <Select
+                            className="w-full"
+                            placeholder="Select your workspace"
+                            value={selectedReceiverWorkspace}
+                            onChange={setSelectedReceiverWorkspace}
+                         >
+                            {myWorkspacesData?.result?.workspaces?.map((w: any) => (
+                               <Option key={w.id} value={String(w.id)}>{w.name}</Option>
+                            ))}
+                         </Select>
+                      </div>
+                   </Modal>
+                 </>
+              )}
+
               <StatusBadge status={requirementStatus} showLabel />
-              {requirement.priority && (
-                <span className={`px-3 py-1.5 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide ${getPriorityColor(requirement.priority)}`}>
-                  {requirement.priority}
+              {requirement.is_high_priority && (
+                <span className="px-3 py-1.5 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide bg-[#FFF5F5] text-[#ff3b3b]">
+                  HIGH PRIORITY
                 </span>
               )}
               <div className="flex -space-x-2">
@@ -338,12 +412,11 @@ export function RequirementDetailsPage() {
                     </p>
                   </div>
 
-                  {/* Company / Client */}
+                  {/* Partner / Company */}
                   <div>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Company / Client</p>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Partner / Company</p>
                     <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                      {workspace?.client_user?.company?.name || workspace?.name || 'N/A'}
-                      {workspace?.client_user?.name && ` · ${workspace.client_user.name}`}
+                      {requirement.sender_company?.name || 'In-house'}
                     </p>
                   </div>
 
@@ -423,7 +496,7 @@ export function RequirementDetailsPage() {
                   )}
 
                   {/* Priority */}
-                  {requirement.priority && requirement.priority.toUpperCase() === 'HIGH' && (
+                  {requirement.is_high_priority && (
                     <div>
                       <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Priority</p>
                       <span className="px-2 py-1 bg-[#FFF5F5] text-[#ff3b3b] text-[12px] font-['Manrope:Bold',sans-serif] rounded-full">
@@ -510,14 +583,58 @@ export function RequirementDetailsPage() {
                               setSelectedTasks([...selectedTasks, String(task.id)]);
                             }
                           }}
-                          hideRequirements={true}
-                        />
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-8 text-[#999999] text-[13px]">No tasks created yet</div>
-                  )}
+                          onStatusChange={() => {}} // Handle if needed
+                        hideRequirements={true}
+                        isSender={isSender}
+                        onRequestRevision={() => {
+                          setTargetTaskId(task.id);
+                          setIsRevisionModalOpen(true);
+                        }}
+                      />
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-8 text-[#999999] text-[13px]">No tasks created yet</div>
+                )}
+              </div>
+
+              {/* Revision Confirmation Modal */}
+              <Modal
+                title="Request Revision"
+                open={isRevisionModalOpen}
+                onCancel={() => {
+                   setIsRevisionModalOpen(false);
+                   setRevisionNotes('');
+                }}
+                onOk={() => {
+                  if (!targetTaskId || !revisionNotes.trim()) return;
+                  requestRevision({ id: targetTaskId, revisionNotes }, {
+                    onSuccess: () => {
+                      message.success("Revision requested successfully");
+                      setIsRevisionModalOpen(false);
+                      setRevisionNotes('');
+                    },
+                    onError: (err: any) => {
+                      message.error(err.message || "Failed to request revision");
+                    }
+                  });
+                }}
+                okText="Submit Revision"
+                okButtonProps={{ className: "bg-[#111111]" }}
+              >
+                <div className="py-4">
+                  <p className="text-sm text-gray-600 mb-2">
+                    Describe exactly what needs to be changed. This will create a new revision task for the team.
+                  </p>
+                  <Input.TextArea 
+                    rows={4}
+                    placeholder="Revision details..."
+                    value={revisionNotes}
+                    onChange={(e) => setRevisionNotes(e.target.value)}
+                  />
                 </div>
+              </Modal>
+
               </div>
 
               {/* Revisions Section */}

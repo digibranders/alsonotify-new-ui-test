@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getEmployees,
   getUserById,
-  getClients,
+  getPartners,
   createUser,
   updateUserById,
   getUserDetails,
@@ -13,7 +13,6 @@ import {
   updateCurrentUserCompany,
   getCurrentUserCompany,
   getRoles,
-  getOutsource,
   type UserType,
   type ClientOrOutsourceType,
   type CompanyDepartmentType,
@@ -35,10 +34,19 @@ export const useEmployee = (id: number) => {
   });
 };
 
-export const useClients = (options: string = "") => {
+export const usePartners = (options: string = "") => {
   return useQuery({
-    queryKey: ["clients", options],
-    queryFn: () => getClients(options),
+    queryKey: ["partners", options],
+    queryFn: () => getPartners(options),
+    staleTime: 5 * 1000,
+  });
+};
+
+export const useOutsourcePartners = (options: string = "") => {
+  return useQuery({
+    queryKey: ["partners", options],
+    queryFn: () => getPartners(options),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
 
@@ -203,10 +211,5 @@ export const useUpdateRolePermissions = () => {
   });
 };
 
-export const useOutsourcePartners = (options: string = "") => {
-  return useQuery({
-    queryKey: ["outsourcePartners", options],
-    queryFn: () => getOutsource(options),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-};
+// End of file
+

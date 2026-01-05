@@ -55,7 +55,7 @@ export interface Task {
   timeSpent: number;
   activities: number;
   status: 'impediment' | 'in-progress' | 'completed' | 'todo' | 'delayed';
-  priority: 'high' | 'medium' | 'low';
+  is_high_priority: boolean;
 }
 
 export interface SubTask {
@@ -79,7 +79,7 @@ export interface Requirement {
   startDate?: string;
   createdDate?: string;
   dueDate: string;
-  priority: 'high' | 'medium' | 'low';
+  is_high_priority: boolean;
   type?: 'inhouse' | 'outsourced';
   status: 'in-progress' | 'completed' | 'delayed';
   category?: string;

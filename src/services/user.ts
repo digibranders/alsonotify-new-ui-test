@@ -72,11 +72,11 @@ export const getUserById = async (id: number): Promise<ApiResponse<UserType>> =>
   }
 };
 
-// Get clients
-export const getClients = async (options: string = ""): Promise<ApiResponse<ClientOrOutsourceType[]>> => {
+// Get partners
+export const getPartners = async (options: string = ""): Promise<ApiResponse<ClientOrOutsourceType[]>> => {
   try {
     const { data } = await axiosApi.get<ApiResponse<ClientOrOutsourceType[]>>(
-      `/user/client${options ? `?${options}` : ""}`
+      `/user/partners${options ? `?${options}` : ""}`
     );
     return data;
   } catch (error) {
@@ -84,19 +84,7 @@ export const getClients = async (options: string = ""): Promise<ApiResponse<Clie
   }
 };
 
-// Get outsource
-export const getOutsource = async (options: string = ""): Promise<ApiResponse<ClientOrOutsourceType[]>> => {
-  try {
-    const { data } = await axiosApi.get<ApiResponse<ClientOrOutsourceType[]>>(
-      `/user/outsource${options ? `?${options}` : ""}`
-    );
-    return data;
-  } catch (error) {
-    throw error;
-  }
-};
-
-// Invite user (client/outsource)
+// Invite user (partner)
 export const inviteUser = async (email: string, requestSentFor: string) => {
   try {
     const { data } = await axiosApi.post("/user/invite", {
@@ -109,18 +97,18 @@ export const inviteUser = async (email: string, requestSentFor: string) => {
   }
 };
 
-// Search clients dropdown
-export const searchClient = async (): Promise<ApiResponse<{ label: string; value: number }[]>> => {
+// Search partners dropdown
+export const searchPartners = async (): Promise<ApiResponse<{ label: string; value: number }[]>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<{ label: string; value: number }[]>>(`/user/client-dropdown`);
+    const { data } = await axiosApi.get<ApiResponse<{ label: string; value: number }[]>>(`/user/partners/dropdown`);
     return data;
   } catch (error) {
     throw error;
   }
 };
 
-// Search users dropdown
-export const searchUsersByName = async (): Promise<ApiResponse<{ label: string; value: number }[]>> => {
+// Search employees dropdown
+export const searchEmployees = async (): Promise<ApiResponse<{ label: string; value: number }[]>> => {
   try {
     const { data } = await axiosApi.get<ApiResponse<{ label: string; value: number }[]>>(`/user/user-dropdown`);
     return data;
@@ -211,10 +199,10 @@ export const updateUserStatus = async (params: { user_id: number; is_active: boo
   }
 };
 
-// Update user association status (activate/deactivate client/outsource)
-export const updateAssociationStatus = async (params: { association_id: number; is_active: boolean }): Promise<ApiResponse<any>> => {
+// Update partner status (activate/deactivate)
+export const updatePartnerStatus = async (params: { partner_user_id: number; is_active: boolean }): Promise<ApiResponse<any>> => {
   try {
-    const { data } = await axiosApi.patch<ApiResponse<any>>(`/user/association/status`, params);
+    const { data } = await axiosApi.patch<ApiResponse<any>>(`/user/partners/status`, params);
     return data;
   } catch (error) {
     throw error;

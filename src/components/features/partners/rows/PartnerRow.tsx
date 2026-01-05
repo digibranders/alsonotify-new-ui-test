@@ -20,6 +20,8 @@ export interface Partner {
     onboarding: string;
     rawStatus?: string;
     isOrgAccount?: boolean;
+    partner_user_id?: number;
+    company_id?: number;
 }
 
 interface PartnerRowProps {

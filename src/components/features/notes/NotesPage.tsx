@@ -2,6 +2,7 @@ import { PageLayout } from '../../layout/PageLayout';
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useTabSync } from '@/hooks/useTabSync';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import DOMPurify from 'dompurify';
 import { Plus, Archive, Trash2, FileText, ArchiveRestore } from 'lucide-react';
 import { Checkbox, App } from 'antd';
 import { NoteComposerModal } from '../../common/NoteComposerModal';
@@ -32,12 +33,7 @@ export function NotesPage() {
   });
 
   // Sync activeTab with URL - handled by useTabSync
-  /* useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'all' || tab === 'text' || tab === 'checklist' || tab === 'archive') {
-      setActiveTab(tab as TabType);
-    }
-  }, [searchParams]); */
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [showDialog, setShowDialog] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -557,7 +553,7 @@ function NoteCard({ note, onArchive, onUnarchive, onDelete, onEdit, onClick }: N
           {normalizeNoteType(note.type) === 'text' && note.content && (
             <div
               className="font-['Inter:Regular',sans-serif] text-[13px] text-[#666666] line-clamp-[8] leading-relaxed prose prose-sm max-w-none [&>p]:mb-2 [&>p]:last:mb-0 h-full"
-              dangerouslySetInnerHTML={{ __html: note.content }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.content) }}
             />
           )}
 
