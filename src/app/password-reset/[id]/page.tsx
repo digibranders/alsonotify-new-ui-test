@@ -34,8 +34,8 @@ export default function PasswordResetPage() {
       return;
     }
 
-    if (password.length < 10) {
-      message.error("Password must be at least 10 characters long");
+    if (password.length < 8) {
+      message.error("Password must be at least 8 characters long");
       return;
     }
 

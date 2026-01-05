@@ -40,8 +40,8 @@ function RegisterForm() {
       return;
     }
 
-    if (formData.password.length < 10) {
-      message.error("Password must be at least 10 characters long");
+    if (formData.password.length < 8) {
+      message.error("Password must be at least 8 characters long");
       return;
     }
 
