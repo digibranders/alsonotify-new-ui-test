@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Button, Input, Select, DatePicker, TimePicker } from "antd";
+import { Button, Input, Select, DatePicker, TimePicker, App } from "antd";
 import { ShieldCheck, Briefcase, User, Users, Calendar, User as UserIcon, Loader2 } from "lucide-react";
 import dayjs from "dayjs";
 import PhoneNumberInput from "@/components/ui/PhoneNumberInput";
@@ -80,6 +80,7 @@ export function EmployeeForm({
 }: EmployeeFormProps) {
   const [formData, setFormData] = useState<EmployeeFormData>(defaultFormData);
   const { data: companyData, isLoading: isLoadingCompany } = useCurrentUserCompany();
+  const { message } = App.useApp();
 
   // Helper to calculate hourly rate from salary and company settings
   const calculateHourlyRate = (salary: string) => {
@@ -188,6 +189,18 @@ export function EmployeeForm({
   }, [initialData]);
 
   const handleSubmit = () => {
+    if (!formData.firstName) {
+      message.error("First Name is required");
+      return;
+    }
+    if (!formData.email) {
+      message.error("Email is required");
+      return;
+    }
+    if (!formData.employmentType) {
+      message.error("Employment Type is required");
+      return;
+    }
     onSubmit(formData);
   };
 
@@ -281,7 +294,7 @@ export function EmployeeForm({
             </div>
 
             <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Email</span>
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Email <span className="text-[#ff3b3b]">*</span></span>
               <Input
                 placeholder="email@company.com"
                 className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.email ? 'bg-white' : 'bg-[#F9FAFB]'}`}
@@ -291,7 +304,7 @@ export function EmployeeForm({
             </div>
 
             <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Employment Type</span>
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Employment Type <span className="text-[#ff3b3b]">*</span></span>
               <Select
                 showSearch={{
                   filterOption: (input, option) =>
