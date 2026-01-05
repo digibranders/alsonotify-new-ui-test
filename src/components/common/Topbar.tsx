@@ -235,7 +235,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         start_date: new Date().toISOString(),
         end_date: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
         status: 'Assigned',
-        priority: data.priority?.toUpperCase() || 'MEDIUM',
+        is_high_priority: data.priority === 'HIGH' || data.is_high_priority || false,
         type: data.type,
         contact_person: data.contactPerson,
         contact_person_id: data.contact_person_id,
