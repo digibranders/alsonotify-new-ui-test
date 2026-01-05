@@ -6,7 +6,7 @@ export default async function proxy(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
   // Public routes that don't require authentication
-  const publicRoutes = ["/login", "/register", "/forgot-password", "/company-details"];
+  const publicRoutes = ["/login", "/register", "/forgot-password", "/company-details", "/password-reset"];
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
 
   // If on root path "/" and has token, redirect to dashboard
