@@ -260,6 +260,17 @@ export function SettingsPage() {
       setCountry(companyData.result.country || '');
       setAddress(companyData.result.address || '');
       setDefaultEmployeePassword(companyData.result.default_employee_password || 'Pass@123');
+      
+      if (companyData.result.leaves) {
+        setLeaves(companyData.result.leaves);
+      }
+      
+      if (companyData.result.working_hours) {
+        setWorkStartTime(companyData.result.working_hours.start_time || '09:00');
+        setWorkEndTime(companyData.result.working_hours.end_time || '18:00');
+        setWorkingDays(companyData.result.working_hours.working_days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']);
+        setBreakTime(companyData.result.working_hours.break_time || '60');
+      }
     }
   }, [companyData]);
   const [departments, setDepartments] = useState<Department[]>([
@@ -522,8 +533,18 @@ export function SettingsPage() {
       if (activeTab === 'security' && isAdmin) {
         payload.default_employee_password = defaultEmployeePassword;
       }
-      // Note: Departments, leaves, and working hours might need separate API endpoints
-      // For now, we'll save company basic info
+      if (activeTab === 'leaves') {
+        payload.leaves = leaves;
+      }
+
+      if (activeTab === 'working-hours') {
+        payload.working_hours = {
+          start_time: workStartTime,
+          end_time: workEndTime,
+          working_days: workingDays,
+          break_time: breakTime
+        };
+      }
 
       await updateCompanyMutation.mutateAsync(payload);
       message.success('Settings saved successfully!');
