@@ -12,4 +12,5 @@ export const navPermissionMap: Record<string, string> = {
     invoices: 'NAV_INVOICES',
     notes: 'NAV_NOTES',
     meetings: 'NAV_MEETINGS',
+    feedback: 'NAV_FEEDBACK',
 };

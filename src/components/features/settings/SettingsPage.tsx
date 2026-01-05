@@ -707,38 +707,39 @@ export function SettingsPage() {
                     onChange={(v) => setTimeZone(String(v))}
                     disabled={!isEditing}
                     className="w-full h-11"
-                    showSearch
-                    filterOption={(input, option) => {
-                      const searchText = input.toLowerCase().trim();
+                    showSearch={{
+                      filterOption: (input, option) => {
+                        const searchText = input.toLowerCase().trim();
 
-                      // If no search text, show all options
-                      if (!searchText) {
-                        return true;
-                      }
-
-                      // Get the label text
-                      const label = String(option?.label ?? option?.children ?? '').toLowerCase();
-                      const value = String(option?.value ?? '').toLowerCase();
-
-                      // Direct match in label or value
-                      if (label.includes(searchText) || value.includes(searchText)) {
-                        return true;
-                      }
-
-                      // Special handling for Indian timezone searches
-                      // "kol", "cal", "calcutta", "kolkata" should match "Asia/Kolkata"
-                      if (label.includes('kolkata')) {
-                        if (searchText.includes('kol') ||
-                          searchText.includes('cal') ||
-                          searchText.includes('kolkata') ||
-                          searchText.includes('calcutta') ||
-                          searchText.includes('india') ||
-                          searchText.includes('ist')) {
+                        // If no search text, show all options
+                        if (!searchText) {
                           return true;
                         }
-                      }
 
-                      return false;
+                        // Get the label text
+                        const label = String(option?.label ?? option?.children ?? '').toLowerCase();
+                        const value = String(option?.value ?? '').toLowerCase();
+
+                        // Direct match in label or value
+                        if (label.includes(searchText) || value.includes(searchText)) {
+                          return true;
+                        }
+
+                        // Special handling for Indian timezone searches
+                        // "kol", "cal", "calcutta", "kolkata" should match "Asia/Kolkata"
+                        if (label.includes('kolkata')) {
+                          if (searchText.includes('kol') ||
+                            searchText.includes('cal') ||
+                            searchText.includes('kolkata') ||
+                            searchText.includes('calcutta') ||
+                            searchText.includes('india') ||
+                            searchText.includes('ist')) {
+                            return true;
+                          }
+                        }
+
+                        return false;
+                      }
                     }}
                     placeholder="Select timezone"
                     optionFilterProp="label"
@@ -777,11 +778,12 @@ export function SettingsPage() {
                     onChange={(v) => setCountry(String(v))}
                     disabled={!isEditing}
                     className="w-full h-11"
-                    showSearch
-                    filterOption={(input, option) => {
-                      const label = String(option?.label ?? '').toLowerCase();
-                      const value = String(option?.value ?? '').toLowerCase();
-                      return label.includes(input.toLowerCase()) || value.includes(input.toLowerCase());
+                    showSearch={{
+                      filterOption: (input, option) => {
+                        const label = String(option?.label ?? '').toLowerCase();
+                        const value = String(option?.value ?? '').toLowerCase();
+                        return label.includes(input.toLowerCase()) || value.includes(input.toLowerCase());
+                      }
                     }}
                     placeholder="Select country"
                     optionFilterProp="label"

@@ -66,17 +66,17 @@ export function Sidebar({ userRole, permissions }: SidebarProps) {
       allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
     },
     {
-      id: 'requirements',
-      path: '/dashboard/requirements',
-      label: 'Requirements',
-      icon: <PeopleTeam24Filled />,
-      allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
-    },
-    {
       id: 'workspace',
       path: '/dashboard/workspace',
       label: 'Workspace',
       icon: <Apps24Filled />,
+      allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
+    },
+    {
+      id: 'requirements',
+      path: '/dashboard/requirements',
+      label: 'Requirements',
+      icon: <PeopleTeam24Filled />,
       allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
     },
     {

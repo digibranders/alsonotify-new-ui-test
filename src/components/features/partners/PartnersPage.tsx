@@ -9,7 +9,7 @@ import {
     Form,
     Checkbox,
     Tag,
-    message,
+    App,
     Dropdown
 } from 'antd';
 import { PageLayout } from '../../layout/PageLayout';
@@ -52,6 +52,7 @@ const countryCodes = [
 ];
 
 export function PartnersPageContent() {
+    const { message } = App.useApp();
     const [partners, setPartners] = useState<Partner[]>([]);
     const [pendingInvites, setPendingInvites] = useState<any[]>([]); // New state
     const [loading, setLoading] = useState(true);
@@ -259,12 +260,12 @@ export function PartnersPageContent() {
             cancelText: 'Cancel',
             async onOk() {
                 try {
-                    if (!partner.partner_user_id) {
-                        message.error("Invalid Partner ID");
+                    if (!partner.association_id) {
+                        message.error("Invalid Association ID");
                         return;
                     }
                     const result = await updatePartnerStatus({
-                        partner_user_id: partner.partner_user_id,
+                        association_id: partner.association_id,
                         is_active: isActive
                     });
                     if (result.success) {

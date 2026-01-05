@@ -161,6 +161,10 @@ export function RequirementsForm({
                     <div className="space-y-1.5">
                         <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Workspace</span>
                         <Select
+                            showSearch={{
+                                filterOption: (input, option) =>
+                                    (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+                            }}
                             className="w-full h-11"
                             placeholder="Select workspace"
                             value={formData.workspace ? String(formData.workspace) : undefined}
@@ -210,6 +214,10 @@ export function RequirementsForm({
                     <div className="space-y-1.5" id="contact-person-selection">
                         <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Contact Person</span>
                         <Select
+                            showSearch={{
+                                filterOption: (input, option) =>
+                                    (String(option?.label ?? '')).toLowerCase().includes(input.toLowerCase())
+                            }}
                             className="w-full h-11"
                             placeholder={`Select ${formData.type === 'inhouse' ? 'employee' : 'partner'}`}
                             value={typeof formData.contact_person_id === 'number' ? formData.contact_person_id : undefined}

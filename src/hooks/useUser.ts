@@ -13,6 +13,7 @@ import {
   updateCurrentUserCompany,
   getCurrentUserCompany,
   getRoles,
+  updatePassword,
   type UserType,
   type ClientOrOutsourceType,
   type CompanyDepartmentType,
@@ -84,6 +85,12 @@ export const useUpdateProfile = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user"] });
     },
+  });
+};
+
+export const useUpdatePassword = () => {
+  return useMutation({
+    mutationFn: (password: string) => updatePassword(password),
   });
 };
 

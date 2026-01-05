@@ -3,7 +3,7 @@ import { Button, Input, Select, Divider, Upload, Switch, Progress, App } from "a
 import { Camera, Pencil, Upload as UploadIcon, FileText, Bell, Shield } from "lucide-react";
 import Image from "next/image";
 import { PageLayout } from "../../layout/PageLayout";
-import { useUserDetails, useUpdateProfile } from "@/hooks/useUser";
+import { useUserDetails, useUpdateProfile, useUpdatePassword } from "@/hooks/useUser";
 import { DocumentCard } from "@/components/ui/DocumentCard";
 import { DocumentPreviewModal } from "@/components/ui/DocumentPreviewModal";
 import { UserDocument, DocumentType } from "@/types/genericTypes";
@@ -28,6 +28,7 @@ export function ProfilePage() {
     const { data: currentUserData } = useUserDetails();
     const user = currentUserData?.result?.user;
     const updateProfileMutation = useUpdateProfile();
+    const updatePasswordMutation = useUpdatePassword();
 
     // Initialize profile state with real data or fallback to mock data
     const initialProfile = useMemo(() => {
@@ -338,6 +339,22 @@ export function ProfilePage() {
             };
 
             await updateProfileMutation.mutateAsync(userProfilePayload);
+
+            // Handle password update if password fields are filled
+            if (profile.newPassword || profile.confirmPassword) {
+                if (profile.newPassword !== profile.confirmPassword) {
+                    message.error("Passwords do not match");
+                    return;
+                }
+                if (profile.newPassword.length < 8) {
+                    message.error("Password must be at least 8 characters");
+                    return;
+                }
+                await updatePasswordMutation.mutateAsync(profile.newPassword);
+                setProfile(prev => ({ ...prev, newPassword: "", confirmPassword: "" }));
+                message.success("Password updated successfully!");
+            }
+
             message.success("Profile updated successfully!");
             setIsEditing(false);
         } catch (error: any) {

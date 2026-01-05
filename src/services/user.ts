@@ -200,7 +200,7 @@ export const updateUserStatus = async (params: { user_id: number; is_active: boo
 };
 
 // Update partner status (activate/deactivate)
-export const updatePartnerStatus = async (params: { partner_user_id: number; is_active: boolean }): Promise<ApiResponse<any>> => {
+export const updatePartnerStatus = async (params: { association_id: number; is_active: boolean }): Promise<ApiResponse<any>> => {
   try {
     const { data } = await axiosApi.patch<ApiResponse<any>>(`/user/partners/status`, params);
     return data;
@@ -290,7 +290,9 @@ export const getReceivedInvites = async (): Promise<ApiResponse<{
     const { data } = await axiosApi.get("/user/invites/received");
     return data;
   } catch (error) {
-    throw error;
+    // Gracefully handle missing endpoint or server errors
+    console.warn('Failed to fetch received invites:', error);
+    return { success: true, message: 'No invites', result: [] };
   }
 };
 
@@ -308,6 +310,16 @@ export const acceptInviteById = async (inviteId: number): Promise<ApiResponse<an
 export const declineInviteById = async (inviteId: number): Promise<ApiResponse<any>> => {
   try {
     const { data } = await axiosApi.post("/user/invite/decline-id", { inviteId });
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Update user password
+export const updatePassword = async (password: string): Promise<ApiResponse<null>> => {
+  try {
+    const { data } = await axiosApi.patch<ApiResponse<null>>("/user/update/password", { password });
     return data;
   } catch (error) {
     throw error;

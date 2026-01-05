@@ -278,11 +278,12 @@ export function EmployeeDetailsModal({
             </div>
             <div className="grid grid-cols-3 gap-4 mb-6 pl-3">
               <StatCard label="Experience" value={experience} icon={<Briefcase className="w-4 h-4 text-gray-400" />} />
-              <StatCard label="Leaves Balance" value={leavesTaken} icon={<CalendarDays className="w-4 h-4 text-gray-400" />} />
+              <StatCard label="Total Leaves" value={leavesTaken} icon={<CalendarDays className="w-4 h-4 text-gray-400" />} />
               <StatCard label="Working Hours" value={workingHours} icon={<Clock className="w-4 h-4 text-gray-400" />} />
             </div>
             <div className="grid grid-cols-2 gap-y-5 gap-x-12 pl-3">
               <DetailItem label="Date of Joining" value={formatDate(employee.dateOfJoining)} icon={<Calendar className="w-3.5 h-3.5" />} />
+              <DetailItem label="Annual Salary" value={employee.salary ? `${(employee as any).currency || '$'}${Number(employee.salary).toLocaleString()}` : 'N/A'} icon={<DollarSign className="w-3.5 h-3.5" />} />
               <DetailItem label="Hourly Cost" value={hourlyRate} icon={<DollarSign className="w-3.5 h-3.5" />} />
               <DetailItem label="Employment Type" value={employee.employmentType || "Full-time"} icon={<Briefcase className="w-3.5 h-3.5" />} />
               {employee.timezone && (

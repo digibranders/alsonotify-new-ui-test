@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button, Input, Select, DatePicker, TimePicker } from "antd";
-import { ShieldCheck, Briefcase, User, Users, Calendar, User as UserIcon } from "lucide-react";
+import { ShieldCheck, Briefcase, User, Users, Calendar, User as UserIcon, Loader2 } from "lucide-react";
 import dayjs from "dayjs";
 import PhoneNumberInput from "@/components/ui/PhoneNumberInput";
+import { useCurrentUserCompany } from "@/hooks/useUser";
+import { currencies, getCurrencySymbol } from "@/utils/currencyUtils";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -77,6 +79,62 @@ export function EmployeeForm({
   departments = [],
 }: EmployeeFormProps) {
   const [formData, setFormData] = useState<EmployeeFormData>(defaultFormData);
+  const { data: companyData, isLoading: isLoadingCompany } = useCurrentUserCompany();
+
+  // Helper to calculate hourly rate from salary and company settings
+  const calculateHourlyRate = (salary: string) => {
+    if (!salary || isNaN(Number(salary))) return "";
+    
+    // Get settings from companyData
+    const workingHours = companyData?.result?.working_hours || { start_time: "09:00 AM", end_time: "06:00 PM" };
+    const attendance = companyData?.result?.attendance || { working_days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] };
+    
+    const startTime = dayjs(workingHours.start_time, "h:mm A");
+    const endTime = dayjs(workingHours.end_time, "h:mm A");
+    let hoursPerDay = endTime.diff(startTime, 'hour', true);
+    
+    // Subtract 1 hour for break as a standard if it's more than 5 hours
+    if (hoursPerDay > 5) hoursPerDay -= 1;
+    
+    const daysPerWeek = attendance.working_days?.length || 5;
+    const workingHoursPerYear = daysPerWeek * 52 * hoursPerDay;
+    
+    if (workingHoursPerYear === 0) return "";
+    
+    const rate = Number(salary) / workingHoursPerYear;
+    return rate.toFixed(2);
+  };
+
+  // Pre-fill form from company settings when adding new employee
+  useEffect(() => {
+    if (!isEditing && companyData?.result) {
+      const workingHours = companyData.result.working_hours || {};
+      const companyLeavesArr = companyData.result.leaves || [];
+      const totalLeaves = Array.isArray(companyLeavesArr) 
+        ? companyLeavesArr.reduce((acc: number, curr: any) => acc + (Number(curr.count) || 0), 0)
+        : 0;
+
+      const companyCurrency = companyData.result.currency || "INR";
+
+      setFormData(prev => ({
+        ...prev,
+        workingHoursStart: workingHours.start_time || prev.workingHoursStart,
+        workingHoursEnd: workingHours.end_time || prev.workingHoursEnd,
+        leaves: totalLeaves > 0 ? String(totalLeaves) : prev.leaves,
+        currency: companyCurrency
+      }));
+    }
+  }, [companyData, isEditing]);
+
+  // Automatically calculate hourly cost when salary changes
+  useEffect(() => {
+    if (formData.salary) {
+      const calculatedRate = calculateHourlyRate(formData.salary);
+      if (calculatedRate && calculatedRate !== formData.hourlyRate) {
+        setFormData(prev => ({ ...prev, hourlyRate: calculatedRate }));
+      }
+    }
+  }, [formData.salary, companyData]);
 
   useEffect(() => {
     if (initialData) {
@@ -117,7 +175,12 @@ export function EmployeeForm({
         workingHoursStart: start,
         workingHoursEnd: end,
         phone,
-        countryCode
+        countryCode,
+        salary: String(initialData.salary || ""),
+        hourlyRate: String(initialData.hourlyRate || "").replace("/Hr", "").replace("N/A", ""),
+        leaves: String(initialData.leaves || ""),
+        experience: String(initialData.experience || ""),
+        currency: initialData.currency || "INR",
       });
     } else {
       setFormData(defaultFormData);
@@ -145,6 +208,23 @@ export function EmployeeForm({
 
   const accessConfig = getAccessLevelConfig(formData.access);
   const AccessIcon = accessConfig.icon;
+
+  const currencySymbol = getCurrencySymbol(formData.currency);
+
+  const CurrencySelector = (
+    <Select
+      value={formData.currency}
+      onChange={(val) => setFormData({ ...formData, currency: val })}
+      className="currency-select-addon"
+      variant="borderless"
+      popupMatchSelectWidth={false}
+      style={{ width: 80 }}
+    >
+      {currencies.map(c => (
+        <Option key={c} value={c}>{c}</Option>
+      ))}
+    </Select>
+  );
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -213,6 +293,10 @@ export function EmployeeForm({
             <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Employment Type</span>
               <Select
+                showSearch={{
+                  filterOption: (input, option) =>
+                    (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+                }}
                 className={`w-full h-11 employee-form-select ${formData.employmentType ? 'employee-form-select-filled' : ''}`}
                 placeholder="Select type"
                 value={formData.employmentType}
@@ -237,10 +321,21 @@ export function EmployeeForm({
               />
             </div>
 
-
+            <div className="space-y-1.5">
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Salary (CTC) <span className="text-[#666666] font-normal text-[11px] ml-1">(Annual)</span></span>
+              <Input
+                type="number"
+                placeholder="e.g. 1200000"
+                className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.salary ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                value={formData.salary}
+                onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
+                addonBefore={CurrencySelector}
+                prefix={<span className="text-gray-400 mr-1">{currencySymbol}</span>}
+              />
+            </div>
 
             <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Leaves Balance</span>
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Total Leaves</span>
               <Input
                 type="number"
                 placeholder="Days"
@@ -256,6 +351,12 @@ export function EmployeeForm({
             <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Access Level</span>
               <Select
+                showSearch={{
+                  filterOption: (input, option) => {
+                    const label = option?.value as string;
+                    return label.toLowerCase().includes(input.toLowerCase());
+                  }
+                }}
                 className={`w-full h-11 access-level-select employee-form-select ${formData.access ? 'employee-form-select-filled' : ''}`}
                 classNames={{ popup: { root: 'access-level-popup' } }}
                 placeholder="Select access"
@@ -354,6 +455,7 @@ export function EmployeeForm({
                   padding-inline-start: 8px !important;
                   display: flex !important;
                   align-items: center !important;
+                  overflow: visible !important;
                 }
                 :global(.linkedin-skill-select .ant-select-selection-item-remove) {
                   color: #004182 !important;
@@ -413,6 +515,22 @@ export function EmployeeForm({
                   border-color: #EEEEEE !important;
                   box-shadow: none !important;
                 }
+
+                /* Currency Select styling */
+                :global(.currency-select-addon .ant-select-selector) {
+                  background-color: transparent !important;
+                  border: none !important;
+                  padding: 0 4px !important;
+                  height: 42px !important; /* Match input height */
+                  display: flex !important;
+                  align-items: center !important;
+                  box-shadow: none !important;
+                }
+                
+                :global(.currency-select-addon) {
+                   display: flex !important;
+                   align-items: center !important;
+                }
                 
                 /* Access Level dropdown styling - remove extra background and checkboxes */
                 :global(.access-level-popup), :global(.linkedin-skill-dropdown) {
@@ -430,6 +548,7 @@ export function EmployeeForm({
                 }
                 :global(.access-level-popup .ant-select-item:hover), :global(.linkedin-skill-dropdown .ant-select-item:hover) {
                   background: #F7F7F7 !important;
+                  height: auto !important;
                 }
                 :global(.access-level-popup .ant-select-item-option-selected), :global(.linkedin-skill-dropdown .ant-select-item-option-selected) {
                   background: #F9FAFB !important;
@@ -452,6 +571,10 @@ export function EmployeeForm({
             <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Department</span>
               <Select
+                showSearch={{
+                  filterOption: (input, option) =>
+                    (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+                }}
                 className={`w-full h-11 employee-form-select ${formData.department ? 'employee-form-select-filled' : ''}`}
                 placeholder="Select department"
                 value={formData.department || undefined}
@@ -527,12 +650,13 @@ export function EmployeeForm({
             </div>
 
             <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Hourly Cost</span>
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Hourly Cost <span className="text-[#666666] font-normal text-[11px] ml-1">(Calculated)</span></span>
               <Input
                 placeholder="e.g. 25/Hr"
-                className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.hourlyRate ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.hourlyRate}
-                onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
+                readOnly
+                className={`h-11 rounded-lg border border-[#EEEEEE] bg-[#F9FAFB] text-[#666666] font-['Manrope:Medium',sans-serif] cursor-not-allowed`}
+                value={formData.hourlyRate ? `${formData.hourlyRate}/Hr` : ""}
+                prefix={<span className="text-gray-400 mr-1">{currencySymbol}</span>}
               />
             </div>
           </div>

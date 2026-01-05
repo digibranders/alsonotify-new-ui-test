@@ -69,10 +69,6 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
                             priority
                         />
                     </div>
-                    <Link href="/" className="flex items-center gap-2 text-sm font-semibold text-[#999999] hover:text-white transition-colors group">
-                        <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
-                        Back to website
-                    </Link>
                 </div>
 
                 {/* Main Text Content */}
