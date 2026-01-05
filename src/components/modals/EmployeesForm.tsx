@@ -90,8 +90,23 @@ export function EmployeeForm({
     const workingHours = companyData?.result?.working_hours || { start_time: "09:00 AM", end_time: "06:00 PM" };
     const attendance = companyData?.result?.attendance || { working_days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] };
     
-    const startTime = dayjs(workingHours.start_time, "h:mm A");
-    const endTime = dayjs(workingHours.end_time, "h:mm A");
+    // Parse times handling both 24h and 12h formats
+    const parseTime = (t: string) => {
+      if (!t) return null;
+      // Try 12h format first
+      let d = dayjs(t, "h:mm A", true);
+      if (!d.isValid()) {
+        // Try 24h format
+        d = dayjs(t, "HH:mm", true);
+      }
+      return d.isValid() ? d : null;
+    };
+
+    const startTime = parseTime(workingHours.start_time);
+    const endTime = parseTime(workingHours.end_time);
+    
+    if (!startTime || !endTime) return "";
+
     let hoursPerDay = endTime.diff(startTime, 'hour', true);
     
     // Subtract 1 hour for break as a standard if it's more than 5 hours
@@ -117,10 +132,19 @@ export function EmployeeForm({
 
       const companyCurrency = companyData.result.currency || "INR";
 
+      const formatTime = (t: string) => {
+        if (!t) return "";
+        let d = dayjs(t, "h:mm A", true);
+        if (!d.isValid()) {
+          d = dayjs(t, "HH:mm", true);
+        }
+        return d.isValid() ? d.format("h:mm A") : "";
+      };
+
       setFormData(prev => ({
         ...prev,
-        workingHoursStart: workingHours.start_time || prev.workingHoursStart,
-        workingHoursEnd: workingHours.end_time || prev.workingHoursEnd,
+        workingHoursStart: formatTime(workingHours.start_time) || prev.workingHoursStart,
+        workingHoursEnd: formatTime(workingHours.end_time) || prev.workingHoursEnd,
         leaves: totalLeaves > 0 ? String(totalLeaves) : prev.leaves,
         currency: companyCurrency
       }));
