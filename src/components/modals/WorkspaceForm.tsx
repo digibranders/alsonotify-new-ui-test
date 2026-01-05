@@ -121,16 +121,16 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
                         {initialData ? 'EDIT WORKSPACE' : 'CREATE WORKSPACE'}
                     </div>
                     <p className="text-[12px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-10 mt-1">
-                        {initialData ? 'Update your workspace details.' : 'Create a new workspace to organize tasks.'}
+                        {initialData ? 'Update your workspace details.' : 'Create a new workspace to organize your Requirements.'}
                     </p>
                 </div>
 
                 {/* Scrollable Body */}
                 <div className="flex-1 overflow-y-auto px-6 py-6">
-                    <div className="grid grid-cols-1 gap-6">
+                    <div className="grid grid-cols-2 gap-6">
                         {/* Workspace Name */}
                         <div className="space-y-2">
-                            <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Workspace Name <span className="text-[#ff3b3b]">*</span></label>
+                            <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Workspace Name</label>
                             <Input
                                 placeholder="e.g. Website Redesign"
                                 className="h-11 rounded-xl border-[#EEEEEE] font-['Manrope:Medium',sans-serif]"
@@ -166,8 +166,8 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
                             </Select>
                         </div>
 
-                        {/* Description */}
-                        <div className="space-y-2">
+                        {/* Description - Full Width */}
+                        <div className="col-span-2 space-y-2">
                             <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</label>
                             <TextArea
                                 placeholder="Describe your workspace..."

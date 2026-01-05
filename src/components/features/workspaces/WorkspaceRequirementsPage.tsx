@@ -262,17 +262,9 @@ export function WorkspaceRequirementsPage() {
               },
               {
                 title: (
-                  <div className="flex items-center gap-2">
-                    <span className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">
-                      {workspace.name}
-                    </span>
-                    <button
-                      className="hover:scale-110 active:scale-95 transition-transform"
-                      aria-label="Add requirement"
-                    >
-                      <Plus className="w-4 h-4 text-[#ff3b3b]" />
-                    </button>
-                  </div>
+                  <span className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">
+                    {workspace.name}
+                  </span>
                 ),
               },
             ]}
