@@ -8,8 +8,8 @@ import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { Modal, Button, Input, Select, Dropdown, MenuProps, Checkbox, App, DatePicker } from "antd";
 import { WorkspaceForm } from '@/components/modals/WorkspaceForm';
 
-import { useWorkspaces, useCreateWorkspace } from '@/hooks/useWorkspace';
-import { useEmployees } from '@/hooks/useUser';
+import { useWorkspaces, useCreateWorkspace, useUpdateWorkspace, useDeleteWorkspace, useReactivateWorkspace } from '@/hooks/useWorkspace';
+import { usePartners, useCurrentUserCompany } from '@/hooks/useUser';
 import { useQueries } from '@tanstack/react-query';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
 
@@ -19,8 +19,11 @@ const { Option } = Select;
 export function WorkspacePage() {
   const { message } = App.useApp();
 
-  const { data: employeesData } = useEmployees(); // Fetch employees for project lead dropdown
-  const createWorkspaceMutation = useCreateWorkspace();
+  const { data: partnersData } = usePartners();
+  const { data: companyData } = useCurrentUserCompany();
+  const updateWorkspaceMutation = useUpdateWorkspace();
+  const deleteWorkspaceMutation = useDeleteWorkspace();
+  const reactivateWorkspaceMutation = useReactivateWorkspace();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
@@ -32,6 +35,7 @@ export function WorkspacePage() {
 
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedWorkspaceForEdit, setSelectedWorkspaceForEdit] = useState<any>(null);
 
   const [pageSize, setPageSize] = useState(10);
 
@@ -57,18 +61,18 @@ export function WorkspacePage() {
     }
 
     // Filters
-    if (filters.leader && filters.leader !== 'All') {
-       const leader = employeesData?.result?.find((e: any) => e.name === filters.leader);
-       if (leader) params.append('leader_id', leader.user_id || leader.id);
-    }
-    if (filters.manager && filters.manager !== 'All') {
-       const manager = employeesData?.result?.find((e: any) => e.name === filters.manager);
-       if (manager) params.append('manager_id', manager.user_id || manager.id);
+    if (filters.organization && filters.organization !== 'All') {
+       if (filters.organization === 'Self') {
+         params.append('in_house', 'true');
+       } else {
+         const partner = partnersData?.result?.find((p: any) => (p.name || p.partner_company?.name || p.email) === filters.organization);
+         if (partner) params.append('partner_id', partner.id.toString());
+       }
     }
 
 
     return params.toString();
-  }, [activeTab, currentPage, pageSize, searchQuery, filters, employeesData]);
+  }, [activeTab, currentPage, pageSize, searchQuery, filters, partnersData]);
 
 
   const { data: workspacesData, isLoading, refetch } = useWorkspaces(queryParams);
@@ -134,9 +138,10 @@ export function WorkspacePage() {
         status: w.status || 'Assigned',
         isActive: w.is_active ?? true, 
         description: w.description || '',
-        // Add fields for filtering
-        leader_id: w.leader_id,
-        manager_id: w.manager_id,
+        partner_id: w.partner_id,
+        in_house: w.in_house,
+        partner_name: w.partner_name,
+        company_name: w.company_name
       };
     });
   }, [workspacesData, requirementQueries, workspaceIds]);
@@ -155,15 +160,9 @@ export function WorkspacePage() {
 
   const filterOptions: FilterOption[] = [
     {
-      id: 'leader',
-      label: 'Lead',
-      options: ['All', ...(employeesData?.result?.map((e: any) => e.name) || [])],
-      defaultValue: 'All'
-    },
-    {
-      id: 'manager',
-      label: 'Manager',
-      options: ['All', ...(employeesData?.result?.map((e: any) => e.name) || [])],
+      id: 'organization',
+      label: 'Organization',
+      options: ['All', 'Self', ...(partnersData?.result?.map((p: any) => p.name || p.partner_company?.name || p.email) || [])],
       defaultValue: 'All'
     }
   ];
@@ -201,14 +200,16 @@ export function WorkspacePage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <h2 className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">Workspace</h2>
-            <button onClick={() => setIsDialogOpen(true)} className="hover:scale-110 active:scale-95 transition-transform">
+            <button onClick={() => { setSelectedWorkspaceForEdit(null); setIsDialogOpen(true); }} className="hover:scale-110 active:scale-95 transition-transform">
               <Plus className="size-5 text-[#ff3b3b]" strokeWidth={2} />
             </button>
             <WorkspaceForm
               open={isDialogOpen}
-              onCancel={() => setIsDialogOpen(false)}
+              initialData={selectedWorkspaceForEdit}
+              onCancel={() => { setIsDialogOpen(false); setSelectedWorkspaceForEdit(null); }}
               onSuccess={() => {
                 setIsDialogOpen(false);
+                setSelectedWorkspaceForEdit(null);
                 refetch();
               }}
             />
@@ -393,75 +394,102 @@ function WorkspaceRequirementsSummary({
   );
 }
 
-function WorkspaceCard({ workspace, onClick }: { workspace: { id: number; name: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; totalRequirements?: number; inProgressRequirements?: number; delayedRequirements?: number; status: string; isActive: boolean }; onClick?: () => void }) {
+function WorkspaceCard({ workspace, onClick }: { workspace: any; onClick?: () => void }) {
+  const { message } = App.useApp();
+  const deleteMutation = useDeleteWorkspace();
+  const reactivateMutation = useReactivateWorkspace();
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
+  const handleAction = async (key: string) => {
+    if (key === 'deactivate') {
+      deleteMutation.mutate(workspace.id, {
+        onSuccess: () => message.success('Workspace deactivated successfully'),
+      });
+    } else if (key === 'reactivate') {
+      reactivateMutation.mutate(workspace.id, {
+        onSuccess: () => message.success('Workspace reactivated successfully'),
+      });
+    } else if (key === 'edit') {
+      setIsEditOpen(true);
+    }
+  };
+
   const items: MenuProps['items'] = [
     {
       key: 'manage',
-      label: 'Manage Workspace',
+      label: 'Actions',
       type: 'group',
       children: [
         { key: 'edit', label: 'Edit Details', icon: <Edit className="w-4 h-4" /> },
-        { key: 'members', label: 'Manage Members', icon: <Users className="w-4 h-4" /> },
         workspace.isActive
           ? { key: 'deactivate', label: 'Deactivate', icon: <Archive className="w-4 h-4" /> }
           : { key: 'reactivate', label: 'Reactivate', icon: <RotateCcw className="w-4 h-4" /> }
       ]
-    },
-    { type: 'divider' },
-    { key: 'delete', label: 'Delete Workspace', icon: <Trash2 className="w-4 h-4" />, danger: true }
+    }
   ];
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick?.();
-        }
-      }}
-      className="group relative bg-white border border-[#EEEEEE] rounded-[16px] p-5 hover:border-[#ff3b3b] hover:shadow-lg hover:shadow-[#ff3b3b]/10 transition-all cursor-pointer overflow-hidden flex flex-col h-[180px]"
-    >
-      {/* Accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#ff3b3b] to-[#ff6b6b] opacity-0 group-hover:opacity-100 transition-opacity" />
+    <>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick?.();
+          }
+        }}
+        className="group relative bg-white border border-[#EEEEEE] rounded-[16px] p-5 hover:border-[#ff3b3b] hover:shadow-lg hover:shadow-[#ff3b3b]/10 transition-all cursor-pointer overflow-hidden flex flex-col h-[180px]"
+      >
+        {/* Accent bar */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#ff3b3b] to-[#ff6b6b] opacity-0 group-hover:opacity-100 transition-opacity" />
 
-      {/* Action Menu - Absolute Positioned */}
-      <div className="absolute top-3 right-3 z-20" onClick={(e) => e.stopPropagation()}>
-        <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
-          <button className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
-            <MoreVertical className="w-5 h-5 text-[#666666]" />
-          </button>
-        </Dropdown>
-      </div>
-
-      <div className="flex flex-col h-full">
-        {/* Header: Icon + Details Side-by-Side */}
-        <div className="flex items-start gap-3 mb-auto pr-8">
-          {/* Folder Icon */}
-          <div className="shrink-0 w-12 h-12 rounded-[12px] bg-[#FEF3F2] border border-[#ff3b3b]/20 flex items-center justify-center group-hover:bg-[#ff3b3b] transition-all">
-            <FolderOpen className="w-6 h-6 text-[#ff3b3b] group-hover:text-white transition-colors" />
-          </div>
-
-          {/* Text Details */}
-          <div className="flex flex-col pt-0.5 min-w-0">
-            <h3 className="font-['Manrope:Bold',sans-serif] text-[15px] text-[#111111] leading-tight mb-1 truncate w-full">
-              {workspace.name}
-            </h3>
-          </div>
+        {/* Action Menu - Absolute Positioned */}
+        <div className="absolute top-3 right-3 z-20" onClick={(e) => e.stopPropagation()}>
+          <Dropdown menu={{ items, onClick: ({ key }) => handleAction(key) }} trigger={['click']} placement="bottomRight">
+            <button className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100">
+              <MoreVertical className="w-5 h-5 text-[#666666]" />
+            </button>
+          </Dropdown>
         </div>
 
-        {/* Footer: Stats */}
-        <div className="border-t border-[#EEEEEE] pt-3 mt-auto">
-          <WorkspaceRequirementsSummary
-            total={workspace.totalRequirements || 0}
-            inProgress={workspace.inProgressRequirements || 0}
-            delayed={workspace.delayedRequirements || 0}
-          />
+        <div className="flex flex-col h-full">
+          {/* Header: Icon + Details Side-by-Side */}
+          <div className="flex items-start gap-4 mb-auto pr-8">
+            {/* Folder Icon */}
+            <div className="shrink-0 w-12 h-12 rounded-[14px] bg-[#FEF3F2] border border-[#ff3b3b]/10 flex items-center justify-center group-hover:bg-[#ff3b3b] transition-all duration-300">
+              <FolderOpen className="w-6 h-6 text-[#ff3b3b] group-hover:text-white transition-colors" />
+            </div>
+
+            {/* Text Details */}
+            <div className="flex flex-col pt-0.5 min-w-0">
+              <h3 className="font-['Manrope:Bold',sans-serif] text-[16px] text-[#111111] leading-snug mb-0.5 truncate w-full">
+                {workspace.name}
+              </h3>
+              <p className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif] truncate">
+                {workspace.in_house ? workspace.company_name : workspace.partner_name || 'Organization'}
+              </p>
+            </div>
+          </div>
+
+          {/* Footer: Stats */}
+          <div className="border-t border-[#EEEEEE] pt-4 mt-auto">
+            <WorkspaceRequirementsSummary
+              total={workspace.totalRequirements || 0}
+              inProgress={workspace.inProgressRequirements || 0}
+              delayed={workspace.delayedRequirements || 0}
+            />
+          </div>
         </div>
       </div>
-    </div>
+      <WorkspaceForm
+        open={isEditOpen}
+        initialData={workspace}
+        onCancel={() => setIsEditOpen(false)}
+        onSuccess={() => setIsEditOpen(false)}
+      />
+    </>
   );
 }
 
@@ -483,6 +511,11 @@ function WorkspaceListItem({
     delayedRequirements?: number;
     status: string;
     isActive: boolean;
+    in_house?: boolean;
+    partner_name?: string;
+    company_name?: string;
+    description?: string;
+    partner_id?: number;
   };
   selected: boolean;
   onToggleSelect: () => void;
@@ -571,7 +604,10 @@ function WorkspaceListItem({
         </div>
 
         {/* Status */}
-        <div className="flex justify-center">
+        <div className="flex items-center gap-2">
+          <p className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif]">
+            {workspace.in_house ? workspace.company_name : workspace.partner_name || 'Organization'}
+          </p>
           <span
             className={`inline-flex items-center px-3 py-1 rounded-full text-[12px] font-['Manrope:SemiBold',sans-serif] ${
               workspace.isActive

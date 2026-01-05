@@ -11,6 +11,7 @@ import {
   deleteRequirementById,
   approveRequirement,
   getCollaborativeRequirements,
+  reactivateWorkspace,
   type WorkspaceType,
   type RequirementType,
 } from "../services/workspace";
@@ -144,6 +145,16 @@ export const useApproveRequirement = () => {
     onSuccess: () => {
       // Invalidate all requirements queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["requirements"] });
+    },
+  });
+};
+export const useReactivateWorkspace = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => reactivateWorkspace(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
     },
   });
 };
