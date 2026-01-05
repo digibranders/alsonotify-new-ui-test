@@ -18,7 +18,7 @@ import {
   Calendar24Filled,
   Notepad24Filled
 } from '@fluentui/react-icons';
-import { UserCog, Settings, LogOut, FolderOpen, CheckSquare, FileText, MessageCircle } from 'lucide-react';
+import { UserCog, Settings, LogOut, MessageCircle } from 'lucide-react';
 import { TaskForm } from '../modals/TaskForm';
 import { RequirementsForm, RequirementFormData } from '../modals/RequirementsForm';
 import { WorkspaceForm } from '../modals/WorkspaceForm';

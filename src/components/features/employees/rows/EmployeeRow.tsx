@@ -11,6 +11,7 @@ interface EmployeeRowProps {
   onEdit: () => void;
   onDeactivate?: () => void;
   onViewDetails?: () => void;
+  currentUserId?: number | null;
 }
 
 export function EmployeeRow({
@@ -19,7 +20,8 @@ export function EmployeeRow({
   onSelect,
   onEdit,
   onDeactivate,
-  onViewDetails
+  onViewDetails,
+  currentUserId
 }: EmployeeRowProps) {
 
   const items: MenuProps['items'] = [
@@ -37,8 +39,23 @@ export function EmployeeRow({
       onClick: onDeactivate,
       danger: true,
       className: "text-[13px] font-['Manrope:Medium',sans-serif]"
+    }] : []),
+    ...(onDeactivate && employee.id === currentUserId && employee.status === 'active' ? [{
+      key: 'deactivate-self',
+      label: 'Deactivate',
+      icon: <Trash2 className="w-3.5 h-3.5" />,
+      disabled: true,
+      danger: true,
+      title: "You cannot deactivate your own account",
+      className: "text-[13px] font-['Manrope:Medium',sans-serif] opacity-50"
     }] : [])
-  ];
+  ].filter(item => {
+    // If it's the current user and we are showing 'deactivate', we want to show the disabled one instead
+    if (employee.id === currentUserId && employee.status === 'active') {
+      return item.key !== 'deactivate';
+    }
+    return true;
+  });
 
   return (
     <div

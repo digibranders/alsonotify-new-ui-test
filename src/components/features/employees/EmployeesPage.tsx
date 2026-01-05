@@ -218,6 +218,10 @@ export function EmployeesPage() {
   };
 
   const handleDeactivateEmployee = async (employeeId: number, isCurrentlyActive: boolean) => {
+    if (employeeId === currentUserId && isCurrentlyActive) {
+      message.error("You cannot deactivate your own account.");
+      return;
+    }
     updateEmployeeStatusMutation.mutate(
       {
         user_id: employeeId,
@@ -913,6 +917,7 @@ export function EmployeesPage() {
                 onEdit={() => handleOpenDialog(employee)}
                 onDeactivate={() => handleDeactivateEmployee(employee.id, employee.status === 'active')}
                 onViewDetails={() => handleViewDetails(employee)}
+                currentUserId={currentUserId}
               />
             ))}
           </div>
