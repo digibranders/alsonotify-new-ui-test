@@ -61,6 +61,16 @@ export const deleteWorkspace = async (id: number): Promise<ApiResponse<Workspace
   }
 };
 
+// Reactivate workspace
+export const reactivateWorkspace = async (id: number): Promise<ApiResponse<WorkspaceType>> => {
+  try {
+    const { data } = await axiosApi.patch<ApiResponse<WorkspaceType>>(`/workspace/reactivate/${id}`);
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Get workspaces
 type TeamWorkspaceType = {
   workspaces: WorkspaceType[];
