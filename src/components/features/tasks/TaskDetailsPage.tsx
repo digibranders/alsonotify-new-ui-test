@@ -57,14 +57,7 @@ export function TaskDetailsPage() {
     return <div className="p-8">Task not found</div>;
   }
 
-  const getPriorityColor = (priority?: string) => {
-    switch (priority?.toLowerCase()) {
-      case 'high': return 'bg-[#FFF5F5] text-[#ff3b3b]';
-      case 'medium': return 'bg-[#FFF8E1] text-[#F59E0B]';
-      case 'low': return 'bg-[#F0F9FF] text-[#2F80ED]';
-      default: return 'bg-[#F3F4F6] text-[#6B7280]';
-    }
-  };
+
 
   // Mock activity data
   const activityData = [
@@ -228,9 +221,9 @@ export function TaskDetailsPage() {
       action={
         <div className="flex items-center gap-4">
           <StatusBadge status={task.status || 'todo'} showLabel />
-          {task.priority && (
-            <span className={`px-3 py-1.5 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide ${getPriorityColor(task.priority)}`}>
-              {task.priority}
+          {task.is_high_priority && (
+            <span className="px-3 py-1.5 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide bg-[#FFF5F5] text-[#ff3b3b]">
+              HIGH PRIORITY
             </span>
           )}
         </div>

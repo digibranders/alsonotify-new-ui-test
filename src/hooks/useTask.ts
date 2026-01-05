@@ -11,11 +11,13 @@ import {
   startWorkLog,
   updateWorklog,
   getAssignedTaskDetail,
+  requestRevision,
   type TaskType,
 } from "../services/task";
 
 // Re-export useClients for convenience
-export { useClients } from "./useUser";
+// useClients removed
+export { usePartners } from "./useUser";
 
 export const useTasks = (options: string = "") => {
   return useQuery({
@@ -137,3 +139,16 @@ export const useTaskTimer = (taskId: number) => {
     enabled: !!taskId,
   });
 };
+
+export const useRequestRevision = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, revisionNotes }: { id: number; revisionNotes: string }) => requestRevision(id, revisionNotes),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["task", variables.id] });
+    },
+  });
+};
+

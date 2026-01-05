@@ -8,7 +8,7 @@ export interface TaskType {
   name?: string;
   description?: string;
   status?: string;
-  priority?: string;
+  is_high_priority?: boolean;
   workspace_id?: number;
   requirement_id?: number;
   assigned_to?: number;
@@ -528,3 +528,22 @@ export const getCurrentActiveTimer = async () => {
   const { data } = await axiosApi.get('/task/active-timer');
   return data;
 };
+
+/**
+ * Request a revision for a task
+ */
+export const requestRevision = async (id: number, revisionNotes: string): Promise<ApiResponse<any>> => {
+  try {
+    validateTaskId(id);
+    const { data } = await axiosApi.post<ApiResponse<any>>(`/task/${id}/revision`, { revisionNotes });
+    return data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const message = getErrorMessage(error);
+      throw new ApiError(message, statusCode, error.response?.data);
+    }
+    throw new NetworkError(getErrorMessage(error));
+  }
+};
+

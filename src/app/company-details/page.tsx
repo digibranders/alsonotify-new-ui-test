@@ -16,6 +16,7 @@ import {
 import { useCompleteSignup, useVerifyToken } from "@/hooks/useAuth";
 import { industryToBusinessType, commonCountries, commonTimezones } from "@/data/defaultData";
 import AuthLayout from "@/components/auth/AuthLayout";
+import PhoneNumberInput from "@/components/ui/PhoneNumberInput";
 
 const { Option } = Select;
 
@@ -168,7 +169,7 @@ function CompanyDetailsForm() {
         timezone: companyData.timezone,
         firstName: adminData.firstName,
         lastName: adminData.lastName,
-        phone: `${adminData.countryCode} ${adminData.phone}`.trim(),
+        phone: adminData.phone,
       });
     } catch (error: any) {
       const errorMessage =
@@ -199,10 +200,7 @@ function CompanyDetailsForm() {
           <motion.div variants={itemVariants} className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${currentStep === "company"
-                  ? "bg-[#ff3b3b] text-white"
-                  : "bg-[#ff3b3b] text-white"
-                  }`}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors bg-[#ff3b3b] text-white"
               >
                 {currentStep === "admin" ? (
                   <Check className="w-4 h-4" />
@@ -211,8 +209,7 @@ function CompanyDetailsForm() {
                 )}
               </div>
               <span
-                className={`text-sm font-medium ${currentStep === "company" ? "text-[#111111]" : "text-[#111111]"
-                  }`}
+                className="text-sm font-medium text-[#111111]"
               >
                 Company Details
               </span>
@@ -285,10 +282,11 @@ function CompanyDetailsForm() {
                 {!isIndividual && (
                   <motion.div variants={itemVariants} className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                      <label htmlFor="company-name" className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
                         Company Name <span className="text-[#ff3b3b]">*</span>
                       </label>
                       <input
+                        id="company-name"
                         type="text"
                         placeholder="Acme Inc."
                         value={companyData.companyName}
@@ -300,10 +298,11 @@ function CompanyDetailsForm() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
+                      <label htmlFor="website" className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
                         Website
                       </label>
                       <input
+                        id="website"
                         type="url"
                         placeholder="https://acme.com"
                         value={companyData.website}
@@ -489,14 +488,13 @@ function CompanyDetailsForm() {
                           <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">
                             Phone Number
                           </label>
-                          <input
-                            type="tel"
-                            placeholder="+91 98765 43210"
+                          <PhoneNumberInput
+                            placeholder="98765 43210"
                             value={adminData.phone}
-                            onChange={(e) =>
-                              setAdminData({ ...adminData, phone: e.target.value })
+                            onChange={(val) =>
+                              setAdminData({ ...adminData, phone: val })
                             }
-                            className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
+                            className="w-full h-12 bg-[#FAFAFA] border border-transparent focus-within:bg-white focus-within:border-[#ff3b3b] rounded-xl"
                           />
                         </div>
                       </div>

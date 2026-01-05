@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button, Input, Select, DatePicker, TimePicker } from "antd";
-import { ShieldCheck, Briefcase, User, Users, Calendar, Check } from "lucide-react";
-import { User as UserIcon } from "lucide-react";
+import { ShieldCheck, Briefcase, User, Users, Calendar, User as UserIcon } from "lucide-react";
 import dayjs from "dayjs";
+import PhoneNumberInput from "@/components/ui/PhoneNumberInput";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -472,21 +472,17 @@ export function EmployeeForm({
             <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Contact Number</span>
               <div className="flex gap-2">
-                <Select
-                  className={`w-[85px] h-11 employee-form-select ${formData.countryCode ? 'employee-form-select-filled' : ''}`}
-                  value={formData.countryCode}
-                  onChange={(v) => setFormData({ ...formData, countryCode: String(v) })}
-                  suffixIcon={<div className="text-gray-400">⌄</div>}
-                >
-                  {countryCodes.map((c) => (
-                    <Option key={c.code} value={c.code}>{c.code} {c.country}</Option>
-                  ))}
-                </Select>
-                <Input
+                <PhoneNumberInput
                   placeholder="123 456 7890"
-                  className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.phone ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  value={`${formData.countryCode} ${formData.phone}`}
+                  onChange={(val) => {
+                    // Split the combined value "+91 9876543210" back into components
+                    const parts = val.split(' ');
+                    const code = parts[0];
+                    const num = parts.slice(1).join(' '); // Join rest in case of spaces
+                    setFormData({ ...formData, countryCode: code, phone: num });
+                  }}
+                  className={`w-full h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.phone ? 'bg-white' : 'bg-[#F9FAFB]'} focus-within:border-[#111111] focus-within:bg-white focus-within:shadow-none transition-all`}
                 />
               </div>
             </div>

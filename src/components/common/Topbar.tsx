@@ -25,9 +25,9 @@ import { WorkspaceForm } from '../modals/WorkspaceForm';
 import { NotificationPanel } from './NotificationPanel';
 import { useUserDetails } from '@/hooks/useUser';
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/useNotification';
-import { useWorkspaces, useClients } from '@/hooks/useWorkspace';
+import { useWorkspaces, usePartners } from '@/hooks/useWorkspace';
 import { useEmployees } from '@/hooks/useUser';
-import { searchUsersByName } from '@/services/user';
+import { searchEmployees } from '@/services/user';
 import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
 import { useCreateWorkspace } from '@/hooks/useWorkspace';
 import { useCreateTask } from '@/hooks/useTask';
@@ -70,7 +70,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
 
   // Fetch data for dialogs
   const { data: workspacesData } = useWorkspaces();
-  const { data: clientsData } = useClients();
+  const { data: partnersData } = usePartners();
   const { data: employeesData } = useEmployees();
   const [usersDropdown, setUsersDropdown] = useState<Array<{ id: number; name: string }>>([]);
   const [requirementsDropdown, setRequirementsDropdown] = useState<Array<{ id: number; name: string }>>([]);
@@ -148,7 +148,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await searchUsersByName();
+        const response = await searchEmployees();
         if (response.success) {
           const transformed = (response.result || []).map((item: any) => ({
             id: item.value || item.id,

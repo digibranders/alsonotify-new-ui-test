@@ -15,7 +15,7 @@ import {
   type RequirementType,
 } from "../services/workspace";
 import { getTasks } from "../services/task";
-export { useClients } from "./useUser";
+export { usePartners } from "./useUser";
 
 // Workspaces
 export const useWorkspaces = (options: string = "") => {

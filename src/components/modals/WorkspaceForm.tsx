@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Modal, Button, Input, Select, DatePicker, App } from "antd";
 import { FolderOpen } from 'lucide-react';
 import { useCreateWorkspace } from '@/hooks/useWorkspace';
-import { useClients as useGetClients, useEmployees } from '@/hooks/useUser';
+import { usePartners, useEmployees } from '@/hooks/useUser';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -28,7 +28,7 @@ const defaultWorkspaceData = {
 
 export function WorkspaceForm({ open, onCancel, onSuccess }: WorkspaceFormProps) {
     const { message } = App.useApp();
-    const { data: clientsData } = useGetClients();
+    const { data: partnersData } = usePartners();
     const { data: employeesData } = useEmployees();
     const createWorkspaceMutation = useCreateWorkspace();
 

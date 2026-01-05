@@ -1,5 +1,5 @@
 import { Checkbox, Tooltip, Dropdown, Popover, Input, Button, message, Avatar, Modal } from "antd";
-import { AlertCircle, CheckCircle2, Clock, Loader2, MoreVertical, ArrowRightCircle, Eye, XCircle, Ban, Edit, Trash2, Play, CircleStop } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Loader2, MoreVertical, ArrowRightCircle, Eye, XCircle, Ban, Edit, Trash2, Play, CircleStop, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MenuProps } from "antd";
@@ -23,7 +23,7 @@ export interface Task {
   total_seconds_spent: number; // Total Closed Seconds
   activities: number;
   status: 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck';
-  priority: 'high' | 'medium' | 'low';
+  is_high_priority: boolean;
   timelineDate: string;
   timelineLabel: string;
   execution_mode?: 'parallel' | 'sequential';
@@ -52,6 +52,8 @@ interface TaskRowProps {
   onStatusChange?: (status: string) => void;
   currentUserId?: number;
   hideRequirements?: boolean;
+  isSender?: boolean;
+  onRequestRevision?: () => void;
 }
 
 export function TaskRow({
@@ -62,7 +64,9 @@ export function TaskRow({
   onDelete,
   onStatusChange,
   currentUserId,
-  hideRequirements = false
+  hideRequirements = false,
+  isSender = false,
+  onRequestRevision
 }: TaskRowProps) {
   const router = useRouter();
   const { timerState, startTimer, stopTimer } = useTimer();
@@ -244,6 +248,11 @@ export function TaskRow({
             <span className="font-['Manrope:Bold',sans-serif] text-[14px] !text-[#111111] group-hover:text-[#ff3b3b] transition-colors">
               {task.name}
             </span>
+            {task.is_high_priority && (
+              <span className="bg-red-100 text-red-600 text-[10px] px-1.5 py-0.5 rounded-full font-bold border border-red-200">
+                HIGH
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-[#999999] font-['Manrope:Regular',sans-serif]">
@@ -294,22 +303,22 @@ export function TaskRow({
           <Avatar.Group max={{ count: 3, style: { color: '#666666', backgroundColor: '#EEEEEE' } }}>
             {task.task_members && task.task_members.length > 0 ? (
               task.task_members.map((member) => (
-                <Tooltip key={member.id} title={`${member.user.name} (${member.status})`}>
+                <Tooltip key={member.id} title={`${isSender ? 'Partner Resource' : member.user.name} (${member.status})`}>
                   <div className="relative">
-                    {member.user.profile_pic ? (
+                    {member.user.profile_pic && !isSender ? (
                       <Avatar src={member.user.profile_pic} />
                     ) : (
                       <Avatar style={{ backgroundColor: '#CCCCCC' }}>
-                        {member.user.name ? member.user.name.charAt(0).toUpperCase() : 'U'}
+                        {isSender ? 'P' : (member.user.name ? member.user.name.charAt(0).toUpperCase() : 'U')}
                       </Avatar>
                     )}
                   </div>
                 </Tooltip>
               ))
             ) : (
-              <Tooltip title={task.assignedTo}>
+              <Tooltip title={isSender ? 'Partner Resource' : task.assignedTo}>
                 <Avatar style={{ backgroundColor: '#CCCCCC' }}>
-                  {task.assignedTo ? task.assignedTo.charAt(0).toUpperCase() : 'U'}
+                  {isSender ? 'P' : (task.assignedTo ? task.assignedTo.charAt(0).toUpperCase() : 'U')}
                 </Avatar>
               </Tooltip>
             )}
@@ -416,6 +425,14 @@ export function TaskRow({
                   onClick: () => onDelete?.(),
                   danger: true,
                   className: "text-[13px] font-['Manrope:Medium',sans-serif]"
+                },
+                {
+                  key: 'revision',
+                  label: 'Request Revision',
+                  icon: <RotateCcw className="w-3.5 h-3.5" />,
+                  onClick: () => onRequestRevision?.(),
+                  disabled: task.status !== 'Review', // Typical threshold for revision
+                  className: "text-[13px] font-['Manrope:Medium',sans-serif] text-[#ff3b3b]"
                 }
               ] as MenuProps['items']
             }}

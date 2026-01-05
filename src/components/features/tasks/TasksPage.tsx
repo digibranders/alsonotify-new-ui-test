@@ -9,7 +9,7 @@ import { TaskForm } from '../../modals/TaskForm';
 import { TaskRow } from './rows/TaskRow';
 import { useTasks, useCreateTask, useDeleteTask, useUpdateTask } from '@/hooks/useTask';
 import { useWorkspaces } from '@/hooks/useWorkspace';
-import { searchUsersByName } from '@/services/user';
+import { searchEmployees } from '@/services/user';
 import { getRoleFromUser } from '@/utils/roleUtils';
 import { useUserDetails, useCurrentUserCompany } from '@/hooks/useUser';
 import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
@@ -40,7 +40,7 @@ type UITask = {
   timeSpent: number;
   activities: number;
   status: ITaskStatus;
-  priority: 'high' | 'medium' | 'low';
+  is_high_priority: boolean;
   timelineDate: string;
   timelineLabel: string;
   // For date-range filtering
@@ -312,7 +312,7 @@ export function TasksPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await searchUsersByName();
+        const response = await searchEmployees();
         if (response.success) {
           const transformed = (response.result || []).map((item: any) => ({
             id: item.value || item.id,
@@ -506,9 +506,10 @@ export function TasksPage() {
         dueDate,
         estTime,
         timeSpent,
+
         activities: t.worklogs?.length || 0,
         status: uiStatus,
-        priority: (t.priority?.toLowerCase() as 'high' | 'medium' | 'low') || 'medium',
+        is_high_priority: t.is_high_priority ?? false,
         timelineDate,
         timelineLabel,
         dueDateValue,
@@ -821,7 +822,7 @@ export function TasksPage() {
             leader_id: String(editingTask.leader_id || ''),
             end_date: editingTask.endDateIso || '',
             estimated_time: String(editingTask.estTime || ''),
-            priority: (editingTask.priority?.toUpperCase() as 'HIGH' | 'MEDIUM' | 'LOW') || 'MEDIUM',
+            is_high_priority: editingTask.is_high_priority,
             description: editingTask.description || '',
           } : undefined}
           isEditing={!!editingTask}

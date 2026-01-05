@@ -35,7 +35,7 @@ import { useTabSync } from '@/hooks/useTabSync';
 import axiosApi from '../../../config/axios';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { PartnerRow, Partner, PartnerStatus } from './rows/PartnerRow';
-import { acceptInvitation, updateAssociationStatus, getReceivedInvites, acceptInviteById, declineInviteById } from '@/services/user';
+import { acceptInvitation, updatePartnerStatus, getReceivedInvites, acceptInviteById, declineInviteById, getPartners } from '@/services/user';
 import { BankOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined } from '@ant-design/icons';
 
 // Mock Data
@@ -76,7 +76,7 @@ export function PartnersPageContent() {
         try {
             setLoading(true);
             const [partnersRes, invitesRes] = await Promise.all([
-                axiosApi.get('/user/outsource'),
+                getPartners(),
                 getReceivedInvites() // Fetch invites
             ]);
 
@@ -84,8 +84,8 @@ export function PartnersPageContent() {
                 setPendingInvites(invitesRes.result as any[]);
             }
 
-            if (partnersRes.data.success) {
-                const mappedPartners: Partner[] = partnersRes.data.result.map((item: any) => {
+            if (partnersRes.success) {
+                const mappedPartners: Partner[] = partnersRes.result.map((item: any) => {
                     let status: 'active' | 'inactive' | 'pending' = 'pending';
                     if (item.status === 'ACCEPTED') {
                         status = item.is_active ? 'active' : 'inactive';
@@ -105,7 +105,9 @@ export function PartnersPageContent() {
                         requirements: 0,
                         onboarding: item.associated_date ? new Date(item.associated_date).toLocaleDateString() : '-',
                         rawStatus: item.status,
-                        isOrgAccount: !!item.company
+                        isOrgAccount: !!item.company,
+                        partner_user_id: item.partner_user_id,
+                        company_id: item.company_id
                     };
                 });
                 setPartners(mappedPartners); ``
@@ -257,8 +259,12 @@ export function PartnersPageContent() {
             cancelText: 'Cancel',
             async onOk() {
                 try {
-                    const result = await updateAssociationStatus({
-                        association_id: partner.association_id!,
+                    if (!partner.partner_user_id) {
+                        message.error("Invalid Partner ID");
+                        return;
+                    }
+                    const result = await updatePartnerStatus({
+                        partner_user_id: partner.partner_user_id,
                         is_active: isActive
                     });
                     if (result.success) {
