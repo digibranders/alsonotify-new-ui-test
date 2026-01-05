@@ -93,7 +93,7 @@ export default function PasswordResetPage() {
             <motion.div variants={itemVariants} className="mt-8">
               <button
                 onClick={() => router.push("/login")}
-                className="h-12 px-8 bg-[#ff3b3b] hover:bg-[#E63535] text-white rounded-[16px] font-bold text-[15px] shadow-lg shadow-[#ff3b3b]/25 transition-all hover:shadow-[#ff3b3b]/40 hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2"
+                className="w-full h-12 bg-[#ff3b3b] hover:bg-[#E63535] text-white rounded-[16px] font-bold text-[15px] shadow-lg shadow-[#ff3b3b]/25 transition-all hover:shadow-[#ff3b3b]/40 hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2"
               >
                 Back to Login
               </button>
