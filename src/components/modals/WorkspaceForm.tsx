@@ -159,8 +159,8 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
                                     {companyData?.result?.name || 'My Company'} (Self)
                                 </Option>
                                 {partnersData?.result?.map((partner: any) => (
-                                    <Option key={partner.id} value={partner.id} className="rounded-lg mb-1">
-                                        {partner.name || partner.partner_company?.name || partner.email}
+                                    <Option key={partner.partner_user_id || partner.id} value={partner.partner_user_id || partner.id} className="rounded-lg mb-1">
+                                        {partner.company || partner.partner_company?.name || partner.name || partner.email}
                                     </Option>
                                 ))}
                             </Select>
