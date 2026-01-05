@@ -483,7 +483,7 @@ export function PartnersPageContent() {
                                                     <div className="flex items-center gap-2 text-[#666666] overflow-hidden">
                                                         <Mail className="w-3.5 h-3.5 shrink-0" />
                                                         <span className="text-[13px] font-['Manrope:Medium',sans-serif] truncate block text-[#111111]">
-                                                            {(item.data as any).inviterEmail || (item.data as any).email || (item.data as any).inviter_email || 'Not provided'}
+                                                            {(item.data).inviterEmail || (item.data).email || (item.data).inviter_email || 'Not provided'}
                                                         </span>
                                                     </div>
                                                     <div>

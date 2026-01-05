@@ -41,8 +41,10 @@ export function PartnerRow({
 }: PartnerRowProps) {
 
     const getInitials = (name: string) => {
-        return name
-            .split(' ')
+        if (!name) return '?';
+        const parts = name.split(' ').filter(Boolean);
+        if (parts.length === 0) return '?';
+        return parts
             .map(part => part[0])
             .join('')
             .toUpperCase()
