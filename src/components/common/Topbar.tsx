@@ -18,12 +18,14 @@ import {
   Calendar24Filled,
   Notepad24Filled
 } from '@fluentui/react-icons';
-import { UserCog, Settings, LogOut, FolderOpen, CheckSquare, FileText } from 'lucide-react';
+import { UserCog, Settings, LogOut, FolderOpen, CheckSquare, FileText, MessageCircle } from 'lucide-react';
 import { TaskForm } from '../modals/TaskForm';
 import { RequirementsForm, RequirementFormData } from '../modals/RequirementsForm';
 import { WorkspaceForm } from '../modals/WorkspaceForm';
 import { NotificationPanel } from './NotificationPanel';
+import { FeedbackWidget } from './FeedbackWidget';
 import { useUserDetails } from '@/hooks/useUser';
+import { getRoleFromUser } from '@/utils/roleUtils';
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/useNotification';
 import { useWorkspaces, usePartners } from '@/hooks/useWorkspace';
 import { useEmployees } from '@/hooks/useUser';
@@ -79,6 +81,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
   const [showWorkspaceDialog, setShowWorkspaceDialog] = useState(false);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showRequirementDialog, setShowRequirementDialog] = useState(false);
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
 
   // Mutations
@@ -350,6 +353,11 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
   const accountType = user?.company?.account_type || 'ORGANIZATION';
   const isIndividual = accountType === 'INDIVIDUAL';
 
+  const isAdmin = useMemo(() => {
+    const userData = userDetailsData?.result?.user || userDetailsData?.result || {};
+    return getRoleFromUser(userData) === 'Admin';
+  }, [userDetailsData]);
+
   const profileMenuItems: MenuProps['items'] = [
     {
       key: 'account',
@@ -362,25 +370,24 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
       children: [
         {
           key: 'settings',
-          label: isIndividual ? 'Settings' : 'Company Settings',
+          label: 'Settings',
           icon: <Settings className="w-4 h-4" />,
           onClick: () => router.push('/dashboard/settings'),
         },
-        ...(isIndividual ? [
+        {
+          key: 'profile',
+          label: 'Profile',
+          icon: <UserCog className="w-4 h-4" />,
+          onClick: () => router.push('/dashboard/profile'),
+        },
+        ...(isAdmin ? [
           {
-            key: 'create-org',
-            label: <span className="text-[#ff3b3b]">Create Organization</span>,
-            icon: <PeopleTeam24Filled className="w-4 h-4 text-[#ff3b3b]" />,
-            onClick: () => message.info('Create Organization Flow Coming Soon'), // Placeholder for now
+            key: 'feedbacks',
+            label: 'Feedbacks',
+            icon: <MessageCircle className="w-4 h-4" />,
+            onClick: () => router.push('/dashboard/feedback'),
           }
-        ] : [
-          {
-            key: 'profile',
-            label: 'Profile',
-            icon: <UserCog className="w-4 h-4" />,
-            onClick: () => router.push('/dashboard/profile'),
-          }
-        ]),
+        ] : []),
       ],
     },
     { type: 'divider' },
@@ -420,11 +427,28 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
               />
             </Dropdown>
 
+            {/* Feedback Toggle */}
+            <button
+              onClick={() => setShowFeedbackDialog(true)}
+              className="w-10 h-10 rounded-full bg-[#F7F7F7] hover:bg-[#EEEEEE] flex items-center justify-center transition-colors cursor-pointer"
+              title="Give Feedback"
+            >
+              <svg 
+                className="w-5 h-5 text-[#666666]" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor" 
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </button>
+
             {/* Notification icon */}
             <>
               <button
                 onClick={() => setNotificationDrawerOpen(true)}
-                className="relative hover:opacity-70 transition-opacity p-1"
+                className="relative hover:opacity-70 transition-opacity p-1 cursor-pointer"
               >
                 <Alert24Filled className="w-6 h-6 text-[#000000]" strokeWidth={1.5} />
                 {/* Notification Badge */}
@@ -530,6 +554,12 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
           isLoading={createRequirementMutation.isPending}
         />
       </Modal>
+
+      {/* Feedback Modal */}
+      <FeedbackWidget
+        open={showFeedbackDialog}
+        onClose={() => setShowFeedbackDialog(false)}
+      />
       <style jsx global>{`
         /* Gray background for all Select dropdowns (default) */
         .employee-form-select .ant-select-selector {

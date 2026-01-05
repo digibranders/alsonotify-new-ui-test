@@ -81,6 +81,10 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
       case 'this_year':
         newRange = [now.startOf('year'), now.endOf('year')];
         break;
+      case 'last_year':
+        const lastYear = now.subtract(1, 'year');
+        newRange = [lastYear.startOf('year'), lastYear.endOf('year')];
+        break;
       default:
         newRange = null;
     }
@@ -104,6 +108,8 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
         return 'Last Month';
       case 'this_year':
         return 'This Year';
+      case 'last_year':
+        return 'Last Year';
       default:
         return 'This week';
     }
@@ -145,11 +151,23 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
     return days;
   };
 
-  // Close dropdown when clicking outside
+  // Close dropdown and calendar when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
+      }
+      // Close calendar when clicking outside - revert to previous selection
+      if (calendarRef.current && !calendarRef.current.contains(event.target as Node) && calendarOpen) {
+        // Revert startDate and endDate to current dateRange values
+        if (dateRange && dateRange[0] && dateRange[1]) {
+          setStartDate(dateRange[0]);
+          setEndDate(dateRange[1]);
+        } else {
+          setStartDate(null);
+          setEndDate(null);
+        }
+        setCalendarOpen(false);
       }
     };
 
@@ -157,7 +175,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [calendarOpen, dateRange]);
 
   // Handle Manual Date Selection (custom calendar)
   const handleDateClick = (date: Dayjs) => {
@@ -324,6 +342,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
                 { value: 'this_month', label: 'This month' },
                 { value: 'last_month', label: 'Last Month' },
                 { value: 'this_year', label: 'This Year' },
+                { value: 'last_year', label: 'Last Year' },
                 { value: 'custom', label: 'Custom' },
               ].map((option) => (
                 <button

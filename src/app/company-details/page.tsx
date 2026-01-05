@@ -322,6 +322,10 @@ function CompanyDetailsForm() {
                         Industry <span className="text-[#ff3b3b]">*</span>
                       </label>
                       <Select
+                        showSearch={{
+                          filterOption: (input, option) =>
+                            (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+                        }}
                         value={companyData.industry}
                         onChange={(v) =>
                           setCompanyData({ ...companyData, industry: String(v) })
@@ -342,6 +346,10 @@ function CompanyDetailsForm() {
                         Company Size
                       </label>
                       <Select
+                        showSearch={{
+                          filterOption: (input, option) =>
+                            (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+                        }}
                         value={companyData.companySize}
                         onChange={(v) =>
                           setCompanyData({ ...companyData, companySize: String(v) })
@@ -366,6 +374,10 @@ function CompanyDetailsForm() {
                       Country <span className="text-[#ff3b3b]">*</span>
                     </label>
                     <Select
+                      showSearch={{
+                        filterOption: (input, option) =>
+                          (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+                      }}
                       value={companyData.country}
                       onChange={(v) =>
                         setCompanyData({ ...companyData, country: String(v) })
@@ -386,6 +398,10 @@ function CompanyDetailsForm() {
                       Timezone <span className="text-[#ff3b3b]">*</span>
                     </label>
                     <Select
+                      showSearch={{
+                        filterOption: (input, option) =>
+                          (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+                      }}
                       value={companyData.timezone}
                       onChange={(v) =>
                         setCompanyData({ ...companyData, timezone: String(v) })

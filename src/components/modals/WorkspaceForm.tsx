@@ -143,6 +143,10 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
                         <div className="space-y-2">
                             <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Organization</label>
                             <Select
+                                showSearch={{
+                                    filterOption: (input, option) =>
+                                        (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+                                }}
                                 className="w-full h-11"
                                 placeholder="Select organization"
                                 value={newWorkspace.inHouse ? 'self' : newWorkspace.partner_id}

@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, Button, message } from 'antd';
+import { Modal, Button, App } from 'antd';
 import { getReceivedInvites, acceptInviteById, declineInviteById } from '@/services/user';
 import { Check, X, Building2, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export function InvitationPopup() {
+    const { message } = App.useApp();
     interface Invite {
         id: number;
         inviterName: string;

@@ -224,10 +224,10 @@ export function TaskForm({
               suffixIcon={<div className="text-gray-400">⌄</div>}
               allowClear
               onClear={() => setFormData(prev => ({ ...prev, requirement_id: "" }))}
-              showSearch
-              filterOption={(input, option) =>
-                (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
-              }
+              showSearch={{
+                filterOption: (input, option) =>
+                  (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+              }}
             >
               {requirements.length > 0 ? (
                 requirements.map((req) => (
@@ -255,10 +255,10 @@ export function TaskForm({
               }}
               disabled={disabledFields.workspace}
               suffixIcon={formData.requirement_id ? null : <div className="text-gray-400">⌄</div>}
-              showSearch
-              filterOption={(input, option) =>
-                (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
-              }
+              showSearch={{
+                filterOption: (input, option) =>
+                  (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+              }}
             >
               {workspaces.length > 0 ? (
                 workspaces.map((workspace) => (
@@ -361,8 +361,12 @@ export function TaskForm({
               onChange={(val) => val && addMember(parseInt(val))}
               suffixIcon={null}
               dropdownStyle={{ borderRadius: '8px', padding: '8px' }}
-              showSearch
-              optionFilterProp="label"
+              showSearch={{
+                filterOption: (input, option) => {
+                  const label = option?.label as string;
+                  return label.toLowerCase().includes(input.toLowerCase());
+                }
+              }}
             >
               {users
                 .filter(u => !formData.assigned_members.includes(u.id))

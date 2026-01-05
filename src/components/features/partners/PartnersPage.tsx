@@ -9,7 +9,7 @@ import {
     Form,
     Checkbox,
     Tag,
-    message,
+    App,
     Dropdown
 } from 'antd';
 import { PageLayout } from '../../layout/PageLayout';
@@ -52,6 +52,7 @@ const countryCodes = [
 ];
 
 export function PartnersPageContent() {
+    const { message } = App.useApp();
     const [partners, setPartners] = useState<Partner[]>([]);
     const [pendingInvites, setPendingInvites] = useState<any[]>([]); // New state
     const [loading, setLoading] = useState(true);

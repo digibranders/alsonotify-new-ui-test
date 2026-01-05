@@ -213,6 +213,10 @@ export function EmployeeForm({
             <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Employment Type</span>
               <Select
+                showSearch={{
+                  filterOption: (input, option) =>
+                    (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+                }}
                 className={`w-full h-11 employee-form-select ${formData.employmentType ? 'employee-form-select-filled' : ''}`}
                 placeholder="Select type"
                 value={formData.employmentType}
@@ -237,8 +241,6 @@ export function EmployeeForm({
               />
             </div>
 
-
-
             <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Leaves Balance</span>
               <Input
@@ -256,6 +258,12 @@ export function EmployeeForm({
             <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Access Level</span>
               <Select
+                showSearch={{
+                  filterOption: (input, option) => {
+                    const label = option?.value as string;
+                    return label.toLowerCase().includes(input.toLowerCase());
+                  }
+                }}
                 className={`w-full h-11 access-level-select employee-form-select ${formData.access ? 'employee-form-select-filled' : ''}`}
                 classNames={{ popup: { root: 'access-level-popup' } }}
                 placeholder="Select access"
@@ -452,6 +460,10 @@ export function EmployeeForm({
             <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Department</span>
               <Select
+                showSearch={{
+                  filterOption: (input, option) =>
+                    (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
+                }}
                 className={`w-full h-11 employee-form-select ${formData.department ? 'employee-form-select-filled' : ''}`}
                 placeholder="Select department"
                 value={formData.department || undefined}

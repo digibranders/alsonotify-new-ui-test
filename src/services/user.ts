@@ -290,7 +290,9 @@ export const getReceivedInvites = async (): Promise<ApiResponse<{
     const { data } = await axiosApi.get("/user/invites/received");
     return data;
   } catch (error) {
-    throw error;
+    // Gracefully handle missing endpoint or server errors
+    console.warn('Failed to fetch received invites:', error);
+    return { success: true, message: 'No invites', result: [] };
   }
 };
 
