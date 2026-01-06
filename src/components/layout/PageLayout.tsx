@@ -143,7 +143,7 @@ export function PageLayout({
                 {showFilter && (
                   <button
                     onClick={onFilterClick}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#EEEEEE] rounded-full hover:bg-[#F7F7F7] transition-colors"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#EEEEEE] rounded-[12px] hover:bg-[#F7F7F7] transition-colors"
                   >
                     <Filter24Filled className="w-4 h-4 text-[#666666]" />
                     <span className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#666666]">

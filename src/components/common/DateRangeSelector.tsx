@@ -194,7 +194,7 @@ export function DateRangeSelector({
         <div className={`relative ${className}`} ref={dropdownRef}>
             <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#EEEEEE] rounded-full hover:bg-[#F7F7F7] transition-all duration-200 outline-none h-10 min-w-[140px] justify-between"
+                className="flex items-center gap-2 px-3 py-1.5 bg-white border border-[#EEEEEE] rounded-lg hover:border-[#111111] hover:text-[#111111] transition-all duration-200 outline-none min-w-[120px] justify-between"
             >
                 <span className="font-['Manrope',sans-serif] font-semibold text-[13px] text-[#111111] truncate">
                     {getRangeLabel()}

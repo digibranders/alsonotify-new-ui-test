@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useRef } from 'react';
+import { useMemo, useEffect, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import { Popover, Spin } from 'antd';
 import { CalendarEventPopup } from './CalendarEventPopup';
@@ -77,50 +77,60 @@ export function DayView({ currentDate, events, isLoading, onTimeSlotClick }: Day
 
     return (
         <div className="flex flex-col h-full bg-white border border-[#EEEEEE] rounded-[16px] overflow-hidden">
-             {/* Header */}
-             <div className="flex border-b border-[#EEEEEE] sticky top-0 bg-white z-20">
-                <div className="w-16 flex-shrink-0 border-r border-[#EEEEEE] bg-white"></div>
-                <div className="flex-1 px-4 py-2 bg-white flex justify-center border-l-0">
-                     <div className="text-center">
-                        <div className={`text-[11px] font-['Manrope:SemiBold',sans-serif] mb-0.5 ${isToday ? 'text-[#ff3b3b]' : 'text-[#666666]'}`}>
-                            {currentDate.format('dddd').toUpperCase()}
-                        </div>
-                        <div className={`flex items-center justify-center`}>
-                            <div className={`text-[20px] leading-none font-['Manrope:Bold',sans-serif] w-8 h-8 flex items-center justify-center rounded-full ${isToday ? 'bg-[#ff3b3b] text-white' : 'text-[#111111]'}`}>
-                                {currentDate.format('D')}
-                            </div>
-                        </div>
-                     </div>
-                </div>
-             </div>
              
-             {/* All Day Section */}
-             {allDayEvents.length > 0 && (
-                 <div className="border-b border-[#EEEEEE] flex">
-                     <div className="w-16 flex-shrink-0 border-r border-[#EEEEEE] bg-white flex items-center justify-center">
-                         <span className="text-[10px] text-[#666666] font-['Manrope:Medium',sans-serif]">All day</span>
-                     </div>
-                     <div className="flex-1 p-2 space-y-1">
-                         {allDayEvents.map(event => (
-                             <Popover key={event.id} content={<CalendarEventPopup event={event} />} trigger="click">
-                                 <div 
-                                    className="px-3 py-1.5 rounded-[6px] text-white text-[13px] font-['Manrope:Medium',sans-serif] cursor-pointer inline-block mr-2 mb-1"
-                                    style={{ backgroundColor: event.color }}
-                                 >
-                                    {event.title}
-                                 </div>
-                             </Popover>
-                         ))}
-                     </div>
-                 </div>
-             )}
-
-             {/* Scrollable Grid */}
+             {/* Scrollable Grid containing Header (sticky) and Body */}
              <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-white">
-                <div className="flex relative min-h-[1440px]"> {/* 24 hours * 60px */}
+                
+                {/* Header (Moved inside) */}
+                <div className="flex border-b border-[#EEEEEE] sticky top-0 bg-white z-40">
+                    <div className="w-16 flex-shrink-0 border-r border-[#EEEEEE] bg-white"></div>
+                    <div className="flex-1 px-4 py-2 bg-white flex justify-center border-l-0">
+                         <div className="text-center">
+                            <div className={`text-[11px] font-['Manrope:SemiBold',sans-serif] mb-0.5 ${isToday ? 'text-[#ff3b3b]' : 'text-[#666666]'}`}>
+                                {currentDate.format('dddd').toUpperCase()}
+                            </div>
+                            <div className={`flex items-center justify-center`}>
+                                <div className={`text-[20px] leading-none font-['Manrope:Bold',sans-serif] w-8 h-8 flex items-center justify-center rounded-full ${isToday ? 'bg-[#ff3b3b] text-white' : 'text-[#111111]'}`}>
+                                    {currentDate.format('D')}
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+                </div>
+
+                {/* All Day Section (Moved inside, stays at top under header?) 
+                   Wait, all day usually scrolls WITH content in Google Calendar? 
+                   Actually Google Calendar All Day section is sticky or separate. 
+                   If I put it here, it will scroll up. 
+                   If user wants alignment, All Day should also share width context.
+                   Let's keep it here, but maybe not sticky? 
+                   If it scrolls away, that's fine for now, or I can make it sticky top-[headerHeight].
+                   For now, let's just let it scroll.
+                */}
+                {allDayEvents.length > 0 && (
+                     <div className="border-b border-[#EEEEEE] flex">
+                         <div className="w-16 flex-shrink-0 border-r border-[#EEEEEE] bg-white flex items-center justify-center">
+                             <span className="text-[10px] text-[#666666] font-['Manrope:Medium',sans-serif]">All day</span>
+                         </div>
+                         <div className="flex-1 p-2 space-y-1">
+                             {allDayEvents.map(event => (
+                                 <Popover key={event.id} content={<CalendarEventPopup event={event} />} trigger="click">
+                                     <div 
+                                        className="px-3 py-1.5 rounded-[6px] text-white text-[13px] font-['Manrope:Medium',sans-serif] cursor-pointer inline-block mr-2 mb-1"
+                                        style={{ backgroundColor: event.color }}
+                                     >
+                                        {event.title}
+                                     </div>
+                                 </Popover>
+                             ))}
+                         </div>
+                     </div>
+                 )}
+
+                <div className="flex relative min-h-[1440px] z-0"> {/* 24 hours * 60px */}
                     
                     {/* Time Scale */}
-                    <div className="w-16 flex-shrink-0 border-r border-[#EEEEEE] bg-white sticky left-0 z-10 select-none">
+                    <div className="w-16 flex-shrink-0 border-r border-[#EEEEEE] bg-white sticky left-0 z-30 select-none">
                         {hours.map(hour => (
                             <div key={hour} className="h-[60px] relative text-right pr-2">
                                 <span className="text-[11px] text-[#666666] font-['Manrope:Medium',sans-serif] -top-2 relative block transform -translate-y-1/2">
@@ -142,23 +152,32 @@ export function DayView({ currentDate, events, isLoading, onTimeSlotClick }: Day
 
                     {/* Day Column */}
                     <div 
-                        className="flex-1 h-full relative cursor-pointer hover:bg-gray-50 transition-colors z-[1]"
-                        onClick={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            const relativeY = e.clientY - rect.top;
-                            const safeY = Math.max(0, relativeY);
-                            
-                            const minutes = (safeY / rect.height) * (24 * 60);
-                            const roundedMinutes = Math.round(minutes / 15) * 15;
-                            const eventTime = currentDate.startOf('day').add(roundedMinutes, 'minute');
-                            
-                            onTimeSlotClick?.(eventTime);
-                        }}
+                        className="flex-1 min-h-[1440px] relative group hover:bg-gray-50 transition-colors z-[1]"
                     >
                          {/* Grid Lines */}
                          {hours.map(h => (
                              <div key={h} className="absolute w-full border-b border-[#EEEEEE] h-[60px] pointer-events-none" style={{ top: h * 60 }}></div>
                          ))}
+
+                         {/* Click Overlay - FINAL FIX */}
+                         <div 
+                            className="absolute inset-0 z-[10] cursor-pointer"
+                            style={{ height: '1440px' }} // Force height match
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const relativeY = e.clientY - rect.top;
+                                const safeY = Math.max(0, relativeY);
+                                
+                                const minutes = safeY; 
+                                const roundedMinutes = Math.round(minutes / 15) * 15;
+                                const dayStart = dayjs(currentDate).startOf('day');
+                                const eventTime = dayStart.add(roundedMinutes, 'minute');
+                                
+                                onTimeSlotClick?.(eventTime);
+                            }}
+                         />
 
                          {/* Time Events */}
                          {timeEvents.map(event => {
