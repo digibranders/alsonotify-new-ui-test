@@ -72,12 +72,13 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
 
     const today = dayjs().startOf("day");
 
-    // Filter to show only approved or pending leaves that are upcoming or current
+    // Filter to show only approved leaves that are upcoming or current
     const filtered = data.result
       .filter((leave: LeaveType) => {
-        const endDate = dayjs(leave.end_date);
-        // Show leaves that haven't ended yet
-        return endDate.isAfter(today) || endDate.isSame(today, "day");
+        const endDate = dayjs(leave.end_date).startOf("day");
+        // Show only APPROVED leaves that haven't ended yet
+        const isApproved = leave.status.toUpperCase() === 'APPROVED';
+        return isApproved && (endDate.isAfter(today) || endDate.isSame(today, "day"));
       })
       .sort((a: LeaveType, b: LeaveType) => {
         // Sort by start date, earliest first
@@ -85,19 +86,17 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
       });
 
     return filtered.map((leave: LeaveType) => {
-      // Calculate remaining days from today to end date
+      // Calculate total duration: from start date (inclusive) to end date (inclusive)
+      const startDate = dayjs(leave.start_date).startOf("day");
       const endDate = dayjs(leave.end_date).startOf("day");
-      const today = dayjs().startOf("day");
       
-      // Calculate remaining days: from today (inclusive) to end date (inclusive)
-      // dayjs diff returns the difference, so we add 1 to include both today and end date
-      const remainingDays = Math.max(1, endDate.diff(today, "day") + 1);
+      const totalDuration = Math.max(1, endDate.diff(startDate, "day") + 1);
       
       return {
         id: leave.id,
         name: leave.user?.name || "Unknown Employee",
         dateRange: formatDateRange(leave.start_date, leave.end_date),
-        duration: formatDuration(remainingDays),
+        duration: formatDuration(totalDuration),
         avatar: leave.user?.avatar || null,
         initials: getInitials(leave.user?.name),
       };
@@ -201,9 +200,8 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
           <div className="grid grid-cols-2 gap-4">
             <Form.Item
               name="start_date"
-              label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]"><span className="text-red-500">*</span> Start Date</span>}
+              label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]">Start Date</span>}
               rules={[{ required: true, message: 'Please select start date' }]}
-              required={false}
             >
               <DatePicker
                 className="w-full h-10 rounded-lg font-['Manrope:Medium',sans-serif]"
@@ -214,9 +212,8 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
 
             <Form.Item
               name="end_date"
-              label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]"><span className="text-red-500">*</span> End Date</span>}
+              label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]">End Date</span>}
               rules={[{ required: true, message: 'Please select end date' }]}
-              required={false}
             >
               <DatePicker
                 className="w-full h-10 rounded-lg font-['Manrope:Medium',sans-serif]"
@@ -228,9 +225,8 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
 
           <Form.Item
             name="day_type"
-            label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]"><span className="text-red-500">*</span> Day Type</span>}
+            label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]">Day Type</span>}
             rules={[{ required: true, message: 'Please select day type' }]}
-            required={false}
           >
             <Select
               className="w-full h-10 rounded-lg font-['Manrope:Medium',sans-serif]"
@@ -246,9 +242,8 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
 
           <Form.Item
             name="leave_type"
-            label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]"><span className="text-red-500">*</span> Leave Type</span>}
+            label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]">Leave Type</span>}
             rules={[{ required: true, message: 'Please select leave type' }]}
-            required={false}
           >
             <Select
               className="w-full h-10 rounded-lg font-['Manrope:Medium',sans-serif]"
@@ -264,9 +259,8 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
 
           <Form.Item
             name="reason"
-            label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]"><span className="text-red-500">*</span> Reason</span>}
+            label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]">Reason</span>}
             rules={[{ required: true, message: 'Please enter reason' }]}
-            required={false}
           >
             <Input
               className="rounded-lg h-10 font-['Manrope:Medium',sans-serif]"
