@@ -74,9 +74,9 @@ export function FilterBar({
           >
             <button
               onClick={() => setOpenDropdown(openDropdown === filter.id ? null : filter.id)}
-              className={`flex items-center gap-2 px-4 py-2 border border-[#EEEEEE] rounded text-[14px] font-['Manrope:Regular',sans-serif] transition-colors min-w-[140px] justify-between ${hasSelection
-                ? 'bg-[#F7F7F7] text-[#111111]'
-                : 'bg-white text-[#999999] hover:bg-[#F7F7F7]'
+              className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg text-[13px] font-['Manrope:Regular',sans-serif] transition-colors justify-between min-w-[120px] ${hasSelection
+                ? 'bg-[#111111] text-white border-[#111111]'
+                : 'bg-white text-[#666666] border-[#EEEEEE] hover:border-[#111111] hover:text-[#111111]'
                 }`}
             >
               <span className="truncate">
@@ -123,13 +123,13 @@ export function FilterBar({
       {/* Search Bar */}
       {onSearchChange && (
         <div className="relative ml-auto">
-          <Search24Filled className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#999999]" />
+          <Search24Filled className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#999999]" />
           <input
             type="text"
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder={searchPlaceholder}
-            className="pl-10 pr-4 py-2 bg-white border border-[#EEEEEE] rounded-full text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111] placeholder:text-[#999999] focus:outline-none focus:border-[#ff3b3b] w-[240px]"
+            className="pl-9 pr-4 py-1.5 bg-white border border-[#EEEEEE] rounded-lg text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111] placeholder:text-[#999999] focus:outline-none focus:border-[#111111] w-[240px]"
           />
         </div>
       )}

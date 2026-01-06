@@ -1093,7 +1093,7 @@ export function RequirementsPage() {
         }
         router.push(`?${params.toString()}`);
       }}
-      customFilters={
+      titleExtra={
         <DateRangeSelector
           value={dateRange}
           onChange={setDateRange}

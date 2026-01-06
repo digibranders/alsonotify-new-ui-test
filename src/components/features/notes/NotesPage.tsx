@@ -267,10 +267,10 @@ export function NotesPage() {
     const archived = notesList.filter(n => n.is_archived);
 
     return [
-      { id: 'all' as TabType, label: 'All Notes', count: nonArchived.length },
-      { id: 'text' as TabType, label: 'Text Notes', count: textNotes.length },
-      { id: 'checklist' as TabType, label: 'Checklists', count: checklistNotes.length },
-      { id: 'archive' as TabType, label: 'Archived', count: archived.length },
+      { id: 'all' as TabType, label: 'All Notes' },
+      { id: 'text' as TabType, label: 'Text Notes' },
+      { id: 'checklist' as TabType, label: 'Checklists' },
+      { id: 'archive' as TabType, label: 'Archived' },
     ];
   }, [notesList, normalizeNoteTypeForFilter]);
 
@@ -332,7 +332,7 @@ export function NotesPage() {
     <>
       <PageLayout
         title="Notes"
-        tabs={tabs.map(tab => ({ id: tab.id, label: tab.label, count: tab.count }))}
+        tabs={tabs.map(tab => ({ id: tab.id, label: tab.label }))}
         activeTab={activeTab}
         onTabChange={(tabId) => setActiveTab(tabId as TabType)}
         searchPlaceholder="Search notes by title or content..."

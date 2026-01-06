@@ -167,11 +167,11 @@ export function InvoicesPage() {
     <PageLayout
       title="Invoices"
       tabs={[
-        { id: 'all', label: 'All', count: stats.all },
-        { id: 'paid', label: 'Paid', count: stats.paid },
+        { id: 'all', label: 'All' },
+        { id: 'paid', label: 'Paid' },
         { id: 'pending', label: 'Pending', count: stats.pending },
         { id: 'overdue', label: 'Overdue', count: stats.overdue },
-        { id: 'draft', label: 'Draft', count: stats.draft }
+        { id: 'draft', label: 'Draft' }
       ]}
       activeTab={activeTab}
       onTabChange={(tabId) => setActiveTab(tabId as any)}
