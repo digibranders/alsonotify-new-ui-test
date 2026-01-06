@@ -2,8 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle, Plus, Filter, MoreHorizontal, MessageSquare, Paperclip, ChevronRight, LayoutGrid, List, UserPlus, FileText, ChevronDown, Check, FolderOpen, ArrowLeft, MoreVertical, Edit, Trash2 } from 'lucide-react';
-import { PageLayout } from '../layout/PageLayout';
+import { Calendar as CalendarIcon, Clock, CheckCircle2, AlertCircle, Plus, MoreHorizontal, Paperclip, ChevronRight, LayoutGrid, List, UserPlus, ChevronDown, Check, FolderOpen, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import { FilterBar, FilterOption } from '../ui/FilterBar';
 import { Button, Input, Select, Checkbox, Dropdown, MenuProps, Breadcrumb, DatePicker, Avatar, Tooltip, Progress, Tabs, App, Modal } from 'antd';
 import { useWorkspaces, useWorkspaceTasks } from '@/hooks/useWorkspace';
@@ -326,7 +325,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
               <div className="space-y-3">
                 {filteredTasks.map((task: any) => (
                   <div key={task.id} className="group bg-white border border-[#EEEEEE] rounded-[12px] p-4 hover:border-[#ff3b3b] hover:shadow-sm transition-all flex items-center gap-4">
-                    <Checkbox className="custom-checkbox" />
+                    <Checkbox className="custom-checkbox" />x1
                     <div className="flex-1 min-w-0">
                       <h4 className="font-['Manrope:SemiBold',sans-serif] text-[#111111] text-[14px] truncate">{task.title}</h4>
                       <div className="flex items-center gap-3 mt-1 text-[12px] text-[#666666]">

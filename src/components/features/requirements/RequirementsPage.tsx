@@ -5,8 +5,8 @@ import { PageLayout } from '../../layout/PageLayout';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { DateRangeSelector } from '../../common/DateRangeSelector';
 import {
-  Check, X, Calendar as CalendarIcon, Clock, CheckCircle, CheckCircle as CheckCircleIcon, CheckSquare, Users, Trash2,
-  FilePlus, Edit, Receipt, MoreHorizontal, Play, XCircle, RotateCcw, Upload, ChevronDown, AlertCircle
+  X, Calendar as CalendarIcon, Clock, CheckCircle, CheckSquare, Users, Trash2,
+  FilePlus, Edit, Receipt, MoreHorizontal, Play, XCircle, RotateCcw, ChevronDown, AlertCircle
 } from 'lucide-react';
 
 import { PaginationBar } from '../../ui/PaginationBar';

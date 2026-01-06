@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Button, Input, Select, DatePicker, TimePicker, App } from "antd";
+import { Button, Input, Select, DatePicker, TimePicker, App, Space } from "antd";
 import { ShieldCheck, Briefcase, User, Users, Calendar, User as UserIcon, Loader2 } from "lucide-react";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
@@ -64,6 +64,8 @@ const defaultFormData: EmployeeFormData = {
   role_id: undefined,
   employmentType: undefined,
 };
+
+const accessOptions = ["All", "Admin", "Manager", "Leader", "Employee"];
 
 const countryCodes = [
   { code: "+1", country: "US" },
@@ -359,16 +361,38 @@ export function EmployeeForm({
             </div>
 
             <div className="space-y-1.5">
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Access Level <span className="text-[#ff3b3b]">*</span></span>
+              <Select
+                showSearch
+                filterOption={(input, option) => {
+                  const label = option?.value as string;
+                  return label?.toLowerCase().includes(input.toLowerCase());
+                }}
+                className={`w-full h-11 access-level-select employee-form-select ${formData.access ? 'employee-form-select-filled' : ''}`}
+                value={formData.access}
+                onChange={(v) => setFormData({ ...formData, access: v as EmployeeFormData['access'] })}
+                suffixIcon={<div className="text-gray-400">⌄</div>}
+              >
+                {accessOptions.filter(opt => opt !== 'All').map(opt => (
+                  <Option key={opt} value={opt}>{opt}</Option>
+                ))}
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Salary (CTC) <span className="text-[#666666] font-normal text-[11px] ml-1">(Annual)</span></span>
-              <Input
-                type="number"
-                placeholder="e.g. 1200000"
-                className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.salary ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.salary}
-                onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
-                addonBefore={CurrencySelector}
-                prefix={<span className="text-gray-400 mr-1">{currencySymbol}</span>}
-              />
+              <Space.Compact className="w-full">
+                {CurrencySelector}
+                <Input
+                  type="number"
+                  placeholder="e.g. 1200000"
+                  className={`h-11 rounded-r-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.salary ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  style={{ borderLeft: 0 }}
+                  value={formData.salary}
+                  onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
+                  prefix={<span className="text-gray-400 mr-1">{currencySymbol}</span>}
+                />
+              </Space.Compact>
             </div>
 
             <div className="space-y-1.5">
@@ -595,13 +619,12 @@ export function EmployeeForm({
                 :global(.access-level-popup .ant-select-item-option-state),
                 :global(.linkedin-skill-dropdown .ant-select-item-option-state) {
                   display: flex !important;
-                  color: #111111 !important;
-                  font-size: 14px !important;
-                }
-                :global(.access-level-popup .ant-select-item-option-selected::after),
-                :global(.linkedin-skill-dropdown .ant-select-item-option-selected::after) {
-                  display: none !important;
-                }
+                  onChange={(val) => {
+                    const parts = val.split(' ');
+                    const code = parts[0] || formData.countryCode;
+                    const num = parts.slice(1).join(' ');
+                    setFormData({ ...formData, countryCode: code, phone: num });
+                  }}
               `}</style>
             </div>
 

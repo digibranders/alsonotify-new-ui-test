@@ -31,7 +31,6 @@ import { useWorkspaces, usePartners } from '@/hooks/useWorkspace';
 import { useEmployees } from '@/hooks/useUser';
 import { searchEmployees } from '@/services/user';
 import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
-import { useCreateWorkspace } from '@/hooks/useWorkspace';
 import { useCreateTask } from '@/hooks/useTask';
 import { useCreateRequirement } from '@/hooks/useWorkspace';
 import { useLogout } from '@/hooks/useAuth';
@@ -85,13 +84,11 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
 
   // Mutations
-  const createWorkspaceMutation = useCreateWorkspace();
   const createTaskMutation = useCreateTask();
   const createRequirementMutation = useCreateRequirement();
 
   // Form States
 
-  const [newRequirement, setNewRequirement] = useState({ title: '', workspace: '', type: '', priority: '', category: '', dueDate: '', description: '' });
 
   // Get greeting based on local time - client side only
   const [greeting, setGreeting] = useState('');

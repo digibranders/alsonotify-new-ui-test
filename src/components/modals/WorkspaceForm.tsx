@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, Button, Input, Select, DatePicker, App } from "antd";
+import { Modal, Button, Input, Select, App } from "antd";
 import { FolderOpen } from 'lucide-react';
 import { useCreateWorkspace, useUpdateWorkspace } from '@/hooks/useWorkspace';
-import { usePartners, useEmployees, useCurrentUserCompany } from '@/hooks/useUser';
+import { usePartners, useCurrentUserCompany } from '@/hooks/useUser';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -50,15 +50,6 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
         }
     }, [open, initialData]);
 
-    const handleReset = () => {
-        setNewWorkspace(initialData ? {
-            id: initialData.id,
-            name: initialData.name || '',
-            description: initialData.description || '',
-            partner_id: initialData.partner_id || null,
-            inHouse: initialData.in_house ?? !initialData.partner_id,
-        } : defaultWorkspaceData);
-    };
 
     const handleAction = async () => {
         if (!newWorkspace.name) {
@@ -157,7 +148,7 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
                                         setNewWorkspace({ ...newWorkspace, inHouse: false, partner_id: val as number });
                                     }
                                 }}
-                                dropdownStyle={{ borderRadius: '12px', padding: '8px' }}
+                                styles={{ popup: { root: { borderRadius: '12px', padding: '8px' } } }}
                             >
                                 <Option value="self" className="rounded-lg mb-1">
                                     {companyData?.result?.name || 'My Company'} (Self)
