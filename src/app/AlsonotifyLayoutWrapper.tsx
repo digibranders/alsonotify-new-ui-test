@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, ReactNode, useMemo } from 'react';
+import { useState, useEffect, ReactNode, useMemo } from 'react';
 import { Sidebar } from '../components/common/Sidebar';
 import { Header } from '../components/common/Topbar';
 import { ProfileCompletionBanner } from '../components/common/ProfileCompletionBanner';
 import { useUserDetails } from '@/hooks/useUser';
-import { getRoleFromUser } from '@/utils/roleUtils';
+import { getRoleFromUser, UserRole } from '@/utils/roleUtils';
 import { TimerProvider } from '../context/TimerContext';
 import { GlobalTimerPlayer } from '../components/layout/GlobalTimerPlayer';
 import { usePathname } from 'next/navigation';
@@ -21,14 +21,24 @@ interface AlsonotifyLayoutWrapperProps {
 
 export function AlsonotifyLayoutWrapper({ children }: AlsonotifyLayoutWrapperProps) {
   const { data: userDetailsData } = useUserDetails();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Derive role and color using shared utility
-  const { userRole, userRoleColor } = useMemo(() => {
+  const { userRole, userRoleColor } = useMemo<{ userRole: UserRole; userRoleColor: string | undefined }>(() => {
+    // During SSR or before mounting, return server-safe defaults
+    if (!isMounted) {
+      return { userRole: 'Employee', userRoleColor: undefined };
+    }
+
     // Handle different API response structures or localStorage fallback if needed
     let user = userDetailsData?.result?.user || userDetailsData?.result;
 
     // Fallback to localStorage if API data not yet available
-    if (!user && typeof window !== 'undefined') {
+    if (!user) {
       try {
         user = JSON.parse(localStorage.getItem("user") || "{}");
       } catch (e) { /* ignore */ }
@@ -38,7 +48,7 @@ export function AlsonotifyLayoutWrapper({ children }: AlsonotifyLayoutWrapperPro
       userRole: getRoleFromUser(user || {}),
       userRoleColor: user?.user_employee?.role?.color || user?.role?.color
     };
-  }, [userDetailsData]);
+  }, [userDetailsData, isMounted]);
 
   // Extract permissions
   const permissions = useMemo(() => userDetailsData?.result?.access || {}, [userDetailsData]);
