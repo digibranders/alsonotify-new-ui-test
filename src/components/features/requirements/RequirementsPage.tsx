@@ -1053,16 +1053,19 @@ export function RequirementsPage() {
   // Tabs Configuration
   const tabs = [
     {
+      id: 'active', label: 'Active'
+    },
+    {
+      id: 'pending', label: 'Pending', count: baseFilteredReqs.filter(req => {
+        const isPendingWorkflow = req.rawStatus === 'Waiting' || req.rawStatus === 'Review';
+        return isPendingWorkflow || req.approvalStatus === 'pending';
+      }).length
+    },
+    {
       id: 'draft', label: 'Drafts', count: baseFilteredReqs.filter(req => {
         if (req.status === 'draft') return true;
         return false;
       }).length
-    },
-    {
-      id: 'pending', label: 'Pending'
-    },
-    {
-      id: 'active', label: 'Active'
     },
     {
       id: 'delayed', label: 'Delayed', count: baseFilteredReqs.filter(req => req.status === 'delayed').length

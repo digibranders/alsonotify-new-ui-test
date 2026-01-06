@@ -1100,7 +1100,7 @@ export function EmployeesPage() {
         styles={{
           body: {
             padding: 0,
-            maxHeight: 'calc(100vh - 100px)',
+            height: 'calc(100vh - 100px)', // Fixed height to force header/footer positioning
             display: 'flex',
             flexDirection: 'column',
           },
