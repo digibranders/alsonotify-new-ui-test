@@ -394,8 +394,8 @@ export function PartnersPageContent() {
                 label: "Add Partner"
             }}
             tabs={[
-                { id: 'active', label: 'Active', count: stats.active },
-                { id: 'inactive', label: 'Deactivated', count: stats.inactive },
+                { id: 'active', label: 'Active' },
+                { id: 'inactive', label: 'Deactivated' },
                 { id: 'requests', label: 'Requests', count: stats.requests }
             ]}
             activeTab={activeTab}

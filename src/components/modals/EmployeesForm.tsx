@@ -284,473 +284,428 @@ export function EmployeeForm({
 
       {/* Scrollable Body */}
       <div className="flex-1 overflow-y-auto px-6 py-5 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
-        {/* Section: Employee Details */}
-        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-          {/* Left Column */}
-          <div className="space-y-3.5">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">First Name <span className="text-[#ff3b3b]">*</span></span>
-                <Input
-                  placeholder="First name"
-                  className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.firstName ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Last Name</span>
-                <Input
-                  placeholder="Last name"
-                  className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.lastName ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Designation</span>
-              <Input
-                placeholder="e.g. Senior Developer"
-                className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.role ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Email <span className="text-[#ff3b3b]">*</span></span>
-              <Input
-                placeholder="email@company.com"
-                className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.email ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Employment Type <span className="text-[#ff3b3b]">*</span></span>
-              <Select
-                showSearch={{
-                  filterOption: (input, option) =>
-                    (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
-                }}
-                className={`w-full h-11 employee-form-select ${formData.employmentType ? 'employee-form-select-filled' : ''}`}
-                placeholder="Select type"
-                value={formData.employmentType}
-                onChange={(v) => setFormData({ ...formData, employmentType: v as 'Full-time' | 'Part-time' | 'Contract' | 'Intern' })}
-                suffixIcon={<div className="text-gray-400">⌄</div>}
-              >
-                <Option value="Full-time">Full Time</Option>
-                <Option value="Part-time">Part Time</Option>
-                <Option value="Contract">Contract</Option>
-                <Option value="Intern">Intern</Option>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Experience (Years)</span>
-              <Input
-                type="number"
-                placeholder="e.g. 5"
-                className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.experience ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.experience}
-                onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Access Level <span className="text-[#ff3b3b]">*</span></span>
-              <Select
-                showSearch
-                filterOption={(input, option) => {
-                  const label = option?.value as string;
-                  return label?.toLowerCase().includes(input.toLowerCase());
-                }}
-                className={`w-full h-11 access-level-select employee-form-select ${formData.access ? 'employee-form-select-filled' : ''}`}
-                value={formData.access}
-                onChange={(v) => setFormData({ ...formData, access: v as EmployeeFormData['access'] })}
-                suffixIcon={<div className="text-gray-400">⌄</div>}
-              >
-                {accessOptions.filter(opt => opt !== 'All').map(opt => (
-                  <Option key={opt} value={opt}>{opt}</Option>
-                ))}
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Salary (CTC) <span className="text-[#666666] font-normal text-[11px] ml-1">(Annual)</span></span>
-              <Space.Compact className="w-full">
-                {CurrencySelector}
-                <Input
-                  type="number"
-                  placeholder="e.g. 1200000"
-                  className={`h-11 rounded-r-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.salary ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                  style={{ borderLeft: 0 }}
-                  value={formData.salary}
-                  onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
-                  prefix={<span className="text-gray-400 mr-1">{currencySymbol}</span>}
-                />
-              </Space.Compact>
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Total Leaves</span>
-              <Input
-                type="number"
-                placeholder="Days"
-                className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.leaves ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.leaves}
-                onChange={(e) => setFormData({ ...formData, leaves: e.target.value })}
-              />
-            </div>
+        <div className="grid grid-cols-12 gap-x-6 gap-y-5">
+          {/* Row 1: First Name & Last Name */}
+          <div className="col-span-6 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">First Name <span className="text-[#ff3b3b]">*</span></span>
+            <Input
+              placeholder="First name"
+              className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.firstName ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+              value={formData.firstName}
+              onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+            />
+          </div>
+          <div className="col-span-6 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Last Name</span>
+            <Input
+              placeholder="Last name"
+              className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.lastName ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+              value={formData.lastName}
+              onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+            />
           </div>
 
-          {/* Right Column */}
-          <div className="space-y-3.5">
-            <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Access Level</span>
-              <Select
-                showSearch={{
-                  filterOption: (input, option) => {
-                    const label = option?.value as string;
-                    return label.toLowerCase().includes(input.toLowerCase());
-                  }
-                }}
-                className={`w-full h-11 access-level-select employee-form-select ${formData.access ? 'employee-form-select-filled' : ''}`}
-                classNames={{ popup: { root: 'access-level-popup' } }}
-                placeholder="Select access"
-                value={formData.access}
-                onChange={(v) => setFormData({ ...formData, access: v as "Admin" | "Manager" | "Leader" | "Employee" })}
-                suffixIcon={<div className="flex items-center h-full"><div className="text-gray-400">⌄</div></div>}
-              >
-                <Option value="Admin">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4" style={{ color: "#ff3b3b" }} />
-                    <span style={{ color: "#ff3b3b" }}>Admin</span>
-                  </div>
-                </Option>
-                <Option value="Manager">
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="w-4 h-4" style={{ color: "#2E90FA" }} />
-                    <span style={{ color: "#2E90FA" }}>Manager</span>
-                  </div>
-                </Option>
-                <Option value="Leader">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4" style={{ color: "#7F56D9" }} />
-                    <span style={{ color: "#7F56D9" }}>Leader</span>
-                  </div>
-                </Option>
-                <Option value="Employee">
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4" style={{ color: "#12B76A" }} />
-                    <span style={{ color: "#12B76A" }}>Employee</span>
-                  </div>
-                </Option>
-              </Select>
-              <style jsx global>{`
-                /* Force standard 44px height for all form elements */
-                :global(.ant-input), 
-                :global(.ant-select),
-                :global(.ant-select-selector), 
-                :global(.ant-picker) {
-                  height: 44px !important;
-                }
-                
-                :global(.ant-select-selector), 
-                :global(.ant-picker) {
-                  min-height: 44px !important;
-                  display: flex !important;
-                  align-items: center !important;
-                  padding-top: 0 !important;
-                  padding-bottom: 0 !important;
-                }
-                
-                /* Ensure content inside Select is centered */
-                :global(.ant-select-selection-item), 
-                :global(.ant-select-selection-placeholder),
-                :global(.ant-select-selection-search-input) {
-                  display: flex !important;
-                  align-items: center !important;
-                }
-                
-                :global(.ant-select-selection-placeholder) {
-                  height: 100% !important;
-                  top: 0 !important;
-                  display: flex !important;
-                  align-items: center !important;
-                }
-                
-                :global(.ant-select-selection-search) {
-                  height: 100% !important;
-                  top: 0 !important;
-                  display: flex !important;
-                  align-items: center !important;
-                  margin-top: 0 !important;
-                  margin-bottom: 0 !important;
-                }
-                
-                /* Tags should stay centered */
-                :global(.ant-select-selection-overflow) {
-                  height: 100% !important;
-                  display: flex !important;
-                  align-items: center !important;
-                  flex-wrap: nowrap !important;
-                  padding-top: 0 !important;
-                  padding-bottom: 0 !important;
-                }
+          {/* Row 2: Email Address */}
+          <div className="col-span-12 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Email Address <span className="text-[#ff3b3b]">*</span></span>
+            <Input
+              placeholder="email@company.com"
+              className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.email ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            />
+          </div>
 
-                /* LinkedIn Style Skills Tags */
-                :global(.linkedin-skill-select .ant-select-selection-item) {
-                  background: #E7F3FF !important;
-                  border: 1px solid #70B5FF !important;
-                  border-radius: 4px !important;
-                  color: #004182 !important;
-                  font-family: 'Manrope:SemiBold', sans-serif !important;
-                  font-size: 12px !important;
-                  height: 24px !important;
-                  line-height: 22px !important;
-                  margin: 0 4px 0 0 !important;
-                  padding-inline-start: 8px !important;
-                  display: flex !important;
-                  align-items: center !important;
-                  overflow: visible !important;
-                }
-                :global(.linkedin-skill-select .ant-select-selection-item-remove) {
-                  color: #004182 !important;
-                  transition: all 0.2s;
-                }
-                :global(.linkedin-skill-select .ant-select-selection-item-remove:hover) {
-                  color: #ff3b3b !important;
-                }
-                :global(.linkedin-skill-select .ant-select-selection-overflow-item) {
-                  display: flex !important;
-                  align-items: center !important;
-                }
-                :global(.linkedin-skill-select .ant-select-selector) {
-                  padding-top: 0 !important;
-                  padding-bottom: 0 !important;
-                  padding-left: 11px !important;
-                  overflow: hidden !important;
-                }
-              /* Gray background for all Select dropdowns (default) */
-                .employee-form-select .ant-select-selector {
-                  background-color: #F9FAFB !important;
-                  border-color: #EEEEEE !important;
-                }
-                .employee-form-select .ant-select-selector:hover {
-                  border-color: #EEEEEE !important;
-                }
-                .employee-form-select.ant-select-focused .ant-select-selector {
-                  border-color: #EEEEEE !important;
-                  box-shadow: none !important;
-                }
-                
-                /* White background for filled Select dropdowns */
-                .employee-form-select-filled .ant-select-selector {
-                  background-color: white !important;
-                }
-                
-                /* Gray background for DatePicker (default) */
-                .employee-form-datepicker .ant-picker {
-                  background-color: #F9FAFB !important;
-                  border-color: #EEEEEE !important;
-                }
-                .employee-form-datepicker .ant-picker:hover {
-                  border-color: #EEEEEE !important;
-                }
-                .employee-form-datepicker .ant-picker-focused {
-                  border-color: #EEEEEE !important;
-                  box-shadow: none !important;
-                }
-                
-                /* White background for filled DatePicker */
-                .employee-form-datepicker-filled .ant-picker {
-                  background-color: white !important;
-                }
-                
-                /* Remove extra borders on Input focus */
-                .ant-input:focus {
-                  border-color: #EEEEEE !important;
-                  box-shadow: none !important;
-                }
+          {/* Row 3: Contact Number */}
+          <div className="col-span-12 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Contact Number</span>
+            <PhoneNumberInput
+              placeholder="123 456 7890"
+              value={`${formData.countryCode} ${formData.phone}`}
+              onChange={(val) => {
+                const parts = val.split(' ');
+                const code = parts[0];
+                const num = parts.slice(1).join(' ');
+                setFormData({ ...formData, countryCode: code, phone: num });
+              }}
+              className={`w-full h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.phone ? 'bg-white' : 'bg-[#F9FAFB]'} focus-within:border-[#111111] focus-within:bg-white focus-within:shadow-none transition-all`}
+            />
+          </div>
 
-                /* Currency Select styling */
-                :global(.currency-select-addon .ant-select-selector) {
-                  background-color: transparent !important;
-                  border: none !important;
-                  padding: 0 4px !important;
-                  height: 42px !important; /* Match input height */
-                  display: flex !important;
-                  align-items: center !important;
-                  box-shadow: none !important;
-                }
-                
-                :global(.currency-select-addon) {
-                   display: flex !important;
-                   align-items: center !important;
-                }
-                
-                /* Access Level dropdown styling - remove extra background and checkboxes */
-                :global(.access-level-popup), :global(.linkedin-skill-dropdown) {
-                  box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
-                  border: 1px solid #EEEEEE !important;
-                  border-radius: 8px !important;
-                  padding: 4px !important;
-                  background: white !important;
-                }
-                :global(.access-level-popup .ant-select-item), :global(.linkedin-skill-dropdown .ant-select-item) {
-                  background: white !important;
-                  padding: 8px 12px !important;
-                  border-radius: 6px !important;
-                  margin-bottom: 2px !important;
-                }
-                :global(.access-level-popup .ant-select-item:hover), :global(.linkedin-skill-dropdown .ant-select-item:hover) {
-                  background: #F7F7F7 !important;
-                  height: auto !important;
-                }
-                :global(.access-level-popup .ant-select-item-option-selected), :global(.linkedin-skill-dropdown .ant-select-item-option-selected) {
-                  background: #F9FAFB !important;
-                  font-weight: 600 !important;
-                }
-                /* Show exactly one checkmark - standard antd checkmark is in .ant-select-item-option-state */
-                :global(.access-level-popup .ant-select-item-option-state),
-                :global(.linkedin-skill-dropdown .ant-select-item-option-state) {
-                  display: flex !important;
-                  onChange={(val) => {
-                    const parts = val.split(' ');
-                    const code = parts[0] || formData.countryCode;
-                    const num = parts.slice(1).join(' ');
-                    setFormData({ ...formData, countryCode: code, phone: num });
-                  }}
-              `}</style>
-            </div>
+          {/* Row 4: Designation & Department */}
+          <div className="col-span-6 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Designation</span>
+            <Input
+              placeholder="e.g. Senior Developer"
+              className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.role ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+              value={formData.role}
+              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+            />
+          </div>
+          <div className="col-span-6 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Department</span>
+            <Select
+              showSearch
+              className={`w-full h-11 employee-form-select ${formData.department ? 'employee-form-select-filled' : ''}`}
+              placeholder="Select department"
+              value={formData.department || undefined}
+              onChange={(v) => setFormData({ ...formData, department: String(v) })}
+              suffixIcon={<div className="text-gray-400">⌄</div>}
+            >
+              {departments.length > 0 ? (
+                departments.map((dept) => (
+                  <Option key={dept} value={dept}>{dept}</Option>
+                ))
+              ) : (
+                <Option value="" disabled>No departments found</Option>
+              )}
+            </Select>
+          </div>
 
-            <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Department</span>
-              <Select
-                showSearch={{
-                  filterOption: (input, option) =>
-                    (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
-                }}
-                className={`w-full h-11 employee-form-select ${formData.department ? 'employee-form-select-filled' : ''}`}
-                placeholder="Select department"
-                value={formData.department || undefined}
-                onChange={(v) => setFormData({ ...formData, department: String(v) })}
-                suffixIcon={<div className="text-gray-400">⌄</div>}
-              >
+          {/* Row 5: Experience & Date of Joining */}
+          <div className="col-span-6 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Experience (Years)</span>
+            <Input
+              type="number"
+              placeholder="e.g. 5"
+              className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.experience ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+              value={formData.experience}
+              onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+            />
+          </div>
+          <div className="col-span-6 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Date of Joining</span>
+            <DatePicker
+              className={`w-full h-11 employee-form-datepicker ${formData.dateOfJoining ? 'employee-form-datepicker-filled' : ''}`}
+              placeholder="dd/mm/yyyy"
+              format="DD/MM/YYYY"
+              value={formData.dateOfJoining ? dayjs(formData.dateOfJoining) : null}
+              onChange={(date) => setFormData({ ...formData, dateOfJoining: date ? date.format('YYYY-MM-DD') : '' })}
+              suffixIcon={<Calendar className="w-4 h-4 text-[#999999]" />}
+            />
+          </div>
 
-                {departments.length > 0 ? (
-                  departments.map((dept) => (
-                    <Option key={dept} value={dept}>{dept}</Option>
-                  ))
-                ) : (
-                  <Option value="" disabled>No departments found</Option>
-                )}
-              </Select>
-            </div>
+          {/* Row 6: Professional Skillsets */}
+          <div className="col-span-12 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Professional Skillsets</span>
+            <Select
+              mode="tags"
+              className={`w-full employee-form-select linkedin-skill-select ${formData.skillsets ? 'employee-form-select-filled' : ''}`}
+              classNames={{ popup: { root: 'linkedin-skill-dropdown' } }}
+              placeholder="Type and press enter (e.g. React, UX Design, etc.)"
+              value={formData.skillsets ? formData.skillsets.split(',').filter(s => s.trim()) : []}
+              onChange={(v) => setFormData({ ...formData, skillsets: v.join(',') })}
+              suffixIcon={null}
+              maxTagCount="responsive"
+            >
+              <Option value="React">React</Option>
+              <Option value="Node.js">Node.js</Option>
+              <Option value="TypeScript">TypeScript</Option>
+              <Option value="UI/UX Design">UI/UX Design</Option>
+              <Option value="Product Management">Product Management</Option>
+              <Option value="Python">Python</Option>
+              <Option value="AWS">AWS</Option>
+            </Select>
+          </div>
 
-            <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Contact Number</span>
-              <div className="flex gap-2">
-                <PhoneNumberInput
-                  placeholder="123 456 7890"
-                  value={`${formData.countryCode} ${formData.phone}`}
-                  onChange={(val) => {
-                    // Split the combined value "+91 9876543210" back into components
-                    const parts = val.split(' ');
-                    const code = parts[0];
-                    const num = parts.slice(1).join(' '); // Join rest in case of spaces
-                    setFormData({ ...formData, countryCode: code, phone: num });
-                  }}
-                  className={`w-full h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.phone ? 'bg-white' : 'bg-[#F9FAFB]'} focus-within:border-[#111111] focus-within:bg-white focus-within:shadow-none transition-all`}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Date of Joining</span>
-              <DatePicker
-                className={`w-full h-11 employee-form-datepicker ${formData.dateOfJoining ? 'employee-form-datepicker-filled' : ''}`}
-                placeholder="dd/mm/yyyy"
-                format="DD/MM/YYYY"
-                value={formData.dateOfJoining ? dayjs(formData.dateOfJoining) : null}
-                onChange={(date) => setFormData({ ...formData, dateOfJoining: date ? date.format('YYYY-MM-DD') : '' })}
-                suffixIcon={<Calendar className="w-4 h-4 text-[#999999]" />}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours</span>
-              <div className="flex items-center gap-2">
-                <div className="flex-1">
-                  <TimePicker
-                    placeholder="Start Time"
-                    format="h:mm a"
-                    className={`w-full h-11 employee-form-datepicker ${formData.workingHoursStart ? 'employee-form-datepicker-filled' : ''}`}
-                    value={formData.workingHoursStart ? dayjs(formData.workingHoursStart, 'h:mm a') : null}
-                    onChange={(time) => setFormData({ ...formData, workingHoursStart: time ? time.format('h:mm a') : '' })}
-                    suffixIcon={<div className="text-gray-400">⌄</div>}
-                  />
-                </div>
-                <span className="text-[#666666]">to</span>
-                <div className="flex-1">
-                  <TimePicker
-                    placeholder="End Time"
-                    format="h:mm a"
-                    className={`w-full h-11 employee-form-datepicker ${formData.workingHoursEnd ? 'employee-form-datepicker-filled' : ''}`}
-                    value={formData.workingHoursEnd ? dayjs(formData.workingHoursEnd, 'h:mm a') : null}
-                    onChange={(time) => setFormData({ ...formData, workingHoursEnd: time ? time.format('h:mm a') : '' })}
-                    suffixIcon={<div className="text-gray-400">⌄</div>}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Hourly Cost <span className="text-[#666666] font-normal text-[11px] ml-1">(Calculated)</span></span>
+          {/* Row 7: Salary, Currency & Total Leaves */}
+          <div className="col-span-4 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Salary (CTC) <span className="text-[#666666] font-normal text-[11px] ml-1">(Annual)</span></span>
+            <Space.Compact className="w-full">
+              {CurrencySelector}
               <Input
-                placeholder="e.g. 25/Hr"
-                readOnly
-                className={`h-11 rounded-lg border border-[#EEEEEE] bg-[#F9FAFB] text-[#666666] font-['Manrope:Medium',sans-serif] cursor-not-allowed`}
-                value={formData.hourlyRate ? `${formData.hourlyRate}/Hr` : ""}
+                type="number"
+                placeholder="e.g. 1200000"
+                className={`h-11 rounded-r-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.salary ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                style={{ borderLeft: 0 }}
+                value={formData.salary}
+                onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
                 prefix={<span className="text-gray-400 mr-1">{currencySymbol}</span>}
               />
-            </div>
+            </Space.Compact>
+          </div>
+          <div className="col-span-4 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Currency</span>
+            <Select
+              className={`w-full h-11 employee-form-select ${formData.currency ? 'employee-form-select-filled' : ''}`}
+              value={formData.currency}
+              onChange={(val) => setFormData({ ...formData, currency: val })}
+            >
+              {currencies.map(c => (
+                <Option key={c} value={c}>{c}</Option>
+              ))}
+            </Select>
+          </div>
+          <div className="col-span-4 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Total Leaves</span>
+            <Input
+              type="number"
+              placeholder="Days"
+              className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.leaves ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+              value={formData.leaves}
+              onChange={(e) => setFormData({ ...formData, leaves: e.target.value })}
+            />
+          </div>
+
+          {/* Row 8: Working Hours Start, End & Hourly Cost */}
+          <div className="col-span-4 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours Start</span>
+            <TimePicker
+              placeholder="Start Time"
+              format="h:mm a"
+              className={`w-full h-11 employee-form-datepicker ${formData.workingHoursStart ? 'employee-form-datepicker-filled' : ''}`}
+              value={formData.workingHoursStart ? dayjs(formData.workingHoursStart, 'h:mm a') : null}
+              onChange={(time) => setFormData({ ...formData, workingHoursStart: time ? time.format('h:mm a') : '' })}
+              suffixIcon={<div className="text-gray-400">⌄</div>}
+            />
+          </div>
+          <div className="col-span-4 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours End</span>
+            <TimePicker
+              placeholder="End Time"
+              format="h:mm a"
+              className={`w-full h-11 employee-form-datepicker ${formData.workingHoursEnd ? 'employee-form-datepicker-filled' : ''}`}
+              value={formData.workingHoursEnd ? dayjs(formData.workingHoursEnd, 'h:mm a') : null}
+              onChange={(time) => setFormData({ ...formData, workingHoursEnd: time ? time.format('h:mm a') : '' })}
+              suffixIcon={<div className="text-gray-400">⌄</div>}
+            />
+          </div>
+          <div className="col-span-4 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Hourly Cost <span className="text-[#666666] font-normal text-[11px] ml-1">(Calculated)</span></span>
+            <Input
+              placeholder="e.g. 25/Hr"
+              readOnly
+              className={`h-11 rounded-lg border border-[#EEEEEE] bg-[#F9FAFB] text-[#666666] font-['Manrope:Medium',sans-serif] cursor-not-allowed`}
+              value={formData.hourlyRate ? `${formData.hourlyRate}/Hr` : ""}
+              prefix={<span className="text-gray-400 mr-1">{currencySymbol}</span>}
+            />
+          </div>
+
+          {/* Row 9: Employment Type & Access Level */}
+          <div className="col-span-6 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Employment Type <span className="text-[#ff3b3b]">*</span></span>
+            <Select
+              className={`w-full h-11 employee-form-select ${formData.employmentType ? 'employee-form-select-filled' : ''}`}
+              placeholder="Select type"
+              value={formData.employmentType}
+              onChange={(v) => setFormData({ ...formData, employmentType: v as any })}
+              suffixIcon={<div className="text-gray-400">⌄</div>}
+            >
+              <Option value="Full-time">Full Time</Option>
+              <Option value="Part-time">Part Time</Option>
+              <Option value="Contract">Contract</Option>
+              <Option value="Intern">Intern</Option>
+            </Select>
+          </div>
+          <div className="col-span-6 space-y-1.5">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Access Level <span className="text-[#ff3b3b]">*</span></span>
+            <Select
+              className={`w-full h-11 access-level-select employee-form-select ${formData.access ? 'employee-form-select-filled' : ''}`}
+              classNames={{ popup: { root: 'access-level-popup' } }}
+              placeholder="Select access"
+              value={formData.access}
+              onChange={(v) => setFormData({ ...formData, access: v as any })}
+              suffixIcon={<div className="text-gray-400">⌄</div>}
+            >
+              <Option value="Admin">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4" style={{ color: "#ff3b3b" }} />
+                  <span style={{ color: "#ff3b3b" }}>Admin</span>
+                </div>
+              </Option>
+              <Option value="Manager">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="w-4 h-4" style={{ color: "#2E90FA" }} />
+                  <span style={{ color: "#2E90FA" }}>Manager</span>
+                </div>
+              </Option>
+              <Option value="Leader">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4" style={{ color: "#7F56D9" }} />
+                  <span style={{ color: "#7F56D9" }}>Leader</span>
+                </div>
+              </Option>
+              <Option value="Employee">
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4" style={{ color: "#12B76A" }} />
+                  <span style={{ color: "#12B76A" }}>Employee</span>
+                </div>
+              </Option>
+            </Select>
           </div>
         </div>
 
-        {/* Full Width Skillsets Field */}
-        <div className="mt-6 space-y-1.5">
-          <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Professional Skillsets</span>
-          <Select
-            mode="tags"
-            className={`w-full employee-form-select linkedin-skill-select ${formData.skillsets ? 'employee-form-select-filled' : ''}`}
-            classNames={{ popup: { root: 'linkedin-skill-dropdown' } }}
-            placeholder="Type and press enter (e.g. React, UX Design, etc.)"
-            value={formData.skillsets ? formData.skillsets.split(',').filter(s => s.trim()) : []}
-            onChange={(v) => setFormData({ ...formData, skillsets: v.join(',') })}
-            suffixIcon={null}
-            maxTagCount="responsive"
-          >
-            <Option value="React">React</Option>
-            <Option value="Node.js">Node.js</Option>
-            <Option value="TypeScript">TypeScript</Option>
-            <Option value="UI/UX Design">UI/UX Design</Option>
-            <Option value="Product Management">Product Management</Option>
-            <Option value="Python">Python</Option>
-            <Option value="AWS">AWS</Option>
-            <Option value="SEO">SEO</Option>
-            <Option value="AI">AI</Option>
-            <Option value="Social Media Marketing">Social Media Marketing</Option>
-            <Option value="Content Marketing">Content Marketing</Option>
+        <style jsx global>{`
+          /* Force standard 44px height for all form elements */
+          :global(.ant-input), 
+          :global(.ant-select),
+          :global(.ant-select-selector), 
+          :global(.ant-picker) {
+            height: 44px !important;
+          }
+          
+          :global(.ant-select-selector), 
+          :global(.ant-picker) {
+            min-height: 44px !important;
+            display: flex !important;
+            align-items: center !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+          }
+          
+          /* Ensure content inside Select is centered */
+          :global(.ant-select-selection-item), 
+          :global(.ant-select-selection-placeholder),
+          :global(.ant-select-selection-search-input) {
+            display: flex !important;
+            align-items: center !important;
+          }
+          
+          :global(.ant-select-selection-placeholder) {
+            height: 100% !important;
+            top: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+          }
+          
+          :global(.ant-select-selection-search) {
+            height: 100% !important;
+            top: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+          }
+          
+          /* Tags should stay centered */
+          :global(.ant-select-selection-overflow) {
+            height: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            flex-wrap: nowrap !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+          }
 
+          /* LinkedIn Style Skills Tags */
+          :global(.linkedin-skill-select .ant-select-selection-item) {
+            background: #E7F3FF !important;
+            border: 1px solid #70B5FF !important;
+            border-radius: 4px !important;
+            color: #004182 !important;
+            font-family: 'Manrope:SemiBold', sans-serif !important;
+            font-size: 12px !important;
+            height: 24px !important;
+            line-height: 22px !important;
+            margin: 0 4px 0 0 !important;
+            padding-inline-start: 8px !important;
+            display: flex !important;
+            align-items: center !important;
+            overflow: visible !important;
+          }
+          :global(.linkedin-skill-select .ant-select-selection-item-remove) {
+            color: #004182 !important;
+            transition: all 0.2s;
+          }
+          :global(.linkedin-skill-select .ant-select-selection-item-remove:hover) {
+            color: #ff3b3b !important;
+          }
+          :global(.linkedin-skill-select .ant-select-selection-overflow-item) {
+            display: flex !important;
+            align-items: center !important;
+          }
+          :global(.linkedin-skill-select .ant-select-selector) {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            padding-left: 11px !important;
+            overflow: hidden !important;
+          }
+          /* Gray background for all Select dropdowns (default) */
+          .employee-form-select .ant-select-selector {
+            background-color: #F9FAFB !important;
+            border-color: #EEEEEE !important;
+          }
+          .employee-form-select .ant-select-selector:hover {
+            border-color: #EEEEEE !important;
+          }
+          .employee-form-select.ant-select-focused .ant-select-selector {
+            border-color: #EEEEEE !important;
+            box-shadow: none !important;
+          }
+          
+          /* White background for filled Select dropdowns */
+          .employee-form-select-filled .ant-select-selector {
+            background-color: white !important;
+          }
+          
+          /* Gray background for DatePicker (default) */
+          .employee-form-datepicker .ant-picker {
+            background-color: #F9FAFB !important;
+            border-color: #EEEEEE !important;
+          }
+          .employee-form-datepicker .ant-picker:hover {
+            border-color: #EEEEEE !important;
+          }
+          .employee-form-datepicker .ant-picker-focused {
+            border-color: #EEEEEE !important;
+            box-shadow: none !important;
+          }
+          
+          /* White background for filled DatePicker */
+          .employee-form-datepicker-filled .ant-picker {
+            background-color: white !important;
+          }
+          
+          /* Remove extra borders on Input focus */
+          .ant-input:focus {
+            border-color: #EEEEEE !important;
+            box-shadow: none !important;
+          }
 
-
-          </Select>
-        </div>
+          /* Currency Select styling */
+          :global(.currency-select-addon .ant-select-selector) {
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0 4px !important;
+            height: 42px !important; /* Match input height */
+            display: flex !important;
+            align-items: center !important;
+            box-shadow: none !important;
+          }
+          
+          :global(.currency-select-addon) {
+             display: flex !important;
+             align-items: center !important;
+          }
+          
+          /* Access Level dropdown styling - remove extra background and checkboxes */
+          :global(.access-level-popup), :global(.linkedin-skill-dropdown) {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+            border: 1px solid #EEEEEE !important;
+            border-radius: 8px !important;
+            padding: 4px !important;
+            background: white !important;
+          }
+          :global(.access-level-popup .ant-select-item), :global(.linkedin-skill-dropdown .ant-select-item) {
+            background: white !important;
+            padding: 8px 12px !important;
+            border-radius: 6px !important;
+            margin-bottom: 2px !important;
+          }
+          :global(.access-level-popup .ant-select-item:hover), :global(.linkedin-skill-dropdown .ant-select-item:hover) {
+            background: #F7F7F7 !important;
+            height: auto !important;
+          }
+          :global(.access-level-popup .ant-select-item-option-selected), :global(.linkedin-skill-dropdown .ant-select-item-option-selected) {
+            background: #F9FAFB !important;
+            font-weight: 600 !important;
+          }
+          /* Show exactly one checkmark - standard antd checkmark is in .ant-select-item-option-state */
+          :global(.access-level-popup .ant-select-item-option-state),
+          :global(.linkedin-skill-dropdown .ant-select-item-option-state) {
+            display: flex !important;
+          }
+        `}</style>
       </div>
 
       {/* Fixed Footer */}
