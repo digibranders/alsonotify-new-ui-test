@@ -71,7 +71,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
 
   // Fetch data for dialogs
   const { data: workspacesData } = useWorkspaces();
-  const { data: partnersData } = usePartners();
+
   const { data: employeesData } = useEmployees();
   const [usersDropdown, setUsersDropdown] = useState<Array<{ id: number; name: string }>>([]);
   const [requirementsDropdown, setRequirementsDropdown] = useState<Array<{ id: number; name: string }>>([]);

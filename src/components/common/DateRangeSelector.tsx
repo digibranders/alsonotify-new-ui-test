@@ -203,7 +203,7 @@ export function DateRangeSelector({
             </button>
 
             {isDropdownOpen && (
-                <div className="absolute top-full right-0 mt-2 bg-white border border-[#EEEEEE] rounded-[12px] shadow-lg z-50 min-w-[160px] overflow-hidden">
+                <div className="absolute top-full right-0 mt-2 bg-white border border-[#EEEEEE] rounded-[12px] shadow-lg z-50 w-full overflow-hidden">
                     {[
                         { value: 'today', label: 'Today' },
                         { value: 'yesterday', label: 'Yesterday' },

@@ -4,7 +4,7 @@ import { ShieldCheck, Briefcase, User, Users, Calendar, User as UserIcon, Loader
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import PhoneNumberInput from "@/components/ui/PhoneNumberInput";
-import { useCurrentUserCompany } from "@/hooks/useUser";
+import { useCurrentUserCompany, useRoles } from "@/hooks/useUser";
 import { currencies, getCurrencySymbol } from "@/utils/currencyUtils";
 
 dayjs.extend(customParseFormat);
@@ -24,7 +24,7 @@ export interface EmployeeFormData {
   dateOfJoining: string;
   experience: string;
   skillsets: string;
-  access: "Admin" | "Manager" | "Leader" | "Employee";
+  access: string;
   salary: string;
   currency: string;
   workingHoursStart: string;
@@ -55,7 +55,7 @@ const defaultFormData: EmployeeFormData = {
   dateOfJoining: "",
   experience: "",
   skillsets: "",
-  access: "Employee",
+  access: "", // Will default to first available or empty
   salary: "",
   currency: "INR",
   workingHoursStart: "",
@@ -64,8 +64,6 @@ const defaultFormData: EmployeeFormData = {
   role_id: undefined,
   employmentType: undefined,
 };
-
-const accessOptions = ["All", "Admin", "Manager", "Leader", "Employee"];
 
 const countryCodes = [
   { code: "+1", country: "US" },
@@ -85,7 +83,12 @@ export function EmployeeForm({
 }: EmployeeFormProps) {
   const [formData, setFormData] = useState<EmployeeFormData>(defaultFormData);
   const { data: companyData, isLoading: isLoadingCompany } = useCurrentUserCompany();
+  const { data: rolesData, isLoading: isLoadingRoles } = useRoles();
   const { message } = App.useApp();
+
+  const fetchedRoles = useMemo(() => {
+    return rolesData?.result || [];
+  }, [rolesData]);
 
   // Helper to calculate hourly rate from salary and company settings
 
@@ -143,6 +146,8 @@ export function EmployeeForm({
         leaves: String(initialData.leaves || ""),
         experience: String(initialData.experience || ""),
         currency: initialData.currency || "INR",
+        // Map access string to role if available, or keep as is
+        access: initialData.access || (initialData.role_id ? fetchedRoles.find((r: any) => r.id === initialData.role_id)?.name : "") || "Employee",
       });
     } else if (companyData?.result && !isEditing) {
       // New employee initialization from company settings
@@ -161,12 +166,13 @@ export function EmployeeForm({
         currency: currency || "INR",
         workingHoursStart: stateStart || "9:00 am",
         workingHoursEnd: stateEnd || "6:00 pm",
-        leaves: totalLeaves.toString()
+        leaves: totalLeaves.toString(),
+        access: "Employee" // Default
       });
     } else if (!isEditing) {
       setFormData(defaultFormData);
     }
-  }, [initialData, companyData, isEditing]);
+  }, [initialData, companyData, isEditing, fetchedRoles]);
 
   // Handle Hourly Cost Auto-calculation
   useEffect(() => {
@@ -227,22 +233,25 @@ export function EmployeeForm({
       message.error("Employment Type is required");
       return;
     }
+    // Set role_id based on selected access name if needed
+    const selectedRole = fetchedRoles.find((r: any) => r.name === formData.access);
+    if (selectedRole) {
+      formData.role_id = selectedRole.id;
+    }
+
     onSubmit(formData);
   };
 
   // Helper function to get access level icon and color
   const getAccessLevelConfig = (access: string) => {
-    switch (access) {
-      case "Admin":
-        return { icon: ShieldCheck, color: "#ff3b3b", bgColor: "#FFF5F5" };
-      case "Manager":
-        return { icon: Briefcase, color: "#2E90FA", bgColor: "#EFF8FF" };
-      case "Leader":
-        return { icon: Users, color: "#7F56D9", bgColor: "#F9F5FF" };
-      case "Employee":
-      default:
-        return { icon: User, color: "#12B76A", bgColor: "#ECFDF3" };
-    }
+    const normalize = (str: string) => str?.toLowerCase().trim() || "";
+    const acc = normalize(access);
+    
+    if (acc === "admin") return { icon: ShieldCheck, color: "#ff3b3b", bgColor: "#FFF5F5" };
+    if (acc === "manager") return { icon: Briefcase, color: "#2E90FA", bgColor: "#EFF8FF" };
+    if (acc === "leader") return { icon: Users, color: "#7F56D9", bgColor: "#F9F5FF" };
+    // Default or Employee
+    return { icon: User, color: "#12B76A", bgColor: "#ECFDF3" };
   };
 
   const accessConfig = getAccessLevelConfig(formData.access);
@@ -284,9 +293,9 @@ export function EmployeeForm({
 
       {/* Scrollable Body */}
       <div className="flex-1 overflow-y-auto px-6 py-5 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
-        <div className="grid grid-cols-12 gap-x-6 gap-y-5">
+        <div className="grid grid-cols-12 gap-x-4 gap-y-4">
           {/* Row 1: First Name & Last Name */}
-          <div className="col-span-6 space-y-1.5">
+          <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">First Name <span className="text-[#ff3b3b]">*</span></span>
             <Input
               placeholder="First name"
@@ -295,7 +304,7 @@ export function EmployeeForm({
               onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
             />
           </div>
-          <div className="col-span-6 space-y-1.5">
+          <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Last Name</span>
             <Input
               placeholder="Last name"
@@ -305,8 +314,8 @@ export function EmployeeForm({
             />
           </div>
 
-          {/* Row 2: Email Address */}
-          <div className="col-span-12 space-y-1.5">
+          {/* Row 2: Email & Contact */}
+          <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Email Address <span className="text-[#ff3b3b]">*</span></span>
             <Input
               placeholder="email@company.com"
@@ -315,9 +324,7 @@ export function EmployeeForm({
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
           </div>
-
-          {/* Row 3: Contact Number */}
-          <div className="col-span-12 space-y-1.5">
+          <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Contact Number</span>
             <PhoneNumberInput
               placeholder="123 456 7890"
@@ -332,8 +339,53 @@ export function EmployeeForm({
             />
           </div>
 
+          {/* Row 3: Access Level & Employment Type */}
+          <div className="col-span-6 space-y-1">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Access Level <span className="text-[#ff3b3b]">*</span></span>
+            <Select
+              className={`w-full h-11 access-level-select employee-form-select ${formData.access ? 'employee-form-select-filled' : ''}`}
+              classNames={{ popup: { root: 'access-level-popup' } }}
+              placeholder={isLoadingRoles ? "Loading roles..." : "Select access"}
+              loading={isLoadingRoles}
+              value={formData.access}
+              onChange={(v) => {
+                const role = fetchedRoles.find((r: any) => r.name === v);
+                setFormData({ ...formData, access: v as string, role_id: role?.id });
+              }}
+              suffixIcon={<div className="text-gray-400">⌄</div>}
+            >
+              {fetchedRoles.map((role: any) => {
+                  const config = getAccessLevelConfig(role.name);
+                  const Icon = config.icon;
+                  return (
+                    <Option key={role.id} value={role.name}>
+                        <div className="flex items-center gap-2">
+                        <Icon className="w-4 h-4" style={{ color: config.color }} />
+                        <span style={{ color: config.color }}>{role.name}</span>
+                        </div>
+                    </Option>
+                  );
+              })}
+            </Select>
+          </div>
+          <div className="col-span-6 space-y-1">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Employment Type <span className="text-[#ff3b3b]">*</span></span>
+            <Select
+              className={`w-full h-11 employee-form-select ${formData.employmentType ? 'employee-form-select-filled' : ''}`}
+              placeholder="Select type"
+              value={formData.employmentType}
+              onChange={(v) => setFormData({ ...formData, employmentType: v as any })}
+              suffixIcon={<div className="text-gray-400">⌄</div>}
+            >
+              <Option value="Full-time">Full Time</Option>
+              <Option value="Part-time">Part Time</Option>
+              <Option value="Contract">Contract</Option>
+              <Option value="Intern">Intern</Option>
+            </Select>
+          </div>
+
           {/* Row 4: Designation & Department */}
-          <div className="col-span-6 space-y-1.5">
+          <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Designation</span>
             <Input
               placeholder="e.g. Senior Developer"
@@ -342,7 +394,7 @@ export function EmployeeForm({
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
             />
           </div>
-          <div className="col-span-6 space-y-1.5">
+          <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Department</span>
             <Select
               showSearch
@@ -363,7 +415,7 @@ export function EmployeeForm({
           </div>
 
           {/* Row 5: Experience & Date of Joining */}
-          <div className="col-span-6 space-y-1.5">
+          <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Experience (Years)</span>
             <Input
               type="number"
@@ -373,7 +425,7 @@ export function EmployeeForm({
               onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
             />
           </div>
-          <div className="col-span-6 space-y-1.5">
+          <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Date of Joining</span>
             <DatePicker
               className={`w-full h-11 employee-form-datepicker ${formData.dateOfJoining ? 'employee-form-datepicker-filled' : ''}`}
@@ -385,8 +437,84 @@ export function EmployeeForm({
             />
           </div>
 
-          {/* Row 6: Professional Skillsets */}
-          <div className="col-span-12 space-y-1.5">
+          {/* Row 6: Salary & Total Leaves */}
+          <div className="col-span-6 space-y-1">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Salary (CTC) <span className="text-[#666666] font-normal text-[11px] ml-1">(Annual)</span></span>
+            <Space.Compact className="w-full">
+              {CurrencySelector}
+              <Input
+                type="number"
+                placeholder="e.g. 1200000"
+                className={`h-11 rounded-r-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.salary ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                style={{ borderLeft: 0 }}
+                value={formData.salary}
+                onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
+                prefix={<span className="text-gray-400 mr-1">{currencySymbol}</span>}
+              />
+            </Space.Compact>
+          </div>
+          <div className="col-span-6 space-y-1">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Total Leaves</span>
+            <Input
+              type="number"
+              placeholder="Days"
+              className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.leaves ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+              value={formData.leaves}
+              onChange={(e) => setFormData({ ...formData, leaves: e.target.value })}
+            />
+          </div>
+
+          {/* Row 7: Working Hours (Start/End) */}
+          <div className="col-span-6 space-y-1">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours Start</span>
+            <TimePicker
+              placeholder="Start Time"
+              format="h:mm a"
+              className={`w-full h-11 employee-form-datepicker ${formData.workingHoursStart ? 'employee-form-datepicker-filled' : ''}`}
+              value={formData.workingHoursStart ? dayjs(formData.workingHoursStart, 'h:mm a') : null}
+              onChange={(time) => setFormData({ ...formData, workingHoursStart: time ? time.format('h:mm a') : '' })}
+              suffixIcon={<div className="text-gray-400">⌄</div>}
+            />
+          </div>
+          <div className="col-span-6 space-y-1">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours End</span>
+            <TimePicker
+              placeholder="End Time"
+              format="h:mm a"
+              className={`w-full h-11 employee-form-datepicker ${formData.workingHoursEnd ? 'employee-form-datepicker-filled' : ''}`}
+              value={formData.workingHoursEnd ? dayjs(formData.workingHoursEnd, 'h:mm a') : null}
+              onChange={(time) => setFormData({ ...formData, workingHoursEnd: time ? time.format('h:mm a') : '' })}
+              suffixIcon={<div className="text-gray-400">⌄</div>}
+            />
+          </div>
+
+          {/* Row 8: Hourly Cost & Skills */}
+          <div className="col-span-6 space-y-1">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Hourly Cost <span className="text-[#666666] font-normal text-[11px] ml-1">(Calculated)</span></span>
+            <Input
+              placeholder="e.g. 25/Hr"
+              readOnly
+              className={`h-11 rounded-lg border border-[#EEEEEE] bg-[#F9FAFB] text-[#666666] font-['Manrope:Medium',sans-serif] cursor-not-allowed`}
+              value={formData.hourlyRate ? `${formData.hourlyRate}/Hr` : ""}
+              prefix={<span className="text-gray-400 mr-1">{currencySymbol}</span>}
+            />
+          </div>
+          <div className="col-span-6 space-y-1">
+            {/* Empty or Spacer if needed? For now, we need to place Skillsets at the end. 
+                If Skillsets is full width, it should be in a new row. 
+                If 'Hourly Cost' is left alone, we can leave an empty space or put Skillsets next to it? 
+                Skillsets is typically long (tags). 
+                Let's put Skillsets in full width at bottom as requested "to the last", 
+                Leaving a blank space next to Hourly Cost, or making Hourly Cost full width?
+                Let's make Hourly Cost 6, and leave 6 empty. Or maybe put something else there? 
+                Actually, currency selector can be separate? No.
+                Let's leave it as is -> Hourly Cost (6) + Empty (6)
+                Then Skillsets (12)
+            */}
+          </div>
+
+          {/* Row 9: Professional Skillsets */}
+          <div className="col-span-12 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Professional Skillsets</span>
             <Select
               mode="tags"
@@ -407,133 +535,8 @@ export function EmployeeForm({
               <Option value="AWS">AWS</Option>
             </Select>
           </div>
-
-          {/* Row 7: Salary, Currency & Total Leaves */}
-          <div className="col-span-4 space-y-1.5">
-            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Salary (CTC) <span className="text-[#666666] font-normal text-[11px] ml-1">(Annual)</span></span>
-            <Space.Compact className="w-full">
-              {CurrencySelector}
-              <Input
-                type="number"
-                placeholder="e.g. 1200000"
-                className={`h-11 rounded-r-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.salary ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                style={{ borderLeft: 0 }}
-                value={formData.salary}
-                onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
-                prefix={<span className="text-gray-400 mr-1">{currencySymbol}</span>}
-              />
-            </Space.Compact>
-          </div>
-          <div className="col-span-4 space-y-1.5">
-            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Currency</span>
-            <Select
-              className={`w-full h-11 employee-form-select ${formData.currency ? 'employee-form-select-filled' : ''}`}
-              value={formData.currency}
-              onChange={(val) => setFormData({ ...formData, currency: val })}
-            >
-              {currencies.map(c => (
-                <Option key={c} value={c}>{c}</Option>
-              ))}
-            </Select>
-          </div>
-          <div className="col-span-4 space-y-1.5">
-            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Total Leaves</span>
-            <Input
-              type="number"
-              placeholder="Days"
-              className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.leaves ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-              value={formData.leaves}
-              onChange={(e) => setFormData({ ...formData, leaves: e.target.value })}
-            />
-          </div>
-
-          {/* Row 8: Working Hours Start, End & Hourly Cost */}
-          <div className="col-span-4 space-y-1.5">
-            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours Start</span>
-            <TimePicker
-              placeholder="Start Time"
-              format="h:mm a"
-              className={`w-full h-11 employee-form-datepicker ${formData.workingHoursStart ? 'employee-form-datepicker-filled' : ''}`}
-              value={formData.workingHoursStart ? dayjs(formData.workingHoursStart, 'h:mm a') : null}
-              onChange={(time) => setFormData({ ...formData, workingHoursStart: time ? time.format('h:mm a') : '' })}
-              suffixIcon={<div className="text-gray-400">⌄</div>}
-            />
-          </div>
-          <div className="col-span-4 space-y-1.5">
-            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours End</span>
-            <TimePicker
-              placeholder="End Time"
-              format="h:mm a"
-              className={`w-full h-11 employee-form-datepicker ${formData.workingHoursEnd ? 'employee-form-datepicker-filled' : ''}`}
-              value={formData.workingHoursEnd ? dayjs(formData.workingHoursEnd, 'h:mm a') : null}
-              onChange={(time) => setFormData({ ...formData, workingHoursEnd: time ? time.format('h:mm a') : '' })}
-              suffixIcon={<div className="text-gray-400">⌄</div>}
-            />
-          </div>
-          <div className="col-span-4 space-y-1.5">
-            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Hourly Cost <span className="text-[#666666] font-normal text-[11px] ml-1">(Calculated)</span></span>
-            <Input
-              placeholder="e.g. 25/Hr"
-              readOnly
-              className={`h-11 rounded-lg border border-[#EEEEEE] bg-[#F9FAFB] text-[#666666] font-['Manrope:Medium',sans-serif] cursor-not-allowed`}
-              value={formData.hourlyRate ? `${formData.hourlyRate}/Hr` : ""}
-              prefix={<span className="text-gray-400 mr-1">{currencySymbol}</span>}
-            />
-          </div>
-
-          {/* Row 9: Employment Type & Access Level */}
-          <div className="col-span-6 space-y-1.5">
-            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Employment Type <span className="text-[#ff3b3b]">*</span></span>
-            <Select
-              className={`w-full h-11 employee-form-select ${formData.employmentType ? 'employee-form-select-filled' : ''}`}
-              placeholder="Select type"
-              value={formData.employmentType}
-              onChange={(v) => setFormData({ ...formData, employmentType: v as any })}
-              suffixIcon={<div className="text-gray-400">⌄</div>}
-            >
-              <Option value="Full-time">Full Time</Option>
-              <Option value="Part-time">Part Time</Option>
-              <Option value="Contract">Contract</Option>
-              <Option value="Intern">Intern</Option>
-            </Select>
-          </div>
-          <div className="col-span-6 space-y-1.5">
-            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Access Level <span className="text-[#ff3b3b]">*</span></span>
-            <Select
-              className={`w-full h-11 access-level-select employee-form-select ${formData.access ? 'employee-form-select-filled' : ''}`}
-              classNames={{ popup: { root: 'access-level-popup' } }}
-              placeholder="Select access"
-              value={formData.access}
-              onChange={(v) => setFormData({ ...formData, access: v as any })}
-              suffixIcon={<div className="text-gray-400">⌄</div>}
-            >
-              <Option value="Admin">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4" style={{ color: "#ff3b3b" }} />
-                  <span style={{ color: "#ff3b3b" }}>Admin</span>
-                </div>
-              </Option>
-              <Option value="Manager">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="w-4 h-4" style={{ color: "#2E90FA" }} />
-                  <span style={{ color: "#2E90FA" }}>Manager</span>
-                </div>
-              </Option>
-              <Option value="Leader">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4" style={{ color: "#7F56D9" }} />
-                  <span style={{ color: "#7F56D9" }}>Leader</span>
-                </div>
-              </Option>
-              <Option value="Employee">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4" style={{ color: "#12B76A" }} />
-                  <span style={{ color: "#12B76A" }}>Employee</span>
-                </div>
-              </Option>
-            </Select>
-          </div>
         </div>
+
 
         <style jsx global>{`
           /* Force standard 44px height for all form elements */

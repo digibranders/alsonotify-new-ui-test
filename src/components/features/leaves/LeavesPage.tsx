@@ -161,10 +161,10 @@ export function LeavesPage() {
     <PageLayout
       title="Leaves"
       tabs={[
-        { id: 'all', label: 'All', count: stats.all },
+        { id: 'all', label: 'All' },
         { id: 'pending', label: 'Pending', count: stats.pending },
-        { id: 'approved', label: 'Approved', count: stats.approved },
-        { id: 'rejected', label: 'Rejected', count: stats.rejected },
+        { id: 'approved', label: 'Approved' },
+        { id: 'rejected', label: 'Rejected' },
       ]}
       activeTab={activeTab}
       onTabChange={(tabId) => setActiveTab(tabId as any)}
@@ -243,7 +243,7 @@ export function LeavesPage() {
         width={600}
         centered
         className="rounded-[16px] overflow-hidden"
-        destroyOnClose
+        destroyOnHidden={true}
       >
         <Form form={form} layout="vertical" onFinish={handleApplyLeave} className="mt-6">
           <div className="grid grid-cols-2 gap-4">

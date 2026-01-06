@@ -154,7 +154,7 @@ export default function AdminFeedbackPage() {
   const paginatedFeedbacks = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return sortedFeedbacks.slice(start, start + pageSize);
-  }, [sortedFeedbacks, currentPage]);
+  }, [sortedFeedbacks, currentPage, pageSize]);
 
   // --- Handlers ---
   const handleStatusChange = (id: number, status: FeedbackStatus) => {
