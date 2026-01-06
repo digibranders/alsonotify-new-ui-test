@@ -589,7 +589,7 @@ export function RequirementsPage() {
   // Read tab from URL params
   const searchParams = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
-  const initialTab = (tabFromUrl === 'draft' || tabFromUrl === 'pending' || tabFromUrl === 'active' || tabFromUrl === 'completed')
+  const initialTab = (tabFromUrl === 'draft' || tabFromUrl === 'pending' || tabFromUrl === 'active' || tabFromUrl === 'completed' || tabFromUrl === 'delayed')
     ? tabFromUrl
     : 'active';
   const [activeStatusTab, setActiveStatusTab] = useState<string>(initialTab);
@@ -597,7 +597,7 @@ export function RequirementsPage() {
   // Update tab when URL changes
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
-    if (tabFromUrl === 'draft' || tabFromUrl === 'pending' || tabFromUrl === 'active' || tabFromUrl === 'completed') {
+    if (tabFromUrl === 'draft' || tabFromUrl === 'pending' || tabFromUrl === 'active' || tabFromUrl === 'completed' || tabFromUrl === 'delayed') {
       setActiveStatusTab(tabFromUrl);
     } else if (tabFromUrl === null) {
       setActiveStatusTab('active');
@@ -839,11 +839,16 @@ export function RequirementsPage() {
       return isPendingWorkflow || req.approvalStatus === 'pending';
     }
 
-    // Active Tab: Assigned status (and not review/waiting)
+    // Active Tab: Assigned status (and not review/waiting), excluding delayed
     if (activeStatusTab === 'active') {
-      const isActiveState = req.rawStatus === 'Assigned' || req.status === 'in-progress' || req.status === 'delayed';
+      const isActiveState = (req.rawStatus === 'Assigned' || req.status === 'in-progress') && req.status !== 'delayed';
       const isPendingWorkflow = req.rawStatus === 'Waiting' || req.rawStatus === 'Review';
       return isActiveState && !isPendingWorkflow && req.approvalStatus !== 'pending';
+    }
+
+    // Delayed Tab
+    if (activeStatusTab === 'delayed') {
+      return req.status === 'delayed';
     }
 
     // Completed Tab
@@ -1054,19 +1059,15 @@ export function RequirementsPage() {
       }).length
     },
     {
-      id: 'pending', label: 'Pending', count: baseFilteredReqs.filter(req => {
-        const isPendingWorkflow = req.rawStatus === 'Waiting' || req.rawStatus === 'Review';
-        return isPendingWorkflow || req.approvalStatus === 'pending';
-      }).length
+      id: 'pending', label: 'Pending'
     },
     {
-      id: 'active', label: 'Active', count: baseFilteredReqs.filter(req => {
-        const isActiveState = req.rawStatus === 'Assigned' || req.status === 'in-progress' || req.status === 'delayed';
-        const isPendingWorkflow = req.rawStatus === 'Waiting' || req.rawStatus === 'Review';
-        return isActiveState && !isPendingWorkflow && req.approvalStatus !== 'pending';
-      }).length
+      id: 'active', label: 'Active'
     },
-    { id: 'completed', label: 'Completed', count: baseFilteredReqs.filter(r => r.status === 'completed').length },
+    {
+      id: 'delayed', label: 'Delayed', count: baseFilteredReqs.filter(req => req.status === 'delayed').length
+    },
+    { id: 'completed', label: 'Completed' },
   ];
 
 

@@ -772,9 +772,9 @@ export function TasksPage() {
         label: "Add Task"
       }}
       tabs={[
-        { id: 'all', label: 'All Tasks', count: stats.all },
-        { id: 'In_Progress', label: 'In Progress', count: stats.In_Progress },
-        { id: 'Completed', label: 'Completed', count: stats.Completed },
+        { id: 'all', label: 'All Tasks' },
+        { id: 'In_Progress', label: 'In Progress' },
+        { id: 'Completed', label: 'Completed' },
         { id: 'Delayed', label: 'Delayed', count: stats.Delayed },
       ]}
       activeTab={activeTab}
