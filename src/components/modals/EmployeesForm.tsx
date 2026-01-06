@@ -1,10 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
-import { Button, Input, Select, DatePicker, TimePicker, App } from "antd";
+import { Button, Input, Select, DatePicker, TimePicker, App, Space } from "antd";
 import { ShieldCheck, Briefcase, User, Users, Calendar, User as UserIcon, Loader2 } from "lucide-react";
 import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
 import PhoneNumberInput from "@/components/ui/PhoneNumberInput";
 import { useCurrentUserCompany } from "@/hooks/useUser";
 import { currencies, getCurrencySymbol } from "@/utils/currencyUtils";
+
+dayjs.extend(customParseFormat);
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -62,6 +65,8 @@ const defaultFormData: EmployeeFormData = {
   employmentType: undefined,
 };
 
+const accessOptions = ["All", "Admin", "Manager", "Leader", "Employee"];
+
 const countryCodes = [
   { code: "+1", country: "US" },
   { code: "+91", country: "IN" },
@@ -83,84 +88,16 @@ export function EmployeeForm({
   const { message } = App.useApp();
 
   // Helper to calculate hourly rate from salary and company settings
-  const calculateHourlyRate = (salary: string) => {
-    if (!salary || isNaN(Number(salary))) return "";
-    
-    // Get settings from companyData
-    const workingHours = companyData?.result?.working_hours || { start_time: "09:00 AM", end_time: "06:00 PM" };
-    const attendance = companyData?.result?.attendance || { working_days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] };
-    
-    // Parse times handling both 24h and 12h formats
-    const parseTime = (t: string) => {
-      if (!t) return null;
-      // Try 12h format first
-      let d = dayjs(t, "h:mm A", true);
-      if (!d.isValid()) {
-        // Try 24h format
-        d = dayjs(t, "HH:mm", true);
-      }
-      return d.isValid() ? d : null;
-    };
 
-    const startTime = parseTime(workingHours.start_time);
-    const endTime = parseTime(workingHours.end_time);
-    
-    if (!startTime || !endTime) return "";
-
-    let hoursPerDay = endTime.diff(startTime, 'hour', true);
-    
-    // Subtract 1 hour for break as a standard if it's more than 5 hours
-    if (hoursPerDay > 5) hoursPerDay -= 1;
-    
-    const daysPerWeek = attendance.working_days?.length || 5;
-    const workingHoursPerYear = daysPerWeek * 52 * hoursPerDay;
-    
-    if (workingHoursPerYear === 0) return "";
-    
-    const rate = Number(salary) / workingHoursPerYear;
-    return rate.toFixed(2);
+  const formatTimeForState = (time: string) => {
+    if (!time) return "";
+    let d = dayjs(time, 'HH:mm', true);
+    if (!d.isValid()) d = dayjs(time, 'h:mm A', true);
+    if (!d.isValid()) d = dayjs(time, 'h:mm a', true);
+    return d.isValid() ? d.format('h:mm a') : time;
   };
 
-  // Pre-fill form from company settings when adding new employee
-  useEffect(() => {
-    if (!isEditing && companyData?.result) {
-      const workingHours = companyData.result.working_hours || {};
-      const companyLeavesArr = companyData.result.leaves || [];
-      const totalLeaves = Array.isArray(companyLeavesArr) 
-        ? companyLeavesArr.reduce((acc: number, curr: any) => acc + (Number(curr.count) || 0), 0)
-        : 0;
-
-      const companyCurrency = companyData.result.currency || "INR";
-
-      const formatTime = (t: string) => {
-        if (!t) return "";
-        let d = dayjs(t, "h:mm A", true);
-        if (!d.isValid()) {
-          d = dayjs(t, "HH:mm", true);
-        }
-        return d.isValid() ? d.format("h:mm A") : "";
-      };
-
-      setFormData(prev => ({
-        ...prev,
-        workingHoursStart: formatTime(workingHours.start_time) || prev.workingHoursStart,
-        workingHoursEnd: formatTime(workingHours.end_time) || prev.workingHoursEnd,
-        leaves: totalLeaves > 0 ? String(totalLeaves) : prev.leaves,
-        currency: companyCurrency
-      }));
-    }
-  }, [companyData, isEditing]);
-
-  // Automatically calculate hourly cost when salary changes
-  useEffect(() => {
-    if (formData.salary) {
-      const calculatedRate = calculateHourlyRate(formData.salary);
-      if (calculatedRate && calculatedRate !== formData.hourlyRate) {
-        setFormData(prev => ({ ...prev, hourlyRate: calculatedRate }));
-      }
-    }
-  }, [formData.salary, companyData]);
-
+  // Handle form data initialization (Edit mode or Company defaults for new employee)
   useEffect(() => {
     if (initialData) {
       // Parse initial data to fit new form structure
@@ -169,8 +106,8 @@ export function EmployeeForm({
 
       // Handle working hours if it comes as an object or string
       if (initialData.workingHours && typeof initialData.workingHours === 'object') {
-        start = initialData.workingHours.start_time || "";
-        end = initialData.workingHours.end_time || "";
+        start = (initialData.workingHours as any).start_time || "";
+        end = (initialData.workingHours as any).end_time || "";
       } else if (initialData.workingHoursStart) {
         start = initialData.workingHoursStart;
         end = initialData.workingHoursEnd;
@@ -197,8 +134,8 @@ export function EmployeeForm({
         ...initialData,
         firstName: initialData.firstName || nameParts[0] || "",
         lastName: initialData.lastName || nameParts.slice(1).join(" ") || "",
-        workingHoursStart: start,
-        workingHoursEnd: end,
+        workingHoursStart: formatTimeForState(start),
+        workingHoursEnd: formatTimeForState(end),
         phone,
         countryCode,
         salary: String(initialData.salary || ""),
@@ -207,10 +144,75 @@ export function EmployeeForm({
         experience: String(initialData.experience || ""),
         currency: initialData.currency || "INR",
       });
-    } else {
+    } else if (companyData?.result && !isEditing) {
+      // New employee initialization from company settings
+      const company = companyData.result;
+      const { working_hours, leaves: companyLeaves, currency } = company;
+      
+      const totalLeaves = Array.isArray(companyLeaves) && companyLeaves.length > 0
+        ? companyLeaves.reduce((sum: number, leave: any) => sum + (Number(leave.count) || 0), 0)
+        : 15; // Match SettingsPage default
+
+      const stateStart = working_hours?.start_time ? formatTimeForState(working_hours.start_time) : "";
+      const stateEnd = working_hours?.end_time ? formatTimeForState(working_hours.end_time) : "";
+
+      setFormData({
+        ...defaultFormData,
+        currency: currency || "INR",
+        workingHoursStart: stateStart || "9:00 am",
+        workingHoursEnd: stateEnd || "6:00 pm",
+        leaves: totalLeaves.toString()
+      });
+    } else if (!isEditing) {
       setFormData(defaultFormData);
     }
-  }, [initialData]);
+  }, [initialData, companyData, isEditing]);
+
+  // Handle Hourly Cost Auto-calculation
+  useEffect(() => {
+    const salary = Number(formData.salary);
+    if (!salary || !formData.workingHoursStart || !formData.workingHoursEnd || !companyData?.result) {
+      if (formData.hourlyRate !== "") {
+        setFormData(prev => ({ ...prev, hourlyRate: "" }));
+      }
+      return;
+    }
+
+    try {
+      const company = companyData.result;
+      const workingHours = company.working_hours || {};
+      // Default to 5 days if settings missing
+      const workingDaysCount = Array.isArray(workingHours.working_days) && workingHours.working_days.length > 0
+        ? workingHours.working_days.length 
+        : 5;
+      const breakTimeMinutes = Number(workingHours.break_time) || 0;
+
+      const start = dayjs(formData.workingHoursStart, 'h:mm a');
+      const end = dayjs(formData.workingHoursEnd, 'h:mm a');
+
+      if (start.isValid() && end.isValid()) {
+        let diffMinutes = end.diff(start, 'minute');
+        // Handle case where end time is cross-day (standardized shift)
+        if (diffMinutes < 0) diffMinutes += 1440; 
+        
+        const netWorkingMinutesPerDay = Math.max(0, diffMinutes - breakTimeMinutes);
+        const hoursPerDay = netWorkingMinutesPerDay / 60;
+        
+        // Calculate annual working hours: hours/day * days/week * 52 weeks
+        const totalHoursPerYear = hoursPerDay * workingDaysCount * 52;
+        
+        if (totalHoursPerYear > 0) {
+          const calculatedHourlyRate = Math.round(salary / totalHoursPerYear).toString();
+          if (formData.hourlyRate !== calculatedHourlyRate) {
+            setFormData(prev => ({ ...prev, hourlyRate: calculatedHourlyRate }));
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Hourly calculation error:", e);
+    }
+  }, [formData.salary, formData.workingHoursStart, formData.workingHoursEnd, companyData]);
+
 
   const handleSubmit = () => {
     if (!formData.firstName) {
@@ -359,16 +361,38 @@ export function EmployeeForm({
             </div>
 
             <div className="space-y-1.5">
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Access Level <span className="text-[#ff3b3b]">*</span></span>
+              <Select
+                showSearch
+                filterOption={(input, option) => {
+                  const label = option?.value as string;
+                  return label?.toLowerCase().includes(input.toLowerCase());
+                }}
+                className={`w-full h-11 access-level-select employee-form-select ${formData.access ? 'employee-form-select-filled' : ''}`}
+                value={formData.access}
+                onChange={(v) => setFormData({ ...formData, access: v as EmployeeFormData['access'] })}
+                suffixIcon={<div className="text-gray-400">⌄</div>}
+              >
+                {accessOptions.filter(opt => opt !== 'All').map(opt => (
+                  <Option key={opt} value={opt}>{opt}</Option>
+                ))}
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Salary (CTC) <span className="text-[#666666] font-normal text-[11px] ml-1">(Annual)</span></span>
-              <Input
-                type="number"
-                placeholder="e.g. 1200000"
-                className={`h-11 rounded-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.salary ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.salary}
-                onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
-                addonBefore={CurrencySelector}
-                prefix={<span className="text-gray-400 mr-1">{currencySymbol}</span>}
-              />
+              <Space.Compact className="w-full">
+                {CurrencySelector}
+                <Input
+                  type="number"
+                  placeholder="e.g. 1200000"
+                  className={`h-11 rounded-r-lg border border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.salary ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  style={{ borderLeft: 0 }}
+                  value={formData.salary}
+                  onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
+                  prefix={<span className="text-gray-400 mr-1">{currencySymbol}</span>}
+                />
+              </Space.Compact>
             </div>
 
             <div className="space-y-1.5">
@@ -595,13 +619,12 @@ export function EmployeeForm({
                 :global(.access-level-popup .ant-select-item-option-state),
                 :global(.linkedin-skill-dropdown .ant-select-item-option-state) {
                   display: flex !important;
-                  color: #111111 !important;
-                  font-size: 14px !important;
-                }
-                :global(.access-level-popup .ant-select-item-option-selected::after),
-                :global(.linkedin-skill-dropdown .ant-select-item-option-selected::after) {
-                  display: none !important;
-                }
+                  onChange={(val) => {
+                    const parts = val.split(' ');
+                    const code = parts[0] || formData.countryCode;
+                    const num = parts.slice(1).join(' ');
+                    setFormData({ ...formData, countryCode: code, phone: num });
+                  }}
               `}</style>
             </div>
 

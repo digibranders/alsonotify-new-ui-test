@@ -2,31 +2,26 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { FolderOpen, ChevronLeft, ChevronRight, Plus, UploadCloud, LayoutGrid, List, MoreVertical, Edit, Trash2, Archive, Users, RotateCcw } from 'lucide-react';
+import { FolderOpen, Plus, LayoutGrid, List, MoreVertical, Edit, Trash2, RotateCcw } from 'lucide-react';
 import { PaginationBar } from '../../ui/PaginationBar';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
-import { Modal, Button, Input, Select, Dropdown, MenuProps, Checkbox, App, DatePicker } from "antd";
+import { Modal, Dropdown, MenuProps, Checkbox, App } from "antd";
 import { WorkspaceForm } from '@/components/modals/WorkspaceForm';
 
-import { useWorkspaces, useCreateWorkspace, useUpdateWorkspace, useDeleteWorkspace, useReactivateWorkspace } from '@/hooks/useWorkspace';
+import { useWorkspaces, useDeleteWorkspace, useReactivateWorkspace } from '@/hooks/useWorkspace';
 import { usePartners, useCurrentUserCompany } from '@/hooks/useUser';
 import { useQueries } from '@tanstack/react-query';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
 
-const { TextArea } = Input;
-const { Option } = Select;
 
 export function WorkspacePage() {
   const { message } = App.useApp();
 
   const { data: partnersData } = usePartners();
   const { data: companyData } = useCurrentUserCompany();
-  const updateWorkspaceMutation = useUpdateWorkspace();
-  const deleteWorkspaceMutation = useDeleteWorkspace();
-  const reactivateWorkspaceMutation = useReactivateWorkspace();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
+  const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,7 +57,8 @@ export function WorkspacePage() {
 
     // Filters
     if (filters.organization && filters.organization !== 'All') {
-       if (filters.organization === 'Self') {
+       const selfLabel = `${companyData?.result?.name || 'Current Company'} (Self)`;
+       if (filters.organization === selfLabel || filters.organization === 'Self') {
          params.append('in_house', 'true');
        } else {
          const partner = partnersData?.result?.find((p: any) => (p.name || p.partner_company?.name || p.email) === filters.organization);
@@ -162,7 +158,7 @@ export function WorkspacePage() {
     {
       id: 'organization',
       label: 'Organization',
-      options: ['All', 'Self', ...(partnersData?.result?.map((p: any) => p.name || p.partner_company?.name || p.email) || [])],
+      options: ['All', `${companyData?.result?.name || 'Current Company'} (Self)`, ...(partnersData?.result?.map((p: any) => p.name || p.partner_company?.name || p.email) || [])],
       defaultValue: 'All'
     }
   ];
@@ -248,14 +244,14 @@ export function WorkspacePage() {
               )}
             </button>
             <button
-              onClick={() => { setActiveTab('inactive'); setCurrentPage(1); }}
-              className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === 'inactive'
+              onClick={() => { setActiveTab('archived'); setCurrentPage(1); }}
+              className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors ${activeTab === 'archived'
                 ? 'text-[#ff3b3b]'
                 : 'text-[#666666] hover:text-[#111111]'
                 }`}
             >
-              Deactivated
-              {activeTab === 'inactive' && (
+              Archived
+              {activeTab === 'archived' && (
                 <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />
               )}
             </button>
@@ -291,7 +287,7 @@ export function WorkspacePage() {
         ) : (
           <div className="flex flex-col gap-3">
             {/* List header – aligned with rows, matches dashboard style */}
-            <div className="grid grid-cols-[40px_2.8fr_3.2fr_0.7fr_0.3fr] gap-4 px-4 py-3 items-center bg-white">
+            <div className="grid grid-cols-[40px_1.5fr_1.8fr_0.8fr_0.5fr_40px] gap-4 px-4 py-3 items-center bg-white">
               <div className="flex justify-center">
                 <Checkbox
                   className="red-checkbox"
@@ -312,11 +308,12 @@ export function WorkspacePage() {
               <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
                 Requirements
               </p>
-              <div className="flex justify-center">
-                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
-                  Status
-                </p>
-              </div>
+              <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+                Organization
+              </p>
+              <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+                Status
+              </p>
               <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide" />
             </div>
 
@@ -401,32 +398,52 @@ function WorkspaceCard({ workspace, onClick }: { workspace: any; onClick?: () =>
   const [isEditOpen, setIsEditOpen] = useState(false);
 
   const handleAction = async (key: string) => {
-    if (key === 'deactivate') {
-      deleteMutation.mutate(workspace.id, {
-        onSuccess: () => message.success('Workspace deactivated successfully'),
-      });
-    } else if (key === 'reactivate') {
+    if (key === 'delete') {
+      const reqCount = workspace.totalRequirements || 0;
+      if (reqCount === 0) {
+        Modal.confirm({
+          title: 'Delete Workspace',
+          content: `You are about to delete "${workspace.name}". This action is permanent.`,
+          okText: 'Delete',
+          okType: 'danger',
+          cancelText: 'Cancel',
+          onOk: () => {
+            deleteMutation.mutate(workspace.id, {
+              onSuccess: () => message.success('Workspace deleted successfully'),
+            });
+          },
+        });
+      } else {
+        Modal.confirm({
+          title: 'Cannot Delete Workspace',
+          content: `This workspace has ${reqCount} requirements. You cannot delete it, but you can archive it instead.`,
+          okText: 'Archive',
+          cancelText: 'Cancel',
+          onOk: () => {
+            deleteMutation.mutate(workspace.id, {
+              onSuccess: () => message.success('Workspace archived successfully'),
+            });
+          },
+        });
+      }
+    } else if (key === 'restore') {
       reactivateMutation.mutate(workspace.id, {
-        onSuccess: () => message.success('Workspace reactivated successfully'),
+        onSuccess: () => message.success('Workspace restored successfully'),
       });
     } else if (key === 'edit') {
       setIsEditOpen(true);
     }
   };
 
-  const items: MenuProps['items'] = [
-    {
-      key: 'manage',
-      label: 'Actions',
-      type: 'group',
-      children: [
+  const items: MenuProps['items'] = workspace.isActive 
+    ? [
         { key: 'edit', label: 'Edit Details', icon: <Edit className="w-4 h-4" /> },
-        workspace.isActive
-          ? { key: 'deactivate', label: 'Deactivate', icon: <Archive className="w-4 h-4" /> }
-          : { key: 'reactivate', label: 'Reactivate', icon: <RotateCcw className="w-4 h-4" /> }
+        { key: 'delete', label: 'Delete', icon: <Trash2 className="w-4 h-4" />, danger: true }
       ]
-    }
-  ];
+    : [
+        { key: 'edit', label: 'Edit Details', icon: <Edit className="w-4 h-4" /> },
+        { key: 'restore', label: 'Restore', icon: <RotateCcw className="w-4 h-4" /> }
+      ];
 
   return (
     <>
@@ -521,22 +538,58 @@ function WorkspaceListItem({
   onToggleSelect: () => void;
   onClick?: () => void;
 }) {
-  const items: MenuProps['items'] = [
-    {
-      key: 'manage',
-      label: 'Manage Workspace',
-      type: 'group',
-      children: [
+  const deleteMutation = useDeleteWorkspace();
+  const reactivateMutation = useReactivateWorkspace();
+  const { message } = App.useApp();
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
+  const handleAction = async (key: string) => {
+    if (key === 'delete') {
+      const reqCount = workspace.totalRequirements || 0;
+      if (reqCount === 0) {
+        Modal.confirm({
+          title: 'Delete Workspace',
+          content: `You are about to delete "${workspace.name}". This action is permanent.`,
+          okText: 'Delete',
+          okType: 'danger',
+          cancelText: 'Cancel',
+          onOk: () => {
+            deleteMutation.mutate(workspace.id, {
+              onSuccess: () => message.success('Workspace deleted successfully'),
+            });
+          },
+        });
+      } else {
+        Modal.confirm({
+          title: 'Cannot Delete Workspace',
+          content: `This workspace has ${reqCount} requirements. You cannot delete it, but you can archive it instead.`,
+          okText: 'Archive',
+          cancelText: 'Cancel',
+          onOk: () => {
+            deleteMutation.mutate(workspace.id, {
+              onSuccess: () => message.success('Workspace archived successfully'),
+            });
+          },
+        });
+      }
+    } else if (key === 'restore') {
+      reactivateMutation.mutate(workspace.id, {
+        onSuccess: () => message.success('Workspace restored successfully'),
+      });
+    } else if (key === 'edit') {
+      setIsEditOpen(true);
+    }
+  };
+
+  const items: MenuProps['items'] = workspace.isActive 
+    ? [
         { key: 'edit', label: 'Edit Details', icon: <Edit className="w-4 h-4" /> },
-        { key: 'members', label: 'Manage Members', icon: <Users className="w-4 h-4" /> },
-        workspace.isActive
-          ? { key: 'deactivate', label: 'Deactivate', icon: <Archive className="w-4 h-4" /> }
-          : { key: 'reactivate', label: 'Reactivate', icon: <RotateCcw className="w-4 h-4" /> }
+        { key: 'delete', label: 'Delete', icon: <Trash2 className="w-4 h-4" />, danger: true }
       ]
-    },
-    { type: 'divider' },
-    { key: 'delete', label: 'Delete Workspace', icon: <Trash2 className="w-4 h-4" />, danger: true }
-  ];
+    : [
+        { key: 'edit', label: 'Edit Details', icon: <Edit className="w-4 h-4" /> },
+        { key: 'restore', label: 'Restore', icon: <RotateCcw className="w-4 h-4" /> }
+      ];
 
 
 
@@ -553,7 +606,7 @@ function WorkspaceListItem({
       }}
       className="group bg-white border border-[#F3F4F6] rounded-[12px] px-4 py-3 hover:border-[#ff3b3b] hover:shadow-md transition-all cursor-pointer"
     >
-      <div className="grid grid-cols-[40px_2.8fr_3.2fr_0.7fr_0.3fr] items-center gap-4">
+      <div className="grid grid-cols-[40px_1.5fr_1.8fr_0.8fr_0.5fr_40px] items-center gap-4">
         {/* Checkbox */}
         <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
           <Checkbox
@@ -603,13 +656,17 @@ function WorkspaceListItem({
           </div>
         </div>
 
-        {/* Status */}
-        <div className="flex items-center gap-2">
-          <p className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif]">
+        {/* Organization */}
+        <div className="flex items-center">
+          <p className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif] truncate">
             {workspace.in_house ? workspace.company_name : workspace.partner_name || 'Organization'}
           </p>
+        </div>
+
+        {/* Status */}
+        <div className="flex items-center">
           <span
-            className={`inline-flex items-center px-3 py-1 rounded-full text-[12px] font-['Manrope:SemiBold',sans-serif] ${
+            className={`inline-flex items-center px-3 py-1 rounded-full text-[12px] font-['Manrope:SemiBold',sans-serif] whitespace-nowrap ${
               workspace.isActive
                 ? 'bg-[#ECFDF3] text-[#16A34A]'
                 : 'bg-[#F3F4F6] text-[#6B7280]'
@@ -621,7 +678,7 @@ function WorkspaceListItem({
 
         {/* Action */}
         <div className="flex justify-end">
-          <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight">
+          <Dropdown menu={{ items, onClick: ({ key }) => handleAction(key) }} trigger={['click']} placement="bottomRight">
             <button
               onClick={(e) => e.stopPropagation()}
               className="w-8 h-8 rounded-lg hover:bg-[#F7F7F7] flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
@@ -631,6 +688,12 @@ function WorkspaceListItem({
           </Dropdown>
         </div>
       </div>
+      <WorkspaceForm
+        open={isEditOpen}
+        initialData={workspace}
+        onCancel={() => setIsEditOpen(false)}
+        onSuccess={() => setIsEditOpen(false)}
+      />
     </div>
   );
 }

@@ -1147,10 +1147,7 @@ export function EmployeesPage() {
             leaves: editingEmployee.leaves.toString(),
             role_id: editingEmployee.roleId,
             employmentType: editingEmployee.employmentType
-          } : {
-            // Default values for new employee - fetch from company settings
-            workingHours: companyData?.result?.working_hours
-          }}
+          } : null}
           onSubmit={handleSaveEmployee}
           onCancel={() => setIsDialogOpen(false)}
           isEditing={!!editingEmployee}
