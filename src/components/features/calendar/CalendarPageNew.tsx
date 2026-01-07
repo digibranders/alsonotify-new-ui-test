@@ -225,8 +225,8 @@ export function CalendarPage() {
                         className="w-1 h-full rounded-full mt-1"
                         style={{ backgroundColor: event.color }}
                       />
-                      <div className="flex-1">
-                        <div className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] mb-1">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] mb-1 break-words">
                           {event.title}
                         </div>
                         <div className="flex items-center gap-1 text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666] mb-2">
@@ -274,8 +274,8 @@ export function CalendarPage() {
                       className="w-1 h-full rounded-full mt-1"
                       style={{ backgroundColor: event.color }}
                     />
-                    <div className="flex-1">
-                      <div className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] mb-1">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] mb-1 break-words">
                         {event.title}
                       </div>
                       <div className="flex items-center gap-1 text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666]">
