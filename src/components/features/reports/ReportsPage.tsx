@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import {
-  Download, Calendar,
+  Download,
   Clock, CheckCircle2, AlertCircle, Loader2,
   ChevronDown
 } from 'lucide-react';
@@ -13,7 +13,6 @@ import { DateRangeSelector } from '../../common/DateRangeSelector';
 import { Drawer, Tooltip, Button } from "antd";
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
-import { format, parseISO, startOfDay } from "date-fns";
 import { useTabSync } from '@/hooks/useTabSync';
 import { useQuery } from '@tanstack/react-query';
 import { getRequirementReports, getTaskReports, getEmployeeReports, EmployeeReport, EmployeeKPI } from '../../../services/report';
@@ -107,33 +106,6 @@ function TableHeader({
   );
 }
 
-function StatGroup({ stats }: { stats: { assigned: number; completed: number; inProgress: number; delayed: number } }) {
-  return (
-    <div className="flex flex-col gap-1.5 min-w-[100px]">
-      <div className="text-[12px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-0.5">
-        {stats.assigned} <span className="text-[#999999] font-['Inter:Regular',sans-serif] font-normal">Assigned</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1" title="Completed">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#0F9D58]"></div>
-          <span className="text-[11px] text-[#666666] font-medium">{stats.completed}</span>
-        </div>
-        <div className="flex items-center gap-1" title="In Progress">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#2196F3]"></div>
-          <span className="text-[11px] text-[#666666] font-medium">{stats.inProgress}</span>
-        </div>
-        <div className="flex items-center gap-1" title="Delayed">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#FF3B3B]"></div>
-          <span className="text-[11px] text-[#666666] font-medium">{stats.delayed}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- Hidden PDF Template ---
-// This template is rendered off-screen and used by html2canvas for PDF generation.
-// It uses the same data as the main component but with specific styling for print.
 
 // --- Main Component ---
 
@@ -351,25 +323,14 @@ export function ReportsPage() {
   const filteredTasks = sortData(tasks);
   const filteredEmployees = sortData(employees);
 
-  // DEBUG VISUALIZATION
-  if (true) { // Toggle to false to hide
-      return (
-          <div className="p-4 bg-gray-100 overflow-auto h-screen">
-              <h2 className="text-xl font-bold mb-4">Debug Report Data</h2>
-              <button onClick={() => window.location.reload()} className="p-2 bg-blue-500 text-white mb-4">Reload</button>
-              <div className="grid grid-cols-2 gap-4">
-                  <div>
-                      <h3 className="font-bold">Requirements Data ({requirements.length})</h3>
-                      <pre className="text-xs">{JSON.stringify(requirementData, null, 2)}</pre>
-                  </div>
-                  <div>
-                      <h3 className="font-bold">Tasks Data ({tasks.length})</h3>
-                      <pre className="text-xs">{JSON.stringify(taskData?.data?.slice(0, 3), null, 2)}...</pre>
-                  </div>
-              </div>
-          </div>
-      );
-  }
+  // Debug Logs
+  console.log('ReportsPage Render:', { 
+    activeTab, 
+    requirementsCount: requirements.length, 
+    tasksCount: tasks.length,
+    reqData: requirementData,
+    taskData: taskData
+  });
 
 
   // Filter Configuration
@@ -521,211 +482,6 @@ export function ReportsPage() {
           </div>
         </div>
 
-        {/* Hidden PDF Template - Dynamic based on Tab */}
-      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
-        <div ref={reportRef} className="w-[210mm] min-h-[297mm] bg-white p-[40px] font-['Inter'] text-[#111111]">
-            <div className="flex justify-between items-center border-b-2 border-[#EEEEEE] pb-5 mb-8">
-                <div className="flex flex-col">
-                    <h1 className="font-['Manrope'] font-extrabold text-[24px] m-0 text-[#111111]">Alsonotify<span className="text-[#F59E0B]">.</span></h1>
-                </div>
-                <div className="text-right text-[12px] text-[#666666] font-['Manrope']">
-                    <span className="block font-bold text-[16px] text-[#111111] mb-1">
-                        {activeTab === 'requirement' ? 'Requirements Report' : activeTab === 'task' ? 'Tasks Report' : 'Employee Performance Report'}
-                    </span>
-                    <span>Generated: {new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span><br />
-                    <span>Period: {dateRange?.[0] ? dateRange[0].format('MMM DD') : 'Jan 01'} - {dateRange?.[1] ? dateRange[1].format('MMM DD, YYYY') : 'Jan 31, 2026'}</span>
-                </div>
-            </div>
-
-            {/* KPI Section - Dynamic */}
-            <div className="grid grid-cols-4 gap-4 mb-8">
-                {activeTab === 'requirement' && (
-                    <>
-                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
-                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Total Requirements</span>
-                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#111111]">{kpi.totalRequirements}</p>
-                        </div>
-                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
-                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">On-Time Completion</span>
-                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#0F9D58]">{kpi.onTimeCompleted}</p>
-                        </div>
-                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
-                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Delayed</span>
-                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#FF3B3B]">{kpi.delayedCompleted} <span className="text-[12px] text-[#666666] font-medium">({kpi.totalExtraHrs > 0 ? `+${kpi.totalExtraHrs}h` : '0h'})</span></p>
-                        </div>
-                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
-                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Avg. Efficiency</span>
-                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#2196F3]">{kpi.efficiency}%</p>
-                        </div>
-                    </>
-                )}
-                {activeTab === 'task' && (
-                     <>
-                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
-                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Total Tasks</span>
-                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#111111]">{taskKPI.totalTasks}</p>
-                        </div>
-                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
-                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">On-Time Done</span>
-                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#0F9D58]">{taskKPI.onTimeCompleted}</p>
-                        </div>
-                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
-                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Delayed</span>
-                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#FF3B3B]">{taskKPI.delayedCompleted} <span className="text-[12px] text-[#666666] font-medium">({taskKPI.totalExtraHrs > 0 ? `+${taskKPI.totalExtraHrs}h` : '0h'})</span></p>
-                        </div>
-                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
-                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Efficiency</span>
-                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#2196F3]">{taskKPI.efficiency}%</p>
-                        </div>
-                    </>
-                )}
-                {activeTab === 'member' && (
-                     <>
-                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
-                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Total Investment</span>
-                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#111111]">${employeeKPI.totalInvestment.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
-                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Total Revenue</span>
-                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#0F9D58]">${employeeKPI.totalRevenue.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
-                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Net Profit</span>
-                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#0F9D58]">${employeeKPI.netProfit.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
-                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Avg. Rate / Hr</span>
-                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#2196F3]">${employeeKPI.avgRatePerHr}/h</p>
-                        </div>
-                    </>
-                )}
-            </div>
-
-            {/* Table - Dynamic */}
-            <table className="w-full border-collapse text-[12px]">
-                <thead>
-                    <tr>
-                        {activeTab === 'requirement' && (
-                            <>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide rounded-tl-lg w-[25%]">Requirement</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[15%]">Manager</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[15%]">Timeline</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[20%]">Hours Utilization</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[10%]">Revenue</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide rounded-tr-lg">Status</th>
-                            </>
-                        )}
-                        {activeTab === 'task' && (
-                            <>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide rounded-tl-lg w-[30%]">Task</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[20%]">Requirement</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[10%]">Leader</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[10%]">Assigned</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[8%]">Allotted</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[8%]">Engaged</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[8%]">Extra</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide rounded-tr-lg">Status</th>
-                            </>
-                        )}
-                        {activeTab === 'member' && (
-                            <>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide rounded-tl-lg w-[25%]">Member</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[20%]">Tasks Performance</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[15%]">Load</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide">Investment</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide">Revenue</th>
-                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide rounded-tr-lg">Net Profit</th>
-                            </>
-                        )}
-                    </tr>
-                </thead>
-                <tbody>
-                    {activeTab === 'requirement' && filteredRequirements.map((row, idx) => (
-                        <tr key={idx} className={idx % 2 === 0 ? 'bg-[#F9FAFB]' : 'bg-white'}>
-                             <td className="p-3 border-b border-[#EEEEEE]">
-                                <div className="font-['Manrope'] font-bold text-[#111111] text-[13px]">{row.requirement}</div>
-                                <div className="text-[11px] text-[#666666]">Partner: {row.partner}</div>
-                            </td>
-                            <td className="p-3 border-b border-[#EEEEEE] font-medium">{row.manager || 'Unassigned'}</td>
-                            <td className="p-3 border-b border-[#EEEEEE]">
-                                <div className="text-[12px] font-bold text-[#111111]">{row.startDate ? dayjs(row.startDate).format('MMM DD') : '-'}</div>
-                                <div className="text-[10px] text-[#666666]">to {row.endDate ? dayjs(row.endDate).format('MMM DD') : '-'}</div>
-                            </td>
-                            <td className="p-3 border-b border-[#EEEEEE]">
-                                 <div className="flex justify-between text-[11px] mb-1">
-                                    <span className={`font-bold ${row.engagedHrs > row.allottedHrs ? 'text-[#FF3B3B]' : 'text-[#111111]'}`}>{row.engagedHrs}h</span>
-                                    <span className="text-[#999999]">/ {row.allottedHrs}h</span>
-                                 </div>
-                                 <div className="w-[100px] h-1 bg-[#F0F0F0] rounded-full overflow-hidden">
-                                     <div 
-                                        className={`h-full rounded-full ${row.engagedHrs > row.allottedHrs ? 'bg-[#FF3B3B]' : 'bg-[#111111]'}`}
-                                        style={{ width: `${Math.min((row.engagedHrs / (row.allottedHrs || 1)) * 100, 100)}%` }}
-                                     ></div>
-                                 </div>
-                            </td>
-                            <td className="p-3 border-b border-[#EEEEEE] font-bold text-[#0F9D58]">${row.revenue?.toLocaleString() || 0}</td>
-                            <td className="p-3 border-b border-[#EEEEEE]">
-                                <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${
-                                    row.status === 'Completed' ? 'bg-[#E6F4EA] text-[#1E8E3E]' :
-                                    row.status === 'In_Progress' ? 'bg-[#E8F0FE] text-[#1967D2]' :
-                                    'bg-[#FCE8E6] text-[#C5221F]'
-                                }`}>
-                                    {row.status.replace('_', ' ')}
-                                </span>
-                            </td>
-                        </tr>
-                    ))}
-                    {activeTab === 'task' && filteredTasks.map((row, idx) => (
-                         <tr key={idx} className={idx % 2 === 0 ? 'bg-[#F9FAFB]' : 'bg-white'}>
-                            <td className="p-3 border-b border-[#EEEEEE] font-['Manrope'] font-bold text-[#111111] text-[13px]">{row.task}</td>
-                            <td className="p-3 border-b border-[#EEEEEE] text-[11px] text-[#666666]">{row.requirement}</td>
-                            <td className="p-3 border-b border-[#EEEEEE] font-medium">{row.leader}</td>
-                            <td className="p-3 border-b border-[#EEEEEE] font-medium">{row.assigned}</td>
-                            <td className="p-3 border-b border-[#EEEEEE] font-medium">{row.allottedHrs}h</td>
-                            <td className={`p-3 border-b border-[#EEEEEE] font-bold ${row.engagedHrs > row.allottedHrs ? 'text-[#FF3B3B]' : 'text-[#111111]'}`}>{row.engagedHrs}h</td>
-                            <td className={`p-3 border-b border-[#EEEEEE] font-bold ${row.extraHrs > 0 ? 'text-[#FF3B3B]' : 'text-[#999]'}`}>{row.extraHrs > 0 ? `+${row.extraHrs}h` : '-'}</td>
-                             <td className="p-3 border-b border-[#EEEEEE]">
-                                <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${
-                                    row.status === 'Completed' ? 'bg-[#E6F4EA] text-[#1E8E3E]' :
-                                    row.status === 'In_Progress' ? 'bg-[#E8F0FE] text-[#1967D2]' :
-                                    'bg-[#FDE7F3] text-[#D61F69]'
-                                }`}>
-                                    {row.status.replace('_', ' ')}
-                                </span>
-                            </td>
-                        </tr>
-                    ))}
-                    {activeTab === 'member' && filteredEmployees.map((row, idx) => (
-                        <tr key={idx} className={idx % 2 === 0 ? 'bg-[#F9FAFB]' : 'bg-white'}>
-                            <td className="p-3 border-b border-[#EEEEEE]">
-                                <div className="font-['Manrope'] font-bold text-[#111111] text-[13px]">{row.member}</div>
-                                <div className="text-[11px] text-[#666666]">{row.designation} | {row.department}</div>
-                            </td>
-                            <td className="p-3 border-b border-[#EEEEEE]">
-                                <div className="font-bold text-[#111111] text-[14px]">{row.taskStats.assigned} <span className="font-normal text-[#666666] text-[13px]">Assigned</span></div>
-                                <div className="flex gap-2.5 mt-1 text-[11px] text-[#666666]">
-                                    <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#0F9D58]"></span> {row.taskStats.completed}</div>
-                                    <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#1A73E8]"></span> {row.taskStats.inProgress}</div>
-                                    <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#FF3B3B]"></span> {row.taskStats.delayed}</div>
-                                </div>
-                            </td>
-                             <td className="p-3 border-b border-[#EEEEEE]">
-                                <div className="text-[11px] font-bold mb-1">{row.utilization}%</div>
-                                 <div className="w-[100px] h-1 bg-[#F0F0F0] rounded-full overflow-hidden">
-                                    <div className={`h-full rounded-full ${row.utilization > 100 ? 'bg-[#FF3B3B]' : 'bg-[#111111]'}`} style={{ width: `${Math.min(row.utilization, 100)}%` }}></div>
-                                </div>
-                            </td>
-                            <td className="p-3 border-b border-[#EEEEEE] font-medium text-[#111111]">${row.hourlyCost.toLocaleString()}</td>
-                             <td className="p-3 border-b border-[#EEEEEE] font-bold text-[#0F9D58]">${row.revenue.toLocaleString()}</td>
-                            <td className={`p-3 border-b border-[#EEEEEE] font-bold ${row.profit >= 0 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
-                                {row.profit >= 0 ? '+' : ''}${row.profit.toLocaleString()}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-      </div>
 
         {/* Table Content */}
         <div className="flex-1 overflow-y-auto pb-6">
@@ -943,7 +699,7 @@ export function ReportsPage() {
                   <span className="font-medium" style={{ color: '#111111' }}>Generated:</span> {dayjs().format('MMM DD, YYYY')}
                 </p>
                 <p className="text-sm" style={{ color: '#666666' }}>
-                  <span className="font-medium" style={{ color: '#111111' }}>Period:</span> {dateRange && dateRange[0] ? dayjs(dateRange[0]).format('MMM DD, YYYY') : 'Start'} - {dateRange && dateRange[1] ? dayjs(dateRange[1]).format('MMM DD, YYYY') : 'End'}
+                  <span className="font-medium" style={{ color: '#111111' }}>Period:</span> {dateRange?.[0]?.format('MMM DD, YYYY') || 'Start'} - {dateRange?.[1]?.format('MMM DD, YYYY') || 'End'}
                 </p>
               </div>
            </div>
