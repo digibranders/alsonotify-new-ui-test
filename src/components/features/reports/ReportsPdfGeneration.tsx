@@ -243,26 +243,7 @@ export const ReportsPdfTemplate = ({ activeTab, data, kpis, dateRange }: Reports
         </tbody>
       </table>
 
-       {/* Footer */}
-       <div style={{
-           marginTop: 'auto',
-           paddingTop: '20px',
-           borderTop: '1px solid #EEEEEE',
-           display: 'flex',
-           justifyContent: 'space-between',
-           alignItems: 'center',
-           fontSize: '10px',
-           color: '#999999',
-           position: 'absolute',
-           bottom: '40px',
-           left: '40px',
-           right: '40px'
-       }}>
-           <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
-               <span>Alsonotify Inc.</span>
-           </div>
-           <span>Page 1 of 1</span>
-       </div>
+
     </div>
   );
 };
@@ -405,7 +386,7 @@ export const IndividualEmployeePdfTemplate = ({ member, worklogs, dateRange }: {
             position: 'absolute',
             left: '-9999px',
             top: 0
-        }}>
+        }}> 
             {/* Header */}
             <div style={{
                 display: 'flex',
@@ -502,30 +483,13 @@ export const IndividualEmployeePdfTemplate = ({ member, worklogs, dateRange }: {
                 </table>
             </div>
 
-            {/* Footer */}
-            <div style={{
-                marginTop: 'auto',
-                paddingTop: '20px',
-                borderTop: '1px solid #EEEEEE',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: '10px',
-                color: '#999999',
-                position: 'absolute',
-                bottom: '40px',
-                left: '40px',
-                right: '40px'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>Alsonotify Inc.</span>
-                </div>
-                <span>Page 1 of 1</span>
-            </div>
+
         </div>
     );
 };
 
+
+// --- Exported Generator Function ---
 
 // --- Exported Generator Function ---
 
@@ -538,11 +502,11 @@ export const generatePdf = async (fileName: string, elementId: string = 'pdf-rep
 
     try {
         const canvas = await html2canvas(element, {
-            scale: 2, // 2x scale for better resolution
+            scale: 2, // 2x scale
             useCORS: true,
             logging: false,
             backgroundColor: '#ffffff',
-            windowWidth: 794,
+            windowWidth: 794, // A4 width at 96 DPI approx
         });
 
         const imgData = canvas.toDataURL('image/png');
@@ -555,14 +519,31 @@ export const generatePdf = async (fileName: string, elementId: string = 'pdf-rep
 
         let heightLeft = imgHeight;
         let position = 0;
+        let page = 1;
 
+        // Add first page
         pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        
+        // Add Footer to first page
+        pdf.setFontSize(8);
+        pdf.setTextColor(150, 150, 150);
+        pdf.text("Alsonotify Inc.", 10, pdfHeight - 10);
+        pdf.text(`Page ${page}`, pdfWidth - 20, pdfHeight - 10, { align: 'right' });
+
         heightLeft -= pdfHeight;
 
         while (heightLeft > 0) {
             position = heightLeft - imgHeight;
             pdf.addPage();
+            page++;
             pdf.addImage(imgData, 'PNG', 0, -1 * (imgHeight - heightLeft), imgWidth, imgHeight);
+            
+            // Add Footer to subsequent pages
+            pdf.setFontSize(8);
+            pdf.setTextColor(150, 150, 150);
+            pdf.text("Alsonotify Inc.", 10, pdfHeight - 10);
+            pdf.text(`Page ${page}`, pdfWidth - 20, pdfHeight - 10, { align: 'right' });
+
              heightLeft -= pdfHeight;
         }
         
@@ -573,3 +554,4 @@ export const generatePdf = async (fileName: string, elementId: string = 'pdf-rep
         throw error;
     }
 };
+
