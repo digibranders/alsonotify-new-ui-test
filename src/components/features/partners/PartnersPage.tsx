@@ -35,7 +35,7 @@ import { useTabSync } from '@/hooks/useTabSync';
 import axiosApi from '../../../config/axios';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { PartnerRow, Partner, PartnerStatus } from './rows/PartnerRow';
-import { acceptInvitation, updatePartnerStatus, getReceivedInvites, acceptInviteById, declineInviteById, getPartners } from '@/services/user';
+import { acceptInvitation, updatePartnerStatus, getReceivedInvites, acceptInviteById, declineInviteById, getPartners, deletePartner } from '@/services/user';
 import { BankOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined } from '@ant-design/icons';
 
 // Mock Data
@@ -312,6 +312,32 @@ export function PartnersPageContent() {
         }
     };
 
+    const handleCancelRequest = async (inviteId: number) => {
+        Modal.confirm({
+            title: 'Cancel Request',
+            content: 'Are you sure you want to cancel this request? The invitation link will no longer be valid.',
+            okText: 'Yes, Cancel',
+            okType: 'danger',
+            centered: true,
+            async onOk() {
+                try {
+                    const result = await deletePartner({
+                        userType: 'PARTNER',
+                        inviteId: inviteId
+                    });
+                    if (result.success) {
+                        message.success('Request cancelled successfully');
+                        fetchPartners();
+                    } else {
+                        message.error(result.message || 'Failed to cancel request');
+                    }
+                } catch (error: any) {
+                     message.error(error?.response?.data?.message || 'Failed to cancel request');
+                }
+            }
+        });
+    };
+
     const handleModalOk = async () => {
         try {
             const values = await form.validateFields();
@@ -528,7 +554,26 @@ export function PartnersPageContent() {
                                                     </div>
                                                     <div><Tag color="orange" className="text-[10px] font-bold uppercase rounded-full border-none px-2.5">Pending</Tag></div>
                                                     <div className="flex justify-end pr-5">
-                                                        <button disabled className="w-8 h-8 flex items-center justify-center rounded-full opacity-30"><MoreVertical className="w-4 h-4 text-[#666666]" /></button>
+                                                        <Dropdown
+                                                            menu={{
+                                                                items: [
+                                                                    {
+                                                                        key: 'cancel',
+                                                                        label: 'Cancel Request',
+                                                                        icon: <Trash2 className="w-3.5 h-3.5" />,
+                                                                        onClick: () => handleCancelRequest(item.data.id),
+                                                                        danger: true,
+                                                                        className: "text-[13px] font-['Manrope:Medium',sans-serif]"
+                                                                    }
+                                                                ]
+                                                            }}
+                                                            trigger={['click']}
+                                                            placement="bottomRight"
+                                                        >
+                                                            <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#F7F7F7] transition-colors">
+                                                                <MoreVertical className="w-4 h-4 text-[#666666]" />
+                                                            </button>
+                                                        </Dropdown>
                                                     </div>
                                                 </div>
                                             </div>
