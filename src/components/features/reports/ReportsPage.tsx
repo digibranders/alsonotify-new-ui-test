@@ -237,9 +237,10 @@ export function ReportsPage() {
         pdf.text('Alsonotify Inc.', 10, pdfHeight - 10);
       }
 
-      pdf.save('employee_performance_report.pdf');
+      pdf.save(`alsonotify_${activeTab}_report_${dayjs().format('YYYY-MM-DD')}.pdf`);
     } catch (error) {
       console.error('PDF Generation failed:', error);
+      alert("Failed to generate PDF. Please check console for details.");
     } finally {
       setIsDownloading(false);
     }
@@ -907,7 +908,7 @@ export function ReportsPage() {
       {/* Hidden PDF Container */}
       <div id="pdf-report-container" style={{ position: 'fixed', left: '-9999px', top: 0, width: '1200px', padding: '40px', background: 'white' }}>
         {/* Header */}
-        <div className="flex justify-between items-start mb-8 border-b border-gray-200 pb-6">
+        <div className="flex justify-between items-start mb-8 border-b pb-6" style={{ borderColor: '#e5e7eb' }}>
            <div>
              {/* Logo */}
              <img src={BrandLogo.src} alt="Alsonotify" className="h-8 object-contain" />
@@ -917,94 +918,94 @@ export function ReportsPage() {
                {activeTab === 'requirement' ? 'Requirements Report' :
                 activeTab === 'task' ? 'Tasks Report' : 'Employees Report'}
              </h1>
-             <div className="space-y-1">
-               <p className="text-sm text-[#666666]">
-                 <span className="font-medium text-[#111111]">Generated:</span> {dayjs().format('MMM DD, YYYY')}
-               </p>
-               <p className="text-sm text-[#666666]">
-                 <span className="font-medium text-[#111111]">Period:</span> {dateRange && dateRange[0] ? dayjs(dateRange[0]).format('MMM DD, YYYY') : 'Start'} - {dateRange && dateRange[1] ? dayjs(dateRange[1]).format('MMM DD, YYYY') : 'End'}
-               </p>
-             </div>
+              <div className="space-y-1">
+                <p className="text-sm" style={{ color: '#666666' }}>
+                  <span className="font-medium" style={{ color: '#111111' }}>Generated:</span> {dayjs().format('MMM DD, YYYY')}
+                </p>
+                <p className="text-sm" style={{ color: '#666666' }}>
+                  <span className="font-medium" style={{ color: '#111111' }}>Period:</span> {dateRange && dateRange[0] ? dayjs(dateRange[0]).format('MMM DD, YYYY') : 'Start'} - {dateRange && dateRange[1] ? dayjs(dateRange[1]).format('MMM DD, YYYY') : 'End'}
+                </p>
+              </div>
            </div>
         </div>
 
         {/* Content Table */}
         <table className="w-full text-left border-collapse">
             <thead>
-               <tr className="border-b border-gray-200">
+               <tr className="border-b" style={{ borderColor: '#e5e7eb' }}>
                   {activeTab === 'requirement' && (
                     <>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Requirement</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Manager</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Timeline</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Hours</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Revenue</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Status</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Requirement</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Manager</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Timeline</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Hours</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Revenue</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Status</th>
                     </>
                   )}
                   {activeTab === 'task' && (
                     <>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Task</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Requirement</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Leader</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Assigned</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Allotted</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Engaged</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Status</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Task</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Requirement</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Leader</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Assigned</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Allotted</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Engaged</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Status</th>
                     </>
                   )}
                   {activeTab === 'member' && (
                     <>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Member</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Tasks</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Load</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Investment</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Revenue</th>
-                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Profit</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Member</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Tasks</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Load</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Investment</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Revenue</th>
+                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Profit</th>
                     </>
                   )}
                </tr>
             </thead>
             <tbody>
                {activeTab === 'requirement' && filteredRequirements.map((row, idx) => (
-                 <tr key={idx} className="border-b border-gray-100">
-                    <td className="p-3 text-sm font-bold text-gray-900">
+                 <tr key={idx} className="border-b" style={{ borderColor: '#f3f4f6' }}>
+                    <td className="p-3 text-sm font-bold" style={{ color: '#111827' }}>
                         {row.requirement}
-                        <div className="text-xs font-normal text-gray-500">{row.partner}</div>
+                        <div className="text-xs font-normal" style={{ color: '#6b7280' }}>{row.partner}</div>
                     </td>
-                    <td className="p-3 text-sm text-gray-600">{row.manager || 'Unassigned'}</td>
-                    <td className="p-3 text-sm text-gray-600">
+                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>{row.manager || 'Unassigned'}</td>
+                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>
                         {row.startDate ? dayjs(row.startDate).format('MMM DD') : '-'} - {row.endDate ? dayjs(row.endDate).format('MMM DD') : '-'}
                     </td>
-                    <td className="p-3 text-sm text-gray-600">{row.engagedHrs} / {row.allottedHrs}h</td>
-                    <td className="p-3 text-sm font-bold text-green-600">${row.revenue?.toLocaleString() || 0}</td>
+                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>{row.engagedHrs} / {row.allottedHrs}h</td>
+                    <td className="p-3 text-sm font-bold" style={{ color: '#16a34a' }}>${row.revenue?.toLocaleString() || 0}</td>
                     <td className="p-3 text-sm">{row.status}</td>
                  </tr>
                ))}
                {activeTab === 'task' && filteredTasks.map((row, idx) => (
-                 <tr key={idx} className="border-b border-gray-100">
-                    <td className="p-3 text-sm font-bold text-gray-900">{row.task}</td>
-                    <td className="p-3 text-sm text-gray-600">{row.requirement}</td>
-                    <td className="p-3 text-sm text-gray-600">{row.leader}</td>
-                    <td className="p-3 text-sm text-gray-600">{row.assigned}</td>
-                    <td className="p-3 text-sm text-gray-600">{row.allottedHrs}h</td>
-                    <td className="p-3 text-sm font-bold text-gray-900">{row.engagedHrs}h</td>
+                 <tr key={idx} className="border-b" style={{ borderColor: '#f3f4f6' }}>
+                    <td className="p-3 text-sm font-bold" style={{ color: '#111827' }}>{row.task}</td>
+                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>{row.requirement}</td>
+                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>{row.leader}</td>
+                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>{row.assigned}</td>
+                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>{row.allottedHrs}h</td>
+                    <td className="p-3 text-sm font-bold" style={{ color: '#111827' }}>{row.engagedHrs}h</td>
                     <td className="p-3 text-sm">{row.status}</td>
                  </tr>
                ))}
                {activeTab === 'member' && filteredEmployees.map((row, idx) => (
-                 <tr key={idx} className="border-b border-gray-100">
-                    <td className="p-3 text-sm font-bold text-gray-900">
+                 <tr key={idx} className="border-b" style={{ borderColor: '#f3f4f6' }}>
+                    <td className="p-3 text-sm font-bold" style={{ color: '#111827' }}>
                         {row.member}
-                        <div className="text-xs font-normal text-gray-500">{row.designation}</div>
+                        <div className="text-xs font-normal" style={{ color: '#6b7280' }}>{row.designation}</div>
                     </td>
-                    <td className="p-3 text-sm text-gray-600">
+                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>
                         {row.taskStats.completed} / {row.taskStats.assigned}
                     </td>
-                    <td className="p-3 text-sm text-gray-600">{row.utilization}%</td>
-                    <td className="p-3 text-sm font-bold text-gray-900">${row.hourlyCost.toLocaleString()}</td>
-                    <td className="p-3 text-sm font-bold text-green-600">${row.revenue.toLocaleString()}</td>
-                    <td className="p-3 text-sm font-bold text-green-600">${row.profit.toLocaleString()}</td>
+                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>{row.utilization}%</td>
+                    <td className="p-3 text-sm font-bold" style={{ color: '#111827' }}>${row.hourlyCost.toLocaleString()}</td>
+                    <td className="p-3 text-sm font-bold" style={{ color: '#16a34a' }}>${row.revenue.toLocaleString()}</td>
+                    <td className="p-3 text-sm font-bold" style={{ color: '#16a34a' }}>${row.profit.toLocaleString()}</td>
                  </tr>
                ))}
             </tbody>
