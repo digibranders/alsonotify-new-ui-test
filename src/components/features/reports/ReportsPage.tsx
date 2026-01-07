@@ -351,6 +351,26 @@ export function ReportsPage() {
   const filteredTasks = sortData(tasks);
   const filteredEmployees = sortData(employees);
 
+  // DEBUG VISUALIZATION
+  if (true) { // Toggle to false to hide
+      return (
+          <div className="p-4 bg-gray-100 overflow-auto h-screen">
+              <h2 className="text-xl font-bold mb-4">Debug Report Data</h2>
+              <button onClick={() => window.location.reload()} className="p-2 bg-blue-500 text-white mb-4">Reload</button>
+              <div className="grid grid-cols-2 gap-4">
+                  <div>
+                      <h3 className="font-bold">Requirements Data ({requirements.length})</h3>
+                      <pre className="text-xs">{JSON.stringify(requirementData, null, 2)}</pre>
+                  </div>
+                  <div>
+                      <h3 className="font-bold">Tasks Data ({tasks.length})</h3>
+                      <pre className="text-xs">{JSON.stringify(taskData?.data?.slice(0, 3), null, 2)}...</pre>
+                  </div>
+              </div>
+          </div>
+      );
+  }
+
 
   // Filter Configuration
   const filterOptions: FilterOption[] = [];
@@ -380,7 +400,7 @@ export function ReportsPage() {
 
   return (
     <PageLayout
-      title="Reports"
+      title="Reports" 
       tabs={[
         { id: 'requirement', label: 'Requirement' },
         { id: 'task', label: 'Tasks' },
