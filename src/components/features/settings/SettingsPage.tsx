@@ -205,6 +205,7 @@ interface Holiday {
   id: number | string;
   name: string;
   date: string;
+  is_api?: boolean;
 }
 
 interface LeaveType {
@@ -343,7 +344,8 @@ export function SettingsPage() {
       .map((h: any) => ({
         id: h.id,
         name: h.name,
-        date: h.date
+        date: h.date,
+        is_api: h.is_api
       }));
   }, [holidaysData]);
 
@@ -1085,22 +1087,41 @@ export function SettingsPage() {
                   publicHolidays.map((holiday) => (
                     <div key={holiday.id} className="p-4 border border-[#EEEEEE] rounded-[12px] flex items-center justify-between bg-white hover:shadow-sm transition-shadow">
                       <div>
-                        <p className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">{holiday.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">{holiday.name}</p>
+                          {holiday.is_api && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 text-[10px] font-['Manrope:Bold',sans-serif]">
+                              Public
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[12px] text-[#666666] font-['Manrope:Medium',sans-serif]">{new Date(holiday.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleEditHoliday(holiday)}
-                          className="p-2 text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] rounded-full transition-colors"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteHoliday(holiday.id)}
-                          className="p-2 text-[#ff3b3b] hover:bg-[#FFF5F5] rounded-full transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {!holiday.is_api && (
+                          <>
+                            <button
+                              onClick={() => handleEditHoliday(holiday)}
+                              className="p-2 text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] rounded-full transition-colors"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteHoliday(holiday.id)}
+                              className="p-2 text-[#ff3b3b] hover:bg-[#FFF5F5] rounded-full transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                        {holiday.is_api && (
+                           <button
+                             className="p-2 text-[#999999] cursor-not-allowed opacity-50"
+                             title="Public holidays cannot be edited"
+                           >
+                             <Lock className="w-4 h-4" />
+                           </button>
+                        )}
                       </div>
                     </div>
                   ))

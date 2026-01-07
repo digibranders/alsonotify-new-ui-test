@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useMemo } from 'react';
 import { useTabSync } from '@/hooks/useTabSync';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, MapPin, Loader2 } from 'lucide-react';
 import { PageLayout } from '../../layout/PageLayout';
+import { usePublicHolidays } from '@/hooks/useHoliday';
+import dayjs from 'dayjs';
 
 interface CalendarEvent {
   id: string;
   title: string;
   date: string;
   time: string;
-  type: 'meeting' | 'deadline' | 'event' | 'leave';
+  type: 'meeting' | 'deadline' | 'event' | 'leave' | 'holiday';
   participants?: string[];
   location?: string;
   color: string;
@@ -64,16 +65,32 @@ const eventsData: CalendarEvent[] = [
 ];
 
 export function CalendarPage() {
-  /* Manual router/params removed */
   const [activeView, setActiveView] = useTabSync<'month' | 'week' | 'day' | 'agenda'>({
     defaultTab: 'month',
     validTabs: ['month', 'week', 'day', 'agenda']
   });
 
-  // Sync activeView with URL - handled by useTabSync
-  /* useEffect(() => { ... }) removed */
   const [currentMonth, setCurrentMonth] = useState('November 2025');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // Fetch Holidays
+  const { data: holidaysData, isLoading: isLoadingHolidays } = usePublicHolidays();
+
+  // Merge events with holidays
+  const allEvents = useMemo(() => {
+    const holidays: CalendarEvent[] = (holidaysData?.result || [])
+      .filter((h: any) => !h.is_deleted)
+      .map((h: any) => ({
+        id: `holiday-${h.id}`,
+        title: h.name,
+        date: dayjs(h.date).format('YYYY-MM-DD'),
+        time: 'All Day',
+        type: 'holiday',
+        color: '#8B5CF6' // Purple for holidays
+      }));
+    
+    return [...eventsData, ...holidays];
+  }, [holidaysData]);
 
   // Generate calendar days for November 2025
   const daysInMonth = 30;
@@ -94,11 +111,11 @@ export function CalendarPage() {
   }
 
   const getEventsForDate = (date: string) => {
-    return eventsData.filter(event => event.date === date);
+    return allEvents.filter(event => event.date === date);
   };
 
-  const todayEvents = eventsData.filter(e => e.date === '2025-11-20');
-  const upcomingEvents = eventsData.filter(e => e.date > '2025-11-20').slice(0, 3);
+  const todayEvents = allEvents.filter(e => e.date === '2025-11-20');
+  const upcomingEvents = allEvents.filter(e => e.date > '2025-11-20').slice(0, 3);
 
   return (
     <PageLayout
@@ -198,7 +215,9 @@ export function CalendarPage() {
               Today&apos;s Events
             </h4>
             <div className="space-y-3">
-              {todayEvents.length > 0 ? (
+              {isLoadingHolidays ? (
+                 <div className="text-center py-2"><Loader2 className="w-4 h-4 animate-spin mx-auto text-[#999999]" /></div>
+              ) : todayEvents.length > 0 ? (
                 todayEvents.map((event) => (
                   <div key={event.id} className="bg-white rounded-[12px] p-4 border border-[#EEEEEE]">
                     <div className="flex items-start gap-3">
@@ -218,6 +237,16 @@ export function CalendarPage() {
                           <div className="flex items-center gap-1 text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666]">
                             <MapPin className="w-3 h-3" />
                             {event.location}
+                          </div>
+                        )}
+                        {event.type === 'holiday' && (
+                          <div className="flex items-center gap-1 text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                             Public Holiday
+                          </div>
+                        )}
+                        {event.type === 'holiday' && (
+                          <div className="flex items-center gap-1 text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                             Public Holiday
                           </div>
                         )}
                       </div>
@@ -281,6 +310,14 @@ export function CalendarPage() {
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-[#f59e0b]" />
                 <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">Leaves</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#8B5CF6]" />
+                <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">Holidays</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#8B5CF6]" />
+                <span className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">Holidays</span>
               </div>
             </div>
           </div>
