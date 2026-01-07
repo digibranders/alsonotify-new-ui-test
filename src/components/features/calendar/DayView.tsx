@@ -43,7 +43,15 @@ export function DayView({ currentDate, events, isLoading, onTimeSlotClick }: Day
              return dayjs(event.raw.start_time).hour() * 60 + dayjs(event.raw.start_time).minute();
         }
 
-        return 9 * 60; // Default
+        if (event.time && event.date) {
+             const dateTimeStr = `${event.date} ${event.time}`;
+             const parsed = dayjs(dateTimeStr, 'YYYY-MM-DD h:mm A');
+             if (parsed.isValid()) {
+                return parsed.hour() * 60 + parsed.minute();
+             }
+        }
+
+        return 9 * 60; // Default if parsing fails
     };
 
     const processEvents = (dayEvents: CalendarEvent[]) => {

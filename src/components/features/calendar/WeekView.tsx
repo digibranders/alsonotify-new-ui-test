@@ -92,8 +92,18 @@ export function WeekView({ currentDate, events, isLoading, onTimeSlotClick }: We
              return dayjs(event.raw.start_time).hour() * 60 + dayjs(event.raw.start_time).minute();
         }
 
+        // Check if event.time is a valid time string (e.g. "10:00 AM")
+        if (event.time && event.date) {
+             // Construct a parseable string
+             const dateTimeStr = `${event.date} ${event.time}`;
+             const parsed = dayjs(dateTimeStr, 'YYYY-MM-DD h:mm A');
+             if (parsed.isValid()) {
+                return parsed.hour() * 60 + parsed.minute();
+             }
+        }
+
         // Fallback to parsing display strings if necessary
-        return 9 * 60; // Default to 9 AM
+        return 9 * 60; // Default to 9 AM if parsing fails
     };
 
     // Group events into "All Day" and "Time" events
