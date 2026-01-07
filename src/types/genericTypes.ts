@@ -11,6 +11,7 @@ export interface Employee {
   status: 'active' | 'inactive';
   department: string;
   access: 'Admin' | 'Manager' | 'Leader' | 'Employee';
+  managerName?: string;
   salary: number;
   currency: string;
   workingHours: number;

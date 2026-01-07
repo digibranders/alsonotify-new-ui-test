@@ -4,7 +4,7 @@ import { ShieldCheck, Briefcase, User, Users, Calendar, User as UserIcon, Loader
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import PhoneNumberInput from "@/components/ui/PhoneNumberInput";
-import { useCurrentUserCompany, useRoles } from "@/hooks/useUser";
+import { useCurrentUserCompany, useRoles, useEmployees } from "@/hooks/useUser";
 import { currencies, getCurrencySymbol } from "@/utils/currencyUtils";
 
 dayjs.extend(customParseFormat);
@@ -31,6 +31,7 @@ export interface EmployeeFormData {
   workingHoursEnd: string;
   leaves: string;
   role_id?: number;
+  manager_id?: number;
   employmentType?: 'Full-time' | 'Part-time' | 'Contract' | 'Intern';
 }
 
@@ -62,6 +63,7 @@ const defaultFormData: EmployeeFormData = {
   workingHoursEnd: "",
   leaves: "",
   role_id: undefined,
+  manager_id: undefined,
   employmentType: undefined,
 };
 
@@ -84,6 +86,7 @@ export function EmployeeForm({
   const [formData, setFormData] = useState<EmployeeFormData>(defaultFormData);
   const { data: companyData, isLoading: isLoadingCompany } = useCurrentUserCompany();
   const { data: rolesData, isLoading: isLoadingRoles } = useRoles();
+  const { data: employeesData } = useEmployees("is_active=true&limit=1000"); // Fetch all active employees for manager list
   const { message } = App.useApp();
 
   const fetchedRoles = useMemo(() => {
@@ -148,6 +151,7 @@ export function EmployeeForm({
         currency: initialData.currency || "INR",
         // Map access string to role if available, or keep as is
         access: initialData.access || (initialData.role_id ? fetchedRoles.find((r: any) => r.id === initialData.role_id)?.name : "") || "Employee",
+        manager_id: initialData.manager_id,
       });
     } else if (companyData?.result && !isEditing) {
       // New employee initialization from company settings
@@ -414,7 +418,27 @@ export function EmployeeForm({
             </Select>
           </div>
 
-          {/* Row 5: Experience & Date of Joining */}
+
+          {/* Row 5: Manager & Experience */}
+          <div className="col-span-6 space-y-1">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Manager</span>
+            <Select
+              showSearch
+              className={`w-full h-11 employee-form-select ${formData.manager_id ? 'employee-form-select-filled' : ''}`}
+              placeholder="Select manager"
+              optionFilterProp="children"
+              filterOption={(input: string, option: any) => 
+                (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
+              }
+              value={formData.manager_id || undefined}
+              onChange={(v) => setFormData({ ...formData, manager_id: v })}
+              suffixIcon={<div className="text-gray-400">⌄</div>}
+              options={employeesData?.result?.filter((emp: any) => emp.user_id !== initialData?.id && emp.id !== initialData?.id).map((emp: any) => ({
+                 value: emp.user_id || emp.id,
+                 label: emp.name
+              })) || []}
+            />
+          </div>
           <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Experience (Years)</span>
             <Input
@@ -425,6 +449,8 @@ export function EmployeeForm({
               onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
             />
           </div>
+
+          {/* Row 6: Date of Joining & Salary */}
           <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Date of Joining</span>
             <DatePicker
@@ -436,8 +462,6 @@ export function EmployeeForm({
               suffixIcon={<Calendar className="w-4 h-4 text-[#999999]" />}
             />
           </div>
-
-          {/* Row 6: Salary & Total Leaves */}
           <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Salary (CTC) <span className="text-[#666666] font-normal text-[11px] ml-1">(Annual)</span></span>
             <Space.Compact className="w-full">
@@ -453,6 +477,8 @@ export function EmployeeForm({
               />
             </Space.Compact>
           </div>
+
+          {/* Row 7: Total Leaves & Working Hours Start */}
           <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Total Leaves</span>
             <Input
@@ -463,8 +489,6 @@ export function EmployeeForm({
               onChange={(e) => setFormData({ ...formData, leaves: e.target.value })}
             />
           </div>
-
-          {/* Row 7: Working Hours (Start/End) */}
           <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours Start</span>
             <TimePicker
@@ -476,6 +500,8 @@ export function EmployeeForm({
               suffixIcon={<div className="text-gray-400">⌄</div>}
             />
           </div>
+
+          {/* Row 8: Working Hours End & Hourly Cost */}
           <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours End</span>
             <TimePicker
@@ -487,8 +513,6 @@ export function EmployeeForm({
               suffixIcon={<div className="text-gray-400">⌄</div>}
             />
           </div>
-
-          {/* Row 8: Hourly Cost & Skills */}
           <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Hourly Cost <span className="text-[#666666] font-normal text-[11px] ml-1">(Calculated)</span></span>
             <Input

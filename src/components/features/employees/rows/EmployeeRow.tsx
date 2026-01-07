@@ -68,7 +68,7 @@ export function EmployeeRow({
         }
       `}
     >
-      <div className="grid grid-cols-[40px_2fr_1.8fr_1.2fr_1fr_1fr_1.2fr_40px] gap-4 items-center">
+      <div className="grid grid-cols-[40px_2fr_1.8fr_1.2fr_1fr_1fr_1fr_1.2fr_40px] gap-4 items-center">
         {/* Checkbox */}
         <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
           <Checkbox
@@ -109,6 +109,13 @@ export function EmployeeRow({
         {/* Access */}
         <div className="flex flex-col items-start">
           <AccessBadge role={employee.access} color={employee.roleColor} />
+        </div>
+
+        {/* Manager */}
+        <div>
+          <span className="text-[13px] font-['Manrope:Regular',sans-serif] text-[#111111]">
+            {employee.managerName || 'Unassigned'}
+          </span>
         </div>
 
         {/* Employment Type */}

@@ -1,53 +1,27 @@
-
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import {
   Download, Calendar,
   Clock, CheckCircle2, AlertCircle, Loader2,
   ChevronDown
 } from 'lucide-react';
+import BrandLogo from '@/assets/images/logo.png';
 import { PageLayout } from '../../layout/PageLayout';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { DateRangeSelector } from '../../common/DateRangeSelector';
 import { Drawer, Tooltip, Button } from "antd";
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
-import { format, parseISO, isWithinInterval, startOfDay, endOfDay } from "date-fns";
+import { format, parseISO, startOfDay } from "date-fns";
 import { useTabSync } from '@/hooks/useTabSync';
+import { useQuery } from '@tanstack/react-query';
+import { getRequirementReports, getTaskReports, getEmployeeReports, EmployeeReport, EmployeeKPI } from '../../../services/report';
 
 // Initialize dayjs plugins
 dayjs.extend(isBetween);
 
 // --- Types ---
-
-type ReportType = 'requirement' | 'task' | 'member';
-
-interface RequirementRow {
-  id: string;
-  requirement: string;
-  partner: string;
-  manager: string;
-  startDate: string;
-  endDate: string;
-  completedDate: string;
-  revision: number;
-  allottedHrs: number;
-  engagedHrs: number;
-  extraHrs: number;
-  status: 'Completed' | 'In Progress' | 'Delayed';
-}
-
-interface TaskRow {
-  id: string;
-  task: string;
-  requirement: string;
-  leader: string;
-  assigned: string;
-  allottedHrs: number;
-  engagedHrs: number;
-  extraHrs: number;
-  status: 'Completed' | 'In Progress' | 'Delayed';
-}
-
 interface MemberRow {
   id: string;
   member: string;
@@ -67,87 +41,16 @@ interface WorklogRow {
   requirement: string;
   startTime: string;
   endTime: string;
-  engagedTime: string; // e.g. "4h 30m"
+  engagedTime: string;
   details: string;
 }
 
-// --- Mock Data ---
+// Mock Data for Members (To be refactored later)
+const mockMembers: MemberRow[] = [];
+const mockWorklogs: WorklogRow[] = [];
 
-const mockRequirements: RequirementRow[] = [
-  { id: '1', requirement: 'Mobile App Redesign', partner: 'Triem Security', manager: 'Sarah J.', startDate: '2025-01-10', endDate: '2025-02-15', completedDate: '-', revision: 2, allottedHrs: 120, engagedHrs: 85, extraHrs: 0, status: 'In Progress' },
-  { id: '2', requirement: 'Dashboard Analytics', partner: 'Eventus', manager: 'Mike T.', startDate: '2024-12-01', endDate: '2024-12-20', completedDate: '2024-12-22', revision: 0, allottedHrs: 80, engagedHrs: 82, extraHrs: 2, status: 'Completed' },
-  { id: '3', requirement: 'API Integration', partner: 'DIST', manager: 'Sarah J.', startDate: '2025-01-05', endDate: '2025-01-25', completedDate: '-', revision: 1, allottedHrs: 40, engagedHrs: 45, extraHrs: 5, status: 'Delayed' },
-  { id: '4', requirement: 'Marketing Website', partner: 'CreativeAgency', manager: 'Mike T.', startDate: '2025-01-15', endDate: '2025-02-28', completedDate: '-', revision: 0, allottedHrs: 200, engagedHrs: 50, extraHrs: 0, status: 'In Progress' },
-  { id: '5', requirement: 'Internal CRM', partner: 'Alsonotify', manager: 'Sarah J.', startDate: '2024-10-01', endDate: '2025-03-01', completedDate: '-', revision: 3, allottedHrs: 600, engagedHrs: 450, extraHrs: 0, status: 'In Progress' },
-  { id: '6', requirement: 'Legacy Migration', partner: 'OldCorp', manager: 'Mike T.', startDate: '2024-11-01', endDate: '2025-01-01', completedDate: '2025-01-05', revision: 5, allottedHrs: 150, engagedHrs: 180, extraHrs: 30, status: 'Completed' },
-  { id: '7', requirement: 'E-commerce Platform', partner: 'ShopifyPlus', manager: 'Sarah J.', startDate: '2025-01-01', endDate: '2025-04-30', completedDate: '-', revision: 1, allottedHrs: 350, engagedHrs: 120, extraHrs: 0, status: 'In Progress' },
-  { id: '8', requirement: 'Security Audit', partner: 'BankSecure', manager: 'Mike T.', startDate: '2025-02-01', endDate: '2025-02-14', completedDate: '-', revision: 0, allottedHrs: 60, engagedHrs: 10, extraHrs: 0, status: 'In Progress' },
-  { id: '9', requirement: 'Cloud Migration', partner: 'TechGiant', manager: 'Sarah J.', startDate: '2024-09-15', endDate: '2024-12-31', completedDate: '2025-01-10', revision: 4, allottedHrs: 400, engagedHrs: 420, extraHrs: 20, status: 'Completed' },
-  { id: '10', requirement: 'AI Chatbot', partner: 'InnovateAI', manager: 'Mike T.', startDate: '2025-01-20', endDate: '2025-03-20', completedDate: '-', revision: 2, allottedHrs: 180, engagedHrs: 60, extraHrs: 0, status: 'In Progress' },
-  { id: '11', requirement: 'User Portal', partner: 'HealthCare Inc', manager: 'Sarah J.', startDate: '2024-11-15', endDate: '2025-01-15', completedDate: '-', revision: 3, allottedHrs: 160, engagedHrs: 170, extraHrs: 10, status: 'Delayed' },
-  { id: '12', requirement: 'Mobile Wallet', partner: 'FinTech Co', manager: 'Mike T.', startDate: '2025-02-10', endDate: '2025-05-10', completedDate: '-', revision: 0, allottedHrs: 250, engagedHrs: 5, extraHrs: 0, status: 'In Progress' },
-];
 
-const mockTasks: TaskRow[] = [
-  { id: '1', task: 'Login Flow', requirement: 'Mobile App Redesign', leader: 'David', assigned: 'Alice', allottedHrs: 12, engagedHrs: 10, extraHrs: 0, status: 'Completed' },
-  { id: '2', task: 'Chart Components', requirement: 'Dashboard Analytics', leader: 'David', assigned: 'Bob', allottedHrs: 20, engagedHrs: 22, extraHrs: 2, status: 'Delayed' },
-  { id: '3', task: 'Database Schema', requirement: 'API Integration', leader: 'Elena', assigned: 'Charlie', allottedHrs: 8, engagedHrs: 8, extraHrs: 0, status: 'In Progress' },
-  { id: '4', task: 'Profile Page', requirement: 'Mobile App Redesign', leader: 'David', assigned: 'Alice', allottedHrs: 15, engagedHrs: 8, extraHrs: 0, status: 'In Progress' },
-  { id: '5', task: 'Settings Modal', requirement: 'Mobile App Redesign', leader: 'David', assigned: 'Alice', allottedHrs: 8, engagedHrs: 0, extraHrs: 0, status: 'Delayed' },
-  { id: '6', task: 'Navigation Bar', requirement: 'Mobile App Redesign', leader: 'David', assigned: 'Alice', allottedHrs: 10, engagedHrs: 10, extraHrs: 0, status: 'Completed' },
-  { id: '7', task: 'Footer Design', requirement: 'Mobile App Redesign', leader: 'David', assigned: 'Alice', allottedHrs: 4, engagedHrs: 3, extraHrs: 0, status: 'Completed' },
-  { id: '8', task: 'Unit Testing', requirement: 'Mobile App Redesign', leader: 'David', assigned: 'Alice', allottedHrs: 20, engagedHrs: 5, extraHrs: 0, status: 'In Progress' },
-  { id: '9', task: 'Payment Gateway', requirement: 'E-commerce Platform', leader: 'Elena', assigned: 'Bob', allottedHrs: 40, engagedHrs: 15, extraHrs: 0, status: 'In Progress' },
-  { id: '10', task: 'Product Listing', requirement: 'E-commerce Platform', leader: 'Elena', assigned: 'Charlie', allottedHrs: 30, engagedHrs: 28, extraHrs: 0, status: 'In Progress' },
-  { id: '11', task: 'Cart Logic', requirement: 'E-commerce Platform', leader: 'Elena', assigned: 'Diana', allottedHrs: 25, engagedHrs: 10, extraHrs: 0, status: 'In Progress' },
-  { id: '12', task: 'Vulnerability Scan', requirement: 'Security Audit', leader: 'David', assigned: 'Evan', allottedHrs: 15, engagedHrs: 5, extraHrs: 0, status: 'In Progress' },
-  { id: '13', task: 'Report Generation', requirement: 'Security Audit', leader: 'David', assigned: 'Evan', allottedHrs: 10, engagedHrs: 0, extraHrs: 0, status: 'Delayed' },
-  { id: '14', task: 'Data Export', requirement: 'Cloud Migration', leader: 'Elena', assigned: 'Frank', allottedHrs: 50, engagedHrs: 55, extraHrs: 5, status: 'Completed' },
-  { id: '15', task: 'Server Setup', requirement: 'Cloud Migration', leader: 'Elena', assigned: 'Frank', allottedHrs: 30, engagedHrs: 30, extraHrs: 0, status: 'Completed' },
-  { id: '16', task: 'NLP Model Training', requirement: 'AI Chatbot', leader: 'David', assigned: 'Grace', allottedHrs: 80, engagedHrs: 20, extraHrs: 0, status: 'In Progress' },
-  { id: '17', task: 'Chat UI', requirement: 'AI Chatbot', leader: 'David', assigned: 'Hannah', allottedHrs: 40, engagedHrs: 15, extraHrs: 0, status: 'In Progress' },
-  { id: '18', task: 'Patient Dashboard', requirement: 'User Portal', leader: 'Elena', assigned: 'Ian', allottedHrs: 45, engagedHrs: 48, extraHrs: 3, status: 'Delayed' },
-  { id: '19', task: 'Appointment Booking', requirement: 'User Portal', leader: 'Elena', assigned: 'Ian', allottedHrs: 30, engagedHrs: 25, extraHrs: 0, status: 'In Progress' },
-  { id: '20', task: 'Transaction History', requirement: 'Mobile Wallet', leader: 'David', assigned: 'Jack', allottedHrs: 20, engagedHrs: 0, extraHrs: 0, status: 'Delayed' },
-];
-
-const mockMembers: MemberRow[] = [
-  { id: '1', member: 'Alice Williams', department: 'Design', taskStats: { assigned: 5, completed: 3, inProgress: 2, delayed: 0 }, totalWorkingHrs: 160, actualEngagedHrs: 145, costPerHour: 45, billablePerHour: 120 },
-  { id: '2', member: 'Bob Miller', department: 'Engineering', taskStats: { assigned: 4, completed: 2, inProgress: 1, delayed: 1 }, totalWorkingHrs: 160, actualEngagedHrs: 150, costPerHour: 55, billablePerHour: 150 },
-  { id: '3', member: 'Charlie Davis', department: 'Product', taskStats: { assigned: 6, completed: 4, inProgress: 2, delayed: 0 }, totalWorkingHrs: 160, actualEngagedHrs: 155, costPerHour: 50, billablePerHour: 135 },
-  { id: '4', member: 'Diana Prince', department: 'Engineering', taskStats: { assigned: 3, completed: 1, inProgress: 2, delayed: 0 }, totalWorkingHrs: 160, actualEngagedHrs: 140, costPerHour: 60, billablePerHour: 160 },
-  { id: '5', member: 'Evan Wright', department: 'Security', taskStats: { assigned: 2, completed: 0, inProgress: 1, delayed: 1 }, totalWorkingHrs: 160, actualEngagedHrs: 130, costPerHour: 70, billablePerHour: 180 },
-  { id: '6', member: 'Frank Castle', department: 'DevOps', taskStats: { assigned: 4, completed: 4, inProgress: 0, delayed: 0 }, totalWorkingHrs: 160, actualEngagedHrs: 158, costPerHour: 65, billablePerHour: 170 },
-  { id: '7', member: 'Grace Hopper', department: 'Data Science', taskStats: { assigned: 1, completed: 0, inProgress: 1, delayed: 0 }, totalWorkingHrs: 160, actualEngagedHrs: 120, costPerHour: 80, billablePerHour: 200 },
-  { id: '8', member: 'Hannah Abbott', department: 'Design', taskStats: { assigned: 4, completed: 2, inProgress: 2, delayed: 0 }, totalWorkingHrs: 160, actualEngagedHrs: 148, costPerHour: 45, billablePerHour: 125 },
-  { id: '9', member: 'Ian Malcolm', department: 'Engineering', taskStats: { assigned: 5, completed: 2, inProgress: 2, delayed: 1 }, totalWorkingHrs: 160, actualEngagedHrs: 152, costPerHour: 58, billablePerHour: 155 },
-  { id: '10', member: 'Jack Ryan', department: 'Engineering', taskStats: { assigned: 2, completed: 0, inProgress: 0, delayed: 2 }, totalWorkingHrs: 160, actualEngagedHrs: 110, costPerHour: 55, billablePerHour: 150 },
-];
-
-const mockWorklogs: WorklogRow[] = [
-  { id: '1', date: '2025-01-20', member: 'Alice Williams', task: 'Login Flow', requirement: 'Mobile App Redesign', startTime: '09:00', endTime: '13:00', engagedTime: '4h 0m', details: 'Implemented auth context and login form.' },
-  { id: '2', date: '2025-01-20', member: 'Bob Miller', task: 'Chart Components', requirement: 'Dashboard Analytics', startTime: '14:00', endTime: '17:30', engagedTime: '3h 30m', details: 'Fixed responsive issues on bar chart.' },
-  { id: '3', date: '2025-01-21', member: 'Charlie Davis', task: 'Database Schema', requirement: 'API Integration', startTime: '10:00', endTime: '12:00', engagedTime: '2h 0m', details: 'Designed initial schema for user table.' },
-  { id: '4', date: '2025-01-19', member: 'Alice Williams', task: 'Navigation Bar', requirement: 'Mobile App Redesign', startTime: '09:00', endTime: '18:00', engagedTime: '8h 0m', details: 'Completed navigation structure and responsive styles.' },
-  { id: '5', date: '2025-01-18', member: 'Alice Williams', task: 'Footer Design', requirement: 'Mobile App Redesign', startTime: '10:00', endTime: '13:00', engagedTime: '3h 0m', details: 'Designed and implemented footer.' },
-  { id: '6', date: '2025-01-22', member: 'Alice Williams', task: 'Profile Page', requirement: 'Mobile App Redesign', startTime: '09:00', endTime: '12:00', engagedTime: '3h 0m', details: 'Building user profile layout.' },
-  { id: '7', date: '2025-01-22', member: 'Alice Williams', task: 'Profile Page', requirement: 'Mobile App Redesign', startTime: '13:00', endTime: '16:00', engagedTime: '3h 0m', details: 'Connecting profile API endpoints.' },
-  { id: '8', date: '2025-01-23', member: 'Alice Williams', task: 'Unit Testing', requirement: 'Mobile App Redesign', startTime: '09:00', endTime: '11:00', engagedTime: '2h 0m', details: 'Writing tests for auth flow.' },
-  { id: '9', date: '2025-01-24', member: 'Bob Miller', task: 'Payment Gateway', requirement: 'E-commerce Platform', startTime: '09:00', endTime: '17:00', engagedTime: '7h 0m', details: 'Integrated Stripe API and handled webhooks.' },
-  { id: '10', date: '2025-01-24', member: 'Charlie Davis', task: 'Product Listing', requirement: 'E-commerce Platform', startTime: '10:00', endTime: '16:00', engagedTime: '5h 0m', details: 'Created grid layout for products with filters.' },
-  { id: '11', date: '2025-01-24', member: 'Diana Prince', task: 'Cart Logic', requirement: 'E-commerce Platform', startTime: '09:30', endTime: '15:30', engagedTime: '5h 0m', details: 'Implemented Redux state for shopping cart.' },
-  { id: '12', date: '2025-01-23', member: 'Evan Wright', task: 'Vulnerability Scan', requirement: 'Security Audit', startTime: '08:00', endTime: '12:00', engagedTime: '4h 0m', details: 'Ran automated scans on staging environment.' },
-  { id: '13', date: '2025-01-23', member: 'Frank Castle', task: 'Data Export', requirement: 'Cloud Migration', startTime: '09:00', endTime: '18:00', engagedTime: '8h 0m', details: 'Exported legacy database to CSV format.' },
-  { id: '14', date: '2025-01-22', member: 'Grace Hopper', task: 'NLP Model Training', requirement: 'AI Chatbot', startTime: '11:00', endTime: '16:00', engagedTime: '5h 0m', details: 'Preprocessing dataset for intent recognition.' },
-  { id: '15', date: '2025-01-24', member: 'Hannah Abbott', task: 'Chat UI', requirement: 'AI Chatbot', startTime: '10:00', endTime: '14:00', engagedTime: '4h 0m', details: 'Designed message bubbles and typing indicators.' },
-  { id: '16', date: '2025-01-21', member: 'Ian Malcolm', task: 'Patient Dashboard', requirement: 'User Portal', startTime: '09:00', endTime: '17:00', engagedTime: '7h 0m', details: 'Implemented vital signs charts using Recharts.' },
-  { id: '17', date: '2025-01-22', member: 'Alice Williams', task: 'Login Flow', requirement: 'Mobile App Redesign', startTime: '14:00', endTime: '16:00', engagedTime: '2h 0m', details: 'Added social login buttons.' },
-  { id: '18', date: '2025-01-25', member: 'Bob Miller', task: 'Payment Gateway', requirement: 'E-commerce Platform', startTime: '09:00', endTime: '13:00', engagedTime: '4h 0m', details: 'Testing failed payment scenarios.' },
-  { id: '19', date: '2025-01-25', member: 'Charlie Davis', task: 'Product Listing', requirement: 'E-commerce Platform', startTime: '14:00', endTime: '18:00', engagedTime: '4h 0m', details: 'Adding search functionality to product list.' },
-  { id: '20', date: '2025-01-25', member: 'Diana Prince', task: 'Cart Logic', requirement: 'E-commerce Platform', startTime: '10:00', endTime: '12:00', engagedTime: '2h 0m', details: 'Fixed bug where cart total was not updating.' },
-];
-
-// --- Components ---
+// --- Helper Components ---
 
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { icon: any, color: string, label: string }> = {
@@ -228,35 +131,30 @@ function StatGroup({ stats }: { stats: { assigned: number; completed: number; in
   );
 }
 
+// --- Hidden PDF Template ---
+// This template is rendered off-screen and used by html2canvas for PDF generation.
+// It uses the same data as the main component but with specific styling for print.
+
+// --- Main Component ---
+
 export function ReportsPage() {
-  /* Manual router/params removed */
   const [activeTab, setActiveTab] = useTabSync<'requirement' | 'task' | 'member'>({
     defaultTab: 'requirement',
     validTabs: ['requirement', 'task', 'member']
   });
 
-  // Sync activeTab with URL - handled by useTabSync
-  /* useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab === 'requirement' || tab === 'task' || tab === 'member') {
-      setActiveTab(tab);
-    }
-  }, [searchParams]); */
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-
-  // Selected Member Data
-  const selectedMember = mockMembers.find(m => m.id === selectedMemberId) || null;
-  const selectedMemberTasks = selectedMember
-    ? mockTasks.filter(t => selectedMember.member.startsWith(t.assigned))
-    : [];
-  const selectedMemberWorklogs = selectedMember
-    ? mockWorklogs.filter(w => w.member === selectedMember.member)
-    : [];
+  const [selectedTaskStatus, setSelectedTaskStatus] = useState<string>('All');
+  const [isDownloading, setIsDownloading] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   // Filters State
   const [filters, setFilters] = useState<Record<string, string>>({
     partner: 'All',
-    member: 'All'
+    member: 'All',
+    leader: 'All',
+    assigned: 'All',
+    status: 'All'
   });
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -296,79 +194,134 @@ export function ReportsPage() {
     setSearchQuery('');
   };
 
-  // Filter Configuration
-  const filterOptions: FilterOption[] = [];
-
-  if (activeTab === 'requirement') {
-    filterOptions.push(
-      { id: 'partner', label: 'Partner', options: ['All', 'Triem Security', 'Eventus', 'DIST'], defaultValue: 'All' },
-      { id: 'manager', label: 'Manager', options: ['All', 'Sarah J.', 'Mike T.'], defaultValue: 'All' },
-      { id: 'status', label: 'Status', options: ['All', 'Completed', 'In Progress', 'Delayed'], defaultValue: 'All' }
-    );
-  } else if (activeTab === 'task') {
-    filterOptions.push(
-      { id: 'leader', label: 'Leader', options: ['All', 'David', 'Elena'], defaultValue: 'All' },
-      { id: 'assigned', label: 'Assigned', options: ['All', 'Alice', 'Bob', 'Charlie'], defaultValue: 'All' },
-      { id: 'status', label: 'Status', options: ['All', 'Completed', 'In Progress', 'Delayed'], defaultValue: 'All' }
-    );
-  } else if (activeTab === 'member') {
-    filterOptions.push({ id: 'member', label: 'Member', options: ['All', 'Alice Williams', 'Bob Miller', 'Charlie Davis'], defaultValue: 'All' });
-    filterOptions.push({ id: 'department', label: 'Department', options: ['All', 'Design', 'Engineering', 'Product'], defaultValue: 'All' });
-  }
-
-  // Filter Logic
-  const filterData = <T extends any>(data: T[], searchFields: (keyof T)[]) => {
-    return data.filter(item => {
-      // Search Filter
-      const matchesSearch = searchQuery === '' || searchFields.some(field => {
-        const val = item[field];
-        return typeof val === 'string' && val.toLowerCase().includes(searchQuery.toLowerCase());
+  const handleDownloadPDF = async () => {
+    const element = document.getElementById('pdf-report-container');
+    if (!element) return;
+    setIsDownloading(true);
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2, // Higher resolution
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
       });
 
-      // Dropdown Filters
-      let matchesFilters = true;
-      if (activeTab === 'requirement') {
-        const reqItem = item as unknown as RequirementRow;
-        if (filters.partner && filters.partner !== 'All' && reqItem.partner !== filters.partner) matchesFilters = false;
-        if (filters.manager && filters.manager !== 'All' && reqItem.manager !== filters.manager) matchesFilters = false;
-        if (filters.status && filters.status !== 'All' && reqItem.status !== filters.status) matchesFilters = false;
-      } else if (activeTab === 'task') {
-        const taskItem = item as unknown as TaskRow;
-        if (filters.leader && filters.leader !== 'All' && taskItem.leader !== filters.leader) matchesFilters = false;
-        if (filters.assigned && filters.assigned !== 'All' && taskItem.assigned !== filters.assigned) matchesFilters = false;
-        if (filters.status && filters.status !== 'All' && taskItem.status !== filters.status) matchesFilters = false;
-      } else if (activeTab === 'member') {
-        const memberItem = item as unknown as MemberRow;
-        if (filters.member && filters.member !== 'All' && memberItem.member !== filters.member) matchesFilters = false;
-        if (filters.department && filters.department !== 'All' && memberItem.department !== filters.department) matchesFilters = false;
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // First Page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      // Footer for First Page
+      pdf.setFontSize(8);
+      pdf.setTextColor(150);
+      pdf.text('Alsonotify Inc.', 10, pdfHeight - 10);
+      pdf.text('Page 1 of 1', pdfWidth - 25, pdfHeight - 10); // Simplified for MVP 1 page usually
+
+      // Multi-page capability (basic)
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        // Footer for subsequent pages
+        pdf.setFontSize(8);
+        pdf.setTextColor(150);
+        pdf.text('Alsonotify Inc.', 10, pdfHeight - 10);
       }
 
-      // Date Filter
-      if (dateRange && dateRange[0] && dateRange[1] && matchesFilters && matchesSearch) {
-        let dateToCheck: Date | null = null;
-
-        if (activeTab === 'requirement') {
-          const r = item as unknown as RequirementRow;
-          if (r.startDate) dateToCheck = parseISO(r.startDate);
-        } else if (activeTab === 'task') {
-          const t = item as unknown as TaskRow;
-          const req = mockRequirements.find(r => r.requirement === t.requirement);
-          if (req?.startDate) dateToCheck = parseISO(req.startDate);
-        }
-
-        if (dateToCheck) {
-          const from = dateRange[0].toDate();
-          const to = dateRange[1].toDate();
-          if (!isWithinInterval(dateToCheck, { start: startOfDay(from), end: endOfDay(to) })) {
-            return false;
-          }
-        }
-      }
-
-      return matchesSearch && matchesFilters;
-    });
+      pdf.save('employee_performance_report.pdf');
+    } catch (error) {
+      console.error('PDF Generation failed:', error);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
+  const handleExport = () => {
+      handleDownloadPDF();
+  };
+
+  // --- Queries ---
+
+  // Requirements Query
+  const { data: requirementData, isLoading: isLoadingRequirements } = useQuery({
+    queryKey: ['requirement-reports', filters, searchQuery, dateRange],
+    queryFn: () => getRequirementReports({
+      search: searchQuery,
+      partner_id: filters.partner,
+      status: filters.status,
+      start_date: dateRange && dateRange[0] ? dateRange[0].toISOString() : undefined,
+      end_date: dateRange && dateRange[1] ? dateRange[1].toISOString() : undefined,
+    }),
+    enabled: activeTab === 'requirement' || true
+  });
+
+
+  // Tasks Query
+  const { data: taskData, isLoading: isLoadingTasks } = useQuery({
+    queryKey: ['task-reports', filters, searchQuery, dateRange],
+    queryFn: () => getTaskReports({
+      search: searchQuery,
+      leader_id: filters.leader,
+      assigned_id: filters.assigned,
+      status: filters.status,
+      start_date: dateRange && dateRange[0] ? dateRange[0].toISOString() : undefined,
+      end_date: dateRange && dateRange[1] ? dateRange[1].toISOString() : undefined,
+    }),
+    enabled: activeTab === 'task' || true
+  });
+
+  // Employees Query
+  const { data: employeeData, isLoading: isLoadingEmployees } = useQuery({
+    queryKey: ['employee-reports', filters, searchQuery, dateRange],
+    queryFn: () => getEmployeeReports({
+      search: searchQuery,
+      department_id: filters.department,
+      member_id: filters.member,
+      start_date: dateRange && dateRange[0] ? dateRange[0].toISOString() : undefined,
+      end_date: dateRange && dateRange[1] ? dateRange[1].toISOString() : undefined,
+    }),
+    enabled: activeTab === 'member' || true
+  });
+
+
+  // Process Data
+  const requirements = requirementData?.data || [];
+  const kpi = requirementData?.kpi || {
+    totalRequirements: 0,
+    onTimeCompleted: 0,
+    delayedCompleted: 0,
+    totalExtraHrs: 0,
+    efficiency: 0
+  };
+
+  const tasks = taskData?.data || [];
+  const taskKPI = taskData?.kpi || {
+    totalTasks: 0,
+    onTimeCompleted: 0,
+    delayedCompleted: 0,
+    totalExtraHrs: 0,
+    efficiency: 0
+  };
+
+  const employees = employeeData?.data || [];
+  const employeeKPI: EmployeeKPI = employeeData?.kpi || {
+    totalInvestment: 0,
+    totalRevenue: 0,
+    netProfit: 0,
+    avgRatePerHr: 0
+  };
+
+
+  // Client-side Sorting
   const sortData = <T extends any>(data: T[]) => {
     if (!sortConfig) return data;
 
@@ -385,28 +338,57 @@ export function ReportsPage() {
     });
   };
 
-  const filteredRequirements = sortData(filterData(mockRequirements, ['requirement', 'partner', 'manager']));
-  const filteredTasks = sortData(filterData(mockTasks, ['task', 'requirement', 'leader', 'assigned']));
-  const filteredMembers = sortData(filterData(mockMembers, ['member']));
+  const filteredRequirements = sortData(requirements);
+  const filteredTasks = sortData(tasks);
+  const filteredEmployees = sortData(employees);
+
+
+  // Filter Configuration
+  const filterOptions: FilterOption[] = [];
+
+  if (activeTab === 'requirement') {
+    filterOptions.push(
+      { id: 'partner', label: 'Partner', options: ['All', 'Triem Security', 'Eventus', 'DIST'], defaultValue: 'All' },
+      { id: 'status', label: 'Status', options: ['All', 'Completed', 'In Progress', 'Delayed'], defaultValue: 'All' }
+    );
+  } else if (activeTab === 'task') {
+    filterOptions.push(
+      { id: 'leader', label: 'Leader', options: ['All', 'David', 'Elena'], defaultValue: 'All' },
+      { id: 'assigned', label: 'Assigned', options: ['All', 'Alice', 'Bob', 'Charlie'], defaultValue: 'All' },
+      { id: 'status', label: 'Status', options: ['All', 'Completed', 'In Progress', 'Delayed'], defaultValue: 'All' }
+    );
+  } else if (activeTab === 'member') {
+    filterOptions.push({ id: 'member', label: 'Member', options: ['All', 'Alice Williams', 'Bob Miller', 'Charlie Davis'], defaultValue: 'All' });
+    filterOptions.push({ id: 'department', label: 'Department', options: ['All', 'Design', 'Engineering', 'Product'], defaultValue: 'All' });
+  }
+
+  // Selected Member Logic (Mock for now)
+  const selectedMember = mockMembers.find(m => m.id === selectedMemberId) || null;
+  // Placeholder task filtering for member drawer
+  const selectedMemberTasks = [];
+  const selectedMemberWorklogs = mockWorklogs.filter(w => w.member === selectedMember?.member);
+
 
   return (
     <PageLayout
       title="Reports"
       tabs={[
-        { id: 'requirement', label: 'Requirement', count: mockRequirements.length },
-        { id: 'task', label: 'Tasks', count: mockTasks.length },
-        { id: 'member', label: 'Employee', count: mockMembers.length }
+        { id: 'requirement', label: 'Requirement', count: kpi.totalRequirements },
+        { id: 'task', label: 'Tasks', count: taskKPI.totalTasks },
+        { id: 'member', label: 'Employee', count: employees.length }
+
       ]}
       activeTab={activeTab}
       onTabChange={(tabId) => setActiveTab(tabId as any)}
       customFilters={
         <div className="flex items-center gap-3">
           <Button
-            onClick={() => { }}
+            onClick={handleExport}
             icon={<Download className="w-4 h-4" />}
             className="font-['Manrope:SemiBold',sans-serif] text-[13px] rounded-full"
+            disabled={isDownloading}
           >
-            Download
+            {isDownloading ? 'Generating...' : 'Download'}
           </Button>
           <DateRangeSelector
             value={dateRange}
@@ -435,22 +417,23 @@ export function ReportsPage() {
               <>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
                   <span className="text-[12px] font-medium text-[#666666]">Total Requirements</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{filteredRequirements.length}</span>
+                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{kpi.totalRequirements}</span>
                 </div>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Total Allotted Hours</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{filteredRequirements.reduce((acc, r) => acc + r.allottedHrs, 0)}h</span>
+                  <span className="text-[12px] font-medium text-[#666666]">On Time Completed</span>
+                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">{kpi.onTimeCompleted}</span>
                 </div>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Total Engaged Hours</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{filteredRequirements.reduce((acc, r) => acc + r.engagedHrs, 0)}h</span>
+                  <span className="text-[12px] font-medium text-[#666666]">Delayed but Completed</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{kpi.delayedCompleted}</span>
+                    {kpi.totalExtraHrs > 0 && <span className="text-sm font-medium text-[#FF3B3B]">(+{kpi.totalExtraHrs}h)</span>}
+                  </div>
                 </div>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
                   <span className="text-[12px] font-medium text-[#666666]">Avg. Efficiency</span>
                   <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
-                    {filteredRequirements.length > 0
-                      ? Math.round((filteredRequirements.reduce((acc, r) => acc + (r.allottedHrs > 0 ? (r.engagedHrs / r.allottedHrs) : 0), 0) / filteredRequirements.length) * 100)
-                      : 0}%
+                    {kpi.efficiency}%
                   </span>
                 </div>
               </>
@@ -460,20 +443,23 @@ export function ReportsPage() {
               <>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
                   <span className="text-[12px] font-medium text-[#666666]">Total Tasks</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{filteredTasks.length}</span>
+                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{taskKPI.totalTasks}</span>
                 </div>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Total Allotted Hours</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{filteredTasks.reduce((acc, t) => acc + t.allottedHrs, 0)}h</span>
+                  <span className="text-[12px] font-medium text-[#666666]">On Time Completed</span>
+                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">{taskKPI.onTimeCompleted}</span>
                 </div>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Total Engaged Hours</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{filteredTasks.reduce((acc, t) => acc + t.engagedHrs, 0)}h</span>
+                  <span className="text-[12px] font-medium text-[#666666]">Delayed but Completed</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{taskKPI.delayedCompleted}</span>
+                    {taskKPI.totalExtraHrs > 0 && <span className="text-sm font-medium text-[#FF3B3B]">(+{taskKPI.totalExtraHrs}h)</span>}
+                  </div>
                 </div>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Extra Hours</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#FF3B3B]">
-                    +{filteredTasks.reduce((acc, t) => acc + t.extraHrs, 0)}h
+                  <span className="text-[12px] font-medium text-[#666666]">Avg. Efficiency</span>
+                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
+                    {taskKPI.efficiency}%
                   </span>
                 </div>
               </>
@@ -483,31 +469,22 @@ export function ReportsPage() {
               <>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
                   <span className="text-[12px] font-medium text-[#666666]">Total Investment</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">
-                    ${filteredMembers.reduce((acc, m) => acc + (m.totalWorkingHrs * m.costPerHour), 0).toLocaleString()}
-                  </span>
+                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">${employeeKPI.totalInvestment.toLocaleString()}</span>
                 </div>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
                   <span className="text-[12px] font-medium text-[#666666]">Total Revenue</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">
-                    ${filteredMembers.reduce((acc, m) => acc + (m.actualEngagedHrs * m.billablePerHour), 0).toLocaleString()}
-                  </span>
+                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">${employeeKPI.totalRevenue.toLocaleString()}</span>
                 </div>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
                   <span className="text-[12px] font-medium text-[#666666]">Net Profit</span>
-                  <span className={`text-2xl font-['Manrope:Bold',sans-serif] ${filteredMembers.reduce((acc, m) => acc + ((m.actualEngagedHrs * m.billablePerHour) - (m.totalWorkingHrs * m.costPerHour)), 0) >= 0
-                    ? 'text-[#111111]'
-                    : 'text-[#FF3B3B]'
-                    }`}>
-                    ${filteredMembers.reduce((acc, m) => acc + ((m.actualEngagedHrs * m.billablePerHour) - (m.totalWorkingHrs * m.costPerHour)), 0).toLocaleString()}
+                  <span className={`text-2xl font-['Manrope:Bold',sans-serif] ${employeeKPI.netProfit >= 0 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
+                    ${employeeKPI.netProfit.toLocaleString()}
                   </span>
                 </div>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Avg. Efficiency</span>
+                  <span className="text-[12px] font-medium text-[#666666]">Avg. Rate/Hr</span>
                   <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
-                    {filteredMembers.length > 0
-                      ? Math.round((filteredMembers.reduce((acc, m) => acc + (m.totalWorkingHrs > 0 ? (m.actualEngagedHrs / m.totalWorkingHrs) : 0), 0) / filteredMembers.length) * 100)
-                      : 0}%
+                    ${employeeKPI.avgRatePerHr.toLocaleString()}
                   </span>
                 </div>
               </>
@@ -515,19 +492,229 @@ export function ReportsPage() {
           </div>
         </div>
 
+        {/* Hidden PDF Template - Dynamic based on Tab */}
+      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+        <div ref={reportRef} className="w-[210mm] min-h-[297mm] bg-white p-[40px] font-['Inter'] text-[#111111]">
+            <div className="flex justify-between items-center border-b-2 border-[#EEEEEE] pb-5 mb-8">
+                <div className="flex flex-col">
+                    <h1 className="font-['Manrope'] font-extrabold text-[24px] m-0 text-[#111111]">Alsonotify<span className="text-[#F59E0B]">.</span></h1>
+                </div>
+                <div className="text-right text-[12px] text-[#666666] font-['Manrope']">
+                    <span className="block font-bold text-[16px] text-[#111111] mb-1">
+                        {activeTab === 'requirement' ? 'Requirements Report' : activeTab === 'task' ? 'Tasks Report' : 'Employee Performance Report'}
+                    </span>
+                    <span>Generated: {new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}</span><br />
+                    <span>Period: {dateRange?.[0] ? dateRange[0].format('MMM DD') : 'Jan 01'} - {dateRange?.[1] ? dateRange[1].format('MMM DD, YYYY') : 'Jan 31, 2026'}</span>
+                </div>
+            </div>
+
+            {/* KPI Section - Dynamic */}
+            <div className="grid grid-cols-4 gap-4 mb-8">
+                {activeTab === 'requirement' && (
+                    <>
+                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
+                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Total Requirements</span>
+                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#111111]">{kpi.totalRequirements}</p>
+                        </div>
+                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
+                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">On-Time Completion</span>
+                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#0F9D58]">{kpi.onTimeCompleted}</p>
+                        </div>
+                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
+                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Delayed</span>
+                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#FF3B3B]">{kpi.delayedCompleted} <span className="text-[12px] text-[#666666] font-medium">({kpi.totalExtraHrs > 0 ? `+${kpi.totalExtraHrs}h` : '0h'})</span></p>
+                        </div>
+                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
+                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Avg. Efficiency</span>
+                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#2196F3]">{kpi.efficiency}%</p>
+                        </div>
+                    </>
+                )}
+                {activeTab === 'task' && (
+                     <>
+                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
+                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Total Tasks</span>
+                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#111111]">{taskKPI.totalTasks}</p>
+                        </div>
+                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
+                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">On-Time Done</span>
+                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#0F9D58]">{taskKPI.onTimeCompleted}</p>
+                        </div>
+                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
+                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Delayed</span>
+                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#FF3B3B]">{taskKPI.delayedCompleted} <span className="text-[12px] text-[#666666] font-medium">({taskKPI.totalExtraHrs > 0 ? `+${taskKPI.totalExtraHrs}h` : '0h'})</span></p>
+                        </div>
+                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
+                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Efficiency</span>
+                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#2196F3]">{taskKPI.efficiency}%</p>
+                        </div>
+                    </>
+                )}
+                {activeTab === 'member' && (
+                     <>
+                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
+                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Total Investment</span>
+                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#111111]">${employeeKPI.totalInvestment.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
+                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Total Revenue</span>
+                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#0F9D58]">${employeeKPI.totalRevenue.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
+                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Net Profit</span>
+                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#0F9D58]">${employeeKPI.netProfit.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl p-4">
+                            <span className="block text-[11px] font-medium text-[#666666] uppercase tracking-wide mb-1">Avg. Rate / Hr</span>
+                            <p className="font-['Manrope'] font-bold text-[20px] m-0 text-[#2196F3]">${employeeKPI.avgRatePerHr}/h</p>
+                        </div>
+                    </>
+                )}
+            </div>
+
+            {/* Table - Dynamic */}
+            <table className="w-full border-collapse text-[12px]">
+                <thead>
+                    <tr>
+                        {activeTab === 'requirement' && (
+                            <>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide rounded-tl-lg w-[25%]">Requirement</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[15%]">Manager</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[15%]">Timeline</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[20%]">Hours Utilization</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[10%]">Revenue</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide rounded-tr-lg">Status</th>
+                            </>
+                        )}
+                        {activeTab === 'task' && (
+                            <>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide rounded-tl-lg w-[30%]">Task</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[20%]">Requirement</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[10%]">Leader</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[10%]">Assigned</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[8%]">Allotted</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[8%]">Engaged</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[8%]">Extra</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide rounded-tr-lg">Status</th>
+                            </>
+                        )}
+                        {activeTab === 'member' && (
+                            <>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide rounded-tl-lg w-[25%]">Member</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[20%]">Tasks Performance</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide w-[15%]">Load</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide">Investment</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide">Revenue</th>
+                                <th className="bg-[#111111] text-white font-['Manrope'] font-semibold text-left p-3 text-[11px] uppercase tracking-wide rounded-tr-lg">Net Profit</th>
+                            </>
+                        )}
+                    </tr>
+                </thead>
+                <tbody>
+                    {activeTab === 'requirement' && filteredRequirements.map((row, idx) => (
+                        <tr key={idx} className={idx % 2 === 0 ? 'bg-[#F9FAFB]' : 'bg-white'}>
+                             <td className="p-3 border-b border-[#EEEEEE]">
+                                <div className="font-['Manrope'] font-bold text-[#111111] text-[13px]">{row.requirement}</div>
+                                <div className="text-[11px] text-[#666666]">Partner: {row.partner}</div>
+                            </td>
+                            <td className="p-3 border-b border-[#EEEEEE] font-medium">{row.manager || 'Unassigned'}</td>
+                            <td className="p-3 border-b border-[#EEEEEE]">
+                                <div className="text-[12px] font-bold text-[#111111]">{row.startDate ? dayjs(row.startDate).format('MMM DD') : '-'}</div>
+                                <div className="text-[10px] text-[#666666]">to {row.endDate ? dayjs(row.endDate).format('MMM DD') : '-'}</div>
+                            </td>
+                            <td className="p-3 border-b border-[#EEEEEE]">
+                                 <div className="flex justify-between text-[11px] mb-1">
+                                    <span className={`font-bold ${row.engagedHrs > row.allottedHrs ? 'text-[#FF3B3B]' : 'text-[#111111]'}`}>{row.engagedHrs}h</span>
+                                    <span className="text-[#999999]">/ {row.allottedHrs}h</span>
+                                 </div>
+                                 <div className="w-[100px] h-1 bg-[#F0F0F0] rounded-full overflow-hidden">
+                                     <div 
+                                        className={`h-full rounded-full ${row.engagedHrs > row.allottedHrs ? 'bg-[#FF3B3B]' : 'bg-[#111111]'}`}
+                                        style={{ width: `${Math.min((row.engagedHrs / (row.allottedHrs || 1)) * 100, 100)}%` }}
+                                     ></div>
+                                 </div>
+                            </td>
+                            <td className="p-3 border-b border-[#EEEEEE] font-bold text-[#0F9D58]">${row.revenue?.toLocaleString() || 0}</td>
+                            <td className="p-3 border-b border-[#EEEEEE]">
+                                <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                                    row.status === 'Completed' ? 'bg-[#E6F4EA] text-[#1E8E3E]' :
+                                    row.status === 'In_Progress' ? 'bg-[#E8F0FE] text-[#1967D2]' :
+                                    'bg-[#FCE8E6] text-[#C5221F]'
+                                }`}>
+                                    {row.status.replace('_', ' ')}
+                                </span>
+                            </td>
+                        </tr>
+                    ))}
+                    {activeTab === 'task' && filteredTasks.map((row, idx) => (
+                         <tr key={idx} className={idx % 2 === 0 ? 'bg-[#F9FAFB]' : 'bg-white'}>
+                            <td className="p-3 border-b border-[#EEEEEE] font-['Manrope'] font-bold text-[#111111] text-[13px]">{row.task}</td>
+                            <td className="p-3 border-b border-[#EEEEEE] text-[11px] text-[#666666]">{row.requirement}</td>
+                            <td className="p-3 border-b border-[#EEEEEE] font-medium">{row.leader}</td>
+                            <td className="p-3 border-b border-[#EEEEEE] font-medium">{row.assigned}</td>
+                            <td className="p-3 border-b border-[#EEEEEE] font-medium">{row.allottedHrs}h</td>
+                            <td className={`p-3 border-b border-[#EEEEEE] font-bold ${row.engagedHrs > row.allottedHrs ? 'text-[#FF3B3B]' : 'text-[#111111]'}`}>{row.engagedHrs}h</td>
+                            <td className={`p-3 border-b border-[#EEEEEE] font-bold ${row.extraHrs > 0 ? 'text-[#FF3B3B]' : 'text-[#999]'}`}>{row.extraHrs > 0 ? `+${row.extraHrs}h` : '-'}</td>
+                             <td className="p-3 border-b border-[#EEEEEE]">
+                                <span className={`inline-block px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                                    row.status === 'Completed' ? 'bg-[#E6F4EA] text-[#1E8E3E]' :
+                                    row.status === 'In_Progress' ? 'bg-[#E8F0FE] text-[#1967D2]' :
+                                    'bg-[#FDE7F3] text-[#D61F69]'
+                                }`}>
+                                    {row.status.replace('_', ' ')}
+                                </span>
+                            </td>
+                        </tr>
+                    ))}
+                    {activeTab === 'member' && filteredEmployees.map((row, idx) => (
+                        <tr key={idx} className={idx % 2 === 0 ? 'bg-[#F9FAFB]' : 'bg-white'}>
+                            <td className="p-3 border-b border-[#EEEEEE]">
+                                <div className="font-['Manrope'] font-bold text-[#111111] text-[13px]">{row.member}</div>
+                                <div className="text-[11px] text-[#666666]">{row.designation} | {row.department}</div>
+                            </td>
+                            <td className="p-3 border-b border-[#EEEEEE]">
+                                <div className="font-bold text-[#111111] text-[14px]">{row.taskStats.assigned} <span className="font-normal text-[#666666] text-[13px]">Assigned</span></div>
+                                <div className="flex gap-2.5 mt-1 text-[11px] text-[#666666]">
+                                    <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#0F9D58]"></span> {row.taskStats.completed}</div>
+                                    <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#1A73E8]"></span> {row.taskStats.inProgress}</div>
+                                    <div className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#FF3B3B]"></span> {row.taskStats.delayed}</div>
+                                </div>
+                            </td>
+                             <td className="p-3 border-b border-[#EEEEEE]">
+                                <div className="text-[11px] font-bold mb-1">{row.utilization}%</div>
+                                 <div className="w-[100px] h-1 bg-[#F0F0F0] rounded-full overflow-hidden">
+                                    <div className={`h-full rounded-full ${row.utilization > 100 ? 'bg-[#FF3B3B]' : 'bg-[#111111]'}`} style={{ width: `${Math.min(row.utilization, 100)}%` }}></div>
+                                </div>
+                            </td>
+                            <td className="p-3 border-b border-[#EEEEEE] font-medium text-[#111111]">${row.hourlyCost.toLocaleString()}</td>
+                             <td className="p-3 border-b border-[#EEEEEE] font-bold text-[#0F9D58]">${row.revenue.toLocaleString()}</td>
+                            <td className={`p-3 border-b border-[#EEEEEE] font-bold ${row.profit >= 0 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
+                                {row.profit >= 0 ? '+' : ''}${row.profit.toLocaleString()}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+      </div>
+
         {/* Table Content */}
         <div className="flex-1 overflow-y-auto pb-6">
-          {activeTab === 'requirement' && (
+          {isLoadingRequirements || (activeTab === 'task' && isLoadingTasks) || (activeTab === 'member' && isLoadingEmployees) ? (
+            <div className="flex items-center justify-center h-40">
+              <Loader2 className="w-6 h-6 animate-spin text-[#999999]" />
+            </div>
+          ) : activeTab === 'requirement' && (
             <table className="w-full text-left border-collapse min-w-[1000px]">
               <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b border-[#EEEEEE] h-10">
-                  <th className="pl-6 pr-4 w-[50px]"><TableHeader label="No" /></th>
-                  <th className="px-4 w-[300px]"><TableHeader label="Requirement" sortKey="requirement" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Manager" sortKey="manager" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Timeline" sortKey="startDate" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Hours Utilization" sortKey="engagedHrs" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4 w-[80px] text-center"><TableHeader label="Rev" sortKey="revision" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Status" sortKey="status" currentSort={sortConfig} onSort={handleSort} /></th>
+                   <th className="pl-6 pr-4 w-[50px]"><TableHeader label="No" /></th>
+                   <th className="px-4 w-[250px]"><TableHeader label="Requirement" sortKey="requirement" currentSort={sortConfig} onSort={handleSort} /></th>
+                   <th className="px-4"><TableHeader label="Manager" sortKey="manager" currentSort={sortConfig} onSort={handleSort} /></th>
+                   <th className="px-4 w-[140px]"><TableHeader label="Timeline" /></th>
+                   <th className="px-4 w-[150px]"><TableHeader label="Hours Utilization" sortKey="efficiency" currentSort={sortConfig} onSort={handleSort} /></th>
+                   <th className="px-4"><TableHeader label="Revenue" sortKey="revenue" currentSort={sortConfig} onSort={handleSort} /></th>
+                   <th className="px-4"><TableHeader label="Status" sortKey="status" currentSort={sortConfig} onSort={handleSort} /></th>
                 </tr>
               </thead>
               <tbody>
@@ -544,73 +731,29 @@ export function ReportsPage() {
                           <span className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.partner}</span>
                         </div>
                       </td>
-                      <td className="px-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-[#F5F5F5] flex items-center justify-center text-[10px] font-bold text-[#666666]">
-                            {row.manager.charAt(0)}
-                          </div>
-                          <span className="text-[13px] text-[#111111] font-['Inter:Medium',sans-serif]">{row.manager}</span>
+                      <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.manager || 'Unassigned'}</td>
+                     <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-[#111111] font-medium">{row.startDate ? dayjs(row.startDate).format('MMM DD') : '-'}</span>
+                            <span className="text-[11px] text-[#999999]">to {row.endDate ? dayjs(row.endDate).format('MMM DD') : '-'}</span>
                         </div>
-                      </td>
-                      <td className="px-4">
-                        {(() => {
-                          const startDate = row.startDate !== '-' ? parseISO(row.startDate) : null;
-                          const endDate = row.endDate !== '-' ? parseISO(row.endDate) : null;
-
-                          let statusText = null;
-                          let statusColor = '';
-
-                          if (endDate) {
-                            const today = startOfDay(new Date());
-                            const end = startOfDay(endDate);
-                            const diffTime = end.getTime() - today.getTime();
-                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                            if (diffDays < 0) {
-                              statusText = `Overdue by ${Math.abs(diffDays)} days`;
-                              statusColor = 'text-[#DC2626]';
-                            } else if (diffDays === 0) {
-                              statusText = 'Deadline today';
-                              statusColor = 'text-[#F59E0B]';
-                            } else {
-                              statusText = `${diffDays} days to deadline`;
-                              statusColor = 'text-[#666666]';
-                            }
-                          }
-
-                          return (
-                            <div className="flex items-center gap-2 text-[11px] text-[#666666] font-['Inter:Medium',sans-serif] bg-[#F9FAFB] p-1.5 rounded-md w-fit whitespace-nowrap">
-                              <Calendar className="w-3 h-3 text-[#999999]" />
-                              <span>
-                                {startDate ? format(startDate, 'MMM d') : ''}
-                                {startDate && endDate ? ' - ' : ''}
-                                {endDate ? format(endDate, 'MMM d') : ''}
-                              </span>
-                              {statusText && row.status !== 'Completed' && (
-                                <span className={`pl-1 border-l border-[#E5E5E5] ${statusColor}`}>
-                                  {statusText}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-4 w-[200px]">
-                        <div className="flex flex-col gap-1.5 justify-center h-full">
-                          <div className="flex justify-between text-[11px]">
-                            <span className="font-medium text-[#111111]">{row.engagedHrs}h</span>
-                            <span className="text-[#999999]">of {row.allottedHrs}h</span>
-                          </div>
-                          <div className="w-full h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${isOverBudget ? 'bg-[#FF3B3B]' : 'bg-[#111111]'}`}
-                              style={{ width: `${percentage}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif] text-center">{row.revision}</td>
-                      <td className="px-4"><StatusBadge status={row.status} /></td>
+                     </td>
+                     <td className="px-4">
+                         <div className="flex flex-col gap-1.5 justify-center h-full">
+                           <div className="flex justify-between text-[11px]">
+                             <span className="font-medium text-[#111111]">{row.engagedHrs}h</span>
+                             <span className="text-[#999999]">of {row.allottedHrs}h</span>
+                           </div>
+                           <div className="w-full h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
+                             <div 
+                                className={`h-full rounded-full ${row.engagedHrs > row.allottedHrs ? 'bg-[#FF3B3B]' : 'bg-[#111111]'}`}
+                                style={{ width: `${Math.min((row.engagedHrs / (row.allottedHrs || 1)) * 100, 100)}%` }}
+                             ></div>
+                           </div>
+                         </div>
+                     </td>
+                     <td className="px-4 text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">${row.revenue?.toLocaleString() || 0}</td>
+                     <td className="px-4"><StatusBadge status={row.status} /></td>
                     </tr>
                   );
                 })}
@@ -658,60 +801,71 @@ export function ReportsPage() {
           )}
 
           {activeTab === 'member' && (
-            <table className="w-full text-left border-collapse">
+             <table className="w-full text-left border-collapse min-w-[1000px]">
               <thead className="sticky top-0 z-10 bg-white">
                 <tr className="border-b border-[#EEEEEE] h-10">
-                  <th className="pl-6 pr-4"><TableHeader label="Member" sortKey="member" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Department" sortKey="department" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Task Stats" /></th>
-                  <th className="px-4 text-right"><TableHeader label="Revenue" align="right" /></th>
-                  <th className="px-4 text-right"><TableHeader label="Investment" align="right" /></th>
-                  <th className="px-4 w-[200px]"><TableHeader label="Utilization" sortKey="actualEngagedHrs" currentSort={sortConfig} onSort={handleSort} /></th>
+                  <th className="pl-6 pr-4 w-[50px]"><TableHeader label="No" /></th>
+                  <th className="px-4 w-[250px]"><TableHeader label="Employee" sortKey="member" currentSort={sortConfig} onSort={handleSort} /></th>
+                  <th className="px-4"><TableHeader label="Tasks Performance" /></th>
+                  <th className="px-4"><TableHeader label="Load" sortKey="utilization" currentSort={sortConfig} onSort={handleSort} /></th>
+                  <th className="px-4"><TableHeader label="Investment" sortKey="hourlyCost" currentSort={sortConfig} onSort={handleSort} /></th>
+                  <th className="px-4"><TableHeader label="Revenue" sortKey="revenue" currentSort={sortConfig} onSort={handleSort} /></th>
+                  <th className="px-4"><TableHeader label="Net Profit" sortKey="profit" currentSort={sortConfig} onSort={handleSort} /></th>
                 </tr>
               </thead>
               <tbody>
-                {filteredMembers.map((row) => {
-                  const percentage = row.totalWorkingHrs > 0 ? Math.min((row.actualEngagedHrs / row.totalWorkingHrs) * 100, 100) : 0;
-                  const isOverLimit = row.actualEngagedHrs > row.totalWorkingHrs;
-                  const revenue = row.actualEngagedHrs * row.billablePerHour;
-                  const investment = row.totalWorkingHrs * row.costPerHour;
-
-                  return (
-                    <tr
-                      key={row.id}
-                      className="border-b border-[#FAFAFA] hover:bg-[#FAFAFA] transition-colors h-16 cursor-pointer"
-                      onClick={() => setSelectedMemberId(row.id)}
-                    >
-                      <td className="pl-6 pr-4 text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">{row.member}</td>
-                      <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.department}</td>
-                      <td className="px-4">
-                        <StatGroup stats={row.taskStats} />
-                      </td>
-                      <td className="px-4 text-[13px] text-[#0F9D58] font-['Manrope:Bold',sans-serif] text-right">
-                        ${revenue.toLocaleString()}
-                      </td>
-                      <td className="px-4 text-[13px] text-[#666666] font-['Manrope:Bold',sans-serif] text-right">
-                        ${investment.toLocaleString()}
-                      </td>
-                      <td className="px-4 w-[200px]">
-                        <div className="flex flex-col gap-1.5 justify-center h-full">
-                          <div className="flex justify-between text-[11px]">
-                            <span className="font-medium text-[#111111]">{row.actualEngagedHrs}h</span>
-                            <span className="text-[#999999]">of {row.totalWorkingHrs}h</span>
-                          </div>
-                          <div className="w-full h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${isOverLimit ? 'bg-[#FF3B3B]' : 'bg-[#111111]'}`}
-                              style={{ width: `${percentage}%` }}
-                            ></div>
-                          </div>
+                {filteredEmployees.map((row, idx) => (
+                  <tr key={row.id} className="border-b border-[#FAFAFA] hover:bg-[#FAFAFA] transition-colors h-16 cursor-pointer group" onClick={() => setSelectedMemberId(String(row.id))}>
+                    <td className="pl-6 pr-4 text-[13px] text-[#999999] font-['Inter:Medium',sans-serif]">{idx + 1}</td>
+                    <td className="px-4">
+                        <div className="flex flex-col justify-center">
+                            <span className="text-[14px] text-[#111111] font-['Manrope:Bold',sans-serif]">{row.member}</span>
+                            <span className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.designation} <span className="text-[#E5E5E5] mx-1">|</span> {row.department}</span>
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {filteredMembers.length === 0 && (
-                  <tr><td colSpan={6} className="text-center py-8 text-[#999999] text-[13px]">No employees found matching your filters.</td></tr>
+                    </td>
+                    <td className="px-4">
+                        <div className="flex flex-col">
+                            <span className="text-[14px] text-[#111111] font-['Manrope:Bold',sans-serif]">
+                                {row.taskStats.assigned} <span className="text-[#666666] font-['Inter:Regular',sans-serif] text-[13px]">Assigned</span>
+                            </span>
+                            <div className="flex gap-3 mt-1 text-[11px] font-medium text-[#666666]">
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[#0F9D58]"></div>
+                                    <span>{row.taskStats.completed}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[#1A73E8]"></div>
+                                    <span>{row.taskStats.inProgress}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[#FF3B3B]"></div>
+                                    <span>{row.taskStats.delayed}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td className="px-4 w-[150px]">
+                        <div className="flex flex-col gap-1">
+                             <div className="flex justify-between text-[11px]">
+                                <span className="font-medium text-[#111111]">{row.utilization}%</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full ${row.utilization > 100 ? 'bg-[#FF3B3B]' : 'bg-[#111111]'}`}
+                                  style={{ width: `${Math.min(row.utilization, 100)}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td className="px-4 text-[13px] text-[#666666] font-['Inter:Medium',sans-serif]">${row.hourlyCost.toLocaleString()}</td>
+                    <td className="px-4 text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">${row.revenue.toLocaleString()}</td>
+                    <td className={`px-4 text-[13px] font-['Manrope:Bold',sans-serif] ${row.profit >= 0 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
+                        ${row.profit.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+                 {filteredEmployees.length === 0 && (
+                  <tr><td colSpan={8} className="text-center py-8 text-[#999999] text-[13px]">No employees found matching your filters.</td></tr>
                 )}
               </tbody>
             </table>
@@ -737,94 +891,116 @@ export function ReportsPage() {
             <Button icon={<Download className="w-4 h-4" />} type="text">Download Report</Button>
           }
         >
-          {/* Member Stats and Tables (using Tailwind grid) */}
-          {selectedMember && (
-            <div className="space-y-8">
-              {/* Stats Grid */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="p-4 bg-[#FAFAFA] rounded-xl border border-[#EEEEEE] flex flex-col items-center text-center">
-                  <span className="text-[11px] font-bold text-[#999999] uppercase tracking-wide mb-1">Total Hours</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{selectedMember.totalWorkingHrs}h</span>
-                </div>
-                <div className="p-4 bg-[#FAFAFA] rounded-xl border border-[#EEEEEE] flex flex-col items-center text-center">
-                  <span className="text-[11px] font-bold text-[#999999] uppercase tracking-wide mb-1">Engaged</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{selectedMember.actualEngagedHrs}h</span>
-                </div>
-                <div className="p-4 bg-[#FAFAFA] rounded-xl border border-[#EEEEEE] flex flex-col items-center text-center">
-                  <span className="text-[11px] font-bold text-[#999999] uppercase tracking-wide mb-1">Efficiency</span>
-                  <span className={`text-2xl font-['Manrope:Bold',sans-serif] ${(selectedMember.totalWorkingHrs > 0 ? Math.round((selectedMember.actualEngagedHrs / selectedMember.totalWorkingHrs) * 100) : 0) >= 90 ? 'text-[#0F9D58]' : 'text-[#2196F3]'}`}>
-                    {selectedMember.totalWorkingHrs > 0 ? Math.round((selectedMember.actualEngagedHrs / selectedMember.totalWorkingHrs) * 100) : 0}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Tasks Section */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] uppercase tracking-wide">Assigned Tasks</h3>
-                  <span className="text-[11px] font-medium text-[#999999] bg-[#F5F5F5] px-2 py-1 rounded-full">{selectedMemberTasks.length} Active</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {selectedMemberTasks.map(task => (
-                    <div key={task.id} className="p-3 border border-[#EEEEEE] rounded-lg flex justify-between items-center bg-white hover:border-[#111111] transition-colors group">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${task.status === 'Completed' ? 'bg-[#0F9D58]' : task.status === 'In Progress' ? 'bg-[#2196F3]' : 'bg-[#FF3B3B]'}`}></div>
-                        <div>
-                          <p className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] mb-0.5 group-hover:text-[#111111] transition-colors">{task.task}</p>
-                          <p className="text-[11px] text-[#999999]">{task.requirement}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right hidden sm:block">
-                          <div className="text-[11px] font-medium text-[#666666]">{task.engagedHrs} / {task.allottedHrs} hrs</div>
-                          <div className="w-16 h-1 bg-[#F0F0F0] rounded-full mt-1 overflow-hidden">
-                            <div className="h-full bg-[#111111]" style={{ width: `${task.allottedHrs > 0 ? Math.min((task.engagedHrs / task.allottedHrs) * 100, 100) : 0}%` }}></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Work History Section */}
-              <div>
-                <h3 className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] uppercase tracking-wide mb-3">Work History</h3>
-                <div className="border border-[#EEEEEE] rounded-lg overflow-hidden">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-[#FAFAFA] border-b border-[#EEEEEE]">
-                      <tr>
-                        <th className="py-2 px-3 text-[11px] font-bold text-[#999999] uppercase w-[100px]">Date</th>
-                        <th className="py-2 px-3 text-[11px] font-bold text-[#999999] uppercase w-[150px]">Task</th>
-                        <th className="py-2 px-3 text-[11px] font-bold text-[#999999] uppercase">Details</th>
-                        <th className="py-2 px-3 text-[11px] font-bold text-[#999999] uppercase w-[120px] text-right">Time</th>
-                        <th className="py-2 px-3 text-[11px] font-bold text-[#999999] uppercase w-[80px] text-right">Duration</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedMemberWorklogs.map((log) => (
-                        <tr key={log.id} className="border-b border-[#F5F5F5] last:border-0 hover:bg-[#FAFAFA] transition-colors group h-9">
-                          <td className="px-3 text-[12px] font-medium text-[#111111] whitespace-nowrap">{log.date}</td>
-                          <td className="px-3 text-[12px] font-medium text-[#111111] truncate max-w-[150px]" title={log.task}>{log.task}</td>
-                          <td className="px-3 text-[12px] text-[#666666] truncate max-w-[200px]" title={log.details}>{log.details}</td>
-                          <td className="px-3 text-[11px] text-[#999999] text-right whitespace-nowrap">{log.startTime} - {log.endTime}</td>
-                          <td className="px-3 text-right">
-                            <span className="text-[11px] font-bold text-[#111111] bg-[#F5F5F5] px-1.5 py-0.5 rounded group-hover:bg-white group-hover:shadow-sm transition-all">{log.engagedTime}</span>
-                          </td>
-                        </tr>
-                      ))}
-                      {selectedMemberWorklogs.length === 0 && (
-                        <tr>
-                          <td colSpan={5} className="py-8 text-center text-[13px] text-[#999999] italic">No work history found.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Drawer content placeholder */}
+           <div>Drawer Content</div>
         </Drawer>
+      </div>
+      
+      {/* Hidden PDF Container */}
+      <div id="pdf-report-container" style={{ position: 'fixed', left: '-9999px', top: 0, width: '1200px', padding: '40px', background: 'white' }}>
+        {/* Header */}
+        <div className="flex justify-between items-start mb-8 border-b border-gray-200 pb-6">
+           <div>
+             {/* Logo */}
+             <img src={BrandLogo.src} alt="Alsonotify" className="h-8 object-contain" />
+           </div>
+           <div className="text-right">
+             <h1 className="text-2xl font-bold text-[#111111] mb-2 capitalize">
+               {activeTab === 'requirement' ? 'Requirements Report' :
+                activeTab === 'task' ? 'Tasks Report' : 'Employees Report'}
+             </h1>
+             <div className="space-y-1">
+               <p className="text-sm text-[#666666]">
+                 <span className="font-medium text-[#111111]">Generated:</span> {dayjs().format('MMM DD, YYYY')}
+               </p>
+               <p className="text-sm text-[#666666]">
+                 <span className="font-medium text-[#111111]">Period:</span> {dateRange && dateRange[0] ? dayjs(dateRange[0]).format('MMM DD, YYYY') : 'Start'} - {dateRange && dateRange[1] ? dayjs(dateRange[1]).format('MMM DD, YYYY') : 'End'}
+               </p>
+             </div>
+           </div>
+        </div>
+
+        {/* Content Table */}
+        <table className="w-full text-left border-collapse">
+            <thead>
+               <tr className="border-b border-gray-200">
+                  {activeTab === 'requirement' && (
+                    <>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Requirement</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Manager</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Timeline</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Hours</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Revenue</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Status</th>
+                    </>
+                  )}
+                  {activeTab === 'task' && (
+                    <>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Task</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Requirement</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Leader</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Assigned</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Allotted</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Engaged</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Status</th>
+                    </>
+                  )}
+                  {activeTab === 'member' && (
+                    <>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Member</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Tasks</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Load</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Investment</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Revenue</th>
+                      <th className="p-3 text-xs font-bold text-gray-500 uppercase">Profit</th>
+                    </>
+                  )}
+               </tr>
+            </thead>
+            <tbody>
+               {activeTab === 'requirement' && filteredRequirements.map((row, idx) => (
+                 <tr key={idx} className="border-b border-gray-100">
+                    <td className="p-3 text-sm font-bold text-gray-900">
+                        {row.requirement}
+                        <div className="text-xs font-normal text-gray-500">{row.partner}</div>
+                    </td>
+                    <td className="p-3 text-sm text-gray-600">{row.manager || 'Unassigned'}</td>
+                    <td className="p-3 text-sm text-gray-600">
+                        {row.startDate ? dayjs(row.startDate).format('MMM DD') : '-'} - {row.endDate ? dayjs(row.endDate).format('MMM DD') : '-'}
+                    </td>
+                    <td className="p-3 text-sm text-gray-600">{row.engagedHrs} / {row.allottedHrs}h</td>
+                    <td className="p-3 text-sm font-bold text-green-600">${row.revenue?.toLocaleString() || 0}</td>
+                    <td className="p-3 text-sm">{row.status}</td>
+                 </tr>
+               ))}
+               {activeTab === 'task' && filteredTasks.map((row, idx) => (
+                 <tr key={idx} className="border-b border-gray-100">
+                    <td className="p-3 text-sm font-bold text-gray-900">{row.task}</td>
+                    <td className="p-3 text-sm text-gray-600">{row.requirement}</td>
+                    <td className="p-3 text-sm text-gray-600">{row.leader}</td>
+                    <td className="p-3 text-sm text-gray-600">{row.assigned}</td>
+                    <td className="p-3 text-sm text-gray-600">{row.allottedHrs}h</td>
+                    <td className="p-3 text-sm font-bold text-gray-900">{row.engagedHrs}h</td>
+                    <td className="p-3 text-sm">{row.status}</td>
+                 </tr>
+               ))}
+               {activeTab === 'member' && filteredEmployees.map((row, idx) => (
+                 <tr key={idx} className="border-b border-gray-100">
+                    <td className="p-3 text-sm font-bold text-gray-900">
+                        {row.member}
+                        <div className="text-xs font-normal text-gray-500">{row.designation}</div>
+                    </td>
+                    <td className="p-3 text-sm text-gray-600">
+                        {row.taskStats.completed} / {row.taskStats.assigned}
+                    </td>
+                    <td className="p-3 text-sm text-gray-600">{row.utilization}%</td>
+                    <td className="p-3 text-sm font-bold text-gray-900">${row.hourlyCost.toLocaleString()}</td>
+                    <td className="p-3 text-sm font-bold text-green-600">${row.revenue.toLocaleString()}</td>
+                    <td className="p-3 text-sm font-bold text-green-600">${row.profit.toLocaleString()}</td>
+                 </tr>
+               ))}
+            </tbody>
+        </table>
       </div>
     </PageLayout>
   );
