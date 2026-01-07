@@ -1,0 +1,162 @@
+import axiosApi from "../config/axios";
+
+export interface RequirementReport {
+    id: number;
+    requirement: string;
+    partner: string;
+    manager: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    status: string;
+    allottedHrs: number;
+    engagedHrs: number;
+    extraHrs: number;
+    revenue: number;
+    revision: number;
+}
+
+export interface ReportKPI {
+    totalRequirements: number;
+    onTimeCompleted: number;
+    delayedCompleted: number;
+    totalExtraHrs: number;
+    efficiency: number;
+}
+
+export interface RequirementReportsResponse {
+    kpi: ReportKPI;
+    data: RequirementReport[];
+}
+
+interface GetRequirementReportsParams {
+    search?: string;
+    partner_id?: string;
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  result: T;
+}
+
+export const getRequirementReports = async (params: GetRequirementReportsParams): Promise<RequirementReportsResponse> => {
+    const queryParams: Record<string, any> = {};
+    if (params.search) queryParams.search = params.search;
+    if (params.partner_id && params.partner_id !== 'All') queryParams.partner_id = params.partner_id;
+    if (params.status && params.status !== 'All') queryParams.status = params.status;
+    if (params.start_date) queryParams.start_date = params.start_date;
+    if (params.end_date) queryParams.end_date = params.end_date;
+
+    const response = await axiosApi.get<ApiResponse<RequirementReportsResponse>>('/report/requirements', {
+        params: queryParams
+    });
+    
+    return response.data.result;
+};
+
+export interface TaskReport {
+    id: number;
+    task: string;
+    requirement: string;
+    leader: string;
+    assigned: string;
+    allottedHrs: number;
+    engagedHrs: number;
+    extraHrs: number;
+    status: string;
+}
+
+export interface TaskReportsResponse {
+    kpi: {
+        totalTasks: number;
+        onTimeCompleted: number;
+        delayedCompleted: number;
+        totalExtraHrs: number;
+        efficiency: number;
+    };
+    data: TaskReport[];
+}
+
+interface GetTaskReportsParams {
+    search?: string;
+    leader_id?: string;
+    assigned_id?: string;
+    status?: string;
+    start_date?: string;
+    end_date?: string;
+}
+
+export const getTaskReports = async (params: GetTaskReportsParams): Promise<TaskReportsResponse> => {
+    const queryParams: Record<string, any> = {};
+    if (params.search) queryParams.search = params.search;
+    if (params.leader_id && params.leader_id !== 'All') queryParams.leader_id = params.leader_id;
+    if (params.assigned_id && params.assigned_id !== 'All') queryParams.assigned_id = params.assigned_id;
+    if (params.status && params.status !== 'All') queryParams.status = params.status;
+    if (params.start_date) queryParams.start_date = params.start_date;
+    if (params.end_date) queryParams.end_date = params.end_date;
+
+    const response = await axiosApi.get<ApiResponse<TaskReportsResponse>>('/report/tasks', {
+        params: queryParams
+    });
+    
+    return response.data.result;
+};
+
+
+export interface EmployeeReport {
+    id: number;
+    member: string;
+    designation: string;
+    department: string;
+    department_id: number | null;
+    utilization: number;
+    hourlyCost: number;
+    revenue: number;
+    profit: number;
+    margin: number;
+    engagedHrs: number;
+    taskStats: {
+        assigned: number;
+        completed: number;
+        inProgress: number;
+        delayed: number;
+    };
+}
+
+export interface EmployeeKPI {
+    totalInvestment: number;
+    totalRevenue: number;
+    netProfit: number;
+    avgRatePerHr: number;
+}
+
+export interface EmployeeReportsResponse {
+    kpi: EmployeeKPI;
+    data: EmployeeReport[];
+}
+
+interface GetEmployeeReportsParams {
+    search?: string;
+    department_id?: string;
+    member_id?: string;
+    start_date?: string;
+    end_date?: string;
+}
+
+export const getEmployeeReports = async (params: GetEmployeeReportsParams): Promise<EmployeeReportsResponse> => {
+    const queryParams: Record<string, any> = {};
+    if (params.search) queryParams.search = params.search;
+    if (params.department_id && params.department_id !== 'All') queryParams.department_id = params.department_id;
+    if (params.member_id && params.member_id !== 'All') queryParams.member_id = params.member_id;
+    if (params.start_date) queryParams.start_date = params.start_date;
+    if (params.end_date) queryParams.end_date = params.end_date;
+
+    const response = await axiosApi.get<ApiResponse<EmployeeReportsResponse>>('/report/employees', {
+        params: queryParams
+    });
+    
+    return response.data.result;
+};
