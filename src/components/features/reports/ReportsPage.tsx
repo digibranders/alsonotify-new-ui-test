@@ -292,6 +292,14 @@ export function ReportsPage() {
     enabled: activeTab === 'member' || true
   });
 
+  console.log('Reports Debug:', { 
+      requirementData, 
+      taskData, 
+      employeeData,
+      reqLoading: isLoadingRequirements,
+      taskLoading: isLoadingTasks 
+  });
+
 
   // Process Data
   const requirements = requirementData?.data || [];
