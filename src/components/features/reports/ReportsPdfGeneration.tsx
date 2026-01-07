@@ -298,7 +298,7 @@ const KPICard = ({ label, value, color = '#111111', subValue = null }: { label: 
   </div>
 );
 
-const Th = ({ children, style }: { children: React.ReactNode, style?: React.CSSProperties }) => (
+const Th = ({ children, style, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) => (
   <th style={{
     backgroundColor: '#111111',
     color: 'white',
@@ -310,12 +310,12 @@ const Th = ({ children, style }: { children: React.ReactNode, style?: React.CSSP
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
     ...style
-  }}>
+  }} {...props}>
     {children}
   </th>
 );
 
-const Td = ({ children, style }: { children: React.ReactNode, style?: React.CSSProperties }) => (
+const Td = ({ children, style, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) => (
   <td style={{
     padding: '12px 15px',
     borderBottom: '1px solid #EEEEEE',
@@ -323,7 +323,7 @@ const Td = ({ children, style }: { children: React.ReactNode, style?: React.CSSP
     verticalAlign: 'middle',
     color: '#111111', 
     ...style
-  }}>
+  }} {...props}>
     {children}
   </td>
 );
