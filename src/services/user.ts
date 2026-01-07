@@ -325,3 +325,13 @@ export const updatePassword = async (password: string): Promise<ApiResponse<null
     throw error;
   }
 };
+
+// Delete partner (or cancel request)
+export const deletePartner = async (params: { userType: 'PARTNER'; partnerUserId?: number; inviteId?: number }): Promise<ApiResponse<any>> => {
+  try {
+    const { data } = await axiosApi.delete<ApiResponse<any>>("/user/partners", { data: params });
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
