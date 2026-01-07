@@ -373,9 +373,9 @@ export function ReportsPage() {
     <PageLayout
       title="Reports"
       tabs={[
-        { id: 'requirement', label: 'Requirement', count: kpi.totalRequirements },
-        { id: 'task', label: 'Tasks', count: taskKPI.totalTasks },
-        { id: 'member', label: 'Employee', count: employees.length }
+        { id: 'requirement', label: 'Requirement' },
+        { id: 'task', label: 'Tasks' },
+        { id: 'member', label: 'Employee' }
 
       ]}
       activeTab={activeTab}
