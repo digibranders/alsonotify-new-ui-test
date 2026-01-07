@@ -1,6 +1,4 @@
-import { useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { useState } from 'react';
 import {
   Download,
   Clock, CheckCircle2, AlertCircle, Loader2,
@@ -11,6 +9,7 @@ import { PageLayout } from '../../layout/PageLayout';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { DateRangeSelector } from '../../common/DateRangeSelector';
 import { Drawer, Tooltip, Button } from "antd";
+import { ReportsPdfTemplate, IndividualEmployeePdfTemplate, generatePdf } from './ReportsPdfGeneration'; // New Import
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { useTabSync } from '@/hooks/useTabSync';
@@ -118,7 +117,8 @@ export function ReportsPage() {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [selectedTaskStatus, setSelectedTaskStatus] = useState<string>('All');
   const [isDownloading, setIsDownloading] = useState(false);
-  const reportRef = useRef<HTMLDivElement>(null);
+  const [isDownloadingIndividual, setIsDownloadingIndividual] = useState(false);
+
 
   // Filters State
   const [filters, setFilters] = useState<Record<string, string>>({
@@ -167,49 +167,10 @@ export function ReportsPage() {
   };
 
   const handleDownloadPDF = async () => {
-    const element = document.getElementById('pdf-report-container');
-    if (!element) return;
     setIsDownloading(true);
     try {
-      const canvas = await html2canvas(element, {
-        scale: 2, // Higher resolution
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      // First Page
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight;
-
-      // Footer for First Page
-      pdf.setFontSize(8);
-      pdf.setTextColor(150);
-      pdf.text('Alsonotify Inc.', 10, pdfHeight - 10);
-      pdf.text('Page 1 of 1', pdfWidth - 25, pdfHeight - 10); // Simplified for MVP 1 page usually
-
-      // Multi-page capability (basic)
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        // Footer for subsequent pages
-        pdf.setFontSize(8);
-        pdf.setTextColor(150);
-        pdf.text('Alsonotify Inc.', 10, pdfHeight - 10);
-      }
-
-      pdf.save(`alsonotify_${activeTab}_report_${dayjs().format('YYYY-MM-DD')}.pdf`);
+      const fileName = `alsonotify_${activeTab}_report_${dayjs().format('YYYY-MM-DD')}.pdf`;
+      await generatePdf(fileName, 'pdf-report-container');
     } catch (error) {
       console.error('PDF Generation failed:', error);
       alert("Failed to generate PDF. Please check console for details.");
@@ -217,6 +178,20 @@ export function ReportsPage() {
       setIsDownloading(false);
     }
   };
+
+  const handleDownloadIndividualPDF = async () => {
+    if(!selectedMember) return;
+    setIsDownloadingIndividual(true);
+    try {
+      const fileName = `alsonotify_employee_${selectedMember.member.replace(/\s+/g, '_')}_${dayjs().format('YYYY-MM-DD')}.pdf`;
+      await generatePdf(fileName, 'pdf-individual-report-container');
+    } catch (error) {
+         console.error('PDF Generation failed:', error);
+         alert("Failed to generate PDF");
+    } finally {
+        setIsDownloadingIndividual(false);
+    }
+  }
 
   const handleExport = () => {
       handleDownloadPDF();
@@ -658,135 +633,134 @@ export function ReportsPage() {
         </div>
 
         <Drawer
-          title={
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-[#111111] flex items-center justify-center text-white text-lg font-['Manrope:Bold',sans-serif]">
-                {selectedMember?.member.charAt(0)}
-              </div>
-              <div>
-                <div className="text-lg font-['Manrope:Bold',sans-serif] text-[#111111]">{selectedMember?.member}</div>
-                <div className="text-sm text-[#666666]">{selectedMember?.department}</div>
-              </div>
-            </div>
-          }
-          size={600}
+          title={null}
+          closable={false}
+          width={600}
           onClose={() => setSelectedMemberId(null)}
           open={!!selectedMemberId}
-          extra={
-            <Button icon={<Download className="w-4 h-4" />} type="text">Download Report</Button>
-          }
+          styles={{ body: { padding: 0 } }}
         >
-          {/* Drawer content placeholder */}
-           <div>Drawer Content</div>
+          {selectedMember && (
+            <div className="flex flex-col h-full bg-white">
+              {/* Drawer Header */}
+              <div className="p-6 border-b border-[#EEEEEE] sticky top-0 bg-white z-10">
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-[#111111] flex items-center justify-center text-white text-lg font-['Manrope:Bold',sans-serif] shrink-0">
+                      {selectedMember.member.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111] m-0">
+                        {selectedMember.member}
+                      </h2>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-sm text-[#666666] font-['Inter:Medium',sans-serif]">
+                          {selectedMember.department}
+                        </span>
+                        <span className="w-1 h-1 rounded-full bg-[#999999]/30"></span>
+                        <span className="px-2 py-0.5 rounded-full bg-[#7ccf00]/10 text-[#7ccf00] text-[11px] font-bold uppercase tracking-wide">
+                          Active
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    onClick={handleDownloadIndividualPDF}
+                    disabled={isDownloadingIndividual}
+                    className="p-2 hover:bg-[#FAFAFA] rounded-full transition-colors text-[#666666]"
+                    title="Download Report"
+                  >
+                    {isDownloadingIndividual ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Drawer Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                
+                {/* Stats Cards */}
+                <div className="grid grid-cols-3 gap-4">
+                    <div className="p-4 bg-[#FAFAFA] rounded-xl border border-[#EEEEEE] flex flex-col items-center text-center">
+                        <span className="text-[11px] font-bold text-[#666666] uppercase tracking-wide mb-1">Total Hours</span>
+                        <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{selectedMember.totalWorkingHrs}h</span>
+                    </div>
+                    <div className="p-4 bg-[#FAFAFA] rounded-xl border border-[#EEEEEE] flex flex-col items-center text-center">
+                        <span className="text-[11px] font-bold text-[#666666] uppercase tracking-wide mb-1">Engaged</span>
+                        <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{selectedMember.actualEngagedHrs}h</span>
+                    </div>
+                    <div className="p-4 bg-[#FAFAFA] rounded-xl border border-[#EEEEEE] flex flex-col items-center text-center">
+                        <span className="text-[11px] font-bold text-[#666666] uppercase tracking-wide mb-1">Efficiency</span>
+                        <span className={`text-2xl font-['Manrope:Bold',sans-serif] ${
+                          (selectedMember.actualEngagedHrs / selectedMember.totalWorkingHrs * 100) >= 90 ? 'text-[#7ccf00]' : 
+                          (selectedMember.actualEngagedHrs / selectedMember.totalWorkingHrs * 100) >= 75 ? 'text-[#2196F3]' : 'text-[#FF3B3B]'
+                        }`}>
+                          {Math.round(selectedMember.actualEngagedHrs / selectedMember.totalWorkingHrs * 100)}%
+                        </span>
+                    </div>
+                </div>
+
+                {/* Work History */}
+                <div>
+                    <h3 className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] uppercase tracking-wide mb-3">Work History</h3>
+                    <div className="border border-[#EEEEEE] rounded-lg overflow-hidden">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-[#FAFAFA] border-b border-[#EEEEEE]">
+                                <tr>
+                                    <th className="py-2 px-3 text-[11px] font-bold text-[#666666] uppercase w-[100px]">Date</th>
+                                    <th className="py-2 px-3 text-[11px] font-bold text-[#666666] uppercase w-[150px]">Task</th>
+                                    <th className="py-2 px-3 text-[11px] font-bold text-[#666666] uppercase">Details</th>
+                                    <th className="py-2 px-3 text-[11px] font-bold text-[#666666] uppercase w-[120px] text-right">Time</th>
+                                    <th className="py-2 px-3 text-[11px] font-bold text-[#666666] uppercase w-[80px] text-right">Duration</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {selectedMemberWorklogs.map((log) => (
+                                    <tr key={log.id} className="border-b border-[#EEEEEE] last:border-0 hover:bg-[#FAFAFA] transition-colors group h-9">
+                                        <td className="px-3 text-[12px] font-medium text-[#111111] whitespace-nowrap">{log.date}</td>
+                                        <td className="px-3 text-[12px] font-medium text-[#111111] truncate max-w-[150px]" title={log.task}>{log.task}</td>
+                                        <td className="px-3 text-[12px] text-[#666666] truncate max-w-[200px]" title={log.details}>{log.details}</td>
+                                        <td className="px-3 text-[11px] text-[#666666] text-right whitespace-nowrap">{log.startTime} - {log.endTime}</td>
+                                        <td className="px-3 text-right">
+                                            <span className="text-[11px] font-bold text-[#111111] bg-[#EEEEEE] px-1.5 py-0.5 rounded group-hover:bg-white group-hover:shadow-sm transition-all">{log.engagedTime}</span>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {selectedMemberWorklogs.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="py-8 text-center text-[13px] text-[#666666] italic">No work history found.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+              </div>
+            </div>
+          )}
         </Drawer>
       </div>
       
-      {/* Hidden PDF Container */}
-      <div id="pdf-report-container" style={{ position: 'fixed', left: '-9999px', top: 0, width: '1200px', padding: '40px', background: 'white' }}>
-        {/* Header */}
-        <div className="flex justify-between items-start mb-8 border-b pb-6" style={{ borderColor: '#e5e7eb' }}>
-           <div>
-             {/* Logo */}
-             <img src={BrandLogo.src} alt="Alsonotify" className="h-8 object-contain" />
-           </div>
-           <div className="text-right">
-             <h1 className="text-2xl font-bold text-[#111111] mb-2 capitalize">
-               {activeTab === 'requirement' ? 'Requirements Report' :
-                activeTab === 'task' ? 'Tasks Report' : 'Employees Report'}
-             </h1>
-              <div className="space-y-1">
-                <p className="text-sm" style={{ color: '#666666' }}>
-                  <span className="font-medium" style={{ color: '#111111' }}>Generated:</span> {dayjs().format('MMM DD, YYYY')}
-                </p>
-                <p className="text-sm" style={{ color: '#666666' }}>
-                  <span className="font-medium" style={{ color: '#111111' }}>Period:</span> {dateRange?.[0]?.format('MMM DD, YYYY') || 'Start'} - {dateRange?.[1]?.format('MMM DD, YYYY') || 'End'}
-                </p>
-              </div>
-           </div>
-        </div>
+      
+      {/* Hidden PDF Template Component */}
+      <ReportsPdfTemplate 
+        activeTab={activeTab}
+        data={activeTab === 'requirement' ? filteredRequirements : activeTab === 'task' ? filteredTasks : filteredEmployees}
+        kpis={activeTab === 'requirement' ? kpi : activeTab === 'task' ? taskKPI : employeeKPI}
+        dateRange={dateRange}
+      />
 
-        {/* Content Table */}
-        <table className="w-full text-left border-collapse">
-            <thead>
-               <tr className="border-b" style={{ borderColor: '#e5e7eb' }}>
-                  {activeTab === 'requirement' && (
-                    <>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Requirement</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Manager</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Timeline</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Hours</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Revenue</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Status</th>
-                    </>
-                  )}
-                  {activeTab === 'task' && (
-                    <>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Task</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Requirement</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Leader</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Assigned</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Allotted</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Engaged</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Status</th>
-                    </>
-                  )}
-                  {activeTab === 'member' && (
-                    <>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Member</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Tasks</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Load</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Investment</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Revenue</th>
-                      <th className="p-3 text-xs font-bold uppercase" style={{ color: '#6b7280' }}>Profit</th>
-                    </>
-                  )}
-               </tr>
-            </thead>
-            <tbody>
-               {activeTab === 'requirement' && filteredRequirements.map((row, idx) => (
-                 <tr key={idx} className="border-b" style={{ borderColor: '#f3f4f6' }}>
-                    <td className="p-3 text-sm font-bold" style={{ color: '#111827' }}>
-                        {row.requirement}
-                        <div className="text-xs font-normal" style={{ color: '#6b7280' }}>{row.partner}</div>
-                    </td>
-                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>{row.manager || 'Unassigned'}</td>
-                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>
-                        {row.startDate ? dayjs(row.startDate).format('MMM DD') : '-'} - {row.endDate ? dayjs(row.endDate).format('MMM DD') : '-'}
-                    </td>
-                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>{row.engagedHrs} / {row.allottedHrs}h</td>
-                    <td className="p-3 text-sm font-bold" style={{ color: '#16a34a' }}>${row.revenue?.toLocaleString() || 0}</td>
-                    <td className="p-3 text-sm">{row.status}</td>
-                 </tr>
-               ))}
-               {activeTab === 'task' && filteredTasks.map((row, idx) => (
-                 <tr key={idx} className="border-b" style={{ borderColor: '#f3f4f6' }}>
-                    <td className="p-3 text-sm font-bold" style={{ color: '#111827' }}>{row.task}</td>
-                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>{row.requirement}</td>
-                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>{row.leader}</td>
-                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>{row.assigned}</td>
-                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>{row.allottedHrs}h</td>
-                    <td className="p-3 text-sm font-bold" style={{ color: '#111827' }}>{row.engagedHrs}h</td>
-                    <td className="p-3 text-sm">{row.status}</td>
-                 </tr>
-               ))}
-               {activeTab === 'member' && filteredEmployees.map((row, idx) => (
-                 <tr key={idx} className="border-b" style={{ borderColor: '#f3f4f6' }}>
-                    <td className="p-3 text-sm font-bold" style={{ color: '#111827' }}>
-                        {row.member}
-                        <div className="text-xs font-normal" style={{ color: '#6b7280' }}>{row.designation}</div>
-                    </td>
-                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>
-                        {row.taskStats.completed} / {row.taskStats.assigned}
-                    </td>
-                    <td className="p-3 text-sm" style={{ color: '#4b5563' }}>{row.utilization}%</td>
-                    <td className="p-3 text-sm font-bold" style={{ color: '#111827' }}>${row.hourlyCost.toLocaleString()}</td>
-                    <td className="p-3 text-sm font-bold" style={{ color: '#16a34a' }}>${row.revenue.toLocaleString()}</td>
-                    <td className="p-3 text-sm font-bold" style={{ color: '#16a34a' }}>${row.profit.toLocaleString()}</td>
-                 </tr>
-               ))}
-            </tbody>
-        </table>
-      </div>
+      {/* Hidden Individual Employee PDF Template */}
+      {selectedMember && (
+          <IndividualEmployeePdfTemplate 
+            member={selectedMember}
+            worklogs={selectedMemberWorklogs}
+            dateRange={dateRange}
+          />
+      )}
+
+
     </PageLayout>
   );
 }
