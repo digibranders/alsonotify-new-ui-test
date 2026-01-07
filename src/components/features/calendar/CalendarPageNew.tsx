@@ -114,8 +114,8 @@ export function CalendarPage() {
     return allEvents.filter(event => event.date === date);
   };
 
-  const todayEvents = allEvents.filter(e => e.date === '2025-11-20');
-  const upcomingEvents = allEvents.filter(e => e.date > '2025-11-20').slice(0, 3);
+  const todayEvents = allEvents.filter(e => e.date === '2025-11-20' && e.type !== 'holiday');
+  const upcomingEvents = allEvents.filter(e => e.date > '2025-11-20' && e.type !== 'holiday').slice(0, 3);
 
   return (
     <PageLayout
@@ -152,7 +152,7 @@ export function CalendarPage() {
 
       <div className="flex-1 grid grid-cols-[1fr_320px] gap-6 overflow-hidden">
         {/* Calendar Grid */}
-        <div className="overflow-y-auto">
+        <div className="overflow-y-auto scrollbar-hide">
           <div className="bg-white border border-[#EEEEEE] rounded-[16px] p-4">
             {/* Day Headers */}
             <div className="grid grid-cols-7 gap-2 mb-2">
@@ -208,9 +208,9 @@ export function CalendarPage() {
         </div>
 
         {/* Sidebar */}
-        <div className="flex flex-col gap-4 overflow-y-auto">
+        <div className="flex flex-col gap-4 overflow-y-auto scrollbar-hide">
           {/* Today's Events */}
-          <div className="bg-[#F7F7F7] rounded-[16px] p-5">
+          <div className="bg-[#F7F7F7] rounded-[16px] p-5 flex-shrink-0">
             <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-4">
               Today&apos;s Events
             </h4>
@@ -262,7 +262,7 @@ export function CalendarPage() {
           </div>
 
           {/* Upcoming Events */}
-          <div className="bg-[#F7F7F7] rounded-[16px] p-5">
+          <div className="bg-[#F7F7F7] rounded-[16px] p-5 flex-shrink-0">
             <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-4">
               Upcoming
             </h4>
@@ -274,7 +274,7 @@ export function CalendarPage() {
                       className="w-1 h-full rounded-full mt-1"
                       style={{ backgroundColor: event.color }}
                     />
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 w-full max-w-full">
                       <div className="font-['Manrope:SemiBold',sans-serif] text-[13px] text-[#111111] mb-1 break-words">
                         {event.title}
                       </div>
