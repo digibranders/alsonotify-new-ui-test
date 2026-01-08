@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
+import { sanitizeRichTextForEditor } from '../../utils/sanitizeHtml';
 
 interface RichTextEditorProps {
   value: string;
@@ -121,7 +122,9 @@ export function RichTextEditor({ value, onChange, placeholder = "Note content...
       // Only update if content actually changed to avoid cursor jumping
       const currentContent = editorRef.current.innerHTML;
       if (currentContent !== (value || '')) {
-        editorRef.current.innerHTML = value || '';
+        // Sanitize incoming value before setting it in the editor
+        // We use the editor-specific sanitizer which might be more permissive if needed
+        editorRef.current.innerHTML = sanitizeRichTextForEditor(value || '');
       }
     }
   }, [value]);
@@ -143,7 +146,14 @@ export function RichTextEditor({ value, onChange, placeholder = "Note content...
 
   const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
     if (editorRef.current) {
-      onChange(editorRef.current.innerHTML);
+        // Sanitize content before sending it up
+        // We generally trust the editor's output mainly for structure, but it's good practice 
+        // to sanitize here too, or at least rely on the consumer to sanitize on render.
+        // The requirement is to sanitize "Editor write path". 
+        // If we strictly sanitize on input (user typing), it might be aggressive.
+        // However, the prompt says "sanitize output at the boundary".
+        const cleanContent = sanitizeRichTextForEditor(editorRef.current.innerHTML);
+        onChange(cleanContent);
     }
   };
 

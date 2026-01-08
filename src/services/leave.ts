@@ -18,7 +18,8 @@ export interface LeaveType {
         name: string;
         avatar?: string;
     };
-    [key: string]: any;
+    created_at?: string;
+    [key: string]: unknown;
 }
 
 // Get leaves (user's own leaves)

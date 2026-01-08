@@ -2,7 +2,10 @@ import Cookies from "universal-cookie";
 
 export const setToken = (token: string) => {
   const cookies = new Cookies();
-  cookies.set("_token", token, { path: "/", secure: false }); // Set secure: true in production with HTTPS
+  // Enable secure flag only when served over HTTPS (production)
+  // This preserves local dev on http://localhost
+  const isSecure = typeof window !== "undefined" && window.location.protocol === "https:";
+  cookies.set("_token", token, { path: "/", secure: isSecure, sameSite: "lax" });
 };
 
 export const getToken = () => {
@@ -13,7 +16,7 @@ export const getToken = () => {
 
 export const deleteToken = () => {
   const cookies = new Cookies();
-  cookies.remove("_token", { path: "/" });
+  cookies.remove("_token", { path: "/", sameSite: "lax" });
   return true;
 };
 

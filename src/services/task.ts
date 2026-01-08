@@ -89,15 +89,15 @@ function validatePagination(limit: number, skip: number): void {
 export const createTask = async (params: Partial<TaskType> & { name?: string }): Promise<ApiResponse<TaskType>> => {
   try {
     // Handle both 'name' (from form) and 'title' (from TaskType interface) - backend expects 'name'
-    const taskName = (params as any).name || params.title;
+    const taskName = params.name || params.title;
 
     // Validate name/title field
     if (!taskName || (typeof taskName === 'string' && taskName.trim().length === 0)) {
       throw new ApiError('Task title is required', 400);
     }
 
-    // Map to backend 'name' field (remove both title and name from params, then add name)
-    const { title, name, ...restParams } = params as any;
+    // Map to backend 'name' field (remove title from params, then add name)
+    const { title: _title, name: _name, ...restParams } = params;
     const payload = {
       ...restParams,
       name: taskName,

@@ -10,7 +10,20 @@ export interface WorkspaceType {
   client_id?: number;
   start_date?: string;
   end_date?: string;
-  [key: string]: any;
+  total_count?: number;
+  total_task?: number;
+  total_task_in_progress?: number;
+  total_task_delayed?: number;
+  total_task_completed?: number;
+  in_house?: boolean;
+  partner_name?: string;
+  company_name?: string;
+  partner_id?: number;
+  is_active?: boolean;
+  client_user?: { name: string; [key: string]: unknown };
+  client_company_name?: string;
+  assigned_users?: any[];
+  [key: string]: unknown;
 }
 
 export interface RequirementType {
@@ -20,7 +33,20 @@ export interface RequirementType {
   workspace_id: number;
   status?: string;
   priority?: string;
-  [key: string]: any;
+  pricing_model?: string;
+  budget?: number;
+  start_date?: string;
+  end_date?: string;
+  quoted_price?: number;
+  total_task?: number;
+  sender_company_id?: number;
+  sender_company?: { name: string; [key: string]: unknown };
+  leader_user?: { name: string; [key: string]: unknown };
+  manager_user?: { name: string; [key: string]: unknown };
+  document_link?: string;
+  is_high_priority?: boolean;
+  assignedTo?: any[];
+  [key: string]: unknown;
 }
 
 export interface CommentType {
@@ -28,7 +54,7 @@ export interface CommentType {
   comment: string;
   type: "PROJECT" | "TASK" | "WORKSPACE";
   reference_id: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Create workspace
@@ -86,9 +112,9 @@ export const getWorkspace = async (options: string = ""): Promise<ApiResponse<Te
 };
 
 // Get workspace by id
-export const getWorkspaceById = async (id: number): Promise<ApiResponse<any>> => {
+export const getWorkspaceById = async (id: number): Promise<ApiResponse<WorkspaceType>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<any>>(`/workspace/${id}`);
+    const { data } = await axiosApi.get<ApiResponse<WorkspaceType>>(`/workspace/${id}`);
     return data;
   } catch (error) {
     throw error;

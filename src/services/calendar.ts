@@ -43,7 +43,11 @@ export interface GraphEvent {
     joinUrl?: string;
   };
   webLink?: string;
-  [key: string]: any;
+  body?: {
+    contentType?: string;
+    content?: string;
+  };
+  [key: string]: unknown;
 }
 
 // Get calendar events (meetings)

@@ -465,7 +465,7 @@ export function EmployeesPage() {
       // Fallback to raw employee date
       if (!dateOfJoining && rawEmployee.date_of_joining) {
         try {
-          const date = new Date(rawEmployee.date_of_joining);
+          const date = new Date(rawEmployee.date_of_joining || '');
           if (!isNaN(date.getTime())) {
             dateOfJoining = date.toISOString();
           }

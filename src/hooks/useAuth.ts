@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { doLogin, doSignup, forgetPassword, doCompleteSignup, verifyRegisterToken } from "../services/auth";
 import { setToken, deleteToken, getToken } from "../services/cookies";
-import axiosApi from "../config/axios";
+import axiosApi, { setAuthToken } from "../config/axios";
 import { getUserDetails } from "../services/user";
 
 export const useLogin = () => {
@@ -14,7 +14,7 @@ export const useLogin = () => {
     onSuccess: (data, variables) => {
       if (data.success && data.result.token) {
         setToken(data.result.token);
-        axiosApi.defaults.headers.common["authorization"] = data.result.token;
+        setAuthToken(data.result.token);
         queryClient.setQueryData(["user"], data.result.user);
 
         const redirect = variables.redirect || "/dashboard";
@@ -43,7 +43,7 @@ export const useLogout = () => {
 
   return () => {
     deleteToken();
-    delete axiosApi.defaults.headers.common["authorization"];
+    setAuthToken(null);
     queryClient.clear();
     // Clear profile completion banner dismissal so it shows again on next login
     if (typeof window !== 'undefined') {
@@ -103,7 +103,7 @@ export const useCompleteSignup = () => {
     onSuccess: (data) => {
       if (data.success && data.result.token) {
         setToken(data.result.token);
-        axiosApi.defaults.headers.common["authorization"] = data.result.token;
+        setAuthToken(data.result.token);
         if (data.result.user) {
           queryClient.setQueryData(["user"], data.result.user);
           localStorage.setItem("user", JSON.stringify(data.result.user));

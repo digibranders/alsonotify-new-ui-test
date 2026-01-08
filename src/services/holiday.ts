@@ -8,7 +8,7 @@ export interface HolidayType {
     company_id?: number;
     is_deleted?: boolean;
     description?: string;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface CreateHolidayPayload {

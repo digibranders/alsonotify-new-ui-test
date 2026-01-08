@@ -237,9 +237,9 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
                     {user.name?.[0]}
                   </div>
                 ))}
-                {workspace.assigned_users?.length > 3 && (
+                {(workspace.assigned_users?.length || 0) > 3 && (
                   <div className="w-8 h-8 rounded-full border-2 border-white bg-[#F0F9FF] flex items-center justify-center text-[10px] font-['Manrope:Bold',sans-serif] text-[#0284C7]">
-                    +{workspace.assigned_users.length - 3}
+                    +{(workspace.assigned_users?.length || 0) - 3}
                   </div>
                 )}
               </div>
@@ -258,10 +258,10 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
             <div className="flex items-center justify-between mb-2">
               <span className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Project Progress</span>
               <span className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
-                {workspace.total_task > 0 ? Math.round((workspace.total_task_completed / workspace.total_task) * 100) : 0}%
+                {(workspace.total_task || 0) > 0 ? Math.round(((workspace.total_task_completed || 0) / (workspace.total_task || 1)) * 100) : 0}%
               </span>
             </div>
-            <Progress percent={workspace.total_task > 0 ? Math.round((workspace.total_task_completed / workspace.total_task) * 100) : 0} showInfo={false} strokeColor="#ff3b3b" trailColor="#F7F7F7" size="small" />
+            <Progress percent={(workspace.total_task || 0) > 0 ? Math.round(((workspace.total_task_completed || 0) / (workspace.total_task || 1)) * 100) : 0} showInfo={false} strokeColor="#ff3b3b" trailColor="#F7F7F7" size="small" />
           </div>
         </div>
 

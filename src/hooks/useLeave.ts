@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getLeaves, getLeaveById, getCompanyLeaves, getLeaveBalance, updateLeaveStatus, applyForLeave, ApplyLeaveDto } from "../services/leave";
 import { App } from "antd";
+import { getErrorMessage } from "../types/errors";
 
 export const useLeaves = (options: string = "") => {
     return useQuery({
@@ -43,8 +44,8 @@ export const useUpdateLeaveStatus = () => {
             queryClient.invalidateQueries({ queryKey: ["leaves"] });
             message.success("Leave status updated successfully");
         },
-        onError: (error: any) => {
-            message.error(error?.response?.data?.message || "Failed to update leave status");
+        onError: (error: unknown) => {
+            message.error(getErrorMessage(error));
         },
     });
 };
@@ -60,8 +61,8 @@ export const useApplyForLeave = () => {
             queryClient.invalidateQueries({ queryKey: ["companyLeaves"] });
             message.success("Leave request submitted successfully");
         },
-        onError: (error: any) => {
-            message.error(error?.response?.data?.message || "Failed to submit leave request");
+        onError: (error: unknown) => {
+            message.error(getErrorMessage(error));
         },
     });
 };

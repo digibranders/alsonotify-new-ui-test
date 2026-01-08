@@ -1,13 +1,9 @@
-import axiosApi from "../config/axios";
+import axiosApi, { setAuthToken } from "../config/axios";
 import { ApiResponse } from "../constants/constants";
 
 export const doLogin = async (params: { email: string; password: string }) => {
-  try {
     const { data } = await axiosApi.post("/auth/login", params);
     return data;
-  } catch (error) {
-    throw error;
-  }
 };
 
 export const doSignup = async (
@@ -17,7 +13,6 @@ export const doSignup = async (
   password: string,
   token: string | null
 ): Promise<ApiResponse<{ token: string }>> => {
-  try {
     const { data } = await axiosApi.post("/auth/register", {
       firstName,
       lastName,
@@ -26,9 +21,6 @@ export const doSignup = async (
       token,
     });
     return data;
-  } catch (error) {
-    throw error;
-  }
 };
 
 export const doCompleteSignup = async (
@@ -42,7 +34,6 @@ export const doCompleteSignup = async (
   lastName?: string,
   phone?: string
 ) => {
-  try {
     const { data } = await axiosApi.post("/auth/register/complete", {
       registerToken,
       companyName,
@@ -54,41 +45,26 @@ export const doCompleteSignup = async (
       lastName,
       phone
     });
-    axiosApi.defaults.headers.common["Authorization"] = data.result.token;
+    setAuthToken(data.result.token);
     return data;
-  } catch (error) {
-    throw error;
-  }
 };
 
 export const verifyRegisterToken = async (registerToken: string) => {
-  try {
     const { data } = await axiosApi.get(`/auth/register/verify-token?registerToken=${registerToken}`);
     return data;
-  } catch (error) {
-    throw error;
-  }
 };
 
 export const forgetPassword = async (email: string) => {
-  try {
     const { data } = await axiosApi.post("/auth/password/forgot", {
       email: email,
     });
     return data;
-  } catch (error) {
-    throw error;
-  }
 };
 
 export const resetPassword = async (reset_token: string, password: string) => {
-  try {
     const { data } = await axiosApi.post("/auth/password/reset", {
       reset_token,
       password,
     });
     return data;
-  } catch (error) {
-    throw error;
-  }
 };

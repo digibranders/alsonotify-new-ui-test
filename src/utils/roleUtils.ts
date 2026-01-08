@@ -1,6 +1,24 @@
 export type UserRole = 'Admin' | 'Manager' | 'Leader' | 'Employee';
 
-export const getRoleFromUser = (user: any): UserRole => {
+/**
+ * Minimal type for user objects passed to getRoleFromUser.
+ * Only includes properties that the function actually accesses.
+ */
+interface RoleLike {
+  id?: number;
+  name?: string;
+}
+
+interface UserLike {
+  role?: RoleLike | null;
+  role_id?: number | null;
+  user_employee?: {
+    role?: RoleLike | null;
+    role_id?: number | null;
+  } | null;
+}
+
+export const getRoleFromUser = (user: UserLike | null | undefined): UserRole => {
     if (!user) return 'Employee';
 
     // 1. Try Role Name (Most reliable)

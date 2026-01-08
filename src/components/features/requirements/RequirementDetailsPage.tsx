@@ -20,7 +20,7 @@ import {
   Legend,
 } from 'recharts';
 import { Breadcrumb, Checkbox, Button, Tooltip, App, Input, Select, Modal } from 'antd';
-import DOMPurify from 'dompurify';
+import { sanitizeRichText } from '@/utils/sanitizeHtml';
 import { useWorkspace, useRequirements, useUpdateRequirement, useWorkspaces } from '@/hooks/useWorkspace';
 import { useTasks, useRequestRevision } from '@/hooks/useTask';
 import { useUserDetails } from '@/hooks/useUser';
@@ -378,7 +378,7 @@ export function RequirementDetailsPage() {
                       {!overview && deliverables.length === 0 && technical.length === 0 && (
                         <div
                           className="text-[14px] text-[#444444] font-['Inter:Regular',sans-serif] leading-relaxed prose prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(requirement.description || '') }}
+                          dangerouslySetInnerHTML={{ __html: sanitizeRichText(requirement.description || '') }}
                         />
                       )}
                     </div>
@@ -555,7 +555,7 @@ export function RequirementDetailsPage() {
                         name: task.name || task.title || 'Untitled',
                         taskId: String(task.id),
                         client: workspace?.client_user?.name || workspace?.name || 'N/A',
-                        project: requirement?.name || 'N/A',
+                        project: requirement?.title || 'N/A',
                         leader: task.leader_user?.name || '',
                         assignedTo: task.member_user?.name || task.task_members?.[0]?.user?.name || 'Unassigned',
                         startDate: task.start_date || '',

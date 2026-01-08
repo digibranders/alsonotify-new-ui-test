@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import DOMPurify from 'dompurify';
+import { sanitizeRichText } from "@/utils/sanitizeHtml";
 import { Plus, Archive, Trash2 } from 'lucide-react';
 import { Checkbox, App } from 'antd';
 import { getNotes, createNote, deleteNote, archiveNote, Note, NoteType, ChecklistItem } from "@/services/notes";
@@ -234,7 +234,7 @@ function NoteCard({ note, onArchive, onDelete, onClick }: {
                     {(note.type === 'TEXT_NOTE' || (note.type as any) === 'text') && note.content && (
                         <div
                             className="font-['Inter:Regular',sans-serif] text-[12px] text-[#666666] line-clamp-4 leading-normal prose prose-sm max-w-none [&>p]:m-0 h-full"
-                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.content) }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeRichText(note.content) }}
                         />
                     )}
                     {(note.type === 'CHECKLIST_NOTE' || (note.type as any) === 'checklist') && note.items && Array.isArray(note.items) && note.items.length > 0 && (
