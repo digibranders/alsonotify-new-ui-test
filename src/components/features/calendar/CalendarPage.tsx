@@ -10,10 +10,13 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
+dayjs.extend(timezone);
 dayjs.extend(weekOfYear);
+dayjs.extend(customParseFormat);
 
 import { useTasks } from '@/hooks/useTask';
 import { useMeetings } from '@/hooks/useMeeting';
@@ -253,6 +256,7 @@ export function CalendarPage() {
             avatar: undefined
           })),
           color: '#3B82F6',
+          startDateTime: startTime, // Pass the timezone-converted Dayjs object
           raw: event
         });
       });

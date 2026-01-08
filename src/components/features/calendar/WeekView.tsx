@@ -85,11 +85,9 @@ export function WeekView({ currentDate, events, isLoading, onTimeSlotClick }: We
              return -1; // All day events handled separately
         }
         
-        // Try using raw data first for accuracy
-        if (event.raw && event.raw.start && event.raw.start.dateTime) {
-            return dayjs(event.raw.start.dateTime).hour() * 60 + dayjs(event.raw.start.dateTime).minute();
-        } else if (event.raw && event.raw.start_time) {
-             return dayjs(event.raw.start_time).hour() * 60 + dayjs(event.raw.start_time).minute();
+        // Use the pre-calculated timezone-aware startDateTime if available
+        if (event.startDateTime) {
+            return event.startDateTime.hour() * 60 + event.startDateTime.minute();
         }
 
         // Check if event.time is a valid time string (e.g. "10:00 AM")
@@ -102,7 +100,7 @@ export function WeekView({ currentDate, events, isLoading, onTimeSlotClick }: We
              }
         }
 
-        // Fallback to parsing display strings if necessary
+        // Fallback
         return 9 * 60; // Default to 9 AM if parsing fails
     };
 

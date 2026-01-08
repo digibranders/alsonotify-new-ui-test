@@ -37,10 +37,9 @@ export function DayView({ currentDate, events, isLoading, onTimeSlotClick }: Day
              return -1; 
         }
         
-        if (event.raw && event.raw.start && event.raw.start.dateTime) {
-            return dayjs(event.raw.start.dateTime).hour() * 60 + dayjs(event.raw.start.dateTime).minute();
-        } else if (event.raw && event.raw.start_time) {
-             return dayjs(event.raw.start_time).hour() * 60 + dayjs(event.raw.start_time).minute();
+        // Use the pre-calculated timezone-aware startDateTime if available
+        if (event.startDateTime) {
+            return event.startDateTime.hour() * 60 + event.startDateTime.minute();
         }
 
         if (event.time && event.date) {

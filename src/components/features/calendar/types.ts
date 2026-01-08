@@ -11,6 +11,7 @@ export interface CalendarEvent {
     color: string;
     raw?: any;
     endDate?: string;
+    startDateTime?: any; // dayjs.Dayjs
 }
 
 export type ViewType = 'month' | 'week' | 'day' | 'agenda';
