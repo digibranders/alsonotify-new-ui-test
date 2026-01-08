@@ -14,7 +14,7 @@ import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { useTabSync } from '@/hooks/useTabSync';
 import { useQuery } from '@tanstack/react-query';
-import { getRequirementReports, getTaskReports, getEmployeeReports, EmployeeReport, EmployeeKPI } from '../../../services/report';
+import { getRequirementReports, getTaskReports, getEmployeeReports, getMemberWorklogs, EmployeeReport, EmployeeKPI } from '../../../services/report';
 
 // Initialize dayjs plugins
 dayjs.extend(isBetween);
@@ -327,11 +327,33 @@ export function ReportsPage() {
     filterOptions.push({ id: 'department', label: 'Department', options: ['All', 'Design', 'Engineering', 'Product'], defaultValue: 'All' });
   }
 
-  // Selected Member Logic (Mock for now)
-  const selectedMember = mockMembers.find(m => m.id === selectedMemberId) || null;
-  // Placeholder task filtering for member drawer
-  const selectedMemberTasks = [];
-  const selectedMemberWorklogs = mockWorklogs.filter(w => w.member === selectedMember?.member);
+  // Selected Member Logic
+  // Find member in the fetched employees list
+  const selectedMemberData = employees.find(m => String(m.id) === selectedMemberId) || null;
+  
+  // Adapt EmployeeReport to the shape expected by the drawer (MemberRow-like)
+  const selectedMember = selectedMemberData ? {
+      ...selectedMemberData,
+      id: String(selectedMemberData.id), // Ensure ID is string
+      totalWorkingHrs: selectedMemberData.utilization > 0 ? Math.round(selectedMemberData.engagedHrs / (selectedMemberData.utilization / 100)) : 0,
+      actualEngagedHrs: selectedMemberData.engagedHrs,
+      costPerHour: selectedMemberData.hourlyCost,
+      billablePerHour: 0 // Not in API yet
+  } : null;
+
+  // Placeholder task filtering for member drawer - Mock worklogs as we don't have an endpoint for user worklogs yet
+  // Query Member Worklogs
+  const { data: memberWorklogs, isLoading: isLoadingWorklogs } = useQuery({
+      queryKey: ['member-worklogs', selectedMemberId, dateRange],
+      queryFn: () => getMemberWorklogs(
+          selectedMemberId!, 
+          dateRange && dateRange[0] ? dateRange[0].toISOString() : undefined,
+          dateRange && dateRange[1] ? dateRange[1].toISOString() : undefined
+      ),
+      enabled: !!selectedMemberId
+  });
+
+  const selectedMemberWorklogs = memberWorklogs || [];
 
 
   return (

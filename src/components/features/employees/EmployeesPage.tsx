@@ -893,7 +893,7 @@ export function EmployeesPage() {
 
         <div className="flex-1 overflow-y-auto pb-24">
           {/* Table Header */}
-          <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2fr_1.8fr_1.2fr_1fr_1fr_1fr_1.2fr_40px] gap-4 px-4 py-3 mb-2 items-center">
+          <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2fr_1.8fr_1.2fr_1fr_1fr_1.2fr_40px] gap-4 px-4 py-3 mb-2 items-center">
             <div className="flex justify-center">
               <Checkbox
                 checked={paginatedEmployees.length > 0 &&
@@ -905,7 +905,6 @@ export function EmployeesPage() {
             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Name</p>
             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Email Address</p>
             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Access Level</p>
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Manager</p>
             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Type</p>
             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Hourly Rate</p>
             <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#6B7280] uppercase tracking-wider">Date of Joining</p>

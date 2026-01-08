@@ -160,3 +160,25 @@ export const getEmployeeReports = async (params: GetEmployeeReportsParams): Prom
     
     return response.data.result;
 };
+
+export interface MemberWorklog {
+    id: string;
+    date: string;
+    task: string;
+    details: string;
+    startTime: string;
+    endTime: string;
+    engagedTime: string;
+}
+
+export const getMemberWorklogs = async (memberId: string, startDate?: string, endDate?: string): Promise<MemberWorklog[]> => {
+    const queryParams: Record<string, any> = { member_id: memberId };
+    if (startDate) queryParams.start_date = startDate;
+    if (endDate) queryParams.end_date = endDate;
+
+    const response = await axiosApi.get<ApiResponse<MemberWorklog[]>>('/report/member/worklogs', {
+        params: queryParams
+    });
+    
+    return response.data.result;
+};
