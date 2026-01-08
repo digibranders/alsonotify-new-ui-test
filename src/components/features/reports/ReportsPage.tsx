@@ -14,7 +14,7 @@ import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { useTabSync } from '@/hooks/useTabSync';
 import { useQuery } from '@tanstack/react-query';
-import { usePartners, useEmployees, useCompanyDepartments } from '@/hooks/useUser';
+import { usePartners, useEmployees, useCompanyDepartments, useCurrentUserCompany } from '@/hooks/useUser';
 import { getRequirementReports, getTaskReports, getEmployeeReports, getMemberWorklogs, EmployeeReport, EmployeeKPI } from '../../../services/report';
 
 // Initialize dayjs plugins
@@ -98,6 +98,10 @@ export function ReportsPage() {
     defaultTab: 'requirement',
     validTabs: ['requirement', 'task', 'member']
   });
+
+
+  const { data: companyData } = useCurrentUserCompany();
+  const companyName = companyData?.name; // Assuming 'name' is the field
 
   // Fetch Dropdown Data
   const { data: partnersData } = usePartners();
@@ -775,6 +779,7 @@ export function ReportsPage() {
         data={activeTab === 'requirement' ? filteredRequirements : activeTab === 'task' ? filteredTasks : filteredEmployees}
         kpis={activeTab === 'requirement' ? kpi : activeTab === 'task' ? taskKPI : employeeKPI}
         dateRange={dateRange}
+        companyName={companyName}
       />
 
       {/* Hidden Individual Employee PDF Template */}
@@ -783,6 +788,7 @@ export function ReportsPage() {
             member={selectedMember}
             worklogs={selectedMemberWorklogs}
             dateRange={dateRange}
+            companyName={companyName}
           />
       )}
 
