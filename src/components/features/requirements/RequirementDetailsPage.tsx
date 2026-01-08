@@ -555,7 +555,7 @@ export function RequirementDetailsPage() {
                         name: task.name || task.title || 'Untitled',
                         taskId: String(task.id),
                         client: workspace?.client_user?.name || workspace?.name || 'N/A',
-                        project: requirement?.name || 'N/A',
+                        project: requirement?.title || 'N/A',
                         leader: task.leader_user?.name || '',
                         assignedTo: task.member_user?.name || task.task_members?.[0]?.user?.name || 'Unassigned',
                         startDate: task.start_date || '',

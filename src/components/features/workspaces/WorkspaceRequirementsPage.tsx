@@ -53,7 +53,7 @@ export function WorkspaceRequirementsPage() {
       id: workspaceData.result.id,
       name: workspaceData.result.name || '',
       client:
-        workspaceData.result.client?.name ||
+        workspaceData.result.client_user?.name ||
         workspaceData.result.client_company_name ||
         'N/A',
     };

@@ -19,6 +19,7 @@ import {
   type ClientOrOutsourceType,
   type CompanyDepartmentType,
 } from "../services/user";
+import { ProfileUpdateInput, CompanyUpdateInput } from "../types/genericTypes";
 
 export const useEmployees = (options: string = "") => {
   return useQuery({
@@ -67,7 +68,7 @@ export const useUpdateEmployee = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...params }: { id: number } & Partial<UserType>) => updateUserById(id, params as any),
+    mutationFn: ({ id, ...params }: { id: number } & Partial<UserType>) => updateUserById(id, params),
     onSuccess: (_, variables) => {
       // Invalidate all employee queries (both active and inactive)
       queryClient.invalidateQueries({ queryKey: ["employees"] });
@@ -82,7 +83,7 @@ export const useUpdateProfile = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: any) => updateCurrentUserProfile(params),
+    mutationFn: (params: ProfileUpdateInput) => updateCurrentUserProfile(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user"] });
     },
@@ -141,7 +142,7 @@ export const useCreateClient = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: any) => createUser(params),
+    mutationFn: (params: UserType) => createUser(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
     },
@@ -162,7 +163,7 @@ export const useUpdateCompany = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: any) => updateCurrentUserCompany(params),
+    mutationFn: (params: CompanyUpdateInput) => updateCurrentUserCompany(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user", "company"] });
       queryClient.invalidateQueries({ queryKey: ["user", "details"] });

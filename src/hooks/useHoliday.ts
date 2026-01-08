@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getPublicHolidays, createPublicHoliday, updatePublicHoliday, deletePublicHoliday, CreateHolidayPayload } from "../services/holiday";
 import { App } from "antd";
+import { getErrorMessage } from "../types/errors";
 
 export const usePublicHolidays = () => {
     return useQuery({
@@ -19,8 +20,8 @@ export const useCreateHoliday = () => {
             queryClient.invalidateQueries({ queryKey: ["publicHolidays"] });
             message.success("Holiday created successfully");
         },
-        onError: (error: any) => {
-            message.error(error?.response?.data?.message || "Failed to create holiday");
+        onError: (error: unknown) => {
+            message.error(getErrorMessage(error));
         },
     });
 };
@@ -36,8 +37,8 @@ export const useUpdateHoliday = () => {
             queryClient.invalidateQueries({ queryKey: ["publicHolidays"] });
             message.success("Holiday updated successfully");
         },
-        onError: (error: any) => {
-            message.error(error?.response?.data?.message || "Failed to update holiday");
+        onError: (error: unknown) => {
+            message.error(getErrorMessage(error));
         },
     });
 };
@@ -52,8 +53,8 @@ export const useDeleteHoliday = () => {
             queryClient.invalidateQueries({ queryKey: ["publicHolidays"] });
             message.success("Holiday deleted successfully");
         },
-        onError: (error: any) => {
-            message.error(error?.response?.data?.message || "Failed to delete holiday");
+        onError: (error: unknown) => {
+            message.error(getErrorMessage(error));
         },
     });
 };

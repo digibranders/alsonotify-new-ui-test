@@ -118,3 +118,19 @@ export interface UserDocument {
   fileType: 'image' | 'pdf' | 'docx' | 'text' | 'csv' | 'excel';
   isRequired: boolean;
 }
+
+export interface ProfileUpdateInput {
+  name: string;
+  email: string;
+  phone?: string;
+  mobile_number?: string;
+  designation?: string;
+  [key: string]: unknown; // Keeping unknown for safety instead of any
+}
+
+export interface CompanyUpdateInput {
+  name: string;
+  address?: string;
+  website?: string;
+  [key: string]: unknown;
+}

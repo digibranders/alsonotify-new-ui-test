@@ -1,5 +1,7 @@
 import axiosApi from "../config/axios";
 import { ApiResponse } from "../constants/constants";
+import { ProfileUpdateInput, CompanyUpdateInput } from "../types/genericTypes";
+import { CompanyProfile } from "../types/auth";
 
 export interface UserType {
   id: number;
@@ -9,7 +11,30 @@ export interface UserType {
   mobile_number?: string;
   designation?: string;
   is_active?: boolean;
-  [key: string]: any;
+  role?: string;
+  role_id?: number;
+  roleColor?: string;
+  status?: string;
+  user_employee?: any; // Keeping as any for nested object until further typed
+  department_id?: number;
+  department?: { id: number; name: string };
+  manager_id?: number | null;
+  employment_type?: string;
+  salary_yearly?: number;
+  hourly_rates?: number;
+  working_hours?: { start_time: string; end_time: string };
+  no_of_leaves?: number;
+  joining_date?: string;
+  experience?: string;
+  skills?: string[];
+  address?: string;
+  city?: string;
+  state?: string;
+  zipcode?: string;
+  country?: string;
+  profile_pic?: string;
+  date_of_joining?: string;
+  [key: string]: unknown;
 }
 
 export interface ClientOrOutsourceType {
@@ -19,7 +44,7 @@ export interface ClientOrOutsourceType {
   company?: string;
   phone?: string;
   country?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Get user details
@@ -118,14 +143,9 @@ export const searchEmployees = async (): Promise<ApiResponse<{ label: string; va
 };
 
 // Update user profile
-export const updateCurrentUserProfile = async (params: {
-  name: string;
-  email: string;
-  phone?: string;
-  mobile_number?: string;
-  designation?: string;
-  [key: string]: any;
-}): Promise<ApiResponse<UserType>> => {
+export const updateCurrentUserProfile = async (
+  params: ProfileUpdateInput
+): Promise<ApiResponse<UserType>> => {
   try {
     // Ensure mobile_number is sent if phone is provided
     const payload = {
@@ -141,7 +161,7 @@ export const updateCurrentUserProfile = async (params: {
 
 // Update user password
 // Update user password
-export const updateCurrentUserPassword = async (params: { password: string, currentPassword?: string }): Promise<ApiResponse<any>> => {
+export const updateCurrentUserPassword = async (params: { password: string, currentPassword?: string }): Promise<ApiResponse<unknown>> => {
   try {
     const { data } = await axiosApi.post<ApiResponse<any>>(`/user/password`, params);
     return data;
@@ -151,9 +171,9 @@ export const updateCurrentUserPassword = async (params: { password: string, curr
 };
 
 // Get company details
-export const getCurrentUserCompany = async (): Promise<ApiResponse<any>> => {
+export const getCurrentUserCompany = async (): Promise<ApiResponse<CompanyProfile>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<any>>(`/user/company`);
+    const { data } = await axiosApi.get<ApiResponse<CompanyProfile>>(`/user/company`);
     return data;
   } catch (error) {
     throw error;
@@ -161,9 +181,9 @@ export const getCurrentUserCompany = async (): Promise<ApiResponse<any>> => {
 };
 
 // Update company details
-export const updateCurrentUserCompany = async (params: any): Promise<ApiResponse<any>> => {
+export const updateCurrentUserCompany = async (params: CompanyUpdateInput): Promise<ApiResponse<CompanyProfile>> => {
   try {
-    const { data } = await axiosApi.post<ApiResponse<any>>(`/user/company`, params);
+    const { data } = await axiosApi.post<ApiResponse<CompanyProfile>>(`/user/company`, params);
     return data;
   } catch (error) {
     throw error;
@@ -201,9 +221,9 @@ export const updateUserStatus = async (params: { user_id: number; is_active: boo
 };
 
 // Update partner status (activate/deactivate)
-export const updatePartnerStatus = async (params: { association_id: number; is_active: boolean }): Promise<ApiResponse<any>> => {
+export const updatePartnerStatus = async (params: { association_id: number; is_active: boolean }): Promise<ApiResponse<unknown>> => {
   try {
-    const { data } = await axiosApi.patch<ApiResponse<any>>(`/user/partners/status`, params);
+    const { data } = await axiosApi.patch<ApiResponse<unknown>>(`/user/partners/status`, params);
     return data;
   } catch (error) {
     throw error;
@@ -298,7 +318,7 @@ export const getReceivedInvites = async (): Promise<ApiResponse<{
 };
 
 // Accept invite by ID
-export const acceptInviteById = async (inviteId: number): Promise<ApiResponse<any>> => {
+export const acceptInviteById = async (inviteId: number): Promise<ApiResponse<unknown>> => {
   try {
     const { data } = await axiosApi.post("/user/invite/accept-id", { inviteId });
     return data;
@@ -308,7 +328,7 @@ export const acceptInviteById = async (inviteId: number): Promise<ApiResponse<an
 };
 
 // Decline invite by ID
-export const declineInviteById = async (inviteId: number): Promise<ApiResponse<any>> => {
+export const declineInviteById = async (inviteId: number): Promise<ApiResponse<unknown>> => {
   try {
     const { data } = await axiosApi.post("/user/invite/decline-id", { inviteId });
     return data;
@@ -329,9 +349,9 @@ export const declineInviteById = async (inviteId: number): Promise<ApiResponse<a
 // };
 
 // Delete partner (or cancel request)
-export const deletePartner = async (params: { userType: 'PARTNER'; partnerUserId?: number; inviteId?: number }): Promise<ApiResponse<any>> => {
+export const deletePartner = async (params: { userType: 'PARTNER'; partnerUserId?: number; inviteId?: number }): Promise<ApiResponse<unknown>> => {
   try {
-    const { data } = await axiosApi.delete<ApiResponse<any>>("/user/partners", { data: params });
+    const { data } = await axiosApi.delete<ApiResponse<unknown>>("/user/partners", { data: params });
     return data;
   } catch (error) {
     throw error;

@@ -188,7 +188,7 @@ export function EmployeeDetailsPage() {
     phone: mobileNumber,
     hourlyRate: backendEmp.hourly_rates ? `$${backendEmp.hourly_rates}/Hr` : 'N/A',
     dateOfJoining: backendEmp.date_of_joining
-      ? new Date(backendEmp.date_of_joining).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })
+      ? new Date(backendEmp.date_of_joining || '').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })
       : 'N/A',
     experience: backendEmp.experience || 0,
     skillsets: backendEmp.skills?.join(', ') || 'None',

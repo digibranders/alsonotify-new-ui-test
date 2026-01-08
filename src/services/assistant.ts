@@ -1,5 +1,5 @@
 import axiosApi from "../config/axios";
-import { ApiResponse } from "../constants/constants";
+import { isAxiosError } from "../types/errors";
 
 type AgentResponse = {
   answer?: string;
@@ -17,9 +17,15 @@ export const generateAgentResponse = async (
     });
 
     return data;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle API errors
-    const errorMessage = error?.response?.data?.error || error?.message || "Unable to reach the assistant. Please try again.";
+    let errorMessage = "Unable to reach the assistant. Please try again.";
+    if (isAxiosError(error)) {
+      const data = error.response?.data as { error?: string } | undefined;
+      errorMessage = data?.error || error.message || errorMessage;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
     return { error: errorMessage };
   }
 };

@@ -11,9 +11,9 @@ export interface MeetingType {
     meeting_link?: string;
     platform?: string;
     status?: "scheduled" | "cancelled" | "completed";
-    participants?: any[]; // Adjust based on actual response
-    organizer?: any;
-    [key: string]: any;
+    participants?: unknown[]; // Adjust based on actual response
+    organizer?: unknown;
+    [key: string]: unknown;
 }
 
 // Get meetings
