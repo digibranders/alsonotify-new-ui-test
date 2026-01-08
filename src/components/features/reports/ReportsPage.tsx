@@ -657,7 +657,7 @@ export function ReportsPage() {
         <Drawer
           title={null}
           closable={false}
-          style={{ width: 800 }}
+          width={900}
           onClose={() => setSelectedMemberId(null)}
           open={!!selectedMemberId}
           styles={{ body: { padding: 0 } }}
