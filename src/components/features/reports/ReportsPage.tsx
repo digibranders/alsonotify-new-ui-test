@@ -101,7 +101,7 @@ export function ReportsPage() {
 
 
   const { data: companyData } = useCurrentUserCompany();
-  const companyName = companyData?.name; // Assuming 'name' is the field
+  const companyName = companyData?.result?.name; // Correctly accessing 'name' nested in 'result' property of ApiResponse
 
   // Fetch Dropdown Data
   const { data: partnersData } = usePartners();
