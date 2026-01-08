@@ -420,7 +420,7 @@ export function EmployeeForm({
 
 
           {/* Row 5: Manager & Experience */}
-          <div className="col-span-6 space-y-1">
+          {/* <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Manager</span>
             <Select
               showSearch
@@ -433,12 +433,7 @@ export function EmployeeForm({
               value={formData.manager_id || undefined}
               onChange={(v) => setFormData({ ...formData, manager_id: v })}
               suffixIcon={<div className="text-gray-400">⌄</div>}
-              options={employeesData?.result?.filter((emp: any) => emp.user_id !== initialData?.id && emp.id !== initialData?.id).map((emp: any) => ({
-                 value: emp.user_id || emp.id,
-                 label: emp.name
-              })) || []}
-            />
-          </div>
+          {/* Row 5: Experience & Date of Joining */}
           <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Experience (Years)</span>
             <Input
@@ -449,8 +444,6 @@ export function EmployeeForm({
               onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
             />
           </div>
-
-          {/* Row 6: Date of Joining & Salary */}
           <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Date of Joining</span>
             <DatePicker
@@ -462,6 +455,8 @@ export function EmployeeForm({
               suffixIcon={<Calendar className="w-4 h-4 text-[#999999]" />}
             />
           </div>
+
+          {/* Row 6: Salary & Total Leaves */}
           <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Salary (CTC) <span className="text-[#666666] font-normal text-[11px] ml-1">(Annual)</span></span>
             <Space.Compact className="w-full">
@@ -477,8 +472,6 @@ export function EmployeeForm({
               />
             </Space.Compact>
           </div>
-
-          {/* Row 7: Total Leaves & Working Hours Start */}
           <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Total Leaves</span>
             <Input
@@ -489,29 +482,28 @@ export function EmployeeForm({
               onChange={(e) => setFormData({ ...formData, leaves: e.target.value })}
             />
           </div>
-          <div className="col-span-6 space-y-1">
-            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours Start</span>
-            <TimePicker
-              placeholder="Start Time"
-              format="h:mm a"
-              className={`w-full h-11 employee-form-datepicker ${formData.workingHoursStart ? 'employee-form-datepicker-filled' : ''}`}
-              value={formData.workingHoursStart ? dayjs(formData.workingHoursStart, 'h:mm a') : null}
-              onChange={(time) => setFormData({ ...formData, workingHoursStart: time ? time.format('h:mm a') : '' })}
-              suffixIcon={<div className="text-gray-400">⌄</div>}
-            />
-          </div>
 
-          {/* Row 8: Working Hours End & Hourly Cost */}
+          {/* Row 7: Working Hours & Hourly Cost */}
           <div className="col-span-6 space-y-1">
-            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours End</span>
-            <TimePicker
-              placeholder="End Time"
-              format="h:mm a"
-              className={`w-full h-11 employee-form-datepicker ${formData.workingHoursEnd ? 'employee-form-datepicker-filled' : ''}`}
-              value={formData.workingHoursEnd ? dayjs(formData.workingHoursEnd, 'h:mm a') : null}
-              onChange={(time) => setFormData({ ...formData, workingHoursEnd: time ? time.format('h:mm a') : '' })}
-              suffixIcon={<div className="text-gray-400">⌄</div>}
-            />
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Working Hours</span>
+            <div className="grid grid-cols-2 gap-2">
+              <TimePicker
+                placeholder="Start"
+                format="h:mm a"
+                className={`w-full h-11 employee-form-datepicker ${formData.workingHoursStart ? 'employee-form-datepicker-filled' : ''}`}
+                value={formData.workingHoursStart ? dayjs(formData.workingHoursStart, 'h:mm a') : null}
+                onChange={(time) => setFormData({ ...formData, workingHoursStart: time ? time.format('h:mm a') : '' })}
+                suffixIcon={<div className="text-gray-400">⌄</div>}
+              />
+              <TimePicker
+                placeholder="End"
+                format="h:mm a"
+                className={`w-full h-11 employee-form-datepicker ${formData.workingHoursEnd ? 'employee-form-datepicker-filled' : ''}`}
+                value={formData.workingHoursEnd ? dayjs(formData.workingHoursEnd, 'h:mm a') : null}
+                onChange={(time) => setFormData({ ...formData, workingHoursEnd: time ? time.format('h:mm a') : '' })}
+                suffixIcon={<div className="text-gray-400">⌄</div>}
+              />
+            </div>
           </div>
           <div className="col-span-6 space-y-1">
             <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Hourly Cost <span className="text-[#666666] font-normal text-[11px] ml-1">(Calculated)</span></span>
