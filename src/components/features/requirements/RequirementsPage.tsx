@@ -28,49 +28,7 @@ import { WorkspaceForm } from '../../modals/WorkspaceForm';
 
 
 
-interface Requirement {
-  id: number;
-  title: string;
-  description: string;
-  company: string;
-  client: string;
-  assignedTo: string[];
-  dueDate: string;
-  createdDate: string;
-  startDate?: string;
-  is_high_priority: boolean;
-  type: 'inhouse' | 'outsourced' | 'client';
-  status: 'in-progress' | 'completed' | 'delayed' | 'draft';
-  category: string;
-  departments?: string[];
-  progress: number;
-  tasksCompleted: number;
-  tasksTotal: number;
-  workspaceId: number;
-  workspace: string;
-  approvalStatus?: 'pending' | 'approved' | 'rejected';
-  invoiceStatus?: 'unbilled' | 'billed' | 'paid';
-  estimatedCost?: number;
-  budget?: number;
-  hourlyRate?: number;
-  estimatedHours?: number;
-  pricingModel?: 'hourly' | 'project';
-  contactPerson?: string;
-  rejectionReason?: string;
-  headerContact?: string;
-  workspace_id?: number;
-  headerCompany?: string;
-  quotedPrice?: number;
-  rawStatus?: string;
-  client_id?: number;
-  contact_person_id?: number;
-  sender_company_id?: number;
-  receiver_company_id?: number;
-  receiver_workspace_id?: number;
-  negotiation_reason?: string;
-  isReceiver?: boolean;
-  isSender?: boolean;
-}
+import { Requirement } from '@/types/domain';
 
 // Quotation Dialog Component
 function QuotationDialog({

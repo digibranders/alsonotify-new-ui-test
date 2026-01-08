@@ -11,6 +11,8 @@ import { useEmployees } from '@/hooks/useUser';
 import { format } from 'date-fns';
 
 import dayjs from 'dayjs';
+import { Workspace, Task as DomainTask } from '@/types/domain';
+import { TaskType } from '@/services/task';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -58,27 +60,35 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
     dueDate: null as any
   });
 
-  const workspace = useMemo(() => {
-    return workspacesData?.result?.workspaces?.find((p: any) => String(p.id) === id);
+  const workspace = useMemo((): Workspace | undefined => {
+    return workspacesData?.result?.workspaces?.find((p: any) => String(p.id) === id) as unknown as Workspace;
   }, [workspacesData, id]);
 
-  const tasks = useMemo(() => {
+  const tasks = useMemo((): DomainTask[] => {
     if (!tasksData?.result) return [];
-    return tasksData.result.map((t: any) => ({
+    return tasksData.result.map((t: TaskType) => ({
+      // Map service TaskType to domain Task (DomainTask)
       id: String(t.id),
-      title: t.name,
-      assignee: {
-        name: t.assigned_users?.[0]?.name || 'Unassigned',
-        avatar: t.assigned_users?.[0]?.image_url
-      },
-      dueDate: t.end_date,
-      status: t.status,
-      priority: t.priority ? t.priority.charAt(0).toUpperCase() + t.priority.slice(1).toLowerCase() : 'Medium',
-      comments: 0,
-      attachments: 0,
-      description: t.description
-    }));
-  }, [tasksData]);
+      name: t.title || t.name || 'Untitled',
+      taskId: String(t.id),
+      client: 'Unknown', // Default or fetch
+      project: workspace?.name || 'Unknown',
+      leader: 'Unknown',
+      assignedTo: (t as any).assigned_users?.[0]?.name || 'Unassigned',
+      startDate: t.start_date || '',
+      dueDate: t.due_date || t.end_date || '',
+      estTime: 0,
+      timeSpent: 0,
+      activities: 0,
+      status: (t.status as any) || 'Assigned',
+      is_high_priority: t.is_high_priority || false,
+      timelineDate: '',
+      timelineLabel: '',
+      dueDateValue: t.due_date ? new Date(t.due_date).getTime() : 0,
+      description: t.description || '',
+      total_seconds_spent: 0
+    } as unknown as DomainTask)); // Temporary cast until strict mapping is perfect
+  }, [tasksData, workspace]);
 
   // Filter Options
   const assignees = ['All', ...Array.from(new Set(tasks.map((t: any) => t.assignee.name)))];

@@ -24,51 +24,12 @@ dayjs.extend(isoWeek);
 dayjs.extend(isSameOrBefore);
 dayjs.extend(isSameOrAfter);
 
-type ITaskStatus = 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck';
+import { Task, TaskStatus } from '@/types/domain';
 
-type UITask = {
-  id: string;
-  name: string;
-  taskId: string;
-  client: string;
-  project: string;
-  leader: string;
-  assignedTo: string;
-  startDate: string;
-  dueDate: string;
-  estTime: number;
-  timeSpent: number;
-  activities: number;
-  status: ITaskStatus;
-  is_high_priority: boolean;
-  timelineDate: string;
-  timelineLabel: string;
-  // For date-range filtering
-  dueDateValue: number | null;
-  // For editing
-  workspace_id?: number;
-  requirement_id?: number;
-  member_id?: number;
-  leader_id?: number;
-  description?: string;
-  endDateIso?: string; // Raw ISO string for form editing
-  execution_mode?: 'parallel' | 'sequential';
-  total_seconds_spent: number;
-  task_members?: {
-    id: number;
-    user_id: number;
-    status: string;
-    estimated_time: number | null;
-    seconds_spent: number;
-    active_worklog_start_time?: string | null;
-    is_current_turn: boolean;
-    user: {
-      id: number;
-      name: string;
-      profile_pic?: string;
-    };
-  }[];
-};
+// Local alias if needed to avoid massive rename, or just use Task
+// transforming UITask -> Task in the code
+type UITask = Task; 
+type ITaskStatus = TaskStatus;
 
 type StatusTab = 'all' | 'In_Progress' | 'Completed' | 'Delayed';
 

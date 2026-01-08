@@ -28,6 +28,7 @@ import { useEmployees, useCurrentUserCompany, useUserDetails } from '@/hooks/use
 import { TaskType } from '@/services/task';
 import { MeetingType } from '@/services/meeting';
 import { LeaveType } from '@/services/leave';
+import { Holiday } from '@/types/domain';
 
 import { MonthView } from './MonthView';
 import { WeekView } from './WeekView';
@@ -95,11 +96,11 @@ export function CalendarPage() {
   const isLoading = isLoadingTasks || isLoadingMeetings || isLoadingLeaves || isLoadingHolidays;
   const isConnected = teamsStatus?.result?.connected ?? false;
 
-  const availableLeaveTypes = useMemo(() => {
+  const availableLeaveTypes = useMemo((): string[] => {
     if (!leavesData?.result) return ['Sick Leave', 'Casual Leave', 'Vacation'];
-    const types = new Set(leavesData.result.map((leave: any) => leave.leave_type));
+    const types = new Set((leavesData.result as any[]).map((leave: any) => leave.leave_type)); // leavesData type might be generic, casting to any[] for map if needed or strictly typing if possible. Assuming leavesData result is generic array.
     return Array.from(types).filter(Boolean).length > 0
-      ? Array.from(types).filter(Boolean) as string[]
+      ? Array.from(types).filter((t): t is string => Boolean(t))
       : ['Sick Leave', 'Casual Leave', 'Vacation'];
   }, [leavesData]);
 
@@ -273,7 +274,8 @@ export function CalendarPage() {
           location: meeting.platform || meeting.meeting_link,
           description: meeting.description,
           status: meeting.status,
-          participants: meeting.participants?.map((p: any) => ({ name: p.name || 'Unknown', avatar: p.avatar })),
+          participants: meeting.participants?.map((p: any) => ({ name: p.name || 'Unknown', avatar: p.avatar })), // meeting participants typed as unknown[] in service. keeping any cast or refining if possible. defining strictly:
+          // We can try to cast p as {name: string, avatar: string} if we trust backend
           color: '#3B82F6',
           raw: meeting
         });
@@ -303,7 +305,7 @@ export function CalendarPage() {
     }
 
     if (holidays?.result) {
-      holidays.result.forEach((holiday: any) => {
+      holidays.result.forEach((holiday: Holiday) => {
         if (holiday.is_deleted) return;
         allEvents.push({
           id: `holiday-${holiday.id}`,

@@ -9,6 +9,7 @@ import { getRoleFromUser } from '@/utils/roleUtils';
 import { People24Filled } from "@fluentui/react-icons";
 import { commonCountries } from '@/data/defaultData';
 import dayjs from 'dayjs';
+import { Department, Holiday, Role } from '@/types/domain';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -196,18 +197,7 @@ const getTimezones = (): Array<{ value: string; label: string }> => {
   return uniqueTimezones.map(tz => ({ value: tz, label: tz }));
 };
 
-interface Department {
-  id: string;
-  name: string;
-  active: boolean;
-}
-
-interface Holiday {
-  id: number | string;
-  name: string;
-  date: string;
-  is_api?: boolean;
-}
+// Removed local Department and Holiday interfaces in favor of domain types
 
 interface LeaveType {
   id: string;
@@ -357,11 +347,11 @@ export function SettingsPage() {
   const [holidayForm, setHolidayForm] = useState({ name: '', date: null as dayjs.Dayjs | null });
 
   // Get holidays from API, filter out deleted ones
-  const publicHolidays = useMemo(() => {
+  const publicHolidays = useMemo((): Holiday[] => {
     if (!holidaysData?.result) return [];
     return holidaysData.result
-      .filter((h: any) => !h.is_deleted)
-      .map((h: any) => ({
+      .filter((h: Holiday) => !h.is_deleted)
+      .map((h: Holiday) => ({
         id: h.id,
         name: h.name,
         date: h.date,
@@ -888,7 +878,7 @@ export function SettingsPage() {
                               </span>
                               <Switch
                                 checked={dept.active}
-                                onChange={() => toggleDepartmentStatus(dept.id)}
+                                onChange={() => toggleDepartmentStatus(String(dept.id))}
                                 className="bg-gray-200 hover:bg-gray-300"
                                 style={{
                                   backgroundColor: dept.active ? "#ff3b3b" : undefined,
@@ -899,7 +889,7 @@ export function SettingsPage() {
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => handleDeleteDepartment(dept.id)}
+                              onClick={() => handleDeleteDepartment(String(dept.id))}
                               className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#ff3b3b]"
                             >
                               <Trash2 className="w-4 h-4" />

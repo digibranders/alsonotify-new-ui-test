@@ -19,7 +19,7 @@ import {
 } from '../../../hooks/useUser';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTabSync } from '@/hooks/useTabSync';
-import { Employee } from '@/types/genericTypes';
+import { Employee } from '@/types/domain';
 import { useQueryClient } from '@tanstack/react-query';
 import { getRoleFromUser } from '@/utils/roleUtils';
 

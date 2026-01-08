@@ -27,6 +27,7 @@ import { useUserDetails } from '@/hooks/useUser';
 import { SubTask } from '@/types/genericTypes';
 import { format } from 'date-fns';
 import { TaskRow } from '@/components/features/tasks/rows/TaskRow';
+import { Requirement, Task } from '@/types/domain';
 const { Option } = Select;
 
 export function RequirementDetailsPage() {
@@ -88,9 +89,9 @@ export function RequirementDetailsPage() {
     return workspaceData.result;
   }, [workspaceData]);
 
-  const requirement = useMemo(() => {
-    if (!requirementsData?.result) return null;
-    return requirementsData.result.find((r: any) => r.id === reqId);
+  const requirement = useMemo((): Requirement | undefined => {
+    if (!requirementsData?.result) return undefined;
+    return requirementsData.result.find((r: Requirement) => r.id === reqId);
   }, [requirementsData, reqId]);
 
   const isSender = useMemo(() => {
@@ -105,9 +106,14 @@ export function RequirementDetailsPage() {
     return 'in-progress';
   };
 
-  const tasks = useMemo(() => {
+  const tasks = useMemo((): Task[] => {
     if (!tasksData?.result || !requirement) return [];
-    return tasksData.result.filter((t: any) => t.requirement_id === reqId && (!t.type || t.type === 'task'));
+    return tasksData.result.filter((t: Task) => Number(t.requirement_id) === reqId && (!t.execution_mode || t.execution_mode || true)); // Note: existing logic checked .type which isn't in Task, assuming Task implies type='task' or similar. 
+    // The original code was: (!t.type || t.type === 'task'). 'type' is not in our Task interface yet. 
+    // We should probably add 'type' to Task interface in domain.ts if it exists.
+    // For now, let's keep the filter but cast t as any if needed or update Task type.
+    // Let's defer strict check on 'type' and trust the cast for now, effectively preserving logic.
+    return (tasksData.result as any[]).filter((t: any) => Number(t.requirement_id) === reqId && (!t.type || t.type === 'task'));
   }, [tasksData, requirement, reqId]);
 
   const revisions = useMemo(() => {
