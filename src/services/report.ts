@@ -67,6 +67,7 @@ export interface TaskReport {
     engagedHrs: number;
     extraHrs: number;
     status: string;
+    dueDate?: string | null;
 }
 
 export interface TaskReportsResponse {

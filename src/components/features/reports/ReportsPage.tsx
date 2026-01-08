@@ -14,6 +14,7 @@ import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { useTabSync } from '@/hooks/useTabSync';
 import { useQuery } from '@tanstack/react-query';
+import { usePartners, useEmployees, useCompanyDepartments } from '@/hooks/useUser';
 import { getRequirementReports, getTaskReports, getEmployeeReports, getMemberWorklogs, EmployeeReport, EmployeeKPI } from '../../../services/report';
 
 // Initialize dayjs plugins
@@ -30,22 +31,6 @@ interface MemberRow {
   costPerHour: number;
   billablePerHour: number;
 }
-
-interface WorklogRow {
-  id: string;
-  date: string;
-  member: string;
-  task: string;
-  requirement: string;
-  startTime: string;
-  endTime: string;
-  engagedTime: string;
-  details: string;
-}
-
-// Mock Data for Members (To be refactored later)
-const mockMembers: MemberRow[] = [];
-const mockWorklogs: WorklogRow[] = [];
 
 
 // --- Helper Components ---
@@ -113,6 +98,24 @@ export function ReportsPage() {
     defaultTab: 'requirement',
     validTabs: ['requirement', 'task', 'member']
   });
+
+  // Fetch Dropdown Data
+  const { data: partnersData } = usePartners();
+  const { data: employeesData } = useEmployees("is_active=true&limit=1000"); // Fetch all active for filters
+  const { data: departmentsData } = useCompanyDepartments();
+
+  const partnerOptions = [
+      { label: 'All', value: 'All' }, 
+      ...(partnersData?.result || []).map((p: any) => ({ label: p.name, value: String(p.id) }))
+  ];
+  const employeeOptions = [
+      { label: 'All', value: 'All' }, 
+      ...(employeesData?.result || []).map((e: any) => ({ label: e.name, value: String(e.id) }))
+  ];
+  const departmentOptions = [
+      { label: 'All', value: 'All' },
+      ...(departmentsData?.result || []).map((d: any) => ({ label: d.name, value: String(d.id) }))
+  ];
 
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [selectedTaskStatus, setSelectedTaskStatus] = useState<string>('All');
@@ -313,18 +316,18 @@ export function ReportsPage() {
 
   if (activeTab === 'requirement') {
     filterOptions.push(
-      { id: 'partner', label: 'Partner', options: ['All', 'Triem Security', 'Eventus', 'DIST'], defaultValue: 'All' },
+      { id: 'partner', label: 'Partner', options: partnerOptions, defaultValue: 'All', placeholder: 'Select Partner' },
       { id: 'status', label: 'Status', options: ['All', 'Completed', 'In Progress', 'Delayed'], defaultValue: 'All' }
     );
   } else if (activeTab === 'task') {
     filterOptions.push(
-      { id: 'leader', label: 'Leader', options: ['All', 'David', 'Elena'], defaultValue: 'All' },
-      { id: 'assigned', label: 'Assigned', options: ['All', 'Alice', 'Bob', 'Charlie'], defaultValue: 'All' },
+      { id: 'leader', label: 'Leader', options: employeeOptions, defaultValue: 'All', placeholder: 'Select Leader' },
+      { id: 'assigned', label: 'Assigned', options: employeeOptions, defaultValue: 'All', placeholder: 'Select Member' },
       { id: 'status', label: 'Status', options: ['All', 'Completed', 'In Progress', 'Delayed'], defaultValue: 'All' }
     );
   } else if (activeTab === 'member') {
-    filterOptions.push({ id: 'member', label: 'Member', options: ['All', 'Alice Williams', 'Bob Miller', 'Charlie Davis'], defaultValue: 'All' });
-    filterOptions.push({ id: 'department', label: 'Department', options: ['All', 'Design', 'Engineering', 'Product'], defaultValue: 'All' });
+    filterOptions.push({ id: 'member', label: 'Member', options: employeeOptions, defaultValue: 'All', placeholder: 'Select Member' });
+    filterOptions.push({ id: 'department', label: 'Department', options: departmentOptions, defaultValue: 'All', placeholder: 'Select Department' });
   }
 
   // Selected Member Logic
@@ -569,6 +572,7 @@ export function ReportsPage() {
                     <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.requirement}</td>
                     <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.leader}</td>
                     <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.assigned}</td>
+                    <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.dueDate ? dayjs(row.dueDate).format('MMM D, YYYY') : '-'}</td>
                     <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.allottedHrs}h</td>
                     <td className="px-4 text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">{row.engagedHrs}h</td>
                     <td className="px-4 text-[13px] font-['Inter:Medium',sans-serif] text-[#FF3B3B]">{row.extraHrs > 0 ? `+${row.extraHrs}h` : '-'}</td>
@@ -576,7 +580,7 @@ export function ReportsPage() {
                   </tr>
                 ))}
                 {filteredTasks.length === 0 && (
-                  <tr><td colSpan={9} className="text-center py-8 text-[#999999] text-[13px]">No tasks found matching your filters.</td></tr>
+                  <tr><td colSpan={10} className="text-center py-8 text-[#999999] text-[13px]">No tasks found matching your filters.</td></tr>
                 )}
               </tbody>
             </table>
@@ -677,7 +681,7 @@ export function ReportsPage() {
                       </h2>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-sm text-[#666666] font-['Inter:Medium',sans-serif]">
-                          {selectedMember.department}
+                          {selectedMember.designation} <span className="text-[#E5E5E5] mx-1">|</span> {selectedMember.department}
                         </span>
                         <span className="w-1 h-1 rounded-full bg-[#999999]/30"></span>
                         <span className="px-2 py-0.5 rounded-full bg-[#7ccf00]/10 text-[#7ccf00] text-[11px] font-bold uppercase tracking-wide">

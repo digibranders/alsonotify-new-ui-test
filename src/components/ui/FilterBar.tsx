@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 export interface FilterOption {
   id: string;
   label: string;
-  options: string[];
+  options: (string | { label: string; value: string })[];
   defaultValue?: string;
   placeholder?: string;
 }
@@ -62,8 +62,19 @@ export function FilterBar({
     <div className="flex items-center gap-3 pb-4 border-b border-[#EEEEEE]">
       {/* Filter Dropdowns */}
       {filters.map((filter, index) => {
-        const selectedValue = selectedFilters[filter.id] || filter.defaultValue || filter.options[0];
-        const isDefault = selectedValue === 'All' || selectedValue === filter.defaultValue;
+        // Helper to get value and label from an option
+        const getOptionValue = (opt: string | { label: string; value: string }) => typeof opt === 'string' ? opt : opt.value;
+        const getOptionLabel = (opt: string | { label: string; value: string }) => typeof opt === 'string' ? opt : opt.label;
+
+        // Determine current selected value (defaults to first option's value)
+        const firstOptionValue = filter.options.length > 0 ? getOptionValue(filter.options[0]) : '';
+        const selectedValue = selectedFilters[filter.id] || filter.defaultValue || firstOptionValue;
+        
+        // Find selected option object to display correct label
+        const selectedOptionObj = filter.options.find(opt => getOptionValue(opt) === selectedValue);
+        const displayLabel = selectedOptionObj ? getOptionLabel(selectedOptionObj) : selectedValue;
+
+        const isDefault = selectedValue === 'All' || selectedValue === filter.defaultValue; // Simplified check
         const hasSelection = !isDefault;
 
         return (
@@ -80,7 +91,7 @@ export function FilterBar({
                 }`}
             >
               <span className="truncate">
-                {isDefault ? (filter.placeholder || filter.label) : selectedValue}
+                {isDefault ? (filter.placeholder || filter.label) : displayLabel}
               </span>
               <ChevronDown24Filled className={`w-4 h-4 flex-shrink-0 transition-transform ${openDropdown === filter.id ? 'rotate-180' : ''}`} />
             </button>
@@ -88,21 +99,25 @@ export function FilterBar({
             {/* Dropdown Menu */}
             {openDropdown === filter.id && (
               <div className="absolute top-full mt-2 left-0 bg-white border border-[#EEEEEE] rounded-[12px] shadow-lg w-[200px] py-2 z-50 max-h-[300px] overflow-y-auto">
-                {filter.options.map((option) => (
-                  <button
-                    key={option}
-                    onClick={() => {
-                      onFilterChange?.(filter.id, option);
-                      setOpenDropdown(null);
-                    }}
-                    className={`w-full text-left px-4 py-2.5 font-['Manrope:Regular',sans-serif] text-[14px] hover:bg-[#F7F7F7] transition-colors ${selectedValue === option
-                      ? 'text-[#ff3b3b] bg-[#FEF3F2]'
-                      : 'text-[#666666]'
-                      }`}
-                  >
-                    {option}
-                  </button>
-                ))}
+                {filter.options.map((option, idx) => {
+                    const optValue = getOptionValue(option);
+                    const optLabel = getOptionLabel(option);
+                    return (
+                        <button
+                            key={`${optValue}-${idx}`}
+                            onClick={() => {
+                            onFilterChange?.(filter.id, optValue);
+                            setOpenDropdown(null);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 font-['Manrope:Regular',sans-serif] text-[14px] hover:bg-[#F7F7F7] transition-colors ${selectedValue === optValue
+                            ? 'text-[#ff3b3b] bg-[#FEF3F2]'
+                            : 'text-[#666666]'
+                            }`}
+                        >
+                            {optLabel}
+                        </button>
+                    )
+                })}
               </div>
             )}
           </div>
