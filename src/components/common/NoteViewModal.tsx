@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, KeyboardEvent } from 'react';
+
 import { Modal, Button, Input, Checkbox, App } from 'antd';
 import { Note, ChecklistItem } from '../../services/notes';
 import { updateNote } from '../../services/notes';

@@ -2,7 +2,7 @@ import { PageLayout } from '../../layout/PageLayout';
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useTabSync } from '@/hooks/useTabSync';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import DOMPurify from 'dompurify';
+import { sanitizeRichText } from '../../../utils/sanitizeHtml';
 import { Plus, Archive, Trash2, FileText, ArchiveRestore } from 'lucide-react';
 import { Checkbox, App } from 'antd';
 import { NoteComposerModal } from '../../common/NoteComposerModal';
@@ -553,7 +553,7 @@ function NoteCard({ note, onArchive, onUnarchive, onDelete, onEdit, onClick }: N
           {normalizeNoteType(note.type) === 'text' && note.content && (
             <div
               className="font-['Inter:Regular',sans-serif] text-[13px] text-[#666666] line-clamp-[8] leading-relaxed prose prose-sm max-w-none [&>p]:mb-2 [&>p]:last:mb-0 h-full"
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.content) }}
+              dangerouslySetInnerHTML={{ __html: sanitizeRichText(note.content) }}
             />
           )}
 

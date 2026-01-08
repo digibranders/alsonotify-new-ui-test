@@ -1,54 +1,44 @@
-# Refactor Report: Domain Typing and Type Safety
+# Refactor Report
 
-## Summary
+## Phase: Rich text sanitization hardening
 
-The codebase has been refactored to significantly reduce the usage of `any` types and improve overall type safety. Shared domain types were introduced and propagated through services, hooks, and components.
+### Inventory Summary
 
-## Key Changes
+-   **Injection Points Identified:** 4 key components.
+    -   `RichTextEditor.tsx` (Input/Write)
+    -   `NotesPage.tsx` (Render)
+    -   `NotesWidget.tsx` (Render)
+    -   `RequirementDetailsPage.tsx` (Render)
+-   **Remediation:** 100% of identified injection points are now secured using `sanitizeHtml` utility.
 
-### 1. Domain Types Implemented
+### Files Changed
 
--   **`CompanyProfile` (`src/types/auth.ts`)**: Expanded to include fields used in `SettingsPage` (e.g., `tax_id`, `working_hours`, `leaves`).
--   **`WorkspaceType` (`src/services/workspace.ts`)**: Added comprehensive fields for project metrics, status logic, and client details (`client_user`, `client_company_name`, `assigned_users`).
--   **`RequirementType` (`src/services/workspace.ts`)**: Updated to include full set of properties used in `RequirementDetailsPage` (e.g., `pricing_model`, `sender_company`, `budget`).
--   **`LeaveType` (`src/services/leave.ts`)**: refined with `created_at` and user relationship.
--   **`UserType` (`src/services/user.ts`)**: Enhanced with employee-specific fields (`department`, `manager_id`, `salary_yearly`, `date_of_joining`).
--   **`GraphEvent` (`src/services/calendar.ts`)**: Updated to support MS Graph API event structure fully (including `body` for descriptions).
+-   `src/utils/sanitizeHtml.ts` (NEW) - Central sanitization logic using DOMPurify.
+-   `src/utils/sanitizeHtml.test.ts` (NEW) - Regression tests.
+-   `vitest.config.ts` - Updated environment to `jsdom`.
+-   `src/components/common/RichTextEditor.tsx` - Enforced input/output sanitization.
+-   `src/components/features/notes/NotesPage.tsx` - Enforced render sanitization.
+-   `src/components/dashboard/NotesWidget.tsx` - Enforced render sanitization.
+-   `src/components/features/requirements/RequirementDetailsPage.tsx` - Enforced render sanitization.
 
-### 2. Component Improvements
+### Tests Added
 
--   **`ProjectCard.tsx`**: Addressed `undefined` checks for workspace metrics and assigned users.
--   **`EmployeesPage.tsx` & `EmployeeDetailsPage.tsx`**: Fixed invalid `Date` construction from potentially undefined `date_of_joining`.
--   **`WorkspaceRequirementsPage.tsx`**: Corrected client data access to use typed fields.
--   **`LeavesPage.tsx`**, **`MeetingsWidget.tsx`**, **`CalendarPage.tsx`**: Aligned with updated service types.
+-   `src/utils/sanitizeHtml.test.ts`: 8 tests covering:
+    -   Tag allowlist enforcement.
+    -   Script and event handler removal.
+    -   URI scheme validation.
+    -   Checklist structure preservation.
 
-## Verification Status
+### Verification Results
 
-### Automated Checks
+-   `npm run lint`: Passed for modified files (pre-existing errors ignored, new code clean).
+-   `npm run test`: All 8 core sanitization tests passed.
+-   `npm run build`: Verified successful build.
 
--   **`npm run typecheck`**: **PASSED** (Exit Code 0)
-    -   Zero typescript errors remaining in the project.
--   **`npm run build`**: **PASSED** (Exit Code 0)
-    -   Production build completed successfully.
+### Rollback Plan
 
-## Metrics
+To revert changes:
 
--   **Compilation Errors**: reduced from ~74 to **0**.
--   **`any` Usage**: 216 explicit usages remaining in `src` (down from initial baseline). Matches are primarily in legacy UI components awaiting targeted refactor.
--   **Codebase Size**: 158 TypeScript/TSX files, ~38,289 lines of code.
-
-## Current Statistics (Snapshot)
-
-| Metric                  | Count   | Status                     |
-| :---------------------- | :------ | :------------------------- |
-| **Files Scanned**       | 158     | `src/**/*.ts*`             |
-| **Total Lines of Code** | ~38,289 | -                          |
-| **Pending `any` Types** | 216     | To be addressed in Phase 2 |
-| **Type Errors**         | 0       | **PASSED**                 |
-| **Build Status**        | Success | **READY**                  |
-
-## Next Steps
-
--   Continue targeting remaining `any` usages in peripheral components.
--   Implement stricter type guards for API responses.
--   Add unit tests for critical business logic paths using the new types.
+1. Revert git commit or delete `src/utils/sanitizeHtml.ts`.
+2. Undo changes to `vitest.config.ts`.
+3. Undo replacements in `RichTextEditor.tsx`, `NotesPage.tsx`, `NotesWidget.tsx`, `RequirementDetailsPage.tsx`.
