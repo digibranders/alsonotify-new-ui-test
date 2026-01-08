@@ -37,10 +37,9 @@ export function DayView({ currentDate, events, isLoading, onTimeSlotClick }: Day
              return -1; 
         }
         
-        if (event.raw && event.raw.start && event.raw.start.dateTime) {
-            return dayjs(event.raw.start.dateTime).hour() * 60 + dayjs(event.raw.start.dateTime).minute();
-        } else if (event.raw && event.raw.start_time) {
-             return dayjs(event.raw.start_time).hour() * 60 + dayjs(event.raw.start_time).minute();
+        // Use the pre-calculated timezone-aware startDateTime if available
+        if (event.startDateTime) {
+            return event.startDateTime.hour() * 60 + event.startDateTime.minute();
         }
 
         if (event.time && event.date) {
@@ -87,7 +86,8 @@ export function DayView({ currentDate, events, isLoading, onTimeSlotClick }: Day
         <div className="flex flex-col h-full bg-white border border-[#EEEEEE] rounded-[16px] overflow-hidden">
              
              {/* Scrollable Grid containing Header (sticky) and Body */}
-             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-white">
+             {/* Scrollable Grid containing Header (sticky) and Body */}
+             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-white scrollbar-hide">
                 
                 {/* Header (Moved inside) */}
                 <div className="flex border-b border-[#EEEEEE] sticky top-0 bg-white z-40">

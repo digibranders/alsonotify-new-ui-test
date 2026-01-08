@@ -10,10 +10,13 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
+dayjs.extend(timezone);
 dayjs.extend(weekOfYear);
+dayjs.extend(customParseFormat);
 
 import { useTasks } from '@/hooks/useTask';
 import { useMeetings } from '@/hooks/useMeeting';
@@ -44,9 +47,9 @@ export function CalendarPage() {
   const { message } = App.useApp();
   const router = useRouter();
   
-  const [activeView, setActiveView] = useTabSync<'month' | 'week' | 'day' | 'agenda'>({
+  const [activeView, setActiveView] = useTabSync<'month' | 'week' | 'day'>({
     defaultTab: 'month',
-    validTabs: ['month', 'week', 'day', 'agenda']
+    validTabs: ['month', 'week', 'day']
   });
 
   const [currentDate, setCurrentDate] = useState(dayjs());
@@ -253,6 +256,7 @@ export function CalendarPage() {
             avatar: undefined
           })),
           color: '#3B82F6',
+          startDateTime: startTime, // Pass the timezone-converted Dayjs object
           raw: event
         });
       });
@@ -365,7 +369,11 @@ export function CalendarPage() {
 
         if (e.type === 'meeting') return true;
         if (e.type === 'leave') return e.raw.user_id === currentUserId;
-        if (e.type === 'holiday') return dayjs(e.date).isSame(dayjs(), 'month');
+        if (e.type === 'holiday') {
+          const eventDate = dayjs(e.date);
+          const now = dayjs();
+          return eventDate.month() === now.month() && eventDate.year() === now.year();
+        }
         
         // Exclude others (tasks/deadlines) based on request "only show..."
         return false;
@@ -380,8 +388,7 @@ export function CalendarPage() {
       tabs={[
         { id: 'month', label: 'Month' },
         { id: 'week', label: 'Week' },
-        { id: 'day', label: 'Day' },
-        { id: 'agenda', label: 'Agenda' }
+        { id: 'day', label: 'Day' }
       ]}
       activeTab={activeView}
       onTabChange={(tabId) => setActiveView(tabId as any)}
@@ -448,14 +455,10 @@ export function CalendarPage() {
                       onTimeSlotClick={handleTimeSlotClick}
                   />
               )}
-              {activeView === 'agenda' && (
-                   <div className="flex items-center justify-center h-full bg-white border border-[#EEEEEE] rounded-[16px] text-[#999999]">
-                       Agenda View Coming Soon
-                   </div>
-              )}
+
           </div>
 
-          <div className="flex flex-col gap-4 overflow-y-auto">
+          <div className="flex flex-col gap-4 overflow-y-auto scrollbar-hide">
             {/* Today's Events */}
             <div className="bg-[#F7F7F7] rounded-[16px] p-5">
               <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-4">

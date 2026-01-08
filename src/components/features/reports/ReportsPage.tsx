@@ -657,7 +657,7 @@ export function ReportsPage() {
         <Drawer
           title={null}
           closable={false}
-          width={600}
+          style={{ width: 800 }}
           onClose={() => setSelectedMemberId(null)}
           open={!!selectedMemberId}
           styles={{ body: { padding: 0 } }}
@@ -725,13 +725,13 @@ export function ReportsPage() {
                 {/* Work History */}
                 <div>
                     <h3 className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111] uppercase tracking-wide mb-3">Work History</h3>
-                    <div className="border border-[#EEEEEE] rounded-lg overflow-hidden">
-                        <table className="w-full text-left border-collapse">
+                    <div className="border border-[#EEEEEE] rounded-lg overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[600px]">
                             <thead className="bg-[#FAFAFA] border-b border-[#EEEEEE]">
                                 <tr>
                                     <th className="py-2 px-3 text-[11px] font-bold text-[#666666] uppercase w-[100px]">Date</th>
                                     <th className="py-2 px-3 text-[11px] font-bold text-[#666666] uppercase w-[150px]">Task</th>
-                                    <th className="py-2 px-3 text-[11px] font-bold text-[#666666] uppercase">Details</th>
+                                    <th className="py-2 px-3 text-[11px] font-bold text-[#666666] uppercase min-w-[200px]">Details</th>
                                     <th className="py-2 px-3 text-[11px] font-bold text-[#666666] uppercase w-[120px] text-right">Time</th>
                                     <th className="py-2 px-3 text-[11px] font-bold text-[#666666] uppercase w-[80px] text-right">Duration</th>
                                 </tr>
@@ -741,7 +741,7 @@ export function ReportsPage() {
                                     <tr key={log.id} className="border-b border-[#EEEEEE] last:border-0 hover:bg-[#FAFAFA] transition-colors group h-9">
                                         <td className="px-3 text-[12px] font-medium text-[#111111] whitespace-nowrap">{log.date}</td>
                                         <td className="px-3 text-[12px] font-medium text-[#111111] truncate max-w-[150px]" title={log.task}>{log.task}</td>
-                                        <td className="px-3 text-[12px] text-[#666666] truncate max-w-[200px]" title={log.details}>{log.details}</td>
+                                        <td className="px-3 text-[12px] text-[#666666] truncate max-w-[250px]" title={log.details}>{log.details}</td>
                                         <td className="px-3 text-[11px] text-[#666666] text-right whitespace-nowrap">{log.startTime} - {log.endTime}</td>
                                         <td className="px-3 text-right">
                                             <span className="text-[11px] font-bold text-[#111111] bg-[#EEEEEE] px-1.5 py-0.5 rounded group-hover:bg-white group-hover:shadow-sm transition-all">{log.engagedTime}</span>

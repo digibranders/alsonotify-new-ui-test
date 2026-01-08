@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Plus, Edit, Trash2, X, Pencil, CreditCard, Bell, Lock, Database, AlertTriangle, Eye, EyeOff, Shield, ChevronDown, ChevronRight, Check } from 'lucide-react';
 import { Button, Input, Select, Switch, Divider, App, Modal, DatePicker, Collapse, Checkbox } from "antd";
 import { useUpdateCompany, useCurrentUserCompany, useRoles, useRolePermissions, useUpsertRole, useUpdateRolePermissions, useUserDetails } from '@/hooks/useUser';
@@ -222,7 +223,26 @@ interface DocumentTypeLocal {
 
 export function SettingsPage() {
   const { message } = App.useApp();
-  const [activeTab, setActiveTab] = useState<'company' | 'leaves' | 'working-hours' | 'integrations' | 'financials' | 'notifications' | 'security' | 'data' | 'access-management'>('company');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  
+  const [activeTab, setActiveTab] = useState<'company' | 'leaves' | 'working-hours' | 'integrations' | 'notifications' | 'security' | 'access-management'>('company');
+
+  // Sync state with URL on mount and param change
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['company', 'leaves', 'working-hours', 'integrations', 'notifications', 'security', 'access-management'].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab as any);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [searchParams, pathname, router]);
   const [isEditing, setIsEditing] = useState(false);
 
   // State for new tabs
@@ -610,7 +630,7 @@ export function SettingsPage() {
         {/* Tabs */}
         <div className="flex items-center gap-8 border-b border-[#EEEEEE] overflow-x-auto">
           <button
-            onClick={() => setActiveTab('company')}
+            onClick={() => handleTabChange('company')}
             className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'company' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
               }`}
           >
@@ -620,16 +640,9 @@ export function SettingsPage() {
 
           {!isIndividual && (
             <>
+
               <button
-                onClick={() => setActiveTab('financials')}
-                className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'financials' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
-                  }`}
-              >
-                Financials
-                {activeTab === 'financials' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
-              </button>
-              <button
-                onClick={() => setActiveTab('notifications')}
+                onClick={() => handleTabChange('notifications')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'notifications' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
                   }`}
               >
@@ -637,23 +650,16 @@ export function SettingsPage() {
                 {activeTab === 'notifications' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
               </button>
               <button
-                onClick={() => setActiveTab('security')}
+                onClick={() => handleTabChange('security')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'security' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
                   }`}
               >
                 Security
                 {activeTab === 'security' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
               </button>
+
               <button
-                onClick={() => setActiveTab('data')}
-                className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'data' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
-                  }`}
-              >
-                Data
-                {activeTab === 'data' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
-              </button>
-              <button
-                onClick={() => setActiveTab('leaves')}
+                onClick={() => handleTabChange('leaves')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'leaves' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
                   }`}
               >
@@ -661,7 +667,7 @@ export function SettingsPage() {
                 {activeTab === 'leaves' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
               </button>
               <button
-                onClick={() => setActiveTab('working-hours')}
+                onClick={() => handleTabChange('working-hours')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'working-hours' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
                   }`}
               >
@@ -670,7 +676,7 @@ export function SettingsPage() {
               </button>
               {isAdmin && (
                 <button
-                  onClick={() => setActiveTab('access-management')}
+                  onClick={() => handleTabChange('access-management')}
                   className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'access-management' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
                     }`}
                 >
@@ -679,7 +685,7 @@ export function SettingsPage() {
                 </button>
               )}
               <button
-                onClick={() => setActiveTab('integrations')}
+                onClick={() => handleTabChange('integrations')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'integrations' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
                   }`}
               >
@@ -1037,7 +1043,7 @@ export function SettingsPage() {
         {activeTab === 'leaves' && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 grid grid-cols-2 gap-12">
             {/* Leaves Column */}
-            <div className="space-y-6">
+            <div className="space-y-6 sticky top-0 self-start">
               <div className="flex items-center gap-2">
                 <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Leaves</h2>
               </div>
@@ -1457,53 +1463,7 @@ export function SettingsPage() {
           </div>
         )}
 
-        {/* Financials Tab */}
-        {activeTab === 'financials' && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-2xl">
-            <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">Financial Information</h2>
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              <div className="space-y-2">
-                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Account Holder Name</span>
-                <Input
-                  placeholder="Enter name"
-                  value={bankDetails.accountName}
-                  onChange={(e) => setBankDetails({ ...bankDetails, accountName: e.target.value })}
-                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
-                />
-              </div>
-              <div className="space-y-2">
-                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Bank Name</span>
-                <Input
-                  placeholder="Enter bank name"
-                  value={bankDetails.bankName}
-                  onChange={(e) => setBankDetails({ ...bankDetails, bankName: e.target.value })}
-                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
-                />
-              </div>
-              <div className="space-y-2">
-                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Account Number</span>
-                <Input
-                  placeholder="Enter account number"
-                  value={bankDetails.accountNumber}
-                  onChange={(e) => setBankDetails({ ...bankDetails, accountNumber: e.target.value })}
-                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
-                />
-              </div>
-              <div className="space-y-2">
-                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">IFSC / Sort Code</span>
-                <Input
-                  placeholder="Enter code"
-                  value={bankDetails.ifscCode}
-                  onChange={(e) => setBankDetails({ ...bankDetails, ifscCode: e.target.value })}
-                  className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button type="primary" className="bg-[#111111] h-10 px-6 rounded-lg font-['Manrope:SemiBold',sans-serif]">Save Details</Button>
-            </div>
-          </div>
-        )}
+
 
         {/* Notifications Tab */}
         {activeTab === 'notifications' && (
@@ -1539,30 +1499,7 @@ export function SettingsPage() {
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-2xl">
             <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">Security Settings</h2>
 
-            <div className="mb-8">
-              <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4 flex items-center gap-2"><Lock className="w-4 h-4" /> Change Password</h3>
-              <div className="space-y-4 max-w-md">
-                <Input.Password
-                  placeholder="Current Password"
-                  value={security.currentPassword}
-                  onChange={(e) => setSecurity({ ...security, currentPassword: e.target.value })}
-                  className="h-11 rounded-lg"
-                />
-                <Input.Password
-                  placeholder="New Password"
-                  value={security.newPassword}
-                  onChange={(e) => setSecurity({ ...security, newPassword: e.target.value })}
-                  className="h-11 rounded-lg"
-                />
-                <Input.Password
-                  placeholder="Confirm New Password"
-                  value={security.confirmPassword}
-                  onChange={(e) => setSecurity({ ...security, confirmPassword: e.target.value })}
-                  className="h-11 rounded-lg"
-                />
-                <Button type="primary" className="bg-[#111111] h-10 px-6 rounded-lg font-['Manrope:SemiBold',sans-serif]">Update Password</Button>
-              </div>
-            </div>
+
 
             <Divider />
 
@@ -1594,39 +1531,24 @@ export function SettingsPage() {
                 </div>
               </>
             )}
+
+            <Divider className="my-8" />
+            
+            <div className="p-4 border border-[#ff3b3b]/20 bg-[#FFF5F5] rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-[#ff3b3b]/10 rounded-full"><AlertTriangle className="w-5 h-5 text-[#ff3b3b]" /></div>
+                <div>
+                  <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#ff3b3b]">Delete Account</h3>
+                  <p className="text-[12px] text-[#ff3b3b]/80">Permanently delete your account and all data.</p>
+                </div>
+              </div>
+              <Button danger type="primary">Delete Account</Button>
+            </div>
           </div>
         )}
 
         {/* Data Tab */}
-        {activeTab === 'data' && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-2xl">
-            <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">Data Management</h2>
 
-            <div className="space-y-4">
-              <div className="p-4 border border-[#EEEEEE] rounded-xl flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-[#F7F7F7] rounded-full"><Database className="w-5 h-5 text-[#666666]" /></div>
-                  <div>
-                    <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111]">Export Data</h3>
-                    <p className="text-[12px] text-[#666666]">Download a copy of your company data.</p>
-                  </div>
-                </div>
-                <Button icon={<Database className="w-4 h-4" />}>Export CSV</Button>
-              </div>
-
-              <div className="p-4 border border-[#ff3b3b]/20 bg-[#FFF5F5] rounded-xl flex items-center justify-between mt-8">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-[#ff3b3b]/10 rounded-full"><AlertTriangle className="w-5 h-5 text-[#ff3b3b]" /></div>
-                  <div>
-                    <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#ff3b3b]">Delete Account</h3>
-                    <p className="text-[12px] text-[#ff3b3b]/80">Permanently delete your account and all data.</p>
-                  </div>
-                </div>
-                <Button danger type="primary">Delete Account</Button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Holiday Modal */}
