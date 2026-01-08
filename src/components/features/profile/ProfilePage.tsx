@@ -112,10 +112,14 @@ export function ProfilePage() {
             emergencyContactName: (userProfile?.emergency_contact as any)?.name || "",
             emergencyRelationship: (userProfile?.emergency_contact as any)?.relationship || "",
             emergencyContactNumber: (userProfile?.emergency_contact as any)?.phone || "",
-            newPassword: "",
-            confirmPassword: "",
         };
     }, [user]);
+
+    const [passwordForm, setPasswordForm] = useState({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+    });
 
     const [isEditing, setIsEditing] = useState(false);
     const [profile, setProfile] = useState(initialProfile);
@@ -339,21 +343,6 @@ export function ProfilePage() {
             };
 
             await updateProfileMutation.mutateAsync(userProfilePayload);
-
-            // Handle password update if password fields are filled
-            if (profile.newPassword || profile.confirmPassword) {
-                if (profile.newPassword !== profile.confirmPassword) {
-                    message.error("Passwords do not match");
-                    return;
-                }
-                if (profile.newPassword.length < 8) {
-                    message.error("Password must be at least 8 characters");
-                    return;
-                }
-                await updatePasswordMutation.mutateAsync(profile.newPassword);
-                setProfile(prev => ({ ...prev, newPassword: "", confirmPassword: "" }));
-                message.success("Password updated successfully!");
-            }
 
             message.success("Profile updated successfully!");
             setIsEditing(false);
@@ -807,23 +796,83 @@ export function ProfilePage() {
                     <Divider className="my-8 bg-[#EEEEEE]" />
 
                     {/* Password */}
+                    {/* Password */}
                     <section className="mb-10">
                         <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">
                             Change Password
                         </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {renderField(
-                                "New Password",
-                                profile.newPassword,
-                                "newPassword",
-                                "password"
-                            )}
-                            {renderField(
-                                "Confirm Password",
-                                profile.confirmPassword,
-                                "confirmPassword",
-                                "password"
-                            )}
+                        <div className="grid grid-cols-1 gap-6 max-w-md">
+                           <div className="space-y-2">
+                                <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                    Current Password
+                                </div>
+                                <Input.Password
+                                    value={passwordForm.currentPassword}
+                                    onChange={(e) => setPasswordForm(prev => ({ ...prev, currentPassword: e.target.value }))}
+                                    placeholder="Enter current password"
+                                    className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px] bg-white"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                    New Password
+                                </div>
+                                <Input.Password
+                                    value={passwordForm.newPassword}
+                                    onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
+                                    placeholder="Enter new password"
+                                    className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px] bg-white"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <div className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+                                    Confirm New Password
+                                </div>
+                                <Input.Password
+                                    value={passwordForm.confirmPassword}
+                                    onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                                    placeholder="Confirm new password"
+                                    className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px] bg-white"
+                                />
+                            </div>
+                            <div>
+                                <Button 
+                                    type="primary" 
+                                    onClick={async () => {
+                                        if (!passwordForm.currentPassword) {
+                                            message.error("Please enter your current password");
+                                            return;
+                                        }
+                                        if (!passwordForm.newPassword || !passwordForm.confirmPassword) {
+                                            message.error("Please enter a new password");
+                                            return;
+                                        }
+                                        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+                                            message.error("Passwords do not match");
+                                            return;
+                                        }
+                                        if (passwordForm.newPassword.length < 8) {
+                                            message.error("Password must be at least 8 characters");
+                                            return;
+                                        }
+                                        
+                                        try {
+                                            await updatePasswordMutation.mutateAsync({
+                                                password: passwordForm.newPassword,
+                                                currentPassword: passwordForm.currentPassword
+                                            });
+                                            setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                                            message.success("Password updated successfully!");
+                                        } catch (error: any) {
+                                            message.error(error?.response?.data?.message || "Failed to update password");
+                                        }
+                                    }}
+                                    loading={updatePasswordMutation.isPending}
+                                    className="bg-[#111111] h-10 px-6 rounded-lg font-['Manrope:SemiBold',sans-serif] w-full sm:w-auto"
+                                >
+                                    Update Password
+                                </Button>
+                            </div>
                         </div>
                     </section>
 

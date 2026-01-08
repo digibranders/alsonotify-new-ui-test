@@ -7,13 +7,14 @@ import {
   updateUserById,
   getUserDetails,
   updateCurrentUserProfile,
+  updateCurrentUserPassword,
   getCompanyDepartments,
   updateUserStatus,
   inviteUser,
   updateCurrentUserCompany,
   getCurrentUserCompany,
   getRoles,
-  updatePassword,
+  // updatePassword,
   type UserType,
   type ClientOrOutsourceType,
   type CompanyDepartmentType,
@@ -90,7 +91,7 @@ export const useUpdateProfile = () => {
 
 export const useUpdatePassword = () => {
   return useMutation({
-    mutationFn: (password: string) => updatePassword(password),
+    mutationFn: (params: { password: string, currentPassword?: string }) => updateCurrentUserPassword(params),
   });
 };
 

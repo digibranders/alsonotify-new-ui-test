@@ -86,7 +86,8 @@ export function DayView({ currentDate, events, isLoading, onTimeSlotClick }: Day
         <div className="flex flex-col h-full bg-white border border-[#EEEEEE] rounded-[16px] overflow-hidden">
              
              {/* Scrollable Grid containing Header (sticky) and Body */}
-             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-white">
+             {/* Scrollable Grid containing Header (sticky) and Body */}
+             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative bg-white scrollbar-hide">
                 
                 {/* Header (Moved inside) */}
                 <div className="flex border-b border-[#EEEEEE] sticky top-0 bg-white z-40">

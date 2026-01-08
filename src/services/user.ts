@@ -140,7 +140,8 @@ export const updateCurrentUserProfile = async (params: {
 };
 
 // Update user password
-export const updateCurrentUserPassword = async (params: { password: string }): Promise<ApiResponse<any>> => {
+// Update user password
+export const updateCurrentUserPassword = async (params: { password: string, currentPassword?: string }): Promise<ApiResponse<any>> => {
   try {
     const { data } = await axiosApi.post<ApiResponse<any>>(`/user/password`, params);
     return data;
@@ -317,14 +318,15 @@ export const declineInviteById = async (inviteId: number): Promise<ApiResponse<a
 };
 
 // Update user password
-export const updatePassword = async (password: string): Promise<ApiResponse<null>> => {
-  try {
-    const { data } = await axiosApi.patch<ApiResponse<null>>("/user/update/password", { password });
-    return data;
-  } catch (error) {
-    throw error;
-  }
-};
+// Update user password - DEPRECATED: Use updateCurrentUserPassword instead
+// export const updatePassword = async (password: string): Promise<ApiResponse<null>> => {
+//   try {
+//     const { data } = await axiosApi.patch<ApiResponse<null>>("/user/update/password", { password });
+//     return data;
+//   } catch (error) {
+//     throw error;
+//   }
+// };
 
 // Delete partner (or cancel request)
 export const deletePartner = async (params: { userType: 'PARTNER'; partnerUserId?: number; inviteId?: number }): Promise<ApiResponse<any>> => {

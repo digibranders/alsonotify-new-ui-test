@@ -92,7 +92,7 @@ export function MonthView({ currentDate, events, isLoading, selectedDate, onSele
     }
 
     return (
-        <div className="bg-white border border-[#EEEEEE] rounded-[16px] p-4 h-full flex flex-col overflow-auto">
+        <div className="bg-white border border-[#EEEEEE] rounded-[16px] p-4 h-full flex flex-col overflow-auto scrollbar-hide">
             {/* Day Headers - using Table */}
             <table className="w-full h-full table-fixed border-separate border-spacing-2" role="grid" aria-label="Calendar Month View">
                 <thead>
