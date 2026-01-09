@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Modal, Button } from 'antd';
+import { useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 
@@ -23,230 +24,19 @@ import { DateRangeSelector } from '../../common/DateRangeSelector';
 
 dayjs.extend(isBetween);
 
-// --- Types ---
-
-interface Requirement {
-  id: number;
-  title: string;
-  type: string;
-  estimatedCost: number;
-  status: 'completed' | 'in_progress' | 'pending';
-  approvalStatus: 'approved' | 'pending' | 'rejected';
-  invoiceStatus: 'unbilled' | 'billed' | 'paid';
-  invoiceId?: string;
-  client: string;
-  dueDate: string;
-}
-
-interface InvoiceItem {
-  requirementId: number;
-  title: string;
-  cost: number;
-}
-
-interface Invoice {
-  id: string;
-  invoiceNumber: string;
-  client: string;
-  date: string;
-  dueDate: string;
-  amount: number;
-  status: 'paid' | 'sent' | 'overdue' | 'draft';
-  items: InvoiceItem[];
-}
-
-// --- Mock Data ---
-
-const MOCK_REQUIREMENTS: Requirement[] = [
-  // TechCorp Inc. - Mixed statuses
-  {
-    id: 101,
-    title: 'Frontend Refactoring',
-    type: 'Development',
-    estimatedCost: 5000,
-    status: 'completed',
-    approvalStatus: 'approved',
-    invoiceStatus: 'unbilled',
-    client: 'TechCorp Inc.',
-    dueDate: '2025-12-01T10:00:00Z'
-  },
-  {
-    id: 102,
-    title: 'Security Audit Phase 1',
-    type: 'Security',
-    estimatedCost: 3500,
-    status: 'completed',
-    approvalStatus: 'approved',
-    invoiceStatus: 'unbilled',
-    client: 'TechCorp Inc.',
-    dueDate: '2025-12-05T10:00:00Z'
-  },
-  {
-    id: 106,
-    title: 'Backend Optimization',
-    type: 'Development',
-    estimatedCost: 4200,
-    status: 'completed',
-    approvalStatus: 'approved',
-    invoiceStatus: 'billed',
-    invoiceId: 'INV-2025-004',
-    client: 'TechCorp Inc.',
-    dueDate: '2025-11-15T10:00:00Z'
-  },
-  
-  // StartupHub - Design focus
-  {
-    id: 103,
-    title: 'Mobile App Design',
-    type: 'Design',
-    estimatedCost: 8000,
-    status: 'completed',
-    approvalStatus: 'approved',
-    invoiceStatus: 'unbilled',
-    client: 'StartupHub',
-    dueDate: '2025-11-20T10:00:00Z'
-  },
-  {
-    id: 104,
-    title: 'Landing Page Redesign',
-    type: 'Design',
-    estimatedCost: 2500,
-    status: 'completed',
-    approvalStatus: 'approved',
-    invoiceStatus: 'unbilled',
-    client: 'StartupHub',
-    dueDate: '2025-12-10T10:00:00Z'
-  },
-
-  // Global Systems - Heavy varied load
-  {
-    id: 105,
-    title: 'Cloud Migration Strategy',
-    type: 'Consulting',
-    estimatedCost: 12000,
-    status: 'completed',
-    approvalStatus: 'approved',
-    invoiceStatus: 'unbilled',
-    client: 'Global Systems',
-    dueDate: '2025-12-15T10:00:00Z'
-  },
-  {
-    id: 107,
-    title: 'Database Sharding',
-    type: 'Development',
-    estimatedCost: 6000,
-    status: 'in_progress',
-    approvalStatus: 'approved',
-    invoiceStatus: 'unbilled',
-    client: 'Global Systems',
-    dueDate: '2026-01-20T10:00:00Z'
-  },
-
-  // Innovative Solutions
-  {
-    id: 108,
-    title: 'AI Model Integration',
-    type: 'AI/ML',
-    estimatedCost: 15000,
-    status: 'completed',
-    approvalStatus: 'approved',
-    invoiceStatus: 'unbilled',
-    client: 'Innovative Solutions',
-    dueDate: '2025-11-28T10:00:00Z'
-  },
-  {
-    id: 109,
-    title: 'User Testing',
-    type: 'QA',
-    estimatedCost: 1800,
-    status: 'completed',
-    approvalStatus: 'approved',
-    invoiceStatus: 'unbilled',
-    client: 'Innovative Solutions',
-    dueDate: '2025-12-08T10:00:00Z'
-  },
-
-  // Historical / Billed items for reference
-  {
-    id: 110,
-    title: 'Q3 Maintenance',
-    type: 'Maintenance',
-    estimatedCost: 3000,
-    status: 'completed',
-    approvalStatus: 'approved',
-    invoiceStatus: 'paid',
-    invoiceId: 'INV-2025-001',
-    client: 'Triem Security',
-    dueDate: '2025-10-15T10:00:00Z'
-  },
-];
-
-const MOCK_INVOICES: Invoice[] = [
-  {
-    id: 'INV-2025-001',
-    invoiceNumber: 'INV-2025-001',
-    client: 'Triem Security',
-    date: '2025-11-01T09:00:00Z',
-    dueDate: '2025-11-15T09:00:00Z',
-    amount: 15000,
-    status: 'paid',
-    items: []
-  },
-  {
-    id: 'INV-2025-002',
-    invoiceNumber: 'INV-2025-002',
-    client: 'Eventus Security',
-    date: '2025-11-05T09:00:00Z',
-    dueDate: '2025-11-20T09:00:00Z',
-    amount: 8500,
-    status: 'sent',
-    items: []
-  },
-  {
-    id: 'INV-2025-003',
-    invoiceNumber: 'INV-2025-003',
-    client: 'Global Systems',
-    date: '2025-10-20T09:00:00Z',
-    dueDate: '2025-11-05T09:00:00Z',
-    amount: 22000,
-    status: 'overdue',
-    items: []
-  },
-  {
-    id: 'INV-2025-004',
-    invoiceNumber: 'INV-2025-004',
-    client: 'TechCorp Inc.',
-    date: '2025-11-18T09:00:00Z',
-    dueDate: '2025-12-02T09:00:00Z',
-    amount: 4200,
-    status: 'sent',
-    items: []
-  },
-  {
-    id: 'INV-2025-005',
-    invoiceNumber: 'INV-2025-005',
-    client: 'Alpha Dynamics',
-    date: '2025-09-15T09:00:00Z',
-    dueDate: '2025-09-30T09:00:00Z',
-    amount: 12500,
-    status: 'paid',
-    items: []
-  },
-   {
-    id: 'INV-2025-006',
-    invoiceNumber: 'INV-2025-006',
-    client: 'Beta Corp',
-    date: '2025-11-25T09:00:00Z',
-    dueDate: '2025-12-10T09:00:00Z',
-    amount: 6700,
-    status: 'draft',
-    items: []
-  }
-];
+import { 
+  Requirement, 
+  Invoice, 
+  InvoiceItem, 
+  MOCK_REQUIREMENTS, 
+  MOCK_INVOICES 
+} from '../../../data/mockFinanceData';
 
 // --- Main Component ---
 
 export function FinancePage() {
+  const router = useRouter();
+  
   // Local State for Data (Simulating Backend)
   const [requirements, setRequirements] = useState<Requirement[]>(MOCK_REQUIREMENTS);
   const [invoices, setInvoices] = useState<Invoice[]>(MOCK_INVOICES);
@@ -269,10 +59,6 @@ export function FinancePage() {
   ]);
   const [clientFilter, setClientFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('All');
-
-  // Dialog State
-  const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
-  const [selectedClientForInvoice, setSelectedClientForInvoice] = useState<string | null>(null);
 
   // --- Derived Data & helpers ---
 
@@ -394,61 +180,29 @@ export function FinancePage() {
 
   // --- Actions ---
 
-  const handleOpenInvoiceDialog = (client: string) => {
-    setSelectedClientForInvoice(client);
-    setIsInvoiceDialogOpen(true);
-    // Auto-select all if none selected for this client
+  // --- Actions ---
+
+  const handleCreateInvoice = (client: string) => {
+    // Find selected reqs for this client
     const clientReqs = unbilledByClient[client] || [];
-    const currentlySelectedForClient = selectedReqs.filter(id => clientReqs.some(r => r.id === id));
-    if (currentlySelectedForClient.length === 0) {
-      setSelectedReqs(prev => [...prev, ...clientReqs.map(r => r.id)]);
-    }
-  };
+    const clientSelectedReqIds = selectedReqs.filter(id => clientReqs.some(r => r.id === id));
+    
+    // If none selected but user clicked "Generate Invoice" for the group, select all for that client
+    const idsToInvoice = clientSelectedReqIds.length > 0 
+        ? clientSelectedReqIds 
+        : clientReqs.map(r => r.id);
 
-  const handleGenerateInvoice = () => {
-    if (!selectedClientForInvoice) return;
-    
-    // Get reqs for this client that are selected
-    const clientReqs = unbilledByClient[selectedClientForInvoice] || [];
-    const itemsToBill = clientReqs.filter(r => selectedReqs.includes(r.id));
-    
-    if (itemsToBill.length === 0) {
-      toast.error("Please select at least one requirement to invoice");
-      return;
+    if (idsToInvoice.length === 0) {
+        toast.error("No requirements available to invoice");
+        return;
     }
 
-    const totalAmount = itemsToBill.reduce((sum, req) => sum + (req.estimatedCost || 0), 0);
-    const invoiceId = `INV-${dayjs().year()}-${String(invoices.length + 1).padStart(3, '0')}`;
-    
-    const newInvoice: Invoice = {
-      id: invoiceId,
-      invoiceNumber: invoiceId,
-      client: selectedClientForInvoice,
-      date: new Date().toISOString(),
-      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      amount: totalAmount,
-      status: 'sent',
-      items: itemsToBill.map(req => ({
-        requirementId: req.id,
-        title: req.title,
-        cost: req.estimatedCost || 0
-      }))
-    };
+    const queryParams = new URLSearchParams({
+        clientId: client,
+        reqIds: idsToInvoice.join(',')
+    });
 
-    // Update State
-    setInvoices(prev => [newInvoice, ...prev]);
-    
-    setRequirements(prev => prev.map(req => {
-      if (itemsToBill.some(item => item.id === req.id)) {
-        return { ...req, invoiceStatus: 'billed', invoiceId: invoiceId };
-      }
-      return req;
-    }));
-
-    toast.success(`Invoice ${invoiceId} generated for ${selectedClientForInvoice}`);
-    setIsInvoiceDialogOpen(false);
-    setSelectedClientForInvoice(null);
-    setSelectedReqs(prev => prev.filter(id => !itemsToBill.some(r => r.id === id)));
+    router.push(`/dashboard/finance/create?${queryParams.toString()}`);
   };
 
   const handleMarkAsPaid = (invoiceId: string) => {
@@ -594,7 +348,7 @@ export function FinancePage() {
                             if (checked) setSelectedReqs(prev => [...new Set([...prev, ...ids])]);
                             else setSelectedReqs(prev => prev.filter(id => !ids.includes(id)));
                         }}
-                        onGenerateInvoice={() => handleOpenInvoiceDialog(client)}
+                        onGenerateInvoice={() => handleCreateInvoice(client)}
                     />
                   ))}
                 </div>
@@ -688,8 +442,8 @@ export function FinancePage() {
                       <button 
                         onClick={() => {
                             // Find which client(s) selected
-                            const client = selectedClientForInvoice || Object.keys(unbilledByClient).find(c => unbilledByClient[c].some(r => selectedReqs.includes(r.id))) || '';
-                            handleOpenInvoiceDialog(client);
+                            const client = Object.keys(unbilledByClient).find(c => unbilledByClient[c].some(r => selectedReqs.includes(r.id))) || '';
+                            handleCreateInvoice(client);
                         }}
                         className="flex items-center gap-2 hover:text-[#ff3b3b] transition-colors"
                       >
@@ -724,51 +478,6 @@ export function FinancePage() {
                </button>
             </div>
         )}
-
-        {/* Invoice Generation Dialog */}
-        <Modal 
-            open={isInvoiceDialogOpen} 
-            onCancel={() => setIsInvoiceDialogOpen(false)}
-            footer={null}
-            title={null}
-            centered
-            width={500}
-        >
-            <div className="p-4">
-                <h3 className="text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-2">Generate Invoice</h3>
-                <p className="text-[14px] text-[#666666] mb-6">
-                    Create an invoice for <span className="font-bold text-[#111111]">{selectedClientForInvoice}</span>
-                </p>
-                
-                <div className="bg-[#F9FAFB] p-4 rounded-[12px] mb-6 border border-[#EEEEEE]">
-                    <div className="flex justify-between items-center mb-2">
-                         <span className="text-[14px] text-[#666666]">Selected Items</span>
-                         <span className="text-[14px] font-bold text-[#111111]">{unbilledByClient[selectedClientForInvoice || '']?.filter(r => selectedReqs.includes(r.id)).length || 0}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                         <span className="text-[14px] text-[#666666]">Total Amount</span>
-                         <span className="text-[18px] font-bold text-[#ff3b3b]">
-                            ${(unbilledByClient[selectedClientForInvoice || '']?.filter(r => selectedReqs.includes(r.id)).reduce((sum, r) => sum + (r.estimatedCost || 0), 0) || 0).toLocaleString()}
-                         </span>
-                    </div>
-                </div>
-
-                <div className="flex gap-4">
-                    <button 
-                        onClick={() => setIsInvoiceDialogOpen(false)}
-                        className="flex-1 py-3 px-4 rounded-full border border-[#EEEEEE] text-[#666666] font-['Manrope:SemiBold',sans-serif] hover:bg-[#F7F7F7] transition-colors"
-                    >
-                        Cancel
-                    </button>
-                    <button 
-                        onClick={handleGenerateInvoice}
-                        className="flex-1 py-3 px-4 rounded-full bg-[#ff3b3b] text-white font-['Manrope:SemiBold',sans-serif] hover:bg-[#e63535] transition-colors"
-                    >
-                        Generate Invoice
-                    </button>
-                </div>
-            </div>
-        </Modal>
 
       </div>
     </PageLayout>
