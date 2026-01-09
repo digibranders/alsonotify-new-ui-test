@@ -30,6 +30,7 @@ import { WorkspaceForm } from '../../modals/WorkspaceForm';
 
 import { Requirement, Workspace } from '@/types/domain';
 import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDto } from '@/types/dto/requirement.dto';
+import { getErrorMessage } from '@/types/api-utils';
 
 // Quotation Dialog Component
 function QuotationDialog({
@@ -389,7 +390,7 @@ export function RequirementsPage() {
   // Workspace API returns: { client: {id, name}, client_company_name, company_name }
   const workspaceMap = useMemo(() => {
     const map = new Map<number, Workspace>(); // using simplified type for now
-    workspacesData?.result?.workspaces?.forEach((w: any) => {
+    workspacesData?.result?.workspaces?.forEach((w) => {
       map.set(w.id, w);
     });
     return map;
@@ -692,8 +693,8 @@ export function RequirementsPage() {
         messageApi.success("Requirement created successfully");
         setIsDialogOpen(false);
       },
-      onError: (error: any) => {
-        messageApi.error(error?.response?.data?.message || "Failed to create requirement");
+      onError: (error: unknown) => {
+        messageApi.error(getErrorMessage(error, "Failed to create requirement"));
       }
     });
   };
@@ -714,8 +715,8 @@ export function RequirementsPage() {
         setIsDialogOpen(false);
         setEditingReq(undefined);
       },
-      onError: (error: any) => {
-        messageApi.error(error?.response?.data?.message || "Failed to update requirement");
+      onError: (error: unknown) => {
+        messageApi.error(getErrorMessage(error, "Failed to update requirement"));
       }
     });
   };
@@ -882,8 +883,8 @@ export function RequirementsPage() {
       await Promise.all(deletePromises);
       messageApi.success(`Deleted ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
-    } catch (error: any) {
-      messageApi.error(error?.response?.data?.message || "Failed to delete requirements");
+    } catch (error: unknown) {
+      messageApi.error(getErrorMessage(error, "Failed to delete requirements"));
     }
   };
 
@@ -901,8 +902,8 @@ export function RequirementsPage() {
       await Promise.all(updatePromises);
       messageApi.success(`Marked ${selectedReqs.length} requirement(s) as completed`);
       setSelectedReqs([]);
-    } catch (error: any) {
-      messageApi.error(error?.response?.data?.message || "Failed to update requirements");
+    } catch (error: unknown) {
+      messageApi.error(getErrorMessage(error, "Failed to update requirements"));
     }
   };
 
@@ -914,8 +915,8 @@ export function RequirementsPage() {
       await Promise.all(approvePromises);
       messageApi.success(`Approved ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
-    } catch (error: any) {
-      messageApi.error(error?.response?.data?.message || "Failed to approve requirements");
+    } catch (error: unknown) {
+      messageApi.error(getErrorMessage(error, "Failed to approve requirements"));
     }
   };
 
@@ -927,8 +928,8 @@ export function RequirementsPage() {
       await Promise.all(rejectPromises);
       messageApi.success(`Rejected ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
-    } catch (error: any) {
-      messageApi.error(error?.response?.data?.message || "Failed to reject requirements");
+    } catch (error: unknown) {
+      messageApi.error(getErrorMessage(error, "Failed to reject requirements"));
     }
   };
 
@@ -947,8 +948,8 @@ export function RequirementsPage() {
       await Promise.all(updatePromises);
       messageApi.success(`Submitted ${selectedReqs.length} requirement(s) for approval`);
       setSelectedReqs([]);
-    } catch (error: any) {
-      messageApi.error(error?.response?.data?.message || "Failed to submit requirements");
+    } catch (error: unknown) {
+      messageApi.error(getErrorMessage(error, "Failed to submit requirements"));
     }
   };
 
@@ -966,12 +967,12 @@ export function RequirementsPage() {
       await Promise.all(updatePromises);
       messageApi.success(`Reopened ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
-    } catch (error: any) {
-      messageApi.error(error?.response?.data?.message || "Failed to reopen requirements");
+    } catch (error: unknown) {
+      messageApi.error(getErrorMessage(error, "Failed to reopen requirements"));
     }
   };
 
-  const handleBulkAssign = async (employee: any) => {
+  const handleBulkAssign = async (employee: { user_id?: number; id?: number; name?: string }) => {
     try {
       const updatePromises = selectedReqs.map(id => {
         const req = requirements.find(r => r.id === id);
@@ -989,8 +990,8 @@ export function RequirementsPage() {
       await Promise.all(updatePromises);
       messageApi.success(`Assigned ${employee?.name || 'selected user'} to ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
-    } catch (error: any) {
-      messageApi.error(error?.response?.data?.message || "Failed to assign requirements");
+    } catch (error: unknown) {
+      messageApi.error(getErrorMessage(error, "Failed to assign requirements"));
     }
   };
 
@@ -1213,7 +1214,7 @@ export function RequirementsPage() {
                 content={
                   <div className="w-48">
                     {employeesData?.result && employeesData.result.length > 0 ? (
-                      employeesData.result.map((emp: any) => (
+                      employeesData.result.map((emp: { user_id?: number; id?: number; name?: string }) => (
                         <button
                           key={String(emp.user_id || emp.id || '')}
                           onClick={() => handleBulkAssign(emp)}
@@ -1290,7 +1291,7 @@ export function RequirementsPage() {
             setIsDialogOpen(false);
             setEditingReq(undefined);
           }}
-          workspaces={workspacesData?.result?.workspaces?.map((w: any) => ({ id: w.id, name: w.name })) || []}
+          workspaces={workspacesData?.result?.workspaces?.map((w: { id: number; name: string }) => ({ id: w.id, name: w.name })) || []}
           isLoading={createRequirementMutation.isPending || updateRequirementMutation.isPending}
         />
       </Modal>
@@ -1324,7 +1325,7 @@ export function RequirementsPage() {
             }
           });
         }}
-        workspaces={workspacesData?.result?.workspaces?.map((w: any) => ({ id: w.id, name: w.name })) || []}
+        workspaces={workspacesData?.result?.workspaces?.map((w: { id: number; name: string }) => ({ id: w.id, name: w.name })) || []}
       />
     </PageLayout>
   );

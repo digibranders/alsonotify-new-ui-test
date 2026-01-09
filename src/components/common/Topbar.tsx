@@ -108,24 +108,22 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
   }, []);
 
   // Sync user from local storage on mount to avoid hydration mismatch
-  const [localUser, setLocalUser] = useState<any>(null);
+  const [localUser, setLocalUser] = useState<unknown>(null);
 
   useEffect(() => {
-    try {
+
       const stored = localStorage.getItem("user");
       if (stored) {
         setLocalUser(JSON.parse(stored));
       }
-    } catch (e) {
-      // Error reading user from localStorage
-    }
+
   }, []);
 
   const user = useMemo(() => {
-    if (localUser && localUser.name) return localUser;
+    if (localUser && typeof localUser === 'object' && 'name' in localUser) return localUser as { name: string; first_name?: string; user_profile?: { first_name?: string; profile_pic?: string }; company?: { account_type?: string }; profile_pic?: string };
 
     // Fallback to API data
-    const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
+    const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {} as { name?: string; first_name?: string; user_profile?: { first_name?: string; profile_pic?: string }; company?: { account_type?: string }; profile_pic?: string };
     return apiUser;
   }, [localUser, userDetailsData]);
 
@@ -153,6 +151,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
       try {
         const response = await searchEmployees();
         if (response.success) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const transformed = (response.result || []).map((item: any) => ({
             id: item.value || item.id,
             name: item.label || item.name,
@@ -193,7 +192,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
   // Transform notifications
   const notifications = useMemo(() => {
     if (!notificationsData?.result) return [];
-    return notificationsData.result.map((n: any) => ({
+    return notificationsData.result.map((n: { id: number; title?: string; message?: string; created_at?: string; is_read?: boolean; type?: string }): { id: number; title: string; message: string; time: string; unread: boolean; type: 'general' | 'task' | 'requirement' | 'delivery' | 'partner_invite' | 'workspace' | 'alert' } => ({
       id: n.id,
       title: n.title || n.message || 'Notification',
       message: n.message || n.title || '',
@@ -201,7 +200,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true })
         : 'Just now',
       unread: !n.is_read,
-      type: n.type || 'general',
+      type: (n.type || 'general') as 'general' | 'task' | 'requirement' | 'delivery' | 'partner_invite' | 'workspace' | 'alert',
     }));
   }, [notificationsData]);
 
@@ -218,30 +217,31 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
 
 
   // Handle requirement creation
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCreateRequirement = async (data: any) => {
     if (!data.title) {
       message.error("Requirement title is required");
       return;
     }
 
-    if (!data.workspace_id) {
+    if (!data.workspace && !data.workspace_id) {
       message.error("Please select a workspace");
       return;
     }
 
     const requirementPayload: CreateRequirementRequestDto = {
-        workspace_id: Number(data.workspace_id),
-        project_id: Number(data.workspace_id), // Backward compatibility
-        name: data.title,
-        description: data.description || '',
+        workspace_id: Number(data.workspace || data.workspace_id),
+        project_id: Number(data.workspace || data.workspace_id), // Backward compatibility
+        name: data.title as string,
+        description: (data.description || '') as string,
         start_date: new Date().toISOString(),
         end_date: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
         status: 'Assigned',
-        is_high_priority: data.priority === 'HIGH' || data.is_high_priority || false,
-        type: data.type,
-        contact_person: data.contactPerson,
-        contact_person_id: data.contact_person_id,
-        receiver_company_id: data.receiver_company_id,
+        is_high_priority: data.priority === 'HIGH' || Boolean(data.is_high_priority) || false,
+        type: data.type as string | undefined,
+        contact_person: data.contactPerson as string | undefined,
+        contact_person_id: data.contact_person_id as number | undefined,
+        receiver_company_id: data.receiver_company_id as number | undefined,
         budget: Number(data.budget) || 0,
     };
 
@@ -253,8 +253,8 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
           setShowRequirementDialog(false);
           // Reset form handled by component unmount/remount usually, but here we might need to reset state if we kept it
         },
-        onError: (error: any) => {
-          const errorMessage = error?.response?.data?.message || "Failed to create requirement";
+        onError: (error: unknown) => {
+          const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to create requirement";
           message.error(errorMessage);
         },
       }
@@ -522,8 +522,8 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
                 setShowTaskDialog(false);
                 message.success("Task created successfully");
               },
-              onError: (error: any) => {
-                const errorMessage = error?.response?.data?.message || error?.message || "Failed to create task";
+              onError: (error: unknown) => {
+                const errorMessage = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (error as { message?: string })?.message || "Failed to create task";
                 message.error(errorMessage);
               }
             });
@@ -531,7 +531,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
           onCancel={() => setShowTaskDialog(false)}
           users={usersDropdown}
           requirements={requirementsDropdown}
-          workspaces={workspacesData?.result?.workspaces?.map((p: any) => ({ id: p.id, name: p.name })) || []}
+          workspaces={workspacesData?.result?.workspaces?.map((p: { id: number; name: string }) => ({ id: p.id, name: p.name })) || []}
         />
       </Modal>
 
@@ -553,7 +553,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         <RequirementsForm
           onSubmit={handleCreateRequirement}
           onCancel={() => setShowRequirementDialog(false)}
-          workspaces={workspacesData?.result?.workspaces?.map((w: any) => ({ id: w.id, name: w.name })) || []}
+          workspaces={workspacesData?.result?.workspaces?.map((w: { id: number; name: string }) => ({ id: w.id, name: w.name })) || []}
           isLoading={createRequirementMutation.isPending}
         />
       </Modal>

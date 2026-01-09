@@ -230,7 +230,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
     let inProgress = 0;
     let delayed = 0;
 
-    tasks.forEach((task: any) => {
+    tasks.forEach((task: { status?: string }) => {
       const status = task.status?.toLowerCase() || '';
       // Task statuses: Assigned, In_Progress, Completed, Delayed, Impediment, Review, Stuck, New Task
       if (status.includes('completed') || status === 'done') {
@@ -251,7 +251,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
 
   // Get all workspace IDs
   const workspaceIds = useMemo(() => {
-    return workspacesData?.result?.workspaces?.map((w: any) => w.id) || [];
+    return workspacesData?.result?.workspaces?.map((w: { id: number }) => w.id) || [];
   }, [workspacesData]);
 
   // Fetch requirements for all workspaces in parallel
@@ -267,7 +267,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
 
   // Combine all requirements from all workspaces
   const allRequirements = useMemo(() => {
-    const combined: any[] = [];
+    const combined: Array<{ status?: string; start_date?: string }> = [];
     requirementQueries.forEach((query) => {
       if (query.data?.result && Array.isArray(query.data.result)) {
         combined.push(...query.data.result);
@@ -287,7 +287,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
     let delayed = 0;
     let total = 0;
 
-    allRequirements.forEach((req: any) => {
+    allRequirements.forEach((req: { status?: string; start_date?: string }) => {
       // Filter by date if range is selected
       if (dateRange && dateRange[0] && dateRange[1]) {
         // Use start_date for filtering requirements

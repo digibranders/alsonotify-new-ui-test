@@ -27,7 +27,7 @@ type UserRole = 'Admin' | 'Manager' | 'Leader' | 'Employee';
 
 interface SidebarProps {
   userRole: UserRole;
-  permissions?: any;
+  permissions?: { Navigation?: Record<string, boolean> };
 }
 
 type NavItemConfig = {

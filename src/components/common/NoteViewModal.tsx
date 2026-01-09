@@ -8,6 +8,7 @@ import { RichTextEditor, formatText } from './RichTextEditor';
 import { ChecklistEditor } from './ChecklistEditor';
 import { queryKeys } from "../../lib/queryKeys";
 import { Bold, Italic, List, CheckSquare, Trash2, Archive, ArchiveRestore } from 'lucide-react';
+import type { InputRef } from 'antd';
 import { NoteType, convertTextToChecklist, convertChecklistToText, createEmptyChecklistItem } from '../../types/notes';
 
 interface NoteViewModalProps {
@@ -31,7 +32,7 @@ export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete
   const [color, setColor] = useState('#ff3b3b');
   const [hasChanges, setHasChanges] = useState(false);
 
-  const titleInputRef = useRef<any>(null);
+  const titleInputRef = useRef<InputRef>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize from note
@@ -46,9 +47,9 @@ export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete
 
       // Convert items to ChecklistItem format
       if (note.items && Array.isArray(note.items) && note.items.length > 0) {
-        const convertedItems = note.items.map((item: any, index: number) => {
+        const convertedItems: ChecklistItem[] = note.items.map((item: Partial<ChecklistItem> & { checked?: boolean }, index: number): ChecklistItem => {
           if (item.id && typeof item.isChecked === 'boolean') {
-            return item;
+            return item as ChecklistItem;
           } else {
             return {
               id: item.id || `item-${Date.now()}-${index}`,
@@ -78,6 +79,7 @@ export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete
   }, [note, open]);
 
   const updateMutation = useMutation({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mutationFn: (params: { id: number; data: any }) => updateNote(params.id, params.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.notes.all() });

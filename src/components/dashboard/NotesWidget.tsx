@@ -49,7 +49,7 @@ export function NotesWidget({ onNavigate }: { onNavigate?: (page: string) => voi
             content: noteData.content,
             items: noteData.items,
             color: noteData.color,
-        } as any); // Type assertion needed as backend might expect different format
+        }); // Backend format matches domain type
     };
 
     const deleteMutation = useMutation({
@@ -243,9 +243,9 @@ function NoteCard({ note, onArchive, onDelete, onClick }: {
                     {(note.type === 'CHECKLIST_NOTE' || (note.type as any) === 'checklist') && note.items && Array.isArray(note.items) && note.items.length > 0 && (
                         <div className="flex flex-col gap-1.5 h-full overflow-hidden">
                             {note.items
-                                .filter((item: any) => !item.isChecked && !item.checked)
+                                .filter((item: ChecklistItem) => !item.isChecked)
                                 .slice(0, 3)
-                                .map((item: any, index: number) => (
+                                .map((item: ChecklistItem, index: number) => (
                                     <div key={item.id || index} className="flex items-start gap-2 flex-shrink-0">
                                         <Checkbox
                                             checked={false}
@@ -253,7 +253,7 @@ function NoteCard({ note, onArchive, onDelete, onClick }: {
                                             className="mt-0.5 custom-checkbox-wrapper"
                                         />
                                         <span className="font-['Inter:Regular',sans-serif] text-[12px] text-[#666666] line-clamp-1">
-                                            {item.text || item}
+                                            {item.text}
                                         </span>
                                     </div>
                                 ))}

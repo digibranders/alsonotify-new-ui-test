@@ -171,8 +171,8 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
       // Invalidate and refetch calendar events to show the new event
       queryClient.invalidateQueries({ queryKey: queryKeys.calendar.eventsRoot() });
       await refetchCalendarEvents();
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || "Failed to create event";
+    } catch (error: unknown) {
+      const errorMessage = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || "Failed to create event";
       message.error(errorMessage);
     } finally {
       setSubmitting(false);
@@ -225,7 +225,7 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
         }
 
         // Get attendees from event attendees
-        const attendees = (event.attendees || []).slice(0, 3).map((attendee: any) => ({
+        const attendees = (event.attendees || []).slice(0, 3).map((attendee: { emailAddress?: { name?: string; address?: string } }) => ({
           name: attendee?.emailAddress?.name || attendee?.emailAddress?.address?.split('@')[0] || 'Unknown',
           avatar: '' // GraphEvent doesn't have avatar, use empty string
         }));
@@ -268,7 +268,7 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
         const joinUrl = event.onlineMeeting?.joinUrl || event.onlineMeetingUrl || event.webLink || null;
 
         // Get full attendees list for details modal
-        const allAttendees = (event.attendees || []).map((attendee: any) => ({
+        const allAttendees = (event.attendees || []).map((attendee: { emailAddress?: { name?: string; address?: string } }) => ({
           name: attendee?.emailAddress?.name || attendee?.emailAddress?.address?.split('@')[0] || 'Unknown',
           email: attendee?.emailAddress?.address || '',
           avatar: ''
@@ -533,7 +533,7 @@ function AttendeesField({
   attendees: Attendee[];
   onAddAttendee: (attendee: Attendee) => void;
   onRemoveAttendee: (index: number) => void;
-  employeesData: any;
+  employeesData: { result?: Array<{ email?: string; name?: string }> } | undefined;
 }) {
   const [inputValue, setInputValue] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -551,7 +551,7 @@ function AttendeesField({
     if (!inputValue.trim()) return [];
 
     const query = inputValue.toLowerCase();
-    const filtered = employees.filter((emp: any) => {
+    const filtered = employees.filter((emp: { email?: string; name?: string }) => {
       const email = (emp.email || '').toLowerCase();
       const name = (emp.name || '').toLowerCase();
       // Check if already selected
@@ -563,7 +563,7 @@ function AttendeesField({
     const isEmailFormat = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inputValue);
     const isAlreadyAdded = attendees.some(a => a.email.toLowerCase() === inputValue.toLowerCase());
 
-    if (isEmailFormat && !isAlreadyAdded && !filtered.some((emp: any) => emp.email?.toLowerCase() === inputValue.toLowerCase())) {
+    if (isEmailFormat && !isAlreadyAdded && !filtered.some((emp: { email?: string }) => emp.email?.toLowerCase() === inputValue.toLowerCase())) {
       // Add custom email as first suggestion
       return [{ email: inputValue, name: inputValue }, ...filtered];
     }
@@ -612,7 +612,7 @@ function AttendeesField({
     }
   };
 
-  const handleSelectSuggestion = (suggestion: any) => {
+  const handleSelectSuggestion = (suggestion: { email?: string; name?: string }) => {
     onAddAttendee({
       email: suggestion.email || inputValue,
       name: suggestion.name
@@ -691,7 +691,7 @@ function AttendeesField({
             ref={suggestionsRef}
             className="absolute z-50 w-full mt-1 bg-white border border-[#EEEEEE] rounded-lg shadow-lg max-h-[200px] overflow-y-auto"
           >
-            {suggestions.map((suggestion: any, idx: number) => (
+            {suggestions.map((suggestion: { email?: string; name?: string }, idx: number) => (
               <div
                 key={idx}
                 onClick={() => handleSelectSuggestion(suggestion)}
