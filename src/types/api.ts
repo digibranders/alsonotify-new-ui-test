@@ -1,17 +1,21 @@
-import { ApiResponse } from "../constants/constants";
-
-export { type ApiResponse };
-
-export interface PaginatedResponse<T> extends ApiResponse<T[]> {
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  message: string;
+  result: T;
 }
 
-export interface DropdownOption {
-  label: string;
-  value: number | string;
+export interface PaginationMeta {
+  total: number;
+  skip: number;
+  limit: number;
+}
+
+export interface ApiListResponse<T> extends ApiResponse<T[]> {
+  meta?: PaginationMeta;
+}
+
+export interface ApiErrorShape {
+  success: false;
+  message: string;
+  error?: any;
 }

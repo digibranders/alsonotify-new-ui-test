@@ -4,6 +4,7 @@ import { doLogin, doSignup, forgetPassword, doCompleteSignup, verifyRegisterToke
 import { setToken, deleteToken, getToken } from "../services/cookies";
 import axiosApi, { setAuthToken } from "../config/axios";
 import { getUserDetails } from "../services/user";
+import { queryKeys } from "../lib/queryKeys";
 
 export const useLogin = () => {
   const router = useRouter();
@@ -15,7 +16,7 @@ export const useLogin = () => {
       if (data.success && data.result.token) {
         setToken(data.result.token);
         setAuthToken(data.result.token);
-        queryClient.setQueryData(["user"], data.result.user);
+        queryClient.setQueryData(queryKeys.users.me(), data.result.user);
 
         const redirect = variables.redirect || "/dashboard";
         router.push(redirect);
@@ -57,7 +58,7 @@ export const useUser = () => {
   const token = getToken();
 
   return useQuery({
-    queryKey: ["user"],
+    queryKey: queryKeys.users.me(),
     queryFn: getUserDetails,
     enabled: !!token,
     retry: false,
@@ -66,7 +67,7 @@ export const useUser = () => {
 
 export const useVerifyToken = (token: string | null) => {
   return useQuery({
-    queryKey: ["verify-token", token],
+    queryKey: queryKeys.auth.verifyToken(token),
     queryFn: () => verifyRegisterToken(token!),
     enabled: !!token,
     retry: false,
@@ -105,7 +106,7 @@ export const useCompleteSignup = () => {
         setToken(data.result.token);
         setAuthToken(data.result.token);
         if (data.result.user) {
-          queryClient.setQueryData(["user"], data.result.user);
+          queryClient.setQueryData(queryKeys.users.me(), data.result.user);
           localStorage.setItem("user", JSON.stringify(data.result.user));
         }
         // Redirect to dashboard after successful signup

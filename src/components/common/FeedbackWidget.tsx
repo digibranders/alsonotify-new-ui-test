@@ -78,8 +78,8 @@ export function FeedbackWidget({ open, onClose }: FeedbackWidgetProps) {
       });
       message.success('Thank you for your feedback! 🙌');
       handleClose();
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || err?.message || 'Failed to submit feedback';
+    } catch (err: unknown) {
+      const errorMessage = (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (err as { message?: string })?.message || 'Failed to submit feedback';
       message.error(errorMessage);
     }
   };

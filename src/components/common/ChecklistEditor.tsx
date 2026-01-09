@@ -18,10 +18,10 @@ export function ChecklistEditor({ items, onChange, placeholder = "List", classNa
   useEffect(() => {
     if (items && items.length > 0) {
       // Ensure all items are in ChecklistItem format
-      const convertedItems = items.map((item: any, index: number) => {
+      const convertedItems: ChecklistItem[] = items.map((item: Partial<ChecklistItem> & { checked?: boolean }, index: number): ChecklistItem => {
         if (item.id && typeof item.isChecked === 'boolean' && item.order !== undefined) {
           // Already in ChecklistItem format
-          return item;
+          return item as ChecklistItem;
         } else {
           // Convert from {text, checked} format
           return {

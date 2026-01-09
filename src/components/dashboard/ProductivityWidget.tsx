@@ -23,7 +23,8 @@ import { useUserDetails } from "@/hooks/useUser";
 import { useTasks, useUpdateTaskStatus } from "@/hooks/useTask";
 import { useWorkspaces } from "@/hooks/useWorkspace";
 import { useMemo } from "react";
-import { getAssignedTasks, startWorkLog, updateWorklog, getAssignedTaskDetail, type AssignedTaskDetailType } from "@/services/task";
+import { getAssignedTasks, startWorkLog, updateWorklog, getAssignedTaskDetail } from "@/services/task";
+import { AssignedTaskDetailDto } from "@/types/dto/task.dto";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { WorklogModal } from "../modals/WorklogModal";
 import { Modal } from "antd";
@@ -80,7 +81,7 @@ export function ProductivityWidget() {
   const [sessionStartTime, setSessionStartTime] = useState<string>(""); // ISO string when current timer session started (for display)
   const [worklogId, setWorklogId] = useState<number | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
-  const [taskDetail, setTaskDetail] = useState<AssignedTaskDetailType | null>(null);
+  const [taskDetail, setTaskDetail] = useState<AssignedTaskDetailDto | null>(null);
   const taskButtonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const conversationRef = useRef<HTMLDivElement>(null);
@@ -174,7 +175,7 @@ export function ProductivityWidget() {
   const workspacesMap = useMemo(() => {
     const map = new Map();
     if (workspacesData?.result?.workspaces) {
-      workspacesData.result.workspaces.forEach((p: any) => map.set(p.id, p.name));
+      workspacesData.result.workspaces.forEach((p: { id: number; name: string }) => map.set(p.id, p.name));
     }
     return map;
   }, [workspacesData]);
@@ -190,7 +191,7 @@ export function ProductivityWidget() {
   // Do NOT show "Review" or "Completed" tasks
   const tasks = useMemo(() => {
     return (assignedTasksData?.result || [])
-      .filter((t: any) => {
+      .filter((t: { status?: string; task_members?: { user_id: number; estimated_time: number | null }[] }) => {
         const status = (t.status || '').toLowerCase();
         // Show Assigned, In_Progress, and Impediment (stuck) tasks
         // Hide Review and Completed tasks
@@ -204,12 +205,12 @@ export function ProductivityWidget() {
         if (!user || !user.id) return false;
 
         // Check if current user is a member and has provided an estimate
-        const myMember = t.task_members?.find((m: any) => String(m.user_id) === String(user.id));
+        const myMember = t.task_members?.find((m: { user_id: number; estimated_time: number | null }) => String(m.user_id) === String(user.id));
         const hasProvidedEstimate = myMember ? (myMember.estimated_time !== null && myMember.estimated_time > 0) : false;
 
         return (isAssigned || isInProgress || isImpediment) && !isReview && !isCompleted && hasProvidedEstimate;
       })
-      .map((t: any) => ({
+      .map((t: { id: number; name?: string; title?: string; project_id?: number; status?: string }) => ({
         id: t.id,
         name: t.name || t.title || "Untitled Task",
         project: t.project_id ? workspacesMap.get(t.project_id) || "Unknown Project" : "No Project",
@@ -228,7 +229,7 @@ export function ProductivityWidget() {
 
   // Update Worklog Mutation
   const updateWorklogMutation = useMutation({
-    mutationFn: ({ params, worklogId }: { params: any; worklogId: number }) =>
+    mutationFn: ({ params, worklogId }: { params: { task_id: number; start_datetime: string; end_datetime: string; description: string }; worklogId: number }) =>
       updateWorklog(params, worklogId),
   });
 
@@ -460,7 +461,7 @@ export function ProductivityWidget() {
                 antdMessage.success(previousElapsed > 0 ? `Resumed timer for: ${task.name}` : `Started working on: ${task.name}`);
               }
             },
-            onError: (error: any) => {
+            onError: (_error: unknown) => {
               antdMessage.error("Failed to start timer");
             }
           }
@@ -521,7 +522,7 @@ export function ProductivityWidget() {
 
             antdMessage.info(`Paused timer at ${formatDuration(elapsed)} for: ${task?.name || selectedTask}`);
           },
-          onError: (error: any) => {
+          onError: (_error: unknown) => {
             antdMessage.error("Failed to save worklog on pause");
             // Revert isRunning state on error (timer will recalculate time from startTime)
             setIsRunning(true);
@@ -672,7 +673,7 @@ export function ProductivityWidget() {
               // Don't resume timer - user can click play to resume
             }
           },
-          onError: (error: any) => {
+          onError: (_error: unknown) => {
             antdMessage.error("Failed to save worklog");
           }
         }
@@ -746,7 +747,7 @@ export function ProductivityWidget() {
               setWorklogAction(null);
             }
           },
-          onError: (error: any) => {
+          onError: (_error: unknown) => {
             antdMessage.error("Failed to save worklog");
           }
         }

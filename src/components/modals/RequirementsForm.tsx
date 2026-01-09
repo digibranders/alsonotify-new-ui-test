@@ -9,6 +9,8 @@ import { useOutsourcePartners, useEmployees } from '@/hooks/useUser';
 const { TextArea } = Input;
 const { Option } = Select;
 
+import { CreateRequirementRequestDto } from '@/types/dto/requirement.dto';
+
 export interface RequirementFormData {
     title: string;
     workspace: string | number | undefined;
@@ -25,7 +27,7 @@ export interface RequirementFormData {
 
 interface RequirementsFormProps {
     initialData?: RequirementFormData;
-    onSubmit: (data: RequirementFormData) => void;
+    onSubmit: (data: CreateRequirementRequestDto) => void;
     onCancel: () => void;
     workspaces: { id: number | string; name: string }[];
     isLoading?: boolean;
@@ -115,18 +117,24 @@ export function RequirementsForm({
         });
 
         // Build payload with workspace_id
-        const payload = {
-            ...formData,
-            workspace_id: formData.workspace ? Number(formData.workspace) : undefined,
-            receiver_company_id: selectedPartner?.company_id 
+        const payload: CreateRequirementRequestDto = {
+            title: formData.title,
+            workspace_id: formData.workspace ? Number(formData.workspace) : 0, // Ensure valid ID
+            description: formData.description,
+            type: formData.type,
+            status: 'Assigned', // specific string literal if required or mapped
+            is_high_priority: formData.is_high_priority,
+            contact_person_id: formData.contact_person_id,
+            contact_person: formData.contactPerson,
+            receiver_company_id: selectedPartner?.company_id,
+            budget: Number(formData.budget) || 0,
+            end_date: formData.dueDate ? dayjs(formData.dueDate).toISOString() : undefined,
+            start_date: new Date().toISOString(),
+            priority: formData.is_high_priority ? 'High' : 'Medium', // Map boolean to string expected by DTO/Backend
         };
 
-        // Remove the 'workspace' key as the backend uses 'workspace_id'
-        delete (payload as any).workspace;
-
-        onSubmit(payload as any);
+        onSubmit(payload);
     };
-
 
     return (
         <div className="flex flex-col h-full bg-white">

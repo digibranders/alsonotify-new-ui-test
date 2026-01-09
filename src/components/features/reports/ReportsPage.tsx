@@ -285,7 +285,7 @@ export function ReportsPage() {
 
 
   // Client-side Sorting
-  const sortData = <T extends any>(data: T[]) => {
+  const sortData = <T,>(data: T[]) => {
     if (!sortConfig) return data;
 
     return [...data].sort((a, b) => {

@@ -20,9 +20,10 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTabSync } from '@/hooks/useTabSync';
 import { Employee } from '@/types/domain';
-import { UserDto } from '@/types/dto/user.dto';
+import { UserDto, CreateEmployeeRequestDto, UpdateEmployeeRequestDto } from '@/types/dto/user.dto';
 import { useQueryClient } from '@tanstack/react-query';
 import { getRoleFromUser } from '@/utils/roleUtils';
+import { queryKeys } from "../../../lib/queryKeys";
 
 export function EmployeesPage() {
   const router = useRouter();
@@ -44,8 +45,6 @@ export function EmployeesPage() {
     const params = new URLSearchParams();
     if (activeTab === 'inactive') {
       params.append('is_active', 'false');
-    } else {
-      params.append('is_active', 'true');
     }
     return params.toString();
   }, [activeTab]);
@@ -87,7 +86,7 @@ export function EmployeesPage() {
   // Transform backend data to UI format
   const employees = useMemo(() => {
     if (!employeesData?.result) return [];
-    return employeesData.result.map((emp: any) => ({
+    return employeesData.result.map((emp: Employee) => ({
       id: emp.user_id || emp.id,
       name: emp.name || '',
       role: emp.designation || 'Unassigned',
@@ -95,25 +94,25 @@ export function EmployeesPage() {
       phone: emp.mobile_number || emp.phone || emp.user_profile?.mobile_number || emp.user_profile?.phone || emp.user?.mobile_number || '',
       hourlyRate: emp.hourly_rates ? `${emp.hourly_rates}/Hr` : 'N/A',
       dateOfJoining: emp.date_of_joining ? new Date(emp.date_of_joining).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'N/A',
-      experience: emp.experience || 0,
+      experience: String(emp.experience || 0),
       skillsets: emp.skills?.join(', ') || 'None',
 
       status: (emp.user_employee?.is_active !== false ? 'active' : 'inactive') as 'active' | 'inactive',
-      department: emp.department?.name || 'Unassigned',
-      access: getRoleFromUser(emp.user_employee),
-      roleId: emp.user_employee?.role_id,
-      manager_id: emp.manager_id, // Added manager_id
-      managerName: emp.manager?.name || 'Unassigned', // Added managerName
-      roleColor: emp.user_employee?.role?.color,
-      salary: emp.salary_yearly || emp.salary || 0,
+      department: emp.department || 'Unassigned',
+      access: emp.access || 'Employee',
+      roleId: emp.roleId,
+      manager_id: emp.managerId, // Employee domain has managerId (and manager_id optionally)
+      managerName: emp.managerName || 'Unassigned',
+      roleColor: emp.roleColor,
+      salary: emp.salary || 0,
       currency: 'USD',
-      workingHours: emp.working_hours?.start_time && emp.working_hours?.end_time ? 8 : 0,
-      rawWorkingHours: emp.working_hours,
-      leaves: emp.no_of_leaves || 0,
+      workingHours: emp.workingHours || 0, // Employee has number workingHours
+      rawWorkingHours: emp.rawWorkingHours, // Employee domain has this? domain.ts line 285 says Record<string, unknown>.
+      leaves: emp.leaves || 0,
       // Map employment type - convert old values to new format
       employmentType: (() => {
         // If backend provides employment type, use it; otherwise default
-        const type = emp.employment_type || emp.employmentType;
+        const type = emp.employmentType || emp.employeeType;
         if (type === 'In-house') return 'Full-time';
         if (type === 'Freelancer' || type === 'Agency') return 'Contract';
         if (type === 'Full-time' || type === 'Contract' || type === 'Part-time') return type;
@@ -235,7 +234,7 @@ export function EmployeesPage() {
           message.success(`Employee ${isCurrentlyActive ? 'deactivated' : 'activated'} successfully!`);
         },
         onError: (error: Error) => {
-          const errorMessage = (error as any)?.response?.data?.message || "Failed to update employee status";
+          const errorMessage = (error as any)?.response?.data?.message || (error as any)?.message || "Failed to update employee status";
           message.error(errorMessage);
         },
       }
@@ -292,27 +291,29 @@ export function EmployeesPage() {
     const fullMobileNumber = `${countryCode} ${phoneNumber}`.trim();
 
     if (editingEmployee) {
+      const updatePayload: UpdateEmployeeRequestDto = {
+        id: editingEmployee.id,
+        name: fullName,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        mobile_number: fullMobileNumber,
+        designation: data.role,
+        department_id: departmentId || undefined,
+        role_id: roleId,
+        experience: Number.parseInt(data.experience) || 0,
+        skills: data.skillsets.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0),
+        date_of_joining: dateOfJoining,
+        salary_yearly: Number.parseFloat(data.salary) || 0,
+        hourly_rates: hourlyRate,
+        no_of_leaves: Number.parseFloat(data.leaves) || 0,
+        working_hours: workingHours,
+        employment_type: data.employmentType,
+        manager_id: data.manager_id,
+      };
+
       updateEmployeeMutation.mutate(
-        {
-          id: editingEmployee.id,
-          name: fullName,
-          first_name: data.firstName,
-          last_name: data.lastName,
-          email: data.email,
-          mobile_number: fullMobileNumber,
-          designation: data.role,
-          department_id: departmentId,
-          role_id: roleId, // Send resolved role ID
-          experience: parseInt(data.experience) || 0,
-          skills: data.skillsets.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0),
-          date_of_joining: dateOfJoining,
-          salary_yearly: parseFloat(data.salary) || 0,
-          hourly_rates: hourlyRate,
-          no_of_leaves: parseFloat(data.leaves) || 0,
-          working_hours: workingHours,
-          employment_type: data.employmentType,
-          manager_id: data.manager_id,
-        } as unknown as any,
+        updatePayload,
         {
           onSuccess: () => {
             message.success("Employee updated successfully!");
@@ -332,27 +333,28 @@ export function EmployeesPage() {
         return;
       }
 
-      createEmployeeMutation.mutate(
-        {
-          name: fullName,
-          first_name: data.firstName,
-          last_name: data.lastName,
-          email: data.email,
-          mobile_number: fullMobileNumber,
-          designation: data.role,
-          department_id: departmentId,
-          role_id: roleId, // Send resolved role ID
-          experience: parseInt(data.experience) || 0,
-          skills: data.skillsets.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0),
-          date_of_joining: dateOfJoining,
+      const createPayload: CreateEmployeeRequestDto = {
+        name: fullName,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        mobile_number: fullMobileNumber,
+        designation: data.role,
+        department_id: departmentId || undefined,
+        role_id: roleId,
+        experience: Number.parseInt(data.experience) || 0,
+        skills: data.skillsets.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0),
+        date_of_joining: dateOfJoining,
+        salary_yearly: Number.parseFloat(data.salary) || 0,
+        hourly_rates: hourlyRate,
+        no_of_leaves: Number.parseFloat(data.leaves) || 0,
+        working_hours: workingHours,
+        employment_type: data.employmentType,
+        manager_id: data.manager_id,
+      };
 
-          salary_yearly: parseFloat(data.salary) || 0,
-          hourly_rates: hourlyRate,
-          no_of_leaves: parseFloat(data.leaves) || 0,
-          working_hours: workingHours,
-          employment_type: data.employmentType,
-          manager_id: data.manager_id,
-        } as unknown as Partial<UserDto>,
+      createEmployeeMutation.mutate(
+        createPayload,
         {
           onSuccess: () => {
             message.success("Employee created successfully!");
@@ -429,8 +431,10 @@ export function EmployeesPage() {
       }
 
       // Get raw backend employee data to preserve all fields
-      const rawEmployee = employeesData?.result?.find((emp: Employee) => {
-        const empBackendId = emp.user_id || emp.id;
+      // Access raw data from query cache because useEmployees returns mapped domain objects
+      const rawData = queryClient.getQueryData<{ result: UserDto[] }>(queryKeys.users.employees(queryParams));
+      const rawEmployee = rawData?.result?.find((emp: UserDto) => {
+        const empBackendId = emp.id;
         return empBackendId === empId || empBackendId === parseInt(String(empId));
       });
       if (!rawEmployee) {
@@ -476,41 +480,40 @@ export function EmployeesPage() {
       }
 
       // Ensure working_hours is an object (not null) - backend requires object type
-      let workingHours: any = undefined;
-      const re = rawEmployee as any;
-      if (re.working_hours && typeof re.working_hours === 'object' && !Array.isArray(re.working_hours)) {
-        workingHours = re.working_hours;
+      let workingHours: { start_time: string; end_time: string } | undefined = undefined;
+      if (rawEmployee.working_hours && typeof rawEmployee.working_hours === 'object' && !Array.isArray(rawEmployee.working_hours)) {
+        workingHours = rawEmployee.working_hours;
       }
 
       // Build update payload with all preserved fields
-      const updatePayload: any = {
+      const updatePayload: UpdateEmployeeRequestDto = {
         id: empId,
         name: employee.name, // Required
         email: employee.email, // Required
         role_id: roleId, // Send resolved role ID
         // Preserve all existing fields to prevent them from being set to null
-        designation: re.designation || null,
-        mobile_number: re.mobile_number || re.phone || null,
-        hourly_rates: hourlyRate,
-        salary_yearly: re.salary_yearly || re.salary || null,
-        experience: re.experience || 0,
-        skills: Array.isArray(re.skills) ? re.skills : [],
-        date_of_joining: dateOfJoining,
-        no_of_leaves: re.no_of_leaves || null,
+        designation: rawEmployee.designation || undefined,
+        mobile_number: (rawEmployee.mobile_number || rawEmployee.phone) || undefined,
+        hourly_rates: hourlyRate || undefined,
+        salary_yearly: (rawEmployee.salary_yearly || rawEmployee.salary) || undefined,
+        experience: Number(rawEmployee.experience) || 0,
+        skills: Array.isArray(rawEmployee.skills) ? rawEmployee.skills : [],
+        date_of_joining: dateOfJoining || undefined,
+        no_of_leaves: rawEmployee.no_of_leaves || undefined,
         // Preserve address fields
-        address: re.address || null,
-        city: re.city || null,
-        state: re.state || null,
-        zipcode: re.zipcode || null,
-        country: re.country || null,
-        late_time: re.late_time || null,
-        profile_pic: re.profile_pic || null,
+        address: rawEmployee.address || undefined,
+        city: rawEmployee.city || undefined,
+        state: rawEmployee.state || undefined,
+        zipcode: rawEmployee.zipcode || undefined,
+        country: rawEmployee.country || undefined,
+        late_time: rawEmployee.late_time || undefined,
+        profile_pic: rawEmployee.profile_pic || undefined,
         // Only include working_hours if it's a valid object, otherwise omit it (don't send null)
         ...(workingHours !== undefined ? { working_hours: workingHours } : {}),
       };
 
       // Create promise for this update using mutateAsync
-      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload as unknown as any).catch((error: any) => {
+      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload).catch((error: any) => {
         const errorMsg = error?.response?.data?.message || 'Update failed';
         failedEmployees.push({ id: empId, name: employee.name, reason: errorMsg });
         throw error; // Re-throw to mark as failed in Promise.allSettled
@@ -533,10 +536,10 @@ export function EmployeesPage() {
         setSelectedEmployees([]);
         setShowAccessDropdown(false);
         // Query invalidation is handled in the hook's onSuccess, but we can force refetch
-        queryClient.invalidateQueries({ queryKey: ["employees"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.employeesRoot() });
         // Also invalidate user details if current user's role was updated
         if (currentUserId && selectedEmployees.includes(currentUserId)) {
-          queryClient.invalidateQueries({ queryKey: ["user", "details"] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
         }
       } else if (successfulUpdates > 0) {
         message.warning(`Updated ${successfulUpdates} employee(s), ${totalFailed} failed`);
@@ -581,8 +584,10 @@ export function EmployeesPage() {
       }
 
       // Get raw backend employee data to preserve all fields
-      const rawEmployee = employeesData?.result?.find((emp: any) => {
-        const empBackendId = emp.user_id || emp.id;
+      // Access raw data from query cache because useEmployees returns mapped domain objects
+      const rawData = queryClient.getQueryData<{ result: UserDto[] }>(queryKeys.users.employees(queryParams));
+      const rawEmployee = rawData?.result?.find((emp: UserDto) => {
+        const empBackendId = emp.id;
         return empBackendId === empId || empBackendId === parseInt(String(empId));
       });
       if (!rawEmployee) {
@@ -628,9 +633,9 @@ export function EmployeesPage() {
       }
 
       // Ensure working_hours is an object (not null) - backend requires object type
-      let workingHours: any = undefined;
-      if ((rawEmployee as any).working_hours && typeof (rawEmployee as any).working_hours === 'object' && !Array.isArray((rawEmployee as any).working_hours)) {
-        workingHours = (rawEmployee as any).working_hours;
+      let workingHours: { start_time: string; end_time: string } | undefined = undefined;
+      if (rawEmployee.working_hours && typeof rawEmployee.working_hours === 'object' && !Array.isArray(rawEmployee.working_hours)) {
+        workingHours = rawEmployee.working_hours;
       }
 
       // Resolve current role ID
@@ -645,8 +650,8 @@ export function EmployeesPage() {
       // Actually backend updateUserService updates everything passed. If we pass null, it might error.
       // But typically we should keep existing if we can.
 
-      if (!currentRoleId && (rawEmployee as any).user_employee?.role_id) {
-        currentRoleId = (rawEmployee as any).user_employee.role_id;
+      if (!currentRoleId && rawEmployee.user_employee?.role_id) {
+        currentRoleId = rawEmployee.user_employee.role_id;
       }
 
       if (!currentRoleId) {
@@ -655,35 +660,35 @@ export function EmployeesPage() {
       }
 
       // Build update payload with all preserved fields
-      const updatePayload = {
+      const updatePayload: UpdateEmployeeRequestDto = {
         id: empId,
         name: employee.name, // Required
         email: employee.email, // Required
         role_id: currentRoleId, // Preserve current role ID
-        department_id: departmentId, // The field we're updating
+        department_id: departmentId || undefined, // The field we're updating
         // Preserve all existing fields to prevent them from being set to null
-        designation: (rawEmployee as any).designation || null,
-        mobile_number: (rawEmployee as any).mobile_number || (rawEmployee as any).phone || null,
-        hourly_rates: hourlyRate,
-        salary_yearly: (rawEmployee as any).salary_yearly || (rawEmployee as any).salary || null,
-        experience: (rawEmployee as any).experience || 0,
-        skills: Array.isArray((rawEmployee as any).skills) ? (rawEmployee as any).skills : [],
-        date_of_joining: dateOfJoining,
-        no_of_leaves: (rawEmployee as any).no_of_leaves || null,
+        designation: rawEmployee.designation || undefined,
+        mobile_number: (rawEmployee.mobile_number || rawEmployee.phone) || undefined,
+        hourly_rates: hourlyRate || undefined,
+        salary_yearly: (rawEmployee.salary_yearly || rawEmployee.salary) || undefined,
+        experience: Number(rawEmployee.experience) || 0,
+        skills: Array.isArray(rawEmployee.skills) ? rawEmployee.skills : [],
+        date_of_joining: dateOfJoining || undefined,
+        no_of_leaves: rawEmployee.no_of_leaves || undefined,
         // Preserve address fields
-        address: (rawEmployee as any).address || null,
-        city: (rawEmployee as any).city || null,
-        state: (rawEmployee as any).state || null,
-        zipcode: (rawEmployee as any).zipcode || null,
-        country: (rawEmployee as any).country || null,
-        late_time: (rawEmployee as any).late_time || null,
-        profile_pic: (rawEmployee as any).profile_pic || null,
+        address: rawEmployee.address || undefined,
+        city: rawEmployee.city || undefined,
+        state: rawEmployee.state || undefined,
+        zipcode: rawEmployee.zipcode || undefined,
+        country: rawEmployee.country || undefined,
+        late_time: rawEmployee.late_time || undefined,
+        profile_pic: rawEmployee.profile_pic || undefined,
         // Only include working_hours if it's a valid object, otherwise omit it (don't send null)
         ...(workingHours !== undefined ? { working_hours: workingHours } : {}),
       };
 
       // Create promise for this update using mutateAsync
-      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload as unknown as any).catch((error: any) => {
+      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload).catch((error: any) => {
         const errorMsg = error?.response?.data?.message || 'Update failed';
         failedEmployees.push({ id: empId, name: employee.name, reason: errorMsg });
         throw error; // Re-throw to mark as failed in Promise.allSettled
@@ -706,7 +711,7 @@ export function EmployeesPage() {
         setSelectedEmployees([]);
         setShowDepartmentDropdown(false);
         // Query invalidation is handled in the hook's onSuccess, but we can force refetch
-        queryClient.invalidateQueries({ queryKey: ["employees"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.employeesRoot() });
       } else if (successfulUpdates > 0) {
         message.warning(`Updated ${successfulUpdates} employee(s), ${totalFailed} failed`);
         // Failed employees logged

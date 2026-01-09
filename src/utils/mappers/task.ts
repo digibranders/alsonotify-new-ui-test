@@ -2,7 +2,7 @@ import { TaskDto } from '../../types/dto/task.dto';
 import { Task, TaskStatus } from '../../types/domain';
 import { format } from 'date-fns';
 
-export function mapTaskDtoToDomain(dto: TaskDto): Task {
+export function mapTaskToDomain(dto: TaskDto): Task {
   // Normalize Status
   let status: TaskStatus = 'Assigned';
   if (dto.status) {
@@ -52,13 +52,17 @@ export function mapTaskDtoToDomain(dto: TaskDto): Task {
     // Metrics
     estTime: Number(dto.estimated_time || 0),
     estimated_time: Number(dto.estimated_time || 0),
+    estimatedTime: Number(dto.estimated_time || 0),
     timeSpent: Number(dto.time_spent || 0),
     time_spent: Number(dto.time_spent || 0),
     activities: 0, // Not in DTO usually
-    total_seconds_spent: 0, // needs calculation or separate field if available
+    
+    totalSecondsSpent: dto.total_seconds_spent || 0,
+    total_seconds_spent: dto.total_seconds_spent || 0,
     
     // Status & Priority
     status,
+    isHighPriority: dto.is_high_priority || dto.priority === 'High' || dto.priority === 'HIGH' || false,
     is_high_priority: dto.is_high_priority || dto.priority === 'High' || dto.priority === 'HIGH' || false,
     
     // Timeline
@@ -68,26 +72,91 @@ export function mapTaskDtoToDomain(dto: TaskDto): Task {
     
     // Metadata
     description: dto.description,
+    workspaceId: dto.workspace_id,
     workspace_id: dto.workspace_id,
+    requirementId: dto.requirement_id,
     requirement_id: dto.requirement_id,
+    memberId: dto.member_id,
     member_id: dto.member_id,
+    leaderId: dto.leader_id,
     leader_id: dto.leader_id,
+    executionMode: dto.execution_mode,
     execution_mode: dto.execution_mode,
     
     // Nested/Original - strictly map to ensure 'name' is present if object exists
+    taskMembers: dto.task_members?.map(tm => ({
+      ...tm,
+      userId: tm.user_id,
+      user_id: tm.user_id,
+      estimatedTime: tm.estimated_time,
+      estimated_time: tm.estimated_time,
+      secondsSpent: tm.seconds_spent,
+      seconds_spent: tm.seconds_spent,
+      activeWorklogStartTime: tm.active_worklog_start_time,
+      active_worklog_start_time: tm.active_worklog_start_time,
+      isCurrentTurn: tm.is_current_turn,
+      is_current_turn: tm.is_current_turn,
+      user: {
+        ...tm.user,
+        profilePic: tm.user.profile_pic,
+        profile_pic: tm.user.profile_pic
+      }
+    })) || [],
     task_members: dto.task_members || [],
+    
     worklogs: [], // Usually fetched separately or empty by default from list
     
-    // Relations preserved for compatibility
+    // Relations preserved for compatibility (snake_case preserved in DTO)
+    // camelCase mapping for relations
+    taskProject: dto.task_project ? {
+        clientUser: dto.task_project.client_user ? { company: { name: dto.task_project.client_user.company?.name || '' } } : undefined,
+        client_user: dto.task_project.client_user,
+        company: dto.task_project.company,
+        companyName: dto.task_project.company?.name,
+        company_name: dto.task_project.company?.name,
+    } : undefined,
     task_project: dto.task_project,
+
+    memberUser: dto.member_user ? {
+      ...dto.member_user,
+      name: dto.member_user.name || 'Unknown',
+      profilePic: dto.member_user.profile_pic,
+      profile_pic: dto.member_user.profile_pic,
+    } : undefined,
     member_user: dto.member_user ? {
       ...dto.member_user,
       name: dto.member_user.name || 'Unknown'
+    } : undefined,
+
+    leaderUser: dto.leader_user ? {
+      ...dto.leader_user,
+      name: dto.leader_user.name || 'Unknown',
+      profilePic: dto.leader_user.profile_pic,
+      profile_pic: dto.leader_user.profile_pic,
     } : undefined,
     leader_user: dto.leader_user ? {
       ...dto.leader_user,
       name: dto.leader_user.name || 'Unknown'
     } : undefined,
+
+    assignedToUser: dto.assigned_to_user,
     assigned_to_user: dto.assigned_to_user,
+    
+    // Expanded mappings
+    company: dto.company ? { name: dto.company.name } : undefined,
+    companyName: dto.company_name,
+    company_name: dto.company_name,
+    clientCompanyName: dto.client_company_name,
+    client_company_name: dto.client_company_name,
+    
+    taskRequirement: dto.task_requirement ? { id: dto.task_requirement.id, name: dto.task_requirement.name || '' } : undefined,
+    task_requirement: dto.task_requirement ? { id: dto.task_requirement.id, name: dto.task_requirement.name || '' } : undefined,
+    requirementRelation: dto.requirement_relation,
+    requirement_relation: dto.requirement_relation,
+    requirementName: dto.requirement_name,
+    requirement_name: dto.requirement_name,
   };
 }
+
+// re-export alias if needed for backward compact during transition, but hook will use mapTaskToDomain
+export const mapTaskDtoToDomain = mapTaskToDomain;

@@ -1,66 +1,8 @@
+
 import axiosApi from "../config/axios";
-import { ApiResponse } from "../constants/constants";
+import { ApiResponse } from "../types/api";
 import { ApiError, NetworkError, getErrorMessage, isAxiosError } from "../types/errors";
-
-export interface TaskType {
-  id: number;
-  title?: string;
-  name?: string;
-  description?: string;
-  status?: string;
-  is_high_priority?: boolean;
-  workspace_id?: number;
-  requirement_id?: number;
-  assigned_to?: number;
-  member_id?: number;
-  leader_id?: number;
-  due_date?: string;
-  start_date?: string;
-  end_date?: string;
-  created_by?: number;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface Worklog {
-  id: number;
-  task_id: number;
-  user_id: number;
-  hours?: number;
-  time_in_seconds?: number;
-  description?: string;
-  date?: string;
-  start_datetime?: string;
-  end_datetime?: string;
-  created_user?: number;
-  created_at?: string;
-}
-
-export interface Comment {
-  id: number;
-  task_id: number;
-  user_id: number;
-  content: string;
-  created_at: string;
-  updated_at?: string;
-}
-
-export interface TaskDetailType extends TaskType {
-  worklogs?: Worklog[];
-  comments?: Comment[];
-  // Pre-populated relation fields from API
-  leader_user?: { id: number; name?: string; email?: string };
-  member_user?: { id: number; name?: string; email?: string };
-  task_workspace?: { id: number; name?: string };
-  task_requirement?: { id: number; name?: string };
-  task_members?: Array<{
-    id: number;
-    user_id: number;
-    status?: string;
-    estimated_time?: number;
-    user?: { id: number; name?: string; email?: string };
-  }>;
-}
+import { TaskDto, WorklogDto, AssignedTaskDetailDto, CreateTaskRequestDto, UpdateTaskRequestDto } from "../types/dto/task.dto";
 
 /**
  * Validate task ID
@@ -86,23 +28,17 @@ function validatePagination(limit: number, skip: number): void {
 /**
  * Create a new task
  */
-import { TaskDto } from "../types/dto/task.dto";
-
-/**
- * Create a new task
- */
-export const createTask = async (params: Partial<TaskDto> & { name?: string }): Promise<ApiResponse<TaskDto>> => {
+export const createTask = async (params: CreateTaskRequestDto): Promise<ApiResponse<TaskDto>> => {
   try {
-    // Handle both 'name' (from form) and 'title' (from TaskType interface) - backend expects 'name'
-    const taskName = params.name || params.title;
+    // Backend expects 'name'
+    const taskName = params.name;
 
     // Validate name/title field
     if (!taskName || (typeof taskName === 'string' && taskName.trim().length === 0)) {
       throw new ApiError('Task title is required', 400);
     }
 
-    // Map to backend 'name' field (remove title from params, then add name)
-    const { title: _title, name: _name, ...restParams } = params;
+    const { name: _name, ...restParams } = params;
     const payload = {
       ...restParams,
       name: taskName,
@@ -133,7 +69,7 @@ export const createTask = async (params: Partial<TaskDto> & { name?: string }): 
 /**
  * Update an existing task
  */
-export const updateTask = async (params: TaskDto): Promise<ApiResponse<TaskDto>> => {
+export const updateTask = async (params: UpdateTaskRequestDto): Promise<ApiResponse<TaskDto>> => {
   try {
     validateTaskId(params.id);
 
@@ -251,11 +187,11 @@ export const getTasks = async (options: string = ""): Promise<ApiResponse<TaskDt
 /**
  * Get task by ID
  */
-export const getTaskById = async (id: number): Promise<ApiResponse<TaskDetailType>> => {
+export const getTaskById = async (id: number): Promise<ApiResponse<TaskDto>> => {
   try {
     validateTaskId(id);
 
-    const { data } = await axiosApi.get<ApiResponse<TaskDetailType>>(`/task/${id}`);
+    const { data } = await axiosApi.get<ApiResponse<TaskDto>>(`/task/${id}`);
 
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -285,7 +221,7 @@ export const getTaskById = async (id: number): Promise<ApiResponse<TaskDetailTyp
 /**
  * Create a worklog/activity for a task
  */
-export const createActivity = async (params: Partial<TaskType>): Promise<ApiResponse<TaskType>> => {
+export const createActivity = async (params: Partial<TaskDto>): Promise<ApiResponse<TaskDto>> => {
   try {
     if (!params.id) {
       throw new ApiError('Task ID is required', 400);
@@ -293,7 +229,7 @@ export const createActivity = async (params: Partial<TaskType>): Promise<ApiResp
 
     validateTaskId(params.id);
 
-    const { data } = await axiosApi.post<ApiResponse<TaskType>>("/task/worklog/create", params);
+    const { data } = await axiosApi.post<ApiResponse<TaskDto>>("/task/worklog/create", params);
 
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -322,12 +258,12 @@ export const getWorkLogByTaskId = async (
   taskId: number,
   limit = 25,
   skip = 0
-): Promise<ApiResponse<Worklog[]>> => {
+): Promise<ApiResponse<WorklogDto[]>> => {
   try {
     validateTaskId(taskId);
     validatePagination(limit, skip);
 
-    const { data } = await axiosApi.get<ApiResponse<Worklog[]>>(
+    const { data } = await axiosApi.get<ApiResponse<WorklogDto[]>>(
       `/task/${taskId}/worklog?limit=${limit}&skip=${skip}`
     );
 
@@ -354,9 +290,9 @@ export const getWorkLogByTaskId = async (
 /**
  * Get tasks assigned to the current logged-in user
  */
-export const getAssignedTasks = async (): Promise<ApiResponse<TaskType[]>> => {
+export const getAssignedTasks = async (): Promise<ApiResponse<TaskDto[]>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<TaskType[]>>(`/task/assigned`);
+    const { data } = await axiosApi.get<ApiResponse<TaskDto[]>>(`/task/assigned`);
 
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -382,26 +318,11 @@ export const getAssignedTasks = async (): Promise<ApiResponse<TaskType[]>> => {
  * Get assigned task detail with timer information
  * Returns: estimated_time, worked_time, active worklog, etc.
  */
-export interface AssignedTaskDetailType {
-  estimated_time: number; // in hours
-  worked_time: number; // in seconds
-  status: string;
-  worked_sessions: number;
-  task_worklog?: {
-    id: number | null;
-    task_id: number;
-    description: string;
-    end_datetime: string | null;
-    start_datetime: string;
-    time_in_seconds: number | null;
-  } | null;
-}
-
-export const getAssignedTaskDetail = async (taskId: number): Promise<ApiResponse<AssignedTaskDetailType>> => {
+export const getAssignedTaskDetail = async (taskId: number): Promise<ApiResponse<AssignedTaskDetailDto>> => {
   try {
     validateTaskId(taskId);
 
-    const { data } = await axiosApi.get<ApiResponse<AssignedTaskDetailType>>(`/task/${taskId}/timer`);
+    const { data } = await axiosApi.get<ApiResponse<AssignedTaskDetailDto>>(`/task/${taskId}/timer`);
 
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -426,11 +347,11 @@ export const getAssignedTaskDetail = async (taskId: number): Promise<ApiResponse
 /**
  * Start a worklog/timer for a task
  */
-export const startWorkLog = async (task_id: number, start_datetime: string): Promise<ApiResponse<Worklog>> => {
+export const startWorkLog = async (task_id: number, start_datetime: string): Promise<ApiResponse<WorklogDto>> => {
   try {
     validateTaskId(task_id);
 
-    const { data } = await axiosApi.post<ApiResponse<Worklog>>(`/task/worklog/create`, {
+    const { data } = await axiosApi.post<ApiResponse<WorklogDto>>(`/task/worklog/create`, {
       task_id,
       start_datetime
     });
@@ -465,7 +386,7 @@ export interface UpdateWorklogPayload {
   description: string;
 }
 
-export const updateWorklog = async (params: UpdateWorklogPayload, worklogId: number): Promise<ApiResponse<Worklog>> => {
+export const updateWorklog = async (params: UpdateWorklogPayload, worklogId: number): Promise<ApiResponse<WorklogDto>> => {
   try {
     validateTaskId(params.task_id);
 
@@ -473,7 +394,7 @@ export const updateWorklog = async (params: UpdateWorklogPayload, worklogId: num
       throw new ApiError(`Invalid worklog ID: ${worklogId}`, 400);
     }
 
-    const { data } = await axiosApi.put<ApiResponse<Worklog>>(`/task/worklog/update/${worklogId}`, params);
+    const { data } = await axiosApi.put<ApiResponse<WorklogDto>>(`/task/worklog/update/${worklogId}`, params);
 
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -551,4 +472,3 @@ export const requestRevision = async (id: number, revisionNotes: string): Promis
     throw new NetworkError(getErrorMessage(error));
   }
 };
-

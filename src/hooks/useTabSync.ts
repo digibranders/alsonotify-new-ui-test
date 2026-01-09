@@ -22,7 +22,7 @@ export function useTabSync<T extends string>({
     const searchParams = useSearchParams();
 
     // Stabilize validTabs to prevent infinite loops if passed as inline array
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     const stableValidTabs = useMemo(() => validTabs, [JSON.stringify(validTabs)]);
 
     // Initialize state from URL or default

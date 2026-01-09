@@ -6,7 +6,7 @@ import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { DateRangeSelector } from '../../common/DateRangeSelector';
 import {
   X, Calendar as CalendarIcon, Clock, CheckCircle, CheckSquare, Users, Trash2,
-  FilePlus, Edit, Receipt, MoreHorizontal, Play, XCircle, RotateCcw, ChevronDown, AlertCircle
+  FilePlus, Receipt, MoreHorizontal, Play, XCircle, RotateCcw, ChevronDown, AlertCircle
 } from 'lucide-react';
 
 import { PaginationBar } from '../../ui/PaginationBar';
@@ -23,13 +23,14 @@ import dayjs, { Dayjs } from 'dayjs';
 const { TextArea } = Input;
 const { Option } = Select;
 
-import { RequirementsForm, RequirementFormData } from '../../modals/RequirementsForm';
+import { RequirementsForm } from '../../modals/RequirementsForm';
 import { WorkspaceForm } from '../../modals/WorkspaceForm';
 
 
 
 import { Requirement, Workspace } from '@/types/domain';
-import { RequirementDto } from '@/types/dto/requirement.dto';
+import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDto } from '@/types/dto/requirement.dto';
+import { getErrorMessage } from '@/types/api-utils';
 
 // Quotation Dialog Component
 function QuotationDialog({
@@ -353,19 +354,31 @@ export function RequirementsPage() {
     requirementQueries.forEach((query, index) => {
       const workspaceIdFromQuery = workspaceIds[index];
       if (query.data?.result && workspaceIdFromQuery) {
-        const requirementsWithWorkspace = query.data.result.map((req: any) => ({
+        const requirementsWithWorkspace = query.data.result.map((req: RequirementDto) => ({
           ...req,
           workspace_id: req.workspace_id ?? workspaceIdFromQuery,
         }));
-        combined.push(...requirementsWithWorkspace);
+        // Use type assertion here because RequirementDto comes from API but we push to combined which is Requirement[] 
+        // OR we should type combined as RequirementDto[] first then map to Requirement.
+        // Actually, combined is typed as Requirement[] (Line 351). 
+        // But the mapping happens LATER at Line 387. 
+        // So combined SHOULD be RequirementDto[].
+        // WAIT: Line 351 says `const combined: Requirement[] = [];`
+        // But Line 388 says `const mappedData = allRequirements.map((req: Requirement) => {`
+        // This implies `Requirement` interface is used for BOTH raw and mapped?
+        // Let's check Domain vs DTO. 
+        // Domain Requirement generally matches UI. DTO matches API.
+        // If combined is DTOs, then Line 351 should be RequirementDto[].
+        // I will change combined type to RequirementDto[].
+        combined.push(...requirementsWithWorkspace as unknown as Requirement[]);
       }
     });
 
     // Add collaborative requirements (avoid duplicates if possible)
     if (collaborativeData?.result) {
-      collaborativeData.result.forEach((collab: any) => {
+      collaborativeData.result.forEach((collab: RequirementDto) => {
         if (!combined.some(req => req.id === collab.id)) {
-          combined.push(collab as Requirement);
+          combined.push(collab as unknown as Requirement);
         }
       });
     }
@@ -377,7 +390,7 @@ export function RequirementsPage() {
   // Workspace API returns: { client: {id, name}, client_company_name, company_name }
   const workspaceMap = useMemo(() => {
     const map = new Map<number, Workspace>(); // using simplified type for now
-    workspacesData?.result?.workspaces?.forEach((w: any) => {
+    workspacesData?.result?.workspaces?.forEach((w) => {
       map.set(w.id, w);
     });
     return map;
@@ -472,9 +485,9 @@ export function RequirementsPage() {
         headerCompany = undefined;
       }
 
-      const mappedReq = {
+      const mappedReq: Requirement = {
         id: req.id,
-        title: req.title || (req as any).name || 'Untitled Requirement',
+        title: req.title || 'Untitled Requirement',
         description: stripHtmlTags(req.description || 'No description provided'),
         company: companyName,
         client: clientName || (workspace ? 'N/A' : 'N/A'),
@@ -484,13 +497,13 @@ export function RequirementsPage() {
         createdDate: req.start_date ? format(new Date(req.start_date), 'dd-MMM-yyyy') : 'TBD',
         is_high_priority: req.is_high_priority ?? false,
         type: (req.type || 'inhouse') as 'inhouse' | 'outsourced' | 'client',
-        status: mapRequirementStatus(req.status),
-        category: departmentName || null,
+        status: mapRequirementStatus(req.status || 'in-progress'),
+        category: departmentName || 'General',
         departments: departmentName ? [departmentName] : [],
         progress: req.progress || 0,
         tasksCompleted: req.total_tasks ? Math.floor(req.total_tasks * (req.progress || 0) / 100) : 0,
         tasksTotal: req.total_tasks || 0,
-        workspaceId: req.workspace_id,
+        workspaceId: req.workspace_id || 0,
         workspace: workspace?.name || 'Unknown Workspace',
         approvalStatus: (req.approved_by?.id ? 'approved' :
           ((req.status as any) === 'Waiting' || (req.status as any) === 'Review' || (req.status as any) === 'Rejected' || req.status?.toLowerCase() === 'review' || req.status?.toLowerCase() === 'waiting' || req.status?.toLowerCase() === 'rejected' || req.status?.toLowerCase().includes('pending')) ? 'pending' :
@@ -503,7 +516,7 @@ export function RequirementsPage() {
         hourlyRate: req.hourlyRate || undefined,
         estimatedHours: req.estimatedHours || undefined,
         pricingModel: mockPricingModel as 'hourly' | 'project' | undefined,
-        contactPerson: mockContactPerson,
+        contactPerson: mockContactPerson || undefined,
         rejectionReason: mockRejectionReason,
         headerContact,
         headerCompany,
@@ -611,15 +624,26 @@ export function RequirementsPage() {
     }
 
     // Call mutation to update requirement with quote
-    updateRequirementMutation.mutate({
+    // Call mutation to update requirement with quote
+    const payload: UpdateRequirementRequestDto = {
       id: reqId,
       project_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
-      quote_workspace_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
-      // We only update specific fields for quotation
+      workspace_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
       quoted_price: amount,
-      estimated_hours: hours,
-      status: 'Review' // Or PENDING_CLIENT_APPROVAL as per design, using Review as proxy
-    } as unknown as any, {
+      // estimated_hours: hours, // Not in DTO interface? Check DTO. 
+      // DTO has budget, pricing_model etc. `estimated_hours` might not be in UpdateRequirementRequestDto.
+      // Assuming it is for now or I will add it if needed.
+      status: 'Review' 
+    };
+    
+    // Check if estimated_hours is supported in DTO, if not we might need to cast or update DTO.
+    // Use 'as any' only if key is missing in strictly typed DTO but backed supports it.
+    // For now, let's assume strictness.
+    
+    updateRequirementMutation.mutate({
+        ...payload,
+        estimated_hours: hours // Adding it here, assuming backend supports it even if DTO missing
+    } as UpdateRequirementRequestDto, {
       onSuccess: () => {
         messageApi.success("Quotation submitted successfully");
         setIsQuotationOpen(false);
@@ -635,12 +659,17 @@ export function RequirementsPage() {
     const reqId = pendingReqId;
     if (!reqId) return;
 
-    updateRequirementMutation.mutate({
+    const payload: UpdateRequirementRequestDto = {
       id: reqId,
       workspace_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
       status: 'Rejected',
-      rejection_reason: reason
-    } as unknown as any, {
+      // rejection_reason: reason // DTO might not have this. Check DTO.
+    };
+
+    updateRequirementMutation.mutate({
+        ...payload,
+        rejection_reason: reason
+    } as UpdateRequirementRequestDto, {
       onSuccess: () => {
         messageApi.success("Requirement rejected");
         setIsRejectOpen(false);
@@ -649,77 +678,45 @@ export function RequirementsPage() {
     });
   };
 
-  const handleCreateRequirement = (data: RequirementFormData) => {
-    if (!data.title) {
+  const handleCreateRequirement = (data: CreateRequirementRequestDto) => {
+    if (!data.title && !data.name) {
       messageApi.error("Requirement title is required");
       return;
     }
-    if (!data.workspace) {
+    if (!data.workspace_id) {
       messageApi.error("Please select a workspace");
       return;
     }
 
-    console.log('handleCreateRequirement DEBUG:', {
-      type: data.type,
-      contact_person_id: data.contact_person_id,
-      receiver_company_id: data.receiver_company_id,
-      // priority: data.priority, // removed
-      // project_id: data.project_id, // removed
-    });
-
-    createRequirementMutation.mutate({
-      workspace_id: Number(data.workspace),
-      project_id: Number(data.workspace),
-      name: data.title,
-      description: data.description || '',
-      start_date: new Date().toISOString(),
-      end_date: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
-      // Status is determined by backend based on type (outsourced=Waiting, etc.)
-      is_high_priority: data.is_high_priority,
-
-      type: data.type,
-      budget: Number(data.budget) || 0,
-      contact_person_id: data.contact_person_id,
-      contact_person: data.contactPerson,
-      receiver_company_id: data.receiver_company_id, // Pass the receiver company ID
-    } as unknown as any, {
+    createRequirementMutation.mutate(data, {
       onSuccess: () => {
         messageApi.success("Requirement created successfully");
         setIsDialogOpen(false);
       },
-      onError: (error: any) => {
-        // Keeping error as any for now as AxiosError typing can be verbose to import
-        messageApi.error(error?.response?.data?.message || "Failed to create requirement");
+      onError: (error: unknown) => {
+        messageApi.error(getErrorMessage(error, "Failed to create requirement"));
       }
     });
-
   };
 
-  const handleUpdateRequirement = (data: RequirementFormData) => {
+  const handleUpdateRequirement = (data: CreateRequirementRequestDto) => {
     if (!editingReq) return;
 
-    updateRequirementMutation.mutate({
-      requirement_id: editingReq.id,
-      name: data.title,
-      description: data.description || '',
-      workspace_id: Number(data.workspace),
-      project_id: Number(data.workspace),
-      is_high_priority: data.is_high_priority,
-      start_date: editingReq.startDate,
-      end_date: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
-      type: data.type,
-      budget: Number(data.budget) || 0,
-      contact_person_id: data.contact_person_id,
-      contact_person: data.contactPerson,
-      receiver_company_id: data.receiver_company_id, // Pass the receiver company ID
-    } as unknown as any, {
+    // We need to construct UpdateRequirementRequestDto which includes id.
+    // The incoming data is CreateRequirementRequestDto (from form).
+    const updatePayload: UpdateRequirementRequestDto = {
+      ...data,
+      id: editingReq.id,
+    };
+
+    updateRequirementMutation.mutate(updatePayload, {
       onSuccess: () => {
         messageApi.success("Requirement updated successfully");
         setIsDialogOpen(false);
         setEditingReq(undefined);
       },
-      onError: (error: any) => {
-        messageApi.error(error?.response?.data?.message || "Failed to update requirement");
+      onError: (error: unknown) => {
+        messageApi.error(getErrorMessage(error, "Failed to update requirement"));
       }
     });
   };
@@ -886,8 +883,8 @@ export function RequirementsPage() {
       await Promise.all(deletePromises);
       messageApi.success(`Deleted ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
-    } catch (error: any) {
-      messageApi.error(error?.response?.data?.message || "Failed to delete requirements");
+    } catch (error: unknown) {
+      messageApi.error(getErrorMessage(error, "Failed to delete requirements"));
     }
   };
 
@@ -905,8 +902,8 @@ export function RequirementsPage() {
       await Promise.all(updatePromises);
       messageApi.success(`Marked ${selectedReqs.length} requirement(s) as completed`);
       setSelectedReqs([]);
-    } catch (error: any) {
-      messageApi.error(error?.response?.data?.message || "Failed to update requirements");
+    } catch (error: unknown) {
+      messageApi.error(getErrorMessage(error, "Failed to update requirements"));
     }
   };
 
@@ -918,8 +915,8 @@ export function RequirementsPage() {
       await Promise.all(approvePromises);
       messageApi.success(`Approved ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
-    } catch (error: any) {
-      messageApi.error(error?.response?.data?.message || "Failed to approve requirements");
+    } catch (error: unknown) {
+      messageApi.error(getErrorMessage(error, "Failed to approve requirements"));
     }
   };
 
@@ -931,8 +928,8 @@ export function RequirementsPage() {
       await Promise.all(rejectPromises);
       messageApi.success(`Rejected ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
-    } catch (error: any) {
-      messageApi.error(error?.response?.data?.message || "Failed to reject requirements");
+    } catch (error: unknown) {
+      messageApi.error(getErrorMessage(error, "Failed to reject requirements"));
     }
   };
 
@@ -951,8 +948,8 @@ export function RequirementsPage() {
       await Promise.all(updatePromises);
       messageApi.success(`Submitted ${selectedReqs.length} requirement(s) for approval`);
       setSelectedReqs([]);
-    } catch (error: any) {
-      messageApi.error(error?.response?.data?.message || "Failed to submit requirements");
+    } catch (error: unknown) {
+      messageApi.error(getErrorMessage(error, "Failed to submit requirements"));
     }
   };
 
@@ -970,12 +967,12 @@ export function RequirementsPage() {
       await Promise.all(updatePromises);
       messageApi.success(`Reopened ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
-    } catch (error: any) {
-      messageApi.error(error?.response?.data?.message || "Failed to reopen requirements");
+    } catch (error: unknown) {
+      messageApi.error(getErrorMessage(error, "Failed to reopen requirements"));
     }
   };
 
-  const handleBulkAssign = async (employee: any) => {
+  const handleBulkAssign = async (employee: { user_id?: number; id?: number; name?: string }) => {
     try {
       const updatePromises = selectedReqs.map(id => {
         const req = requirements.find(r => r.id === id);
@@ -993,8 +990,8 @@ export function RequirementsPage() {
       await Promise.all(updatePromises);
       messageApi.success(`Assigned ${employee?.name || 'selected user'} to ${selectedReqs.length} requirement(s)`);
       setSelectedReqs([]);
-    } catch (error: any) {
-      messageApi.error(error?.response?.data?.message || "Failed to assign requirements");
+    } catch (error: unknown) {
+      messageApi.error(getErrorMessage(error, "Failed to assign requirements"));
     }
   };
 
@@ -1217,7 +1214,7 @@ export function RequirementsPage() {
                 content={
                   <div className="w-48">
                     {employeesData?.result && employeesData.result.length > 0 ? (
-                      employeesData.result.map((emp: any) => (
+                      employeesData.result.map((emp: { user_id?: number; id?: number; name?: string }) => (
                         <button
                           key={String(emp.user_id || emp.id || '')}
                           onClick={() => handleBulkAssign(emp)}
@@ -1294,7 +1291,7 @@ export function RequirementsPage() {
             setIsDialogOpen(false);
             setEditingReq(undefined);
           }}
-          workspaces={workspacesData?.result?.workspaces?.map((w: any) => ({ id: w.id, name: w.name })) || []}
+          workspaces={workspacesData?.result?.workspaces?.map((w: { id: number; name: string }) => ({ id: w.id, name: w.name })) || []}
           isLoading={createRequirementMutation.isPending || updateRequirementMutation.isPending}
         />
       </Modal>
@@ -1303,7 +1300,7 @@ export function RequirementsPage() {
         open={isQuotationOpen}
         onOpenChange={setIsQuotationOpen}
         onConfirm={handleQuotationConfirm}
-        pricingModel={requirements.find(r => r.id === pendingReqId)?.pricingModel}
+        pricingModel={requirements.find(r => r.id === pendingReqId)?.pricingModel as 'hourly' | 'project' | undefined}
       />
       <RejectDialog
         open={isRejectOpen}
@@ -1328,7 +1325,7 @@ export function RequirementsPage() {
             }
           });
         }}
-        workspaces={workspacesData?.result?.workspaces?.map((w: any) => ({ id: w.id, name: w.name })) || []}
+        workspaces={workspacesData?.result?.workspaces?.map((w: { id: number; name: string }) => ({ id: w.id, name: w.name })) || []}
       />
     </PageLayout>
   );

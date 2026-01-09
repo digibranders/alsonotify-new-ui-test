@@ -1,7 +1,7 @@
 import { WorkspaceDto } from '../../types/dto/workspace.dto';
 import { Workspace } from '../../types/domain';
 
-export function mapWorkspaceDtoToDomain(dto: WorkspaceDto): Workspace {
+export function mapWorkspaceToDomain(dto: WorkspaceDto): Workspace {
   return {
     id: dto.id,
     name: dto.name,
@@ -18,17 +18,31 @@ export function mapWorkspaceDtoToDomain(dto: WorkspaceDto): Workspace {
     inProgressRequirements: dto.inProgressRequirements ?? 0,
     delayedRequirements: dto.delayedRequirements ?? 0,
     
+    partnerId: dto.partner_id,
     partner_id: dto.partner_id,
+    inHouse: dto.in_house,
     in_house: dto.in_house,
+    partnerName: dto.partner_name,
     partner_name: dto.partner_name,
+    companyName: dto.company_name,
     company_name: dto.company_name,
+    
     client: dto.client || dto.client_user ? { id: dto.client_user?.id || dto.client?.id || 0, name: dto.client_user?.name || dto.client?.name || 'Unknown' } : null,
     company: dto.company || null,
     
+    clientCompanyName: dto.client_company_name || dto.client_user?.name, // fallback
     client_company_name: dto.client_company_name || dto.client_user?.name, // fallback
+    
+    endDate: dto.end_date,
     end_date: dto.end_date,
+    assignedUsers: dto.assigned_users?.map(u => ({ ...u, imageUrl: u.image_url })),
     assigned_users: dto.assigned_users,
+    
+    totalTask: dto.total_task,
     total_task: dto.total_task,
+    totalTaskCompleted: dto.total_task_completed,
     total_task_completed: dto.total_task_completed
   };
 }
+
+export const mapWorkspaceDtoToDomain = mapWorkspaceToDomain;

@@ -25,6 +25,7 @@ dayjs.extend(isSameOrBefore);
 dayjs.extend(isSameOrAfter);
 
 import { Task, TaskStatus } from '@/types/domain';
+import { TaskDto, CreateTaskRequestDto, UpdateTaskRequestDto } from '@/types/dto/task.dto';
 
 // Local alias if needed to avoid massive rename, or just use Task
 // transforming UITask -> Task in the code
@@ -34,10 +35,11 @@ type ITaskStatus = TaskStatus;
 type StatusTab = 'all' | 'In_Progress' | 'Completed' | 'Delayed';
 
 // Helper function to convert filter object to query params
-const toQueryParams = (params: Record<string, any>): string => {
+// Helper function to convert filter object to query params
+const toQueryParams = (params: Record<string, unknown>): string => {
   return Object.entries(params)
     .filter(([_, value]) => value !== null && value !== "" && value !== undefined && value !== 'All')
-    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
     .join("&");
 };
 
@@ -159,7 +161,7 @@ export function TasksPage() {
 
   // Build query params for API call
   const queryParams = useMemo(() => {
-    const params: Record<string, any> = {
+    const params: Record<string, unknown> = {
       limit: pagination.limit,
       skip: pagination.skip,
     };
@@ -228,7 +230,7 @@ export function TasksPage() {
 
   // Build query params for STATS (without status filter to get global counts)
   const statsQueryParams = useMemo(() => {
-    const params: Record<string, any> = {
+    const params: Record<string, unknown> = {
       limit: 1, // Only need one item to get status_counts
       skip: 0,
     };
@@ -275,9 +277,9 @@ export function TasksPage() {
       try {
         const response = await searchEmployees();
         if (response.success) {
-          const transformed = (response.result || []).map((item: any) => ({
-            id: item.value || item.id,
-            name: item.label || item.name,
+          const transformed = (response.result || []).map((item: { label: string; value: number }) => ({
+            id: item.value,
+            name: item.label,
           }));
           setUsersDropdown(transformed);
         }
@@ -343,7 +345,7 @@ export function TasksPage() {
     const today = new Date();
     const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-    return tasksData.result.map((t: any) => {
+    return tasksData.result.map((t: Task) => {
       const startDateObj = t.start_date ? new Date(t.start_date) : null;
       const dueDateObj = t.end_date ? new Date(t.end_date) : null;
 
@@ -400,7 +402,7 @@ export function TasksPage() {
       const timeSpent = t.time_spent || 0;
       const isOverEstimate = estTime > 0 && timeSpent > estTime;
 
-      const baseStatus = normalizeBackendStatus(t.status);
+      const baseStatus = normalizeBackendStatus(t.status || 'Assigned');
       const isDelayedByTime = isTimeOverdue || isOverEstimate;
       // If task is delayed by time but status is not already Delayed/Impediment/Stuck, mark as Delayed
       const uiStatus: ITaskStatus =
@@ -413,7 +415,7 @@ export function TasksPage() {
       // Determine company/client name: if client exists, it's client work, otherwise show company name for in-house
       // Client company comes from task_project.client_user.company.name
       const clientCompanyName = t.task_project?.client_user?.company?.name ||
-        t.client?.name ||
+        t.client ||
         t.client_company_name ||
         null;
 
@@ -421,7 +423,7 @@ export function TasksPage() {
       const inHouseCompanyName = t.company?.name ||
         t.company_name ||
         t.task_project?.company?.name ||
-        t.task_project?.company_name ||
+        // t.task_project?.company_name || // removed as not in DTO
         currentUserCompanyName ||
         null;
 
@@ -431,7 +433,6 @@ export function TasksPage() {
       // Get requirement name - check multiple possible paths
       // First try from API response (nested relation)
       let requirementName =
-        t.requirement?.name ||
         t.task_requirement?.name ||
         t.requirement_relation?.name ||
         t.requirement_name ||
@@ -455,12 +456,11 @@ export function TasksPage() {
         client: displayCompanyName,
         project: requirementDisplay,
         leader:
-          t.leader?.name ||
           t.leader_user?.name ||
           'Unassigned',
         assignedTo:
           t.member_user?.name ||
-          (typeof t.assigned_to === 'object' ? t.assigned_to?.name : undefined) ||
+          (typeof t.assigned_to === 'object' && t.assigned_to !== null ? (t.assigned_to as { name: string }).name : undefined) ||
           t.assigned_to_user?.name ||
           'Unassigned',
         startDate,
@@ -483,6 +483,7 @@ export function TasksPage() {
         endDateIso: t.end_date || '',
         task_members: t.task_members || [],
         total_seconds_spent: t.total_seconds_spent || 0,
+        totalSecondsSpent: t.total_seconds_spent || 0,
         execution_mode: t.execution_mode,
       };
     });
@@ -564,7 +565,21 @@ export function TasksPage() {
       return;
     }
 
-    createTaskMutation.mutate(data as any, {
+    const payload: CreateTaskRequestDto = {
+      name: data.name || '',
+      start_date: data.start_date,
+      end_date: data.end_date,
+      assigned_to: typeof data.assigned_to === 'object' ? data.assigned_to.id : undefined,
+      workspace_id: data.workspace_id,
+      requirement_id: data.requirement_id,
+      description: data.description,
+      is_high_priority: data.is_high_priority,
+      estimated_time: data.estimated_time,
+      priority: data.is_high_priority ? 'High' : 'Normal', // Mapping priority based on flag
+      status: 'Assigned', // Default status for new task
+    };
+
+    createTaskMutation.mutate(payload, {
       onSuccess: () => {
         message.success("Task created successfully!");
         setIsDialogOpen(false);
@@ -609,9 +624,9 @@ export function TasksPage() {
 
   // Get total count from API response
   const totalTasks = useMemo(() => {
-    const firstTask = tasksData?.result?.[0] as Task | undefined;
-    // @ts-ignore - total_count might be on the response or the first item
-    return (firstTask as any)?.total_count ?? tasks.length ?? 0;
+    const firstTask = tasksData?.result?.[0] as TaskDto | undefined;
+    
+    return firstTask?.total_count ?? tasks.length ?? 0;
   }, [tasksData, tasks.length]);
 
   // Apply client-side filters for user/company (since we can't easily map names to IDs)
@@ -662,7 +677,8 @@ export function TasksPage() {
   // Note: Stats are now fetched separately without status filter for stable tab counts
   // Use statsData (global counts) instead of tasksData (filtered)
   const stats = useMemo(() => {
-    const firstTask = statsData?.result?.[0] as any; // Stats usually come as metadata or first item
+    // Stats usually come as metadata or first item. Using TaskDto to access potential extra fields
+    const firstTask = statsData?.result?.[0] as unknown as { status_counts?: Record<string, number> }; 
     const backendCounts = firstTask?.status_counts || {};
     const allTasks = (statsData?.result || []) as Task[];
 
@@ -794,16 +810,16 @@ export function TasksPage() {
               updateTaskMutation.mutate({
                 id: parseInt(editingTask.id),
                 ...data,
-                ...data,
-              } as unknown as any, {
+                // Ensure required fields for update are present
+              } as UpdateTaskRequestDto, {
                 onSuccess: () => {
                   message.success("Task updated successfully!");
                   setIsDialogOpen(false);
                   setEditingTask(null);
                 },
-                onError: (error: any) => {
+                onError: (error: Error) => {
                   const errorMessage =
-                    error?.response?.data?.message || error?.message || "Failed to update task";
+                    (error as any)?.response?.data?.message || (error as any)?.message || "Failed to update task";
                   message.error(errorMessage);
                 },
               });

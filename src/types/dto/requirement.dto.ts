@@ -68,3 +68,29 @@ export interface RequirementDto {
   invoice_id?: number;
   contact_person?: { name: string; id: number };
 }
+
+export interface CreateRequirementRequestDto {
+  title?: string;
+  name?: string;
+  description?: string;
+  workspace_id: number;
+  project_id?: number;
+  priority?: string;
+  status?: string;
+  start_date?: string;
+  end_date?: string;
+  budget?: number;
+  pricing_model?: string;
+  type?: string;
+  contact_person_id?: number;
+  receiver_company_id?: number;
+  is_high_priority?: boolean;
+  contact_person?: string;
+  estimated_hours?: number;
+  quoted_price?: number;
+  rejection_reason?: string;
+}
+
+export interface UpdateRequirementRequestDto extends Partial<CreateRequirementRequestDto> {
+  id: number;
+}

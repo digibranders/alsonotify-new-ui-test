@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getPublicHolidays, createPublicHoliday, updatePublicHoliday, deletePublicHoliday, CreateHolidayPayload } from "../services/holiday";
 import { App } from "antd";
 import { getErrorMessage } from "../types/errors";
+import { queryKeys } from "../lib/queryKeys";
 
 export const usePublicHolidays = () => {
     return useQuery({
-        queryKey: ["publicHolidays"],
+        queryKey: queryKeys.holidays.all(),
         queryFn: () => getPublicHolidays(),
     });
 };
@@ -17,7 +18,7 @@ export const useCreateHoliday = () => {
     return useMutation({
         mutationFn: (payload: CreateHolidayPayload) => createPublicHoliday(payload),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["publicHolidays"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.holidays.all() });
             message.success("Holiday created successfully");
         },
         onError: (error: unknown) => {
@@ -34,7 +35,7 @@ export const useUpdateHoliday = () => {
         mutationFn: ({ id, payload }: { id: number; payload: CreateHolidayPayload }) => 
             updatePublicHoliday(id, payload),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["publicHolidays"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.holidays.all() });
             message.success("Holiday updated successfully");
         },
         onError: (error: unknown) => {
@@ -50,7 +51,7 @@ export const useDeleteHoliday = () => {
     return useMutation({
         mutationFn: (id: number) => deletePublicHoliday(id),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["publicHolidays"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.holidays.all() });
             message.success("Holiday deleted successfully");
         },
         onError: (error: unknown) => {

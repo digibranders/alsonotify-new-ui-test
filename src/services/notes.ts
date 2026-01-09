@@ -1,10 +1,11 @@
+
 import axiosApi from "../config/axios";
-import { ApiResponse } from "../constants/constants";
-import { NoteType, ChecklistItem, Note, NoteCreate, NoteUpdate } from "../types/notes";
+import { ApiResponse } from "../types/api";
+import { NoteDto, ChecklistItemDto, CreateNoteDto, UpdateNoteDto, NoteTypeDto } from "../types/dto/note.dto";
 import { ApiError, NetworkError, getErrorMessage, isAxiosError } from "../types/errors";
 
-// Re-export types for backward compatibility
-export type { Note, NoteCreate, NoteUpdate, NoteType, ChecklistItem };
+// Re-export types for backward compatibility (mapped to DTOs)
+export type { NoteDto as Note, CreateNoteDto as NoteCreate, UpdateNoteDto as NoteUpdate, NoteTypeDto as NoteType, ChecklistItemDto as ChecklistItem };
 
 /**
  * Default pagination limits
@@ -40,11 +41,11 @@ export const getNotes = async (
   skip: number = DEFAULT_SKIP,
   limit: number = DEFAULT_LIMIT,
   archived: boolean = false
-): Promise<ApiResponse<Note[]>> => {
+): Promise<ApiResponse<NoteDto[]>> => {
   try {
     validatePagination(skip, limit);
     
-    const { data } = await axiosApi.get<ApiResponse<Note[]>>(
+    const { data } = await axiosApi.get<ApiResponse<NoteDto[]>>(
       `/notes/?skip=${skip}&limit=${limit}&archived=${archived}`
     );
     
@@ -71,7 +72,7 @@ export const getNotes = async (
 /**
  * Create a new note
  */
-export const createNote = async (params: NoteCreate): Promise<ApiResponse<Note>> => {
+export const createNote = async (params: CreateNoteDto): Promise<ApiResponse<NoteDto>> => {
   try {
     if (!params.title || params.title.trim().length === 0) {
       throw new ApiError('Note title is required', 400);
@@ -81,7 +82,7 @@ export const createNote = async (params: NoteCreate): Promise<ApiResponse<Note>>
       throw new ApiError('Invalid note type', 400);
     }
     
-    const { data } = await axiosApi.post<ApiResponse<Note>>('/notes/', params);
+    const { data } = await axiosApi.post<ApiResponse<NoteDto>>('/notes/', params);
     
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -106,11 +107,11 @@ export const createNote = async (params: NoteCreate): Promise<ApiResponse<Note>>
 /**
  * Update an existing note
  */
-export const updateNote = async (id: number, params: NoteUpdate): Promise<ApiResponse<Note>> => {
+export const updateNote = async (id: number, params: UpdateNoteDto): Promise<ApiResponse<NoteDto>> => {
   try {
     validateNoteId(id);
     
-    const { data } = await axiosApi.put<ApiResponse<Note>>(`/notes/${id}`, params);
+    const { data } = await axiosApi.put<ApiResponse<NoteDto>>(`/notes/${id}`, params);
     
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -135,11 +136,11 @@ export const updateNote = async (id: number, params: NoteUpdate): Promise<ApiRes
 /**
  * Delete a note permanently
  */
-export const deleteNote = async (id: number): Promise<ApiResponse<Note>> => {
+export const deleteNote = async (id: number): Promise<ApiResponse<NoteDto>> => {
   try {
     validateNoteId(id);
     
-    const { data } = await axiosApi.delete<ApiResponse<Note>>(`/notes/${id}`);
+    const { data } = await axiosApi.delete<ApiResponse<NoteDto>>(`/notes/${id}`);
     
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -164,11 +165,11 @@ export const deleteNote = async (id: number): Promise<ApiResponse<Note>> => {
 /**
  * Archive a note
  */
-export const archiveNote = async (id: number): Promise<ApiResponse<Note>> => {
+export const archiveNote = async (id: number): Promise<ApiResponse<NoteDto>> => {
   try {
     validateNoteId(id);
     
-    const { data } = await axiosApi.put<ApiResponse<Note>>(`/notes/${id}`, { is_archived: true });
+    const { data } = await axiosApi.put<ApiResponse<NoteDto>>(`/notes/${id}`, { is_archived: true });
     
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -193,11 +194,11 @@ export const archiveNote = async (id: number): Promise<ApiResponse<Note>> => {
 /**
  * Unarchive a note
  */
-export const unarchiveNote = async (id: number): Promise<ApiResponse<Note>> => {
+export const unarchiveNote = async (id: number): Promise<ApiResponse<NoteDto>> => {
   try {
     validateNoteId(id);
     
-    const { data } = await axiosApi.put<ApiResponse<Note>>(`/notes/${id}`, { is_archived: false });
+    const { data } = await axiosApi.put<ApiResponse<NoteDto>>(`/notes/${id}`, { is_archived: false });
     
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);

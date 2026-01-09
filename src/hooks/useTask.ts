@@ -12,18 +12,19 @@ import {
   updateWorklog,
   getAssignedTaskDetail,
   requestRevision,
-  type TaskType,
 } from "../services/task";
+import { TaskDto, CreateTaskRequestDto, UpdateTaskRequestDto } from '@/types/dto/task.dto';
 
 // Re-export useClients for convenience
 // useClients removed
 export { usePartners } from "./useUser";
 
-import { mapTaskDtoToDomain } from "../utils/mappers/task.mapper";
+import { mapTaskDtoToDomain } from "../utils/mappers/task";
+import { queryKeys } from "../lib/queryKeys";
 
 export const useTasks = (options: string = "") => {
   return useQuery({
-    queryKey: ["tasks", options],
+    queryKey: queryKeys.tasks.list({ options }),
     queryFn: () => getTasks(options),
     select: (data) => ({
       ...data,
@@ -34,13 +35,17 @@ export const useTasks = (options: string = "") => {
 
 export const useTask = (id: number) => {
   return useQuery({
-    queryKey: ["task", id],
+    queryKey: queryKeys.tasks.detail(id),
     queryFn: () => getTaskById(id),
     enabled: !!id,
+    select: (data) => ({
+      ...data,
+      result: data.result ? mapTaskDtoToDomain(data.result) : undefined
+    })
   });
 };
 
-import { TaskDto } from "../types/dto/task.dto";
+
 
 // ...
 
@@ -48,10 +53,10 @@ export const useCreateTask = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: Partial<TaskDto>) => createTask(params),
+    mutationFn: (params: CreateTaskRequestDto) => createTask(params),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["assignedTasks"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.assigned() });
     },
   });
 };
@@ -60,14 +65,10 @@ export const useUpdateTask = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...params }: Partial<TaskDto> & { id: number }) => updateTask({ id, ...params } as TaskDto), // Cast to TaskDto as service expects full? No, service likely updated to Partial. I'll check service.
-    // Wait, service updateTask takes TaskDto (strict). I should update service to Partial first? 
-    // Step 272 updated service but might be strict.
-    // I updated workspace service to Partial.
-    // I should update task service to Partial.
+    mutationFn: (params: UpdateTaskRequestDto) => updateTask(params),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["task", variables.id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(variables.id) });
     },
   });
 };
@@ -78,7 +79,7 @@ export const useDeleteTask = () => {
   return useMutation({
     mutationFn: (id: number) => deleteTaskById(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
     },
   });
 };
@@ -89,10 +90,10 @@ export const useUpdateTaskStatus = () => {
   return useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) => updateTaskStatusById(id, status),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["assignedTasks"] });
-      queryClient.invalidateQueries({ queryKey: ["task", variables.id] });
-      queryClient.invalidateQueries({ queryKey: ["taskDetail"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.assigned() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(variables.id) });
     },
   });
 };
@@ -100,7 +101,7 @@ export const useUpdateTaskStatus = () => {
 
 export const useWorklogs = (taskId: number, limit = 50, skip = 0) => {
   return useQuery({
-    queryKey: ["worklogs", taskId, limit, skip],
+    queryKey: queryKeys.tasks.worklogs(taskId, limit, skip),
     queryFn: () => getWorkLogByTaskId(taskId, limit, skip),
     enabled: !!taskId,
   });
@@ -112,8 +113,8 @@ export const useProvideEstimate = () => {
   return useMutation({
     mutationFn: ({ id, hours }: { id: number; hours: number }) => provideEstimate(id, hours),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["task", variables.id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(variables.id) });
     },
   });
 };
@@ -125,9 +126,9 @@ export const useStartWorkLog = () => {
     mutationFn: ({ task_id, start_datetime }: { task_id: number; start_datetime: string }) =>
       startWorkLog(task_id, start_datetime),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["task", variables.task_id] });
-      queryClient.invalidateQueries({ queryKey: ["worklogs", variables.task_id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(variables.task_id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.worklogsRoot(variables.task_id) });
     },
   });
 };
@@ -139,16 +140,16 @@ export const useUpdateWorkLog = () => {
     mutationFn: ({ id, ...params }: { id: number; task_id: number; start_datetime: string; end_datetime: string; description: string }) =>
       updateWorklog(params, id),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["task", variables.task_id] });
-      queryClient.invalidateQueries({ queryKey: ["worklogs", variables.task_id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(variables.task_id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.worklogsRoot(variables.task_id) });
     },
   });
 };
 
 export const useTaskTimer = (taskId: number) => {
   return useQuery({
-    queryKey: ["taskTimer", taskId],
+    queryKey: queryKeys.tasks.timer(taskId),
     queryFn: () => getAssignedTaskDetail(taskId),
     enabled: !!taskId,
   });
@@ -160,8 +161,8 @@ export const useRequestRevision = () => {
   return useMutation({
     mutationFn: ({ id, revisionNotes }: { id: number; revisionNotes: string }) => requestRevision(id, revisionNotes),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["task", variables.id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(variables.id) });
     },
   });
 };

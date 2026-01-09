@@ -37,3 +37,26 @@ export interface WorkspaceDto {
   delayedCount?: number;
   completedCount?: number;
 }
+
+export interface ProjectCommentDto {
+  id: number;
+  comment: string;
+  type: "PROJECT" | "TASK" | "WORKSPACE";
+  reference_id: number;
+  [key: string]: unknown;
+}
+
+export interface CreateWorkspaceRequestDto {
+  name: string;
+  description?: string;
+  status?: string;
+  client_id?: number;
+  partner_id?: number;
+  start_date?: string;
+  end_date?: string;
+  in_house?: boolean;
+}
+
+export interface UpdateWorkspaceRequestDto extends Partial<CreateWorkspaceRequestDto> {
+  id: number;
+}

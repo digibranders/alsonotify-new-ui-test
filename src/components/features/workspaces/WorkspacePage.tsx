@@ -30,7 +30,7 @@ export function WorkspacePage() {
 
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedWorkspaceForEdit, setSelectedWorkspaceForEdit] = useState<any>(null);
+  const [selectedWorkspaceForEdit, setSelectedWorkspaceForEdit] = useState<Workspace | null>(null);
 
   const [pageSize, setPageSize] = useState(10);
 
@@ -61,6 +61,7 @@ export function WorkspacePage() {
        if (filters.organization === selfLabel || filters.organization === 'Self') {
          params.append('in_house', 'true');
        } else {
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
          const partner = partnersData?.result?.find((p: any) => (p.name || p.partner_company?.name || p.email) === filters.organization);
          if (partner) params.append('partner_id', partner.id.toString());
        }
@@ -80,10 +81,10 @@ export function WorkspacePage() {
 
   // Get all workspace IDs
   const workspaceIds = useMemo(() => {
-    return workspacesData?.result?.workspaces?.map((w: any) => w.id) || [];
+    return workspacesData?.result?.workspaces?.map((w) => w.id) || [];
   }, [workspacesData]);
 
-  const totalItems = (workspacesData?.result as any)?.total_count || 0;
+  const totalItems = (workspacesData?.result as { total_count?: number })?.total_count || 0;
 
   // Fetch requirements for all workspaces
   const requirementQueries = useQueries({
@@ -97,17 +98,18 @@ export function WorkspacePage() {
   // Transform backend data to frontend format with requirements counts
   const workspaces = useMemo((): Workspace[] => {
     if (!workspacesData?.result?.workspaces) return [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return workspacesData.result.workspaces.map((w: any) => {
       // Find requirements for this workspace
       const reqQuery = requirementQueries.find((q, idx) => workspaceIds[idx] === w.id);
       const requirements = reqQuery?.data?.result || [];
 
       // Calculate requirement counts
-      let totalRequirements = requirements.length;
+      const totalRequirements = requirements.length;
       let inProgressRequirements = 0;
       let delayedRequirements = 0;
 
-      requirements.forEach((req: any) => {
+      requirements.forEach((req: { status?: string }) => {
         const status = (req.status || '').toLowerCase();
         if (status.includes('completed') || status === 'done') {
           // Completed - don't count in progress or delayed
@@ -158,6 +160,7 @@ export function WorkspacePage() {
     {
       id: 'organization',
       label: 'Organization',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       options: ['All', `${companyData?.result?.name || 'Current Company'} (Self)`, ...(partnersData?.result?.map((p: any) => p.name || p.partner_company?.name || p.email) || [])],
       defaultValue: 'All'
     }
@@ -167,8 +170,8 @@ export function WorkspacePage() {
 
   const toggleSelectAllWorkspaces = () => {
     if (workspaces.length === 0) return;
-    const currentIds = workspaces.map((w: any) => w.id);
-    const allSelected = currentIds.every((id: any) => selectedWorkspaces.includes(id));
+    const currentIds = workspaces.map((w) => w.id);
+    const allSelected = currentIds.every((id) => selectedWorkspaces.includes(id));
 
     if (allSelected) {
       // Deselect only the ones on this page
@@ -276,7 +279,7 @@ export function WorkspacePage() {
       <div className="flex-1 overflow-y-auto">
         {viewMode === 'grid' ? (
           <div className="grid grid-cols-4 gap-4">
-            {workspaces.map((workspace: any) => (
+            {workspaces.map((workspace) => (
               <WorkspaceCard
                 key={workspace.id}
                 workspace={workspace}
@@ -293,11 +296,11 @@ export function WorkspacePage() {
                   className="red-checkbox"
                   checked={
                     workspaces.length > 0 &&
-                    workspaces.every((w: any) => selectedWorkspaces.includes(w.id))
+                    workspaces.every((w) => selectedWorkspaces.includes(w.id))
                   }
                   indeterminate={
-                    workspaces.some((w: any) => selectedWorkspaces.includes(w.id)) &&
-                    !workspaces.every((w: any) => selectedWorkspaces.includes(w.id))
+                    workspaces.some((w) => selectedWorkspaces.includes(w.id)) &&
+                    !workspaces.every((w) => selectedWorkspaces.includes(w.id))
                   }
                   onChange={toggleSelectAllWorkspaces}
                 />
@@ -317,7 +320,7 @@ export function WorkspacePage() {
               <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide" />
             </div>
 
-            {workspaces.map((workspace: any) => (
+            {workspaces.map((workspace) => (
               <WorkspaceListItem
                 key={workspace.id}
                 workspace={workspace}

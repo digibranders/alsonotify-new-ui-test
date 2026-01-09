@@ -11,10 +11,40 @@ import { EmployeeForm, EmployeeFormData } from '../../modals/EmployeesForm';
 import { DocumentCard } from '@/components/ui/DocumentCard';
 import { DocumentPreviewModal } from '@/components/ui/DocumentPreviewModal';
 import { UserDocument } from '@/types/genericTypes';
+import { getErrorMessage } from '@/types/api-utils';
+
+// Interface for backend employee data structure
+interface BackendEmployee {
+  id: number;
+  user_id?: number;
+  name?: string;
+  email?: string;
+  mobile_number?: string;
+  designation?: string;
+  hourly_rates?: number;
+  date_of_joining?: string;
+  experience?: number;
+  skills?: string[];
+  salary_yearly?: number;
+  salary?: number;
+  no_of_leaves?: number;
+  employment_type?: string;
+  documents?: UserDocument[];
+  working_hours?: { start_time?: string; end_time?: string };
+  user_profile?: { mobile_number?: string; phone?: string };
+  phone?: string;
+  department?: { id?: number; name?: string };
+  user_employee?: {
+    is_active?: boolean;
+    role_id?: number;
+    role?: { name?: string; color?: string };
+    user?: { mobile_number?: string };
+  };
+}
 
 
 
-function calculateWorkingHours(workingHours: any): number {
+function calculateWorkingHours(workingHours: { start_time?: string; end_time?: string }): number {
   if (!workingHours || !workingHours.start_time || !workingHours.end_time) return 0;
 
   // Simple calculation assuming same day
@@ -42,7 +72,7 @@ export function EmployeeDetailsPage() {
   // Mock documents data - TODO: Replace with actual API call when available
   const documents = useMemo(() => {
     // Check if employee data has documents
-    const employeeDocs = (backendEmp as any)?.documents || [];
+    const employeeDocs = (backendEmp as BackendEmployee)?.documents || [];
     if (Array.isArray(employeeDocs) && employeeDocs.length > 0) {
       return employeeDocs;
     }
@@ -99,7 +129,7 @@ export function EmployeeDetailsPage() {
   const handleUpdateEmployee = (data: EmployeeFormData) => {
     // Find department ID from name
     const selectedDepartment = departmentsData?.result?.find(
-      (dept: any) => dept.name === data.department
+      (dept) => dept.name === data.department
     );
     const departmentId = selectedDepartment?.id || null;
 
@@ -144,8 +174,8 @@ export function EmployeeDetailsPage() {
           // Invalidate queries to refresh the data
           // The useUpdateEmployee hook should handle this, but we'll ensure it's done
         },
-        onError: (error: any) => {
-          const errorMessage = error?.response?.data?.message || "Failed to update employee";
+        onError: (error: unknown) => {
+          const errorMessage = getErrorMessage(error, "Failed to update employee");
           message.error(errorMessage);
         },
       }
@@ -172,36 +202,37 @@ export function EmployeeDetailsPage() {
   // Transform backend data to UI format
   // Check multiple possible paths for mobile_number (userProfile table or nested user_profile)
   // Also default to 'N/A' if nothing found
+  const emp = backendEmp as BackendEmployee;
   const mobileNumber =
-    (backendEmp as any).user_profile?.mobile_number ||
-    backendEmp.mobile_number ||
-    (backendEmp as any).user_profile?.phone ||
-    (backendEmp as any).phone ||
-    (backendEmp as any).user_employee?.user?.mobile_number || // Attempt deep search
+    emp.user_profile?.mobile_number ||
+    emp.mobile_number ||
+    emp.user_profile?.phone ||
+    emp.phone ||
+    emp.user_employee?.user?.mobile_number ||
     'N/A';
 
   const employee = {
-    id: (backendEmp as any).user_id || backendEmp.id,
-    name: backendEmp.name || '',
-    role: backendEmp.designation || 'Unassigned',
-    email: backendEmp.email || '',
+    id: emp.user_id || emp.id,
+    name: emp.name || '',
+    role: emp.designation || 'Unassigned',
+    email: emp.email || '',
     phone: mobileNumber,
-    hourlyRate: backendEmp.hourly_rates ? `$${backendEmp.hourly_rates}/Hr` : 'N/A',
-    dateOfJoining: backendEmp.date_of_joining
-      ? new Date(backendEmp.date_of_joining || '').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })
+    hourlyRate: emp.hourly_rates ? `$${emp.hourly_rates}/Hr` : 'N/A',
+    dateOfJoining: emp.date_of_joining
+      ? new Date(emp.date_of_joining || '').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })
       : 'N/A',
-    experience: (backendEmp as any).experience || 0,
-    skillsets: (backendEmp as any).skills?.join(', ') || 'None',
-    status: (backendEmp as any).user_employee?.is_active !== false ? 'active' : 'inactive',
-    department: (backendEmp as any).department?.name || 'Unassigned',
-    access: ((backendEmp as any).user_employee?.role?.name || 'Employee') as 'Admin' | 'Manager' | 'Leader' | 'Employee',
-    salary: (backendEmp as any).salary_yearly || (backendEmp as any).salary || 0,
+    experience: emp.experience || 0,
+    skillsets: emp.skills?.join(', ') || 'None',
+    status: emp.user_employee?.is_active !== false ? 'active' : 'inactive',
+    department: emp.department?.name || 'Unassigned',
+    access: (emp.user_employee?.role?.name || 'Employee') as 'Admin' | 'Manager' | 'Leader' | 'Employee',
+    salary: emp.salary_yearly || emp.salary || 0,
     currency: 'USD',
-    workingHours: (backendEmp as any).working_hours ? calculateWorkingHours((backendEmp as any).working_hours) : 0,
-    leaves: (backendEmp as any).no_of_leaves || 0,
-    roleId: (backendEmp as any).user_employee?.role_id,
-    roleColor: (backendEmp as any).user_employee?.role?.color,
-    employmentType: (backendEmp as any).employment_type || 'Full-time',
+    workingHours: emp.working_hours ? calculateWorkingHours(emp.working_hours) : 0,
+    leaves: emp.no_of_leaves || 0,
+    roleId: emp.user_employee?.role_id,
+    roleColor: emp.user_employee?.role?.color,
+    employmentType: emp.employment_type || 'Full-time',
   };
 
   const handleDocumentPreview = (document: UserDocument) => {
@@ -412,7 +443,7 @@ export function EmployeeDetailsPage() {
           </div>
 
           <EmployeeForm
-            departments={departmentsData?.result?.filter((dept: any) => dept.is_active !== false).map((dept: any) => dept.name) || []}
+            departments={departmentsData?.result?.filter((dept: { is_active?: boolean; name?: string }) => dept.is_active !== false).map((dept) => dept.name) || []}
             initialData={{
               firstName: employee.name.split(" ")[0] || "",
               lastName: employee.name.split(" ").slice(1).join(" ") || "",

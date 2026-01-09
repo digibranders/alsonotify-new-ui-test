@@ -1,9 +1,9 @@
 import { UserDto } from '../../types/dto/user.dto';
-import { Employee } from '../../types/domain';
+import { Employee, User } from '../../types/domain';
 
-export function mapUserDtoToEmployee(dto: UserDto): Employee {
+export const mapUserDtoToEmployee = (dto: UserDto): Employee => {
   // Access Level / Role
-  const access = dto.employee_access || dto.access || (dto.role === 'Admin' ? 'Admin' : 'Employee');
+  const access = (dto.employee_access || dto.access || (dto.role === 'Admin' ? 'Admin' : 'Employee')) as Employee['access'];
   
   // Employment Type
   let employmentType = dto.employment_type || dto.employmentType || 'Full-time';
@@ -24,24 +24,36 @@ export function mapUserDtoToEmployee(dto: UserDto): Employee {
   return {
     id: dto.id,
     user_id: dto.id, // compatibility
+    userId: dto.id,
     name: dto.name || '',
     role: dto.designation || dto.role || 'Unassigned',
     email: dto.email || '',
     phone,
+    mobileNumber: phone,
+    mobile_number: phone,
+    
     hourlyRate: dto.hourly_rates ? `${dto.hourly_rates}/Hr` : 'N/A',
+    hourlyRates: dto.hourly_rates,
     hourly_rates: dto.hourly_rates,
+    
     dateOfJoining,
     date_of_joining: dto.date_of_joining,
+    
     experience: dto.experience || 0,
     skillsets: dto.skills?.join(', ') || 'None',
     skills: dto.skills,
     
     status,
+    isActive: status === 'active',
+    is_active: status === 'active',
+    
     department: typeof dto.department === 'string' ? dto.department : (dto.department?.name || 'Unassigned'),
     access,
+    employeeAccess: access,
     employee_access: access,
     
     managerName: dto.manager?.name || 'N/A',
+    managerId: dto.manager_id || undefined,
     manager_id: dto.manager_id || undefined,
     
     salary: dto.salary || dto.salary_yearly || 0,
@@ -53,9 +65,35 @@ export function mapUserDtoToEmployee(dto: UserDto): Employee {
     roleColor: dto.roleColor || dto.user_employee?.role?.color,
     
     employmentType,
+    employeeType: employmentType,
+    employee_type: employmentType,
+    
+    profilePic: dto.profile_pic,
     profile_pic: dto.profile_pic,
     
-    // Address fields if needed
-    // ...
+    userProfile: dto.user_profile,
+    user_profile: dto.user_profile,
+    user: dto.user,
+    userEmployee: dto.user_employee,
+    user_employee: dto.user_employee,
+    
+    company_id: dto.company_id,
   };
-}
+};
+
+export const mapUserToDomain = (dto: UserDto): User => {
+  return {
+    id: dto.id,
+    name: dto.name || '',
+    email: dto.email || '',
+    role: dto.role || '',
+    profilePic: dto.profile_pic,
+    profile_pic: dto.profile_pic,
+    mobileNumber: dto.mobile_number,
+    mobile_number: dto.mobile_number,
+    isActive: dto.is_active,
+    is_active: dto.is_active,
+    company: typeof dto.company === 'object' ? dto.company : undefined, // safely extract object
+    department: typeof dto.department === 'object' ? dto.department : undefined, 
+  };
+};

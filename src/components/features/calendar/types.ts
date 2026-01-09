@@ -1,7 +1,7 @@
 import { MeetingType } from '@/services/meeting';
 import { LeaveType } from '@/services/leave';
 import { GraphEvent } from '@/services/calendar';
-import { TaskType } from '@/services/task';
+import { TaskDto } from '@/types/dto/task.dto';
 import { Holiday } from '@/types/domain';
 
 export interface CalendarEvent {
@@ -15,7 +15,7 @@ export interface CalendarEvent {
     description?: string;
     status?: string;
     color: string;
-    raw?: MeetingType | LeaveType | GraphEvent | TaskType | Holiday | unknown;
+    raw?: MeetingType | LeaveType | GraphEvent | TaskDto | Holiday | unknown;
     endDate?: string;
     startDateTime?: any; // dayjs.Dayjs - keep as is or import dayjs
 }

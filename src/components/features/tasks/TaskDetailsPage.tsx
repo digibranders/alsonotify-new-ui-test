@@ -32,7 +32,9 @@ export function TaskDetailsPage() {
   // Use pre-populated relation data from API
   const assignee = task?.member_user || (task?.task_members?.[0]?.user);
   const leader = task?.leader_user;
-  const workspace = task?.task_workspace;
+  const taskProject = task?.taskProject?.company;
+  const workspace = taskProject ? { name: taskProject.name, id: task.workspace_id } : undefined;
+
   const requirement = task?.task_requirement;
 
   // Calculate progress
@@ -367,8 +369,8 @@ export function TaskDetailsPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`text-[18px] font-['Manrope:Bold',sans-serif] leading-none ${task.status === 'delayed' ? 'text-[#ff3b3b]' :
-                          task.status === 'completed' ? 'text-[#0F9D58]' :
+                        <p className={`text-[18px] font-['Manrope:Bold',sans-serif] leading-none ${task.status?.toLowerCase() === 'delayed' ? 'text-[#ff3b3b]' :
+                          task.status?.toLowerCase() === 'completed' ? 'text-[#0F9D58]' :
                             'text-[#2F80ED]'
                           }`}>
                           {progressPercent}%
@@ -383,8 +385,8 @@ export function TaskDetailsPage() {
                       </div>
                       <div className="w-full h-2 bg-[#E0E0E0] rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all duration-500 ${task.status === 'delayed' ? 'bg-[#ff3b3b]' :
-                            task.status === 'completed' ? 'bg-[#0F9D58]' :
+                          className={`h-full rounded-full transition-all duration-500 ${task.status?.toLowerCase() === 'delayed' ? 'bg-[#ff3b3b]' :
+                            task.status?.toLowerCase() === 'completed' ? 'bg-[#0F9D58]' :
                               'bg-[#2F80ED]'
                             }`}
                           style={{ width: `${progressPercent}%` }}
