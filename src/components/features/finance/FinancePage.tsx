@@ -58,6 +58,7 @@ interface Invoice {
 // --- Mock Data ---
 
 const MOCK_REQUIREMENTS: Requirement[] = [
+  // TechCorp Inc. - Mixed statuses
   {
     id: 101,
     title: 'Frontend Refactoring',
@@ -71,7 +72,7 @@ const MOCK_REQUIREMENTS: Requirement[] = [
   },
   {
     id: 102,
-    title: 'Security Audit',
+    title: 'Security Audit Phase 1',
     type: 'Security',
     estimatedCost: 3500,
     status: 'completed',
@@ -80,6 +81,20 @@ const MOCK_REQUIREMENTS: Requirement[] = [
     client: 'TechCorp Inc.',
     dueDate: '2025-12-05T10:00:00Z'
   },
+  {
+    id: 106,
+    title: 'Backend Optimization',
+    type: 'Development',
+    estimatedCost: 4200,
+    status: 'completed',
+    approvalStatus: 'approved',
+    invoiceStatus: 'billed',
+    invoiceId: 'INV-2025-004',
+    client: 'TechCorp Inc.',
+    dueDate: '2025-11-15T10:00:00Z'
+  },
+  
+  // StartupHub - Design focus
   {
     id: 103,
     title: 'Mobile App Design',
@@ -90,7 +105,80 @@ const MOCK_REQUIREMENTS: Requirement[] = [
     invoiceStatus: 'unbilled',
     client: 'StartupHub',
     dueDate: '2025-11-20T10:00:00Z'
-  }
+  },
+  {
+    id: 104,
+    title: 'Landing Page Redesign',
+    type: 'Design',
+    estimatedCost: 2500,
+    status: 'completed',
+    approvalStatus: 'approved',
+    invoiceStatus: 'unbilled',
+    client: 'StartupHub',
+    dueDate: '2025-12-10T10:00:00Z'
+  },
+
+  // Global Systems - Heavy varied load
+  {
+    id: 105,
+    title: 'Cloud Migration Strategy',
+    type: 'Consulting',
+    estimatedCost: 12000,
+    status: 'completed',
+    approvalStatus: 'approved',
+    invoiceStatus: 'unbilled',
+    client: 'Global Systems',
+    dueDate: '2025-12-15T10:00:00Z'
+  },
+  {
+    id: 107,
+    title: 'Database Sharding',
+    type: 'Development',
+    estimatedCost: 6000,
+    status: 'in_progress',
+    approvalStatus: 'approved',
+    invoiceStatus: 'unbilled',
+    client: 'Global Systems',
+    dueDate: '2026-01-20T10:00:00Z'
+  },
+
+  // Innovative Solutions
+  {
+    id: 108,
+    title: 'AI Model Integration',
+    type: 'AI/ML',
+    estimatedCost: 15000,
+    status: 'completed',
+    approvalStatus: 'approved',
+    invoiceStatus: 'unbilled',
+    client: 'Innovative Solutions',
+    dueDate: '2025-11-28T10:00:00Z'
+  },
+  {
+    id: 109,
+    title: 'User Testing',
+    type: 'QA',
+    estimatedCost: 1800,
+    status: 'completed',
+    approvalStatus: 'approved',
+    invoiceStatus: 'unbilled',
+    client: 'Innovative Solutions',
+    dueDate: '2025-12-08T10:00:00Z'
+  },
+
+  // Historical / Billed items for reference
+  {
+    id: 110,
+    title: 'Q3 Maintenance',
+    type: 'Maintenance',
+    estimatedCost: 3000,
+    status: 'completed',
+    approvalStatus: 'approved',
+    invoiceStatus: 'paid',
+    invoiceId: 'INV-2025-001',
+    client: 'Triem Security',
+    dueDate: '2025-10-15T10:00:00Z'
+  },
 ];
 
 const MOCK_INVOICES: Invoice[] = [
@@ -112,6 +200,46 @@ const MOCK_INVOICES: Invoice[] = [
     dueDate: '2025-11-20T09:00:00Z',
     amount: 8500,
     status: 'sent',
+    items: []
+  },
+  {
+    id: 'INV-2025-003',
+    invoiceNumber: 'INV-2025-003',
+    client: 'Global Systems',
+    date: '2025-10-20T09:00:00Z',
+    dueDate: '2025-11-05T09:00:00Z',
+    amount: 22000,
+    status: 'overdue',
+    items: []
+  },
+  {
+    id: 'INV-2025-004',
+    invoiceNumber: 'INV-2025-004',
+    client: 'TechCorp Inc.',
+    date: '2025-11-18T09:00:00Z',
+    dueDate: '2025-12-02T09:00:00Z',
+    amount: 4200,
+    status: 'sent',
+    items: []
+  },
+  {
+    id: 'INV-2025-005',
+    invoiceNumber: 'INV-2025-005',
+    client: 'Alpha Dynamics',
+    date: '2025-09-15T09:00:00Z',
+    dueDate: '2025-09-30T09:00:00Z',
+    amount: 12500,
+    status: 'paid',
+    items: []
+  },
+   {
+    id: 'INV-2025-006',
+    invoiceNumber: 'INV-2025-006',
+    client: 'Beta Corp',
+    date: '2025-11-25T09:00:00Z',
+    dueDate: '2025-12-10T09:00:00Z',
+    amount: 6700,
+    status: 'draft',
     items: []
   }
 ];
@@ -369,13 +497,6 @@ export function FinancePage() {
       showFilter={false} // We implement custom filter bar
       customFilters={
         <div className="flex items-center gap-3">
-            <Button
-                onClick={() => toast.info('Download functionality to be implemented')}
-                icon={<Download className="w-4 h-4" />}
-                className="font-['Manrope:SemiBold',sans-serif] text-[13px] rounded-full"
-            >
-                Download
-            </Button>
             <DateRangeSelector
                 value={dateRange}
                 onChange={setDateRange}
