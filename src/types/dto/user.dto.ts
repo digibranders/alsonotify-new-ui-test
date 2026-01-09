@@ -39,6 +39,7 @@ export interface UserDto {
   country?: string;
   profile_pic?: string;
   date_of_joining?: string;
+  late_time?: string;
   
   // Other observed fields
   employmentType?: string;

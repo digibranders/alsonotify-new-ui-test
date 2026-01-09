@@ -2,7 +2,7 @@
 import { Badge, Dropdown, MenuProps, Checkbox } from "antd";
 import { Briefcase, CalendarDays, Edit, MoreVertical, Trash2 } from "lucide-react";
 import { AccessBadge } from '../../../ui/AccessBadge';
-import { Employee } from "@/types/genericTypes";
+import { Employee } from "@/types/domain";
 
 interface EmployeeRowProps {
   employee: Employee;

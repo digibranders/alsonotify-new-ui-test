@@ -271,7 +271,7 @@ export interface Employee {
   skillsets: string;
   status: 'active' | 'inactive';
   department: string;
-  access: string; // 'Admin' | 'Manager' | 'Leader' | 'Employee' but might be loose
+  access: 'Admin' | 'Manager' | 'Leader' | 'Employee';
   managerName?: string;
   managerId?: number;
   manager_id?: number;

@@ -86,6 +86,9 @@ export interface CreateRequirementRequestDto {
   receiver_company_id?: number;
   is_high_priority?: boolean;
   contact_person?: string;
+  estimated_hours?: number;
+  quoted_price?: number;
+  rejection_reason?: string;
 }
 
 export interface UpdateRequirementRequestDto extends Partial<CreateRequirementRequestDto> {

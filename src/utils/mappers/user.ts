@@ -3,7 +3,7 @@ import { Employee, User } from '../../types/domain';
 
 export const mapUserDtoToEmployee = (dto: UserDto): Employee => {
   // Access Level / Role
-  const access = dto.employee_access || dto.access || (dto.role === 'Admin' ? 'Admin' : 'Employee');
+  const access = (dto.employee_access || dto.access || (dto.role === 'Admin' ? 'Admin' : 'Employee')) as Employee['access'];
   
   // Employment Type
   let employmentType = dto.employment_type || dto.employmentType || 'Full-time';

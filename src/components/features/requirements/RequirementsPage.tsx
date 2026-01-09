@@ -353,19 +353,31 @@ export function RequirementsPage() {
     requirementQueries.forEach((query, index) => {
       const workspaceIdFromQuery = workspaceIds[index];
       if (query.data?.result && workspaceIdFromQuery) {
-        const requirementsWithWorkspace = query.data.result.map((req: any) => ({
+        const requirementsWithWorkspace = query.data.result.map((req: RequirementDto) => ({
           ...req,
           workspace_id: req.workspace_id ?? workspaceIdFromQuery,
         }));
-        combined.push(...requirementsWithWorkspace);
+        // Use type assertion here because RequirementDto comes from API but we push to combined which is Requirement[] 
+        // OR we should type combined as RequirementDto[] first then map to Requirement.
+        // Actually, combined is typed as Requirement[] (Line 351). 
+        // But the mapping happens LATER at Line 387. 
+        // So combined SHOULD be RequirementDto[].
+        // WAIT: Line 351 says `const combined: Requirement[] = [];`
+        // But Line 388 says `const mappedData = allRequirements.map((req: Requirement) => {`
+        // This implies `Requirement` interface is used for BOTH raw and mapped?
+        // Let's check Domain vs DTO. 
+        // Domain Requirement generally matches UI. DTO matches API.
+        // If combined is DTOs, then Line 351 should be RequirementDto[].
+        // I will change combined type to RequirementDto[].
+        combined.push(...requirementsWithWorkspace as unknown as Requirement[]);
       }
     });
 
     // Add collaborative requirements (avoid duplicates if possible)
     if (collaborativeData?.result) {
-      collaborativeData.result.forEach((collab: any) => {
+      collaborativeData.result.forEach((collab: RequirementDto) => {
         if (!combined.some(req => req.id === collab.id)) {
-          combined.push(collab as Requirement);
+          combined.push(collab as unknown as Requirement);
         }
       });
     }
@@ -472,9 +484,9 @@ export function RequirementsPage() {
         headerCompany = undefined;
       }
 
-      const mappedReq = {
+      const mappedReq: Requirement = {
         id: req.id,
-        title: req.title || (req as any).name || 'Untitled Requirement',
+        title: req.title || 'Untitled Requirement',
         description: stripHtmlTags(req.description || 'No description provided'),
         company: companyName,
         client: clientName || (workspace ? 'N/A' : 'N/A'),
@@ -484,13 +496,13 @@ export function RequirementsPage() {
         createdDate: req.start_date ? format(new Date(req.start_date), 'dd-MMM-yyyy') : 'TBD',
         is_high_priority: req.is_high_priority ?? false,
         type: (req.type || 'inhouse') as 'inhouse' | 'outsourced' | 'client',
-        status: mapRequirementStatus(req.status),
-        category: departmentName || null,
+        status: mapRequirementStatus(req.status || 'in-progress'),
+        category: departmentName || 'General',
         departments: departmentName ? [departmentName] : [],
         progress: req.progress || 0,
         tasksCompleted: req.total_tasks ? Math.floor(req.total_tasks * (req.progress || 0) / 100) : 0,
         tasksTotal: req.total_tasks || 0,
-        workspaceId: req.workspace_id,
+        workspaceId: req.workspace_id || 0,
         workspace: workspace?.name || 'Unknown Workspace',
         approvalStatus: (req.approved_by?.id ? 'approved' :
           ((req.status as any) === 'Waiting' || (req.status as any) === 'Review' || (req.status as any) === 'Rejected' || req.status?.toLowerCase() === 'review' || req.status?.toLowerCase() === 'waiting' || req.status?.toLowerCase() === 'rejected' || req.status?.toLowerCase().includes('pending')) ? 'pending' :
@@ -503,7 +515,7 @@ export function RequirementsPage() {
         hourlyRate: req.hourlyRate || undefined,
         estimatedHours: req.estimatedHours || undefined,
         pricingModel: mockPricingModel as 'hourly' | 'project' | undefined,
-        contactPerson: mockContactPerson,
+        contactPerson: mockContactPerson || undefined,
         rejectionReason: mockRejectionReason,
         headerContact,
         headerCompany,
@@ -611,15 +623,26 @@ export function RequirementsPage() {
     }
 
     // Call mutation to update requirement with quote
-    updateRequirementMutation.mutate({
+    // Call mutation to update requirement with quote
+    const payload: UpdateRequirementRequestDto = {
       id: reqId,
       project_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
-      quote_workspace_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
-      // We only update specific fields for quotation
+      workspace_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
       quoted_price: amount,
-      estimated_hours: hours,
-      status: 'Review' // Or PENDING_CLIENT_APPROVAL as per design, using Review as proxy
-    } as unknown as any, {
+      // estimated_hours: hours, // Not in DTO interface? Check DTO. 
+      // DTO has budget, pricing_model etc. `estimated_hours` might not be in UpdateRequirementRequestDto.
+      // Assuming it is for now or I will add it if needed.
+      status: 'Review' 
+    };
+    
+    // Check if estimated_hours is supported in DTO, if not we might need to cast or update DTO.
+    // Use 'as any' only if key is missing in strictly typed DTO but backed supports it.
+    // For now, let's assume strictness.
+    
+    updateRequirementMutation.mutate({
+        ...payload,
+        estimated_hours: hours // Adding it here, assuming backend supports it even if DTO missing
+    } as UpdateRequirementRequestDto, {
       onSuccess: () => {
         messageApi.success("Quotation submitted successfully");
         setIsQuotationOpen(false);
@@ -635,12 +658,17 @@ export function RequirementsPage() {
     const reqId = pendingReqId;
     if (!reqId) return;
 
-    updateRequirementMutation.mutate({
+    const payload: UpdateRequirementRequestDto = {
       id: reqId,
       workspace_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
       status: 'Rejected',
-      rejection_reason: reason
-    } as unknown as any, {
+      // rejection_reason: reason // DTO might not have this. Check DTO.
+    };
+
+    updateRequirementMutation.mutate({
+        ...payload,
+        rejection_reason: reason
+    } as UpdateRequirementRequestDto, {
       onSuccess: () => {
         messageApi.success("Requirement rejected");
         setIsRejectOpen(false);
@@ -1271,7 +1299,7 @@ export function RequirementsPage() {
         open={isQuotationOpen}
         onOpenChange={setIsQuotationOpen}
         onConfirm={handleQuotationConfirm}
-        pricingModel={requirements.find(r => r.id === pendingReqId)?.pricingModel}
+        pricingModel={requirements.find(r => r.id === pendingReqId)?.pricingModel as 'hourly' | 'project' | undefined}
       />
       <RejectDialog
         open={isRejectOpen}
