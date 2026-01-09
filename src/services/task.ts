@@ -86,7 +86,12 @@ function validatePagination(limit: number, skip: number): void {
 /**
  * Create a new task
  */
-export const createTask = async (params: Partial<TaskType> & { name?: string }): Promise<ApiResponse<TaskType>> => {
+import { TaskDto } from "../types/dto/task.dto";
+
+/**
+ * Create a new task
+ */
+export const createTask = async (params: Partial<TaskDto> & { name?: string }): Promise<ApiResponse<TaskDto>> => {
   try {
     // Handle both 'name' (from form) and 'title' (from TaskType interface) - backend expects 'name'
     const taskName = params.name || params.title;
@@ -103,7 +108,7 @@ export const createTask = async (params: Partial<TaskType> & { name?: string }):
       name: taskName,
     };
 
-    const { data } = await axiosApi.post<ApiResponse<TaskType>>("/task/create", payload);
+    const { data } = await axiosApi.post<ApiResponse<TaskDto>>("/task/create", payload);
 
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -128,11 +133,11 @@ export const createTask = async (params: Partial<TaskType> & { name?: string }):
 /**
  * Update an existing task
  */
-export const updateTask = async (params: TaskType): Promise<ApiResponse<TaskType>> => {
+export const updateTask = async (params: TaskDto): Promise<ApiResponse<TaskDto>> => {
   try {
     validateTaskId(params.id);
 
-    const { data } = await axiosApi.put<ApiResponse<TaskType>>(`/task/update/${params.id}`, params);
+    const { data } = await axiosApi.put<ApiResponse<TaskDto>>(`/task/update/${params.id}`, params);
 
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -157,7 +162,7 @@ export const updateTask = async (params: TaskType): Promise<ApiResponse<TaskType
 /**
  * Update task status
  */
-export const updateTaskStatusById = async (id: number, status: string): Promise<ApiResponse<TaskType>> => {
+export const updateTaskStatusById = async (id: number, status: string): Promise<ApiResponse<TaskDto>> => {
   try {
     validateTaskId(id);
 
@@ -165,7 +170,7 @@ export const updateTaskStatusById = async (id: number, status: string): Promise<
       throw new ApiError('Task status is required', 400);
     }
 
-    const { data } = await axiosApi.post<ApiResponse<TaskType>>(`/task/${id}/update/${status}`);
+    const { data } = await axiosApi.post<ApiResponse<TaskDto>>(`/task/${id}/update/${status}`);
 
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -190,11 +195,11 @@ export const updateTaskStatusById = async (id: number, status: string): Promise<
 /**
  * Delete a task
  */
-export const deleteTaskById = async (id: number): Promise<ApiResponse<TaskType>> => {
+export const deleteTaskById = async (id: number): Promise<ApiResponse<TaskDto>> => {
   try {
     validateTaskId(id);
 
-    const { data } = await axiosApi.delete<ApiResponse<TaskType>>(`/task/delete/${id}`);
+    const { data } = await axiosApi.delete<ApiResponse<TaskDto>>(`/task/delete/${id}`);
 
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -219,9 +224,9 @@ export const deleteTaskById = async (id: number): Promise<ApiResponse<TaskType>>
 /**
  * Get tasks with optional query parameters
  */
-export const getTasks = async (options: string = ""): Promise<ApiResponse<TaskType[]>> => {
+export const getTasks = async (options: string = ""): Promise<ApiResponse<TaskDto[]>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<TaskType[]>>(`/task?${options}`);
+    const { data } = await axiosApi.get<ApiResponse<TaskDto[]>>(`/task?${options}`);
 
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);

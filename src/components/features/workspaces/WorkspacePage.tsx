@@ -13,7 +13,7 @@ import { usePartners, useCurrentUserCompany } from '@/hooks/useUser';
 import { useQueries } from '@tanstack/react-query';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
 
-
+import { Workspace } from '@/types/domain';
 export function WorkspacePage() {
   const { message } = App.useApp();
 
@@ -83,7 +83,7 @@ export function WorkspacePage() {
     return workspacesData?.result?.workspaces?.map((w: any) => w.id) || [];
   }, [workspacesData]);
 
-  const totalItems = workspacesData?.result?.workspaces?.[0]?.total_count || 0;
+  const totalItems = (workspacesData?.result as any)?.total_count || 0;
 
   // Fetch requirements for all workspaces
   const requirementQueries = useQueries({
@@ -95,7 +95,7 @@ export function WorkspacePage() {
   });
 
   // Transform backend data to frontend format with requirements counts
-  const workspaces = useMemo(() => {
+  const workspaces = useMemo((): Workspace[] => {
     if (!workspacesData?.result?.workspaces) return [];
     return workspacesData.result.workspaces.map((w: any) => {
       // Find requirements for this workspace
@@ -185,7 +185,7 @@ export function WorkspacePage() {
     );
   };
 
-  const handleSelectWorkspace = (workspace: { id: number; name: string; taskCount: number; inProgressCount?: number; delayedCount?: number; completedCount?: number; totalRequirements?: number; inProgressRequirements?: number; delayedRequirements?: number; status: string }) => {
+  const handleSelectWorkspace = (workspace: Workspace) => {
     router.push(`/dashboard/workspace/${workspace.id}/requirements`);
   };
 
@@ -391,7 +391,7 @@ function WorkspaceRequirementsSummary({
   );
 }
 
-function WorkspaceCard({ workspace, onClick }: { workspace: any; onClick?: () => void }) {
+function WorkspaceCard({ workspace, onClick }: { workspace: Workspace; onClick?: () => void }) {
   const { message } = App.useApp();
   const deleteMutation = useDeleteWorkspace();
   const reactivateMutation = useReactivateWorkspace();
@@ -516,24 +516,7 @@ function WorkspaceListItem({
   onToggleSelect,
   onClick,
 }: {
-  workspace: {
-    id: number;
-    name: string;
-    taskCount: number;
-    inProgressCount?: number;
-    delayedCount?: number;
-    completedCount?: number;
-    totalRequirements?: number;
-    inProgressRequirements?: number;
-    delayedRequirements?: number;
-    status: string;
-    isActive: boolean;
-    in_house?: boolean;
-    partner_name?: string;
-    company_name?: string;
-    description?: string;
-    partner_id?: number;
-  };
+  workspace: Workspace;
   selected: boolean;
   onToggleSelect: () => void;
   onClick?: () => void;

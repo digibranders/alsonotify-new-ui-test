@@ -56,13 +56,13 @@ export function RequirementsForm({
             // Fix: Backend returns client_id/outsource_id/association_id/invite_id, not user_... prefixes
             const id = item.partner_user_id ?? item.user_id ?? item.client_id ?? item.outsource_id ?? item.association_id ?? item.invite_id ?? item.id;
             return {
-                id: typeof id === 'number' ? id : undefined,
-                name: item.partner_user?.name || item.name || item.partner_user?.company || item.company || 'Unknown Partner',
-                company: item.partner_user?.company || item.company,
-                company_id: item.company_id // Preserve company_id for receiver_company_id logic
+                id: (typeof id === 'number' ? id : undefined) as number | undefined,
+                name: (item.partner_user?.name || item.name || item.partner_user?.company || item.company || 'Unknown Partner') as string,
+                company: (item.partner_user?.company || item.company) as string | undefined,
+                company_id: item.company_id as number | undefined // Preserve company_id for receiver_company_id logic
             };
         })
-        .filter((p: any) => p.id !== undefined);
+        .filter((p: { id?: number }) => p.id !== undefined);
 
     // Process employees
     const employees = (employeesData?.result || [])
@@ -70,12 +70,12 @@ export function RequirementsForm({
         .map((item: any) => {
             const id = item.user_id ?? item.id;
             return {
-                id: typeof id === 'number' ? id : undefined,
-                name: item.name || 'Unknown Employee',
-                designation: item.designation
+                id: (typeof id === 'number' ? id : undefined) as number | undefined,
+                name: (item.name || 'Unknown Employee') as string,
+                designation: item.designation as string | undefined
             };
         })
-        .filter((e: any) => e.id !== undefined);
+        .filter((e: { id?: number }) => e.id !== undefined);
 
     const [formData, setFormData] = useState<RequirementFormData>({
         title: '',

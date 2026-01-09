@@ -24,51 +24,12 @@ dayjs.extend(isoWeek);
 dayjs.extend(isSameOrBefore);
 dayjs.extend(isSameOrAfter);
 
-type ITaskStatus = 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck';
+import { Task, TaskStatus } from '@/types/domain';
 
-type UITask = {
-  id: string;
-  name: string;
-  taskId: string;
-  client: string;
-  project: string;
-  leader: string;
-  assignedTo: string;
-  startDate: string;
-  dueDate: string;
-  estTime: number;
-  timeSpent: number;
-  activities: number;
-  status: ITaskStatus;
-  is_high_priority: boolean;
-  timelineDate: string;
-  timelineLabel: string;
-  // For date-range filtering
-  dueDateValue: number | null;
-  // For editing
-  workspace_id?: number;
-  requirement_id?: number;
-  member_id?: number;
-  leader_id?: number;
-  description?: string;
-  endDateIso?: string; // Raw ISO string for form editing
-  execution_mode?: 'parallel' | 'sequential';
-  total_seconds_spent: number;
-  task_members?: {
-    id: number;
-    user_id: number;
-    status: string;
-    estimated_time: number | null;
-    seconds_spent: number;
-    active_worklog_start_time?: string | null;
-    is_current_turn: boolean;
-    user: {
-      id: number;
-      name: string;
-      profile_pic?: string;
-    };
-  }[];
-};
+// Local alias if needed to avoid massive rename, or just use Task
+// transforming UITask -> Task in the code
+type UITask = Task; 
+type ITaskStatus = TaskStatus;
 
 type StatusTab = 'all' | 'In_Progress' | 'Completed' | 'Delayed';
 
@@ -217,7 +178,7 @@ export function TasksPage() {
     if (filters.workspace !== 'All') {
       // Find workspace ID from name
       const selectedWorkspace = workspacesData?.result?.workspaces?.find(
-        (p: any) => p.name === filters.workspace
+        (p: { name: string; id: number }) => p.name === filters.workspace
       );
       if (selectedWorkspace?.id) {
         params.workspace_id = selectedWorkspace.id;
@@ -280,7 +241,7 @@ export function TasksPage() {
     }
     if (filters.workspace !== 'All') {
       const selectedWorkspace = workspacesData?.result?.workspaces?.find(
-        (p: any) => p.name === filters.workspace
+        (p: { name: string; id: number }) => p.name === filters.workspace
       );
       if (selectedWorkspace?.id) {
         params.workspace_id = selectedWorkspace.id;
@@ -451,7 +412,7 @@ export function TasksPage() {
 
       // Determine company/client name: if client exists, it's client work, otherwise show company name for in-house
       // Client company comes from task_project.client_user.company.name
-      const clientCompanyName = (t as any).task_project?.client_user?.company?.name ||
+      const clientCompanyName = t.task_project?.client_user?.company?.name ||
         t.client?.name ||
         t.client_company_name ||
         null;
@@ -459,8 +420,8 @@ export function TasksPage() {
       // For in-house tasks, get company name from task's company relation, project's company, or current user's company
       const inHouseCompanyName = t.company?.name ||
         t.company_name ||
-        (t as any).task_project?.company?.name ||
-        (t as any).task_project?.company_name ||
+        t.task_project?.company?.name ||
+        t.task_project?.company_name ||
         currentUserCompanyName ||
         null;
 
@@ -470,10 +431,10 @@ export function TasksPage() {
       // Get requirement name - check multiple possible paths
       // First try from API response (nested relation)
       let requirementName =
-        (t as any).requirement?.name ||
-        (t as any).task_requirement?.name ||
-        (t as any).requirement_relation?.name ||
-        (t as any).requirement_name ||
+        t.requirement?.name ||
+        t.task_requirement?.name ||
+        t.requirement_relation?.name ||
+        t.requirement_name ||
         null;
 
       // If not found in API response, look it up from the requirements dropdown map
@@ -495,11 +456,11 @@ export function TasksPage() {
         project: requirementDisplay,
         leader:
           t.leader?.name ||
-          (t as any).leader_user?.name ||
+          t.leader_user?.name ||
           'Unassigned',
         assignedTo:
-          (t as any).member_user?.name ||
-          t.assigned_to?.name ||
+          t.member_user?.name ||
+          (typeof t.assigned_to === 'object' ? t.assigned_to?.name : undefined) ||
           t.assigned_to_user?.name ||
           'Unassigned',
         startDate,
@@ -516,13 +477,13 @@ export function TasksPage() {
         // Store IDs for editing
         workspace_id: t.workspace_id,
         requirement_id: t.requirement_id,
-        member_id: (t as any).member_user?.id || t.member_id,
-        leader_id: (t as any).leader_user?.id || t.leader_id,
+        member_id: t.member_user?.id || t.member_id,
+        leader_id: t.leader_user?.id || t.leader_id,
         description: t.description || '',
         endDateIso: t.end_date || '',
         task_members: t.task_members || [],
-        total_seconds_spent: (t as any).total_seconds_spent || 0,
-        execution_mode: (t as any).execution_mode,
+        total_seconds_spent: t.total_seconds_spent || 0,
+        execution_mode: t.execution_mode,
       };
     });
   }, [tasksData, requirementMap, currentUserCompanyName]);
@@ -544,7 +505,7 @@ export function TasksPage() {
 
   const workspaces = useMemo(() => {
     if (!workspacesData?.result?.workspaces) return ['All'];
-    return ['All', ...workspacesData.result.workspaces.map((p: any) => p.name)];
+    return ['All', ...workspacesData.result.workspaces.map((p: { name: string }) => p.name)];
   }, [workspacesData]);
 
   const statuses = useMemo(() => ['All', 'Assigned', 'In Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'], []);
@@ -595,7 +556,7 @@ export function TasksPage() {
     });
   };
 
-  const handleCreateTask = async (data: any) => {
+  const handleCreateTask = async (data: Partial<Task>) => {
     // `TaskForm` already validates all required fields, but we keep a
     // defensive check here to avoid sending an incomplete payload.
     if (!data?.start_date) {
@@ -608,16 +569,16 @@ export function TasksPage() {
         message.success("Task created successfully!");
         setIsDialogOpen(false);
       },
-      onError: (error: any) => {
+      onError: (error: Error) => {
         const errorMessage =
-          error?.response?.data?.message || error?.message || "Failed to create task";
+          (error as any)?.response?.data?.message || (error as any)?.message || "Failed to create task";
         message.error(errorMessage);
       },
     });
   };
 
   // Handle edit task
-  const [editingTask, setEditingTask] = useState<any>(null);
+  const [editingTask, setEditingTask] = useState<UITask | null>(null);
   const handleEditTask = (task: UITask) => {
     setEditingTask(task);
     setIsDialogOpen(true);
@@ -636,9 +597,9 @@ export function TasksPage() {
           onSuccess: () => {
             message.success("Task deleted successfully!");
           },
-          onError: (error: any) => {
+          onError: (error: Error) => {
             const errorMessage =
-              error?.response?.data?.message || error?.message || "Failed to delete task";
+              (error as any)?.response?.data?.message || (error as any)?.message || "Failed to delete task";
             message.error(errorMessage);
           },
         });
@@ -648,8 +609,9 @@ export function TasksPage() {
 
   // Get total count from API response
   const totalTasks = useMemo(() => {
-    const firstTask = tasksData?.result?.[0] as any;
-    return firstTask?.total_count ?? tasks.length ?? 0;
+    const firstTask = tasksData?.result?.[0] as Task | undefined;
+    // @ts-ignore - total_count might be on the response or the first item
+    return (firstTask as any)?.total_count ?? tasks.length ?? 0;
   }, [tasksData, tasks.length]);
 
   // Apply client-side filters for user/company (since we can't easily map names to IDs)
@@ -700,9 +662,9 @@ export function TasksPage() {
   // Note: Stats are now fetched separately without status filter for stable tab counts
   // Use statsData (global counts) instead of tasksData (filtered)
   const stats = useMemo(() => {
-    const firstTask = statsData?.result?.[0] as any;
+    const firstTask = statsData?.result?.[0] as any; // Stats usually come as metadata or first item
     const backendCounts = firstTask?.status_counts || {};
-    const allTasks = statsData?.result || [];
+    const allTasks = (statsData?.result || []) as Task[];
 
     // Calculate delayed count: tasks where end_date < today AND not completed
     const today = new Date();
@@ -710,7 +672,7 @@ export function TasksPage() {
     const todayTime = today.getTime();
 
     let delayedCount = 0;
-    allTasks.forEach((t: any) => {
+    allTasks.forEach((t: Task) => {
       if (t.end_date && t.status !== 'Completed') {
         const endDateObj = new Date(t.end_date);
         endDateObj.setHours(0, 0, 0, 0);
@@ -832,7 +794,8 @@ export function TasksPage() {
               updateTaskMutation.mutate({
                 id: parseInt(editingTask.id),
                 ...data,
-              } as any, {
+                ...data,
+              } as unknown as any, {
                 onSuccess: () => {
                   message.success("Task updated successfully!");
                   setIsDialogOpen(false);
@@ -926,7 +889,12 @@ export function TasksPage() {
           {tasks.map((task) => (
             <TaskRow
               key={task.id}
-              task={task}
+              task={{
+                ...task,
+                status: (task.status === 'In Progress' ? 'In_Progress' : 
+                         task.status === 'Todo' ? 'Assigned' : 
+                         task.status) as any 
+              }}
               selected={selectedTasks.includes(task.id)}
               onSelect={() => toggleSelect(task.id)}
               onEdit={() => handleEditTask(task)}

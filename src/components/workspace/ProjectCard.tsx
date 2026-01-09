@@ -11,23 +11,43 @@ import { useEmployees } from '@/hooks/useUser';
 import { format } from 'date-fns';
 
 import dayjs from 'dayjs';
+import { Workspace, Task as DomainTask } from '@/types/domain';
+import { TaskType } from '@/services/task';
+import { TaskDto } from '@/types/dto/task.dto';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
-interface Task {
+
+
+interface ProjectTaskUI {
   id: string;
   title: string;
+  name?: string;
+  taskId: string;
+  client: string;
+  project: string;
+  leader: string;
+  assignedTo: string;
   assignee: {
     name: string;
     avatar?: string;
   };
+  startDate: string;
   dueDate: string;
+  estTime: number;
+  timeSpent: number;
+  activities: number;
   status: 'In Progress' | 'Completed' | 'Review' | 'Todo';
   priority: 'High' | 'Medium' | 'Low';
   comments: number;
   attachments: number;
+  is_high_priority: boolean;
+  timelineDate: string;
+  timelineLabel: string;
+  dueDateValue: number;
   description?: string;
+  total_seconds_spent: number;
 }
 
 export function WorkspaceDetailsPage({ id }: { id: string }) {
@@ -58,30 +78,49 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
     dueDate: null as any
   });
 
-  const workspace = useMemo(() => {
-    return workspacesData?.result?.workspaces?.find((p: any) => String(p.id) === id);
+  const workspace = useMemo((): Workspace | undefined => {
+    return workspacesData?.result?.workspaces?.find((p: Workspace) => String(p.id) === id);
   }, [workspacesData, id]);
 
-  const tasks = useMemo(() => {
+  const tasks = useMemo((): ProjectTaskUI[] => {
     if (!tasksData?.result) return [];
-    return tasksData.result.map((t: any) => ({
+    return tasksData.result.map((t: DomainTask) => {
+      const assignedName = t.assignedTo || 'Unassigned';
+      
+      return {
+      // Map service TaskType to UI Task
       id: String(t.id),
-      title: t.name,
+      title: t.title || t.name || 'Untitled', 
+      name: t.title || t.name || 'Untitled', // Keep name for DomainTask compatibility if needed
+      taskId: String(t.id),
+      client: 'Unknown', // Default or fetch
+      project: workspace?.name || 'Unknown',
+      leader: 'Unknown',
+      assignedTo: assignedName,
       assignee: {
-        name: t.assigned_users?.[0]?.name || 'Unassigned',
-        avatar: t.assigned_users?.[0]?.image_url
+        name: assignedName,
+        avatar: undefined
       },
-      dueDate: t.end_date,
-      status: t.status,
-      priority: t.priority ? t.priority.charAt(0).toUpperCase() + t.priority.slice(1).toLowerCase() : 'Medium',
+      startDate: t.start_date || '',
+      dueDate: t.dueDate || '',
+      estTime: t.estTime || 0,
+      timeSpent: t.timeSpent || 0,
+      activities: t.activities || 0,
+      status: t.status as ProjectTaskUI['status'],
+      priority: t.is_high_priority ? 'High' : 'Medium',
+      is_high_priority: t.is_high_priority || false,
+      timelineDate: '',
+      timelineLabel: '',
+      dueDateValue: t.dueDate ? new Date(t.dueDate).getTime() : 0,
+      description: t.description || '',
+      total_seconds_spent: 0,
       comments: 0,
-      attachments: 0,
-      description: t.description
-    }));
-  }, [tasksData]);
+      attachments: 0
+    }}); 
+  }, [tasksData, workspace]);
 
   // Filter Options
-  const assignees = ['All', ...Array.from(new Set(tasks.map((t: any) => t.assignee.name)))];
+  const assignees = ['All', ...Array.from(new Set(tasks.map((t: ProjectTaskUI) => t.assignee.name)))];
 
   const filterOptions: FilterOption[] = [
     {
@@ -122,7 +161,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
       end_date: newTask.dueDate ? newTask.dueDate.toISOString() : new Date().toISOString(),
       status: newTask.status,
       priority: newTask.priority.toUpperCase(),
-    } as any, {
+    } as unknown as Partial<TaskDto>, { // Assuming create payload is partial task
       onSuccess: () => {
         message.success('Task created successfully');
         setIsTaskModalOpen(false);
@@ -135,8 +174,8 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
           dueDate: null
         });
       },
-      onError: (error: any) => {
-        message.error(error?.response?.data?.message || 'Failed to create task');
+      onError: (error: Error) => {
+        message.error((error as any)?.response?.data?.message || 'Failed to create task');
       }
     });
   };
@@ -158,7 +197,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
   };
 
 
-  const filteredTasks = tasks.filter((task: any) => {
+  const filteredTasks = tasks.filter((task: ProjectTaskUI) => {
     const matchesSearch = searchQuery === '' || task.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filters.status === 'All' || task.status === filters.status;
     const matchesPriority = filters.priority === 'All' || task.priority === filters.priority;
@@ -232,7 +271,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
             <div className="flex items-center gap-3">
               <div className="flex -space-x-2 mr-2">
                 {/* Assigned Users Avatars could go here */}
-                {workspace.assigned_users?.slice(0, 3).map((user: any, i: number) => (
+                {workspace.assigned_users?.slice(0, 3).map((user: { name: string }, i: number) => (
                   <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-[#F7F7F7] flex items-center justify-center text-[10px] font-['Manrope:Bold',sans-serif] text-[#666666]">
                     {user.name?.[0]}
                   </div>
@@ -323,7 +362,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
               </div>
             ) : viewMode === 'list' ? (
               <div className="space-y-3">
-                {filteredTasks.map((task: any) => (
+                {filteredTasks.map((task: ProjectTaskUI) => (
                   <div key={task.id} className="group bg-white border border-[#EEEEEE] rounded-[12px] p-4 hover:border-[#ff3b3b] hover:shadow-sm transition-all flex items-center gap-4">
                     <Checkbox className="custom-checkbox" />x1
                     <div className="flex-1 min-w-0">
@@ -372,7 +411,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-4">
-                {filteredTasks.map((task: any) => (
+                {filteredTasks.map((task: ProjectTaskUI) => (
                   <div key={task.id} className="group bg-white border border-[#EEEEEE] rounded-[16px] p-5 hover:border-[#ff3b3b] hover:shadow-sm transition-all flex flex-col h-full">
                     <div className="flex items-start justify-between mb-3">
                       <span className={`px-2 py-0.5 rounded-full border text-[10px] font-['Manrope:Bold',sans-serif] ${getPriorityColor(task.priority)}`}>
@@ -469,7 +508,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
                 value={newTask.assigneeId || undefined}
                 onChange={(val) => setNewTask({ ...newTask, assigneeId: val })}
               >
-                {employeesData?.result?.map((emp: any) => (
+                {employeesData?.result?.map((emp: { id: number; name: string }) => (
                   <Option key={emp.id} value={String(emp.id)}>{emp.name}</Option>
                 ))}
               </Select>
@@ -503,7 +542,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
               <Select
                 className="w-full h-10"
                 value={newTask.priority}
-                onChange={(val) => setNewTask({ ...newTask, priority: val as any })}
+                onChange={(val) => setNewTask({ ...newTask, priority: val as 'High' | 'Medium' | 'Low' })}
               >
                 <Option value="Low">Low</Option>
                 <Option value="Medium">Medium</Option>

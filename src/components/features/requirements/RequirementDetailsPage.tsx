@@ -27,6 +27,8 @@ import { useUserDetails } from '@/hooks/useUser';
 import { SubTask } from '@/types/genericTypes';
 import { format } from 'date-fns';
 import { TaskRow } from '@/components/features/tasks/rows/TaskRow';
+import { Requirement, Task } from '@/types/domain';
+import { RequirementDto } from '@/types/dto/requirement.dto';
 const { Option } = Select;
 
 export function RequirementDetailsPage() {
@@ -72,13 +74,13 @@ export function RequirementDetailsPage() {
         title: requirement.title,
         status: 'Assigned',
         receiver_workspace_id: Number(selectedReceiverWorkspace)
-     } as any, {
+     } as unknown as any, {
         onSuccess: () => {
            message.success("Requirement accepted and assigned to workspace.");
            setIsAcceptModalOpen(false);
         },
-        onError: (err: any) => {
-           message.error(err.message || "Failed to accept requirement");
+        onError: (err: Error) => {
+           message.error((err as any).message || "Failed to accept requirement");
         }
      });
   };
@@ -88,9 +90,9 @@ export function RequirementDetailsPage() {
     return workspaceData.result;
   }, [workspaceData]);
 
-  const requirement = useMemo(() => {
-    if (!requirementsData?.result) return null;
-    return requirementsData.result.find((r: any) => r.id === reqId);
+  const requirement = useMemo((): Requirement | undefined => {
+    if (!requirementsData?.result) return undefined;
+    return requirementsData.result.find((r: Requirement) => r.id === reqId);
   }, [requirementsData, reqId]);
 
   const isSender = useMemo(() => {
@@ -105,14 +107,14 @@ export function RequirementDetailsPage() {
     return 'in-progress';
   };
 
-  const tasks = useMemo(() => {
+  const tasks = useMemo((): Task[] => {
     if (!tasksData?.result || !requirement) return [];
-    return tasksData.result.filter((t: any) => t.requirement_id === reqId && (!t.type || t.type === 'task'));
+    return tasksData.result.filter((t: any) => Number(t.requirement_id) === reqId && (!t.type || t.type === 'task'));
   }, [tasksData, requirement, reqId]);
 
   const revisions = useMemo(() => {
     if (!tasksData?.result || !requirement) return [];
-    return tasksData.result.filter((t: any) => t.requirement_id === reqId && t.type === 'revision');
+    return tasksData.result.filter((t: Task & { type?: string }) => t.requirement_id === reqId && t.type === 'revision');
   }, [tasksData, requirement, reqId]);
 
   if (isLoadingWorkspace || isLoadingRequirements) {
@@ -229,7 +231,7 @@ export function RequirementDetailsPage() {
                             value={selectedReceiverWorkspace}
                             onChange={setSelectedReceiverWorkspace}
                          >
-                            {myWorkspacesData?.result?.workspaces?.map((w: any) => (
+                            {myWorkspacesData?.result?.workspaces?.map((w: { id: number; name: string }) => (
                                <Option key={w.id} value={String(w.id)}>{w.name}</Option>
                             ))}
                          </Select>
@@ -245,7 +247,7 @@ export function RequirementDetailsPage() {
                 </span>
               )}
               <div className="flex -space-x-2">
-                {Array.isArray(assignedTo) && assignedTo.slice(0, 3).map((person: any, i: number) => {
+                {Array.isArray(assignedTo) && assignedTo.slice(0, 3).map((person: { name: string } | string, i: number) => {
                   const name = typeof person === 'string' ? person : person?.name || 'U';
                   return (
                     <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm" title={name}>
@@ -530,7 +532,7 @@ export function RequirementDetailsPage() {
                       <Checkbox
                         checked={tasks.length > 0 && selectedTasks.length === tasks.length}
                         onChange={(e) => {
-                          if (e.target.checked) setSelectedTasks(tasks.map((t: any) => String(t.id)));
+                          if (e.target.checked) setSelectedTasks(tasks.map((t: Task) => String(t.id)));
                           else setSelectedTasks([]);
                         }}
                         className="border-[#DDDDDD] [&.ant-checkbox-checked]:bg-[#ff3b3b] [&.ant-checkbox-checked]:border-[#ff3b3b]"
@@ -548,7 +550,7 @@ export function RequirementDetailsPage() {
 
                 <div className="space-y-3">
                   {tasks.length > 0 ? (
-                    tasks.map((task: any) => {
+                    tasks.map((task: Task) => {
                       // Map task data to TaskRow expected format
                       const mappedTask = {
                         id: String(task.id),
@@ -565,7 +567,7 @@ export function RequirementDetailsPage() {
                         total_seconds_spent: task.total_seconds_spent || 0,
                         activities: 0,
                         status: task.status || 'Assigned',
-                        is_high_priority: task.is_high_priority || task.priority === 'HIGH' || false,
+                        is_high_priority: task.is_high_priority || (task as any).priority === 'HIGH' || false,
                         timelineDate: task.end_date ? format(new Date(task.end_date), 'MMM dd') : 'N/A',
                         timelineLabel: task.status === 'Delayed' ? 'Overdue' : '',
                         execution_mode: task.execution_mode,
@@ -574,7 +576,7 @@ export function RequirementDetailsPage() {
                       return (
                         <TaskRow
                           key={task.id}
-                          task={mappedTask as any}
+                          task={mappedTask as unknown as any}
                           selected={selectedTasks.includes(String(task.id))}
                           onSelect={() => {
                             if (selectedTasks.includes(String(task.id))) {
@@ -584,18 +586,18 @@ export function RequirementDetailsPage() {
                             }
                           }}
                           onStatusChange={() => {}} // Handle if needed
-                        hideRequirements={true}
-                        isSender={isSender}
-                        onRequestRevision={() => {
-                          setTargetTaskId(task.id);
-                          setIsRevisionModalOpen(true);
-                        }}
-                      />
-                    );
-                  })
-                ) : (
-                  <div className="text-center py-8 text-[#999999] text-[13px]">No tasks created yet</div>
-                )}
+                          hideRequirements={true}
+                          isSender={isSender}
+                          onRequestRevision={() => {
+                            setTargetTaskId(task.id as any);
+                            setIsRevisionModalOpen(true);
+                          }}
+                        />
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-8 text-[#999999] text-[13px]">No tasks created yet</div>
+                  )}
               </div>
 
               {/* Revision Confirmation Modal */}
@@ -614,8 +616,8 @@ export function RequirementDetailsPage() {
                       setIsRevisionModalOpen(false);
                       setRevisionNotes('');
                     },
-                    onError: (err: any) => {
-                      message.error(err.message || "Failed to request revision");
+                    onError: (err: Error) => {
+                      message.error((err as any).message || "Failed to request revision");
                     }
                   });
                 }}
@@ -662,7 +664,7 @@ export function RequirementDetailsPage() {
                     <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide"></p>
                   </div>
                   <div className="space-y-2">
-                    {revisions.map((task: any) => (
+                    {revisions.map((task: Task) => (
                       <SubTaskRow key={task.id} task={task} isRevision />
                     ))}
                   </div>
@@ -682,7 +684,7 @@ export function RequirementDetailsPage() {
             let maxDate = new Date();
             let hasValidDates = false;
 
-            allTasks.forEach((task: any) => {
+            allTasks.forEach((task: Task) => {
               if (task.start_date) {
                 const start = new Date(task.start_date);
                 if (!hasValidDates || start < minDate) minDate = new Date(start);
@@ -750,7 +752,7 @@ export function RequirementDetailsPage() {
               : -1;
 
             // Calculate bar position for a task
-            const getBarPosition = (task: any) => {
+            const getBarPosition = (task: Task) => {
               const startDate = task.start_date ? new Date(task.start_date) : today;
               const endDate = task.end_date ? new Date(task.end_date) : new Date(startDate.getTime() + 3 * 24 * 60 * 60 * 1000);
               startDate.setHours(0, 0, 0, 0);
@@ -766,7 +768,7 @@ export function RequirementDetailsPage() {
             };
 
             // Get status color
-            const getStatusColor = (task: any) => {
+            const getStatusColor = (task: Task) => {
               const status = (task.status || '').toLowerCase();
               if (status === 'completed' || status === 'done') return 'bg-[#E8F5E9] border-[#0F9D58] text-[#0F9D58]';
               if (status === 'delayed' || status === 'stuck' || status === 'impediment') return 'bg-[#FFF5F5] border-[#ff3b3b] text-[#ff3b3b]';
@@ -775,7 +777,7 @@ export function RequirementDetailsPage() {
             };
 
             // Get assigned name
-            const getAssignedName = (task: any) => {
+            const getAssignedName = (task: Task) => {
               if (task.member_user?.name) return task.member_user.name;
               if (task.task_members?.[0]?.user?.name) return task.task_members[0].user.name;
               return 'Unassigned';

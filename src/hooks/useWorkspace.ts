@@ -18,19 +18,34 @@ import {
 import { getTasks } from "../services/task";
 export { usePartners } from "./useUser";
 
+import { mapWorkspaceDtoToDomain } from "../utils/mappers/workspace.mapper";
+
 // Workspaces
 export const useWorkspaces = (options: string = "") => {
   return useQuery({
     queryKey: ["workspaces", options],
     queryFn: () => getWorkspace(options),
+    select: (data) => ({
+      ...data,
+      result: {
+        ...data.result,
+        workspaces: data.result && data.result.workspaces ? data.result.workspaces.map(mapWorkspaceDtoToDomain) : []
+      }
+    })
   });
 };
+
+import { mapTaskDtoToDomain } from "../utils/mappers/task.mapper";
 
 export const useWorkspaceTasks = (workspaceId: number) => {
   return useQuery({
     queryKey: ["tasks", "workspace", workspaceId],
     queryFn: () => getTasks(`workspace_id=${workspaceId}`),
     enabled: !!workspaceId,
+    select: (data) => ({
+      ...data,
+      result: data.result ? data.result.map(mapTaskDtoToDomain) : []
+    })
   });
 };
 
@@ -76,12 +91,18 @@ export const useDeleteWorkspace = () => {
   });
 };
 
+import { mapRequirementDtoToDomain } from "../utils/mappers/requirement.mapper";
+
 // Requirements
 export const useRequirements = (workspaceId: number) => {
   return useQuery({
     queryKey: ["requirements", workspaceId],
     queryFn: () => getRequirementsByWorkspaceId(workspaceId),
     enabled: !!workspaceId,
+    select: (data) => ({
+      ...data,
+      result: data.result ? data.result.map(mapRequirementDtoToDomain) : []
+    })
   });
 };
 

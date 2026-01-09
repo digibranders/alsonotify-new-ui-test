@@ -58,9 +58,14 @@ export const getUserDetails = async () => {
 };
 
 // Create user/employee
-export const createUser = async (params: UserType): Promise<ApiResponse<UserType>> => {
+import { UserDto } from "../types/dto/user.dto";
+
+// ... imports
+
+// Create user/employee
+export const createUser = async (params: Partial<UserDto>): Promise<ApiResponse<UserDto>> => {
   try {
-    const { data } = await axiosApi.post<ApiResponse<UserType>>("/user/create", params);
+    const { data } = await axiosApi.post<ApiResponse<UserDto>>("/user/create", params);
     return data;
   } catch (error) {
     throw error;
@@ -68,9 +73,9 @@ export const createUser = async (params: UserType): Promise<ApiResponse<UserType
 };
 
 // Update user by ID
-export const updateUserById = async (id: number, params: Partial<UserType>): Promise<ApiResponse<UserType>> => {
+export const updateUserById = async (id: number, params: Partial<UserDto>): Promise<ApiResponse<UserDto>> => {
   try {
-    const { data } = await axiosApi.put<ApiResponse<UserType>>(`/user/update/${id}`, params);
+    const { data } = await axiosApi.put<ApiResponse<UserDto>>(`/user/update/${id}`, params);
     return data;
   } catch (error) {
     throw error;
@@ -78,9 +83,9 @@ export const updateUserById = async (id: number, params: Partial<UserType>): Pro
 };
 
 // Get employees
-export const getEmployees = async (options: string = ""): Promise<ApiResponse<UserType[]>> => {
+export const getEmployees = async (options: string = ""): Promise<ApiResponse<UserDto[]>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<UserType[]>>(`/user?${options}`);
+    const { data } = await axiosApi.get<ApiResponse<UserDto[]>>(`/user?${options}`);
     return data;
   } catch (error) {
     throw error;
@@ -88,9 +93,9 @@ export const getEmployees = async (options: string = ""): Promise<ApiResponse<Us
 };
 
 // Get user by id
-export const getUserById = async (id: number): Promise<ApiResponse<UserType>> => {
+export const getUserById = async (id: number): Promise<ApiResponse<UserDto>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<UserType>>(`/user/${id}`);
+    const { data } = await axiosApi.get<ApiResponse<UserDto>>(`/user/${id}`);
     return data;
   } catch (error) {
     throw error;

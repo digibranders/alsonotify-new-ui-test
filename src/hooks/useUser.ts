@@ -21,11 +21,17 @@ import {
 } from "../services/user";
 import { ProfileUpdateInput, CompanyUpdateInput } from "../types/genericTypes";
 
+import { mapUserDtoToEmployee } from "../utils/mappers/user.mapper";
+
 export const useEmployees = (options: string = "") => {
   return useQuery({
     queryKey: ["employees", options],
     queryFn: () => getEmployees(options),
     staleTime: 5 * 1000, // 5 seconds
+    select: (data) => ({
+      ...data,
+      result: data.result ? data.result.map(mapUserDtoToEmployee) : []
+    })
   });
 };
 
@@ -53,11 +59,15 @@ export const useOutsourcePartners = (options: string = "") => {
   });
 };
 
+import { UserDto } from "../types/dto/user.dto";
+
+// ...
+
 export const useCreateEmployee = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: UserType) => createUser(params),
+    mutationFn: (params: Partial<UserDto>) => createUser(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
     },
@@ -68,7 +78,7 @@ export const useUpdateEmployee = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...params }: { id: number } & Partial<UserType>) => updateUserById(id, params),
+    mutationFn: ({ id, ...params }: { id: number } & Partial<UserDto>) => updateUserById(id, params),
     onSuccess: (_, variables) => {
       // Invalidate all employee queries (both active and inactive)
       queryClient.invalidateQueries({ queryKey: ["employees"] });

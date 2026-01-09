@@ -6,6 +6,7 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import PhoneNumberInput from "@/components/ui/PhoneNumberInput";
 import { useCurrentUserCompany, useRoles, useEmployees } from "@/hooks/useUser";
 import { currencies, getCurrencySymbol } from "@/utils/currencyUtils";
+import { Employee, Role } from '@/types/domain';
 
 dayjs.extend(customParseFormat);
 
@@ -89,7 +90,7 @@ export function EmployeeForm({
   const { data: employeesData } = useEmployees("is_active=true&limit=1000"); // Fetch all active employees for manager list
   const { message } = App.useApp();
 
-  const fetchedRoles = useMemo(() => {
+  const fetchedRoles = useMemo((): Role[] => {
     return rolesData?.result || [];
   }, [rolesData]);
 
@@ -150,7 +151,7 @@ export function EmployeeForm({
         experience: String(initialData.experience || ""),
         currency: initialData.currency || "INR",
         // Map access string to role if available, or keep as is
-        access: initialData.access || (initialData.role_id ? fetchedRoles.find((r: any) => r.id === initialData.role_id)?.name : "") || "Employee",
+        access: initialData.access || (initialData.role_id ? fetchedRoles.find((r: Role) => r.id === initialData.role_id)?.name : "") || "Employee",
         manager_id: initialData.manager_id,
       });
     } else if (companyData?.result && !isEditing) {
@@ -238,7 +239,7 @@ export function EmployeeForm({
       return;
     }
     // Set role_id based on selected access name if needed
-    const selectedRole = fetchedRoles.find((r: any) => r.name === formData.access);
+    const selectedRole = fetchedRoles.find((r: Role) => r.name === formData.access);
     if (selectedRole) {
       formData.role_id = selectedRole.id;
     }
@@ -353,12 +354,12 @@ export function EmployeeForm({
               loading={isLoadingRoles}
               value={formData.access}
               onChange={(v) => {
-                const role = fetchedRoles.find((r: any) => r.name === v);
+                const role = fetchedRoles.find((r: Role) => r.name === v);
                 setFormData({ ...formData, access: v as string, role_id: role?.id });
               }}
               suffixIcon={<div className="text-gray-400">⌄</div>}
             >
-              {fetchedRoles.map((role: any) => {
+              {fetchedRoles.map((role: Role) => {
                   const config = getAccessLevelConfig(role.name);
                   const Icon = config.icon;
                   return (
