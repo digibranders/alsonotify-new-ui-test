@@ -319,9 +319,9 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
       children: [
         {
           key: 'invoice',
-          label: 'Invoice',
+          label: 'Finance',
           icon: <Receipt24Filled className="w-4 h-4" />,
-          onClick: () => router.push('/dashboard/invoices'),
+          onClick: () => router.push('/dashboard/finance'),
           className: "font-['Manrope:Medium',sans-serif]"
         },
       ],
