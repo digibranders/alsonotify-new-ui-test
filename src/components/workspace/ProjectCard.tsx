@@ -12,8 +12,8 @@ import { format } from 'date-fns';
 
 import dayjs from 'dayjs';
 import { Workspace, Task as DomainTask } from '@/types/domain';
-import { TaskType } from '@/services/task';
 import { TaskDto } from '@/types/dto/task.dto';
+
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -88,7 +88,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
       const assignedName = t.assignedTo || 'Unassigned';
       
       return {
-      // Map service TaskType to UI Task
+      // Map service TaskDto to UI Task
       id: String(t.id),
       title: t.title || t.name || 'Untitled', 
       name: t.title || t.name || 'Untitled', // Keep name for DomainTask compatibility if needed

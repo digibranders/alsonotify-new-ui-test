@@ -37,3 +37,11 @@ export interface WorkspaceDto {
   delayedCount?: number;
   completedCount?: number;
 }
+
+export interface ProjectCommentDto {
+  id: number;
+  comment: string;
+  type: "PROJECT" | "TASK" | "WORKSPACE";
+  reference_id: number;
+  [key: string]: unknown;
+}

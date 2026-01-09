@@ -324,7 +324,7 @@ const applyFormatToSelection = (type: string, selection: Selection) => {
     case 'list':
       document.execCommand('insertUnorderedList', false);
       break;
-    case 'checklist':
+    case 'checklist': {
       // Create a custom checklist item
       const listItem = document.createElement('li');
       listItem.style.listStyle = 'none';
@@ -340,6 +340,7 @@ const applyFormatToSelection = (type: string, selection: Selection) => {
       listItem.appendChild(textNode);
       range.insertNode(listItem);
       break;
+    }
     case 'heading':
       try {
         document.execCommand('formatBlock', false, 'h3');
@@ -352,7 +353,7 @@ const applyFormatToSelection = (type: string, selection: Selection) => {
         range.insertNode(heading);
       }
       break;
-    case 'code':
+    case 'code': {
       const code = document.createElement('code');
       code.style.backgroundColor = '#f5f5f5';
       code.style.padding = '2px 4px';
@@ -362,6 +363,7 @@ const applyFormatToSelection = (type: string, selection: Selection) => {
       code.appendChild(range.extractContents());
       range.insertNode(code);
       break;
+    }
     case 'quote':
       try {
         document.execCommand('formatBlock', false, 'blockquote');
@@ -393,7 +395,7 @@ const insertBlockFormat = (type: string, editor: HTMLElement) => {
     case 'list':
       document.execCommand('insertUnorderedList', false);
       break;
-    case 'checklist':
+    case 'checklist': {
       const listItem = document.createElement('li');
       listItem.style.listStyle = 'none';
       listItem.style.position = 'relative';
@@ -412,7 +414,8 @@ const insertBlockFormat = (type: string, editor: HTMLElement) => {
       selection.removeAllRanges();
       selection.addRange(range);
       break;
-    case 'heading':
+    }
+    case 'heading': {
       try {
         document.execCommand('formatBlock', false, 'h3');
       } catch {
@@ -428,7 +431,8 @@ const insertBlockFormat = (type: string, editor: HTMLElement) => {
         selection.addRange(range);
       }
       break;
-    case 'quote':
+    }
+    case 'quote': {
       try {
         document.execCommand('formatBlock', false, 'blockquote');
       } catch {
@@ -445,5 +449,6 @@ const insertBlockFormat = (type: string, editor: HTMLElement) => {
         selection.addRange(range);
       }
       break;
+    }
   }
 };

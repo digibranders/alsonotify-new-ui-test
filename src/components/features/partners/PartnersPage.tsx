@@ -111,7 +111,7 @@ export function PartnersPageContent() {
                         company_id: item.company_id
                     };
                 });
-                setPartners(mappedPartners); ``
+                setPartners(mappedPartners);
             }
         } catch (error) {
             console.error('Failed to fetch data:', error);
@@ -204,7 +204,7 @@ export function PartnersPageContent() {
             let fullName = item.country;
             try {
                 fullName = new Intl.DisplayNames(['en'], { type: 'region' }).of(item.country) || item.country;
-            } catch { }
+            } catch { /* empty */ }
             return fullName.toLowerCase() === filters.country.toLowerCase();
         })();
         return matchesTab && matchesSearch && matchesType && matchesCountry;

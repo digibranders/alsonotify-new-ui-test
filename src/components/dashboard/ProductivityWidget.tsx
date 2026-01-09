@@ -23,7 +23,8 @@ import { useUserDetails } from "@/hooks/useUser";
 import { useTasks, useUpdateTaskStatus } from "@/hooks/useTask";
 import { useWorkspaces } from "@/hooks/useWorkspace";
 import { useMemo } from "react";
-import { getAssignedTasks, startWorkLog, updateWorklog, getAssignedTaskDetail, type AssignedTaskDetailType } from "@/services/task";
+import { getAssignedTasks, startWorkLog, updateWorklog, getAssignedTaskDetail } from "@/services/task";
+import { AssignedTaskDetailDto } from "@/types/dto/task.dto";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { WorklogModal } from "../modals/WorklogModal";
 import { Modal } from "antd";
@@ -80,7 +81,7 @@ export function ProductivityWidget() {
   const [sessionStartTime, setSessionStartTime] = useState<string>(""); // ISO string when current timer session started (for display)
   const [worklogId, setWorklogId] = useState<number | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
-  const [taskDetail, setTaskDetail] = useState<AssignedTaskDetailType | null>(null);
+  const [taskDetail, setTaskDetail] = useState<AssignedTaskDetailDto | null>(null);
   const taskButtonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const conversationRef = useRef<HTMLDivElement>(null);

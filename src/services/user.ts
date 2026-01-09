@@ -1,51 +1,9 @@
+/* eslint-disable no-useless-catch */
 import axiosApi from "../config/axios";
-import { ApiResponse } from "../constants/constants";
+import { ApiResponse } from "../types/api";
 import { ProfileUpdateInput, CompanyUpdateInput } from "../types/genericTypes";
 import { CompanyProfile } from "../types/auth";
-
-export interface UserType {
-  id: number;
-  name: string;
-  email: string;
-  phone?: string;
-  mobile_number?: string;
-  designation?: string;
-  is_active?: boolean;
-  role?: string;
-  role_id?: number;
-  roleColor?: string;
-  status?: string;
-  user_employee?: any; // Keeping as any for nested object until further typed
-  department_id?: number;
-  department?: { id: number; name: string };
-  manager_id?: number | null;
-  employment_type?: string;
-  salary_yearly?: number;
-  hourly_rates?: number;
-  working_hours?: { start_time: string; end_time: string };
-  no_of_leaves?: number;
-  joining_date?: string;
-  experience?: string;
-  skills?: string[];
-  address?: string;
-  city?: string;
-  state?: string;
-  zipcode?: string;
-  country?: string;
-  profile_pic?: string;
-  date_of_joining?: string;
-  [key: string]: unknown;
-}
-
-export interface ClientOrOutsourceType {
-  id: number;
-  name: string;
-  email: string;
-  company?: string;
-  phone?: string;
-  country?: string;
-  [key: string]: unknown;
-}
+import { UserDto, RoleDto, ModuleActionGroupDto } from "../types/dto/user.dto";
 
 // Get user details
 export const getUserDetails = async () => {
@@ -56,11 +14,6 @@ export const getUserDetails = async () => {
     throw error;
   }
 };
-
-// Create user/employee
-import { UserDto } from "../types/dto/user.dto";
-
-// ... imports
 
 // Create user/employee
 export const createUser = async (params: Partial<UserDto>): Promise<ApiResponse<UserDto>> => {
@@ -102,10 +55,12 @@ export const getUserById = async (id: number): Promise<ApiResponse<UserDto>> => 
   }
 };
 
-// Get partners
-export const getPartners = async (options: string = ""): Promise<ApiResponse<ClientOrOutsourceType[]>> => {
+// Get partners (using UserDto as base since structure is similar enough for listing)
+// Or we could define a specific PartnerDto if needed, but UserDto is flexible.
+// Checking ClientOrOutsourceType: id, name, email, company, phone, country. All in UserDto now.
+export const getPartners = async (options: string = ""): Promise<ApiResponse<UserDto[]>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<ClientOrOutsourceType[]>>(
+    const { data } = await axiosApi.get<ApiResponse<UserDto[]>>(
       `/user/partners${options ? `?${options}` : ""}`
     );
     return data;
@@ -150,21 +105,20 @@ export const searchEmployees = async (): Promise<ApiResponse<{ label: string; va
 // Update user profile
 export const updateCurrentUserProfile = async (
   params: ProfileUpdateInput
-): Promise<ApiResponse<UserType>> => {
+): Promise<ApiResponse<UserDto>> => {
   try {
     // Ensure mobile_number is sent if phone is provided
     const payload = {
       ...params,
       mobile_number: params.mobile_number || params.phone,
     };
-    const { data } = await axiosApi.post<ApiResponse<UserType>>(`/user/profile`, payload);
+    const { data } = await axiosApi.post<ApiResponse<UserDto>>(`/user/profile`, payload);
     return data;
   } catch (error) {
     throw error;
   }
 };
 
-// Update user password
 // Update user password
 export const updateCurrentUserPassword = async (params: { password: string, currentPassword?: string }): Promise<ApiResponse<unknown>> => {
   try {
@@ -216,9 +170,9 @@ export const getCompanyDepartments = async (): Promise<ApiResponse<CompanyDepart
 };
 
 // Update user status (activate/deactivate)
-export const updateUserStatus = async (params: { user_id: number; is_active: boolean }): Promise<ApiResponse<UserType>> => {
+export const updateUserStatus = async (params: { user_id: number; is_active: boolean }): Promise<ApiResponse<UserDto>> => {
   try {
-    const { data } = await axiosApi.patch<ApiResponse<UserType>>(`/user/update/status`, params);
+    const { data } = await axiosApi.patch<ApiResponse<UserDto>>(`/user/update/status`, params);
     return data;
   } catch (error) {
     throw error;
@@ -255,28 +209,10 @@ export const acceptInvitation = async (token: string) => {
   }
 };
 
-// Role types for access management
-export interface RoleType {
-  id?: number;
-  name: string;
-  color?: string;
-}
-
-export interface PermissionAction {
-  id: number;
-  name: string;
-  assigned: boolean;
-}
-
-export interface ModuleActionGroup {
-  module: string;
-  actions: PermissionAction[];
-}
-
 // Create or update role
-export const upsertRole = async (params: Partial<RoleType>): Promise<ApiResponse<RoleType>> => {
+export const upsertRole = async (params: Partial<RoleDto>): Promise<ApiResponse<RoleDto>> => {
   try {
-    const { data } = await axiosApi.put<ApiResponse<RoleType>>("/role", params);
+    const { data } = await axiosApi.put<ApiResponse<RoleDto>>("/role", params);
     return data;
   } catch (error) {
     throw error;
@@ -284,9 +220,9 @@ export const upsertRole = async (params: Partial<RoleType>): Promise<ApiResponse
 };
 
 // Get permissions for a role
-export const getRolePermissions = async (roleId: number): Promise<ApiResponse<ModuleActionGroup[]>> => {
+export const getRolePermissions = async (roleId: number): Promise<ApiResponse<ModuleActionGroupDto[]>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<ModuleActionGroup[]>>(`/role/${roleId}/actions`);
+    const { data } = await axiosApi.get<ApiResponse<ModuleActionGroupDto[]>>(`/role/${roleId}/actions`);
     return data;
   } catch (error) {
     throw error;
@@ -341,17 +277,6 @@ export const declineInviteById = async (inviteId: number): Promise<ApiResponse<u
     throw error;
   }
 };
-
-// Update user password
-// Update user password - DEPRECATED: Use updateCurrentUserPassword instead
-// export const updatePassword = async (password: string): Promise<ApiResponse<null>> => {
-//   try {
-//     const { data } = await axiosApi.patch<ApiResponse<null>>("/user/update/password", { password });
-//     return data;
-//   } catch (error) {
-//     throw error;
-//   }
-// };
 
 // Delete partner (or cancel request)
 export const deletePartner = async (params: { userType: 'PARTNER'; partnerUserId?: number; inviteId?: number }): Promise<ApiResponse<unknown>> => {

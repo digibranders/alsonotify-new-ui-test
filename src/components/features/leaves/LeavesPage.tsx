@@ -109,13 +109,13 @@ export function LeavesPage() {
   const handleApprove = async (leaveId: number) => {
     try {
       await updateStatusMutation.mutateAsync({ id: leaveId, status: 'APPROVED' });
-    } catch (error) {}
+    } catch (error) { /* empty */ }
   };
 
   const handleReject = async (leaveId: number) => {
     try {
       await updateStatusMutation.mutateAsync({ id: leaveId, status: 'REJECTED' });
-    } catch (error) {}
+    } catch (error) { /* empty */ }
   };
 
   const handleApplyLeave = async (values: ApplyLeaveFormValues) => {
@@ -129,7 +129,7 @@ export function LeavesPage() {
       });
       form.resetFields();
       setIsApplyLeaveModalOpen(false);
-    } catch (error) {}
+    } catch (error) { /* empty */ }
   };
 
   // Filter options

@@ -6,7 +6,7 @@ import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { DateRangeSelector } from '../../common/DateRangeSelector';
 import {
   X, Calendar as CalendarIcon, Clock, CheckCircle, CheckSquare, Users, Trash2,
-  FilePlus, Edit, Receipt, MoreHorizontal, Play, XCircle, RotateCcw, ChevronDown, AlertCircle
+  FilePlus, Receipt, MoreHorizontal, Play, XCircle, RotateCcw, ChevronDown, AlertCircle
 } from 'lucide-react';
 
 import { PaginationBar } from '../../ui/PaginationBar';

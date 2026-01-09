@@ -78,20 +78,22 @@ export function DateRangeSelector({
             case 'today':
                 newRange = [now.startOf('day'), now.endOf('day')];
                 break;
-            case 'yesterday':
+            case 'yesterday': {
                 const yesterday = now.subtract(1, 'day');
                 newRange = [yesterday.startOf('day'), yesterday.endOf('day')];
                 break;
+            }
             case 'this_week':
                 newRange = [now.startOf('isoWeek'), now.endOf('isoWeek')];
                 break;
             case 'this_month':
                 newRange = [now.startOf('month'), now.endOf('month')];
                 break;
-            case 'last_month':
+            case 'last_month': {
                 const lastMonth = now.subtract(1, 'month');
                 newRange = [lastMonth.startOf('month'), lastMonth.endOf('month')];
                 break;
+            }
             case 'last_90_days':
                 newRange = [now.subtract(90, 'day').startOf('day'), now.endOf('day')];
                 break;

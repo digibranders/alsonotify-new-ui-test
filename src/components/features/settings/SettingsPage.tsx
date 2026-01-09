@@ -85,7 +85,7 @@ const getTimezones = (): Array<{ value: string; label: string }> => {
       return uniqueTimezones.map(tz => ({ value: tz, label: tz }));
     }
   } catch (e) {
-
+    // empty
   }
 
   // Fallback: Comprehensive list of IANA timezones (canonical names only, no deprecated aliases)

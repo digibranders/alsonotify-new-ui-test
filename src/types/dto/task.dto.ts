@@ -1,3 +1,27 @@
+// Nested types
+export interface WorklogDto {
+  id: number;
+  task_id: number;
+  user_id: number;
+  hours?: number;
+  time_in_seconds?: number;
+  description?: string;
+  date?: string;
+  start_datetime?: string;
+  end_datetime?: string;
+  created_user?: number;
+  created_at?: string;
+}
+
+export interface CommentDto {
+  id: number;
+  task_id: number;
+  user_id: number;
+  content: string;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface TaskDto {
   id: number;
   title?: string;
@@ -22,6 +46,10 @@ export interface TaskDto {
   execution_mode?: 'parallel' | 'sequential';
   
   // Relations/Nested objects often returned by different endpoints
+  worklogs?: WorklogDto[];
+  comments?: CommentDto[];
+  task_workspace?: { id: number; name?: string };
+  task_requirement?: { id: number; name?: string };
   task_project?: {
     company?: { name: string };
     client_user?: { company?: { name: string } };
@@ -50,4 +78,19 @@ export interface TaskDto {
   client_company_name?: string;
   manager_user?: { name: string };
   total_count?: number; // Metadata often mixed in
+}
+
+export interface AssignedTaskDetailDto {
+  estimated_time: number; // in hours
+  worked_time: number; // in seconds
+  status: string;
+  worked_sessions: number;
+  task_worklog?: {
+    id: number | null;
+    task_id: number;
+    description: string;
+    end_datetime: string | null;
+    start_datetime: string;
+    time_in_seconds: number | null;
+  } | null;
 }

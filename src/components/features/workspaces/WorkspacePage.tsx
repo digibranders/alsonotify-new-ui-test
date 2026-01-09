@@ -103,7 +103,7 @@ export function WorkspacePage() {
       const requirements = reqQuery?.data?.result || [];
 
       // Calculate requirement counts
-      let totalRequirements = requirements.length;
+      const totalRequirements = requirements.length;
       let inProgressRequirements = 0;
       let delayedRequirements = 0;
 

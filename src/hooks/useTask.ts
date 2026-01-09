@@ -12,8 +12,8 @@ import {
   updateWorklog,
   getAssignedTaskDetail,
   requestRevision,
-  type TaskType,
 } from "../services/task";
+import { TaskDto } from '@/types/dto/task.dto';
 
 // Re-export useClients for convenience
 // useClients removed
@@ -40,7 +40,7 @@ export const useTask = (id: number) => {
   });
 };
 
-import { TaskDto } from "../types/dto/task.dto";
+
 
 // ...
 

@@ -610,6 +610,7 @@ export function TasksPage() {
   // Get total count from API response
   const totalTasks = useMemo(() => {
     const firstTask = tasksData?.result?.[0] as Task | undefined;
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore - total_count might be on the response or the first item
     return (firstTask as any)?.total_count ?? tasks.length ?? 0;
   }, [tasksData, tasks.length]);

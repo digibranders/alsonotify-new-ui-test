@@ -1,51 +1,11 @@
 // Google Keep-style Note Types with strict type separation
+import { NoteTypeDto, ChecklistItemDto, NoteDto, CreateNoteDto, UpdateNoteDto } from './dto/note.dto';
 
-export type NoteType = "TEXT_NOTE" | "CHECKLIST_NOTE";
-
-export interface ChecklistItem {
-  id: string;
-  text: string;
-  isChecked: boolean;
-  order: number;
-  indentLevel: number; // 0..N
-  parentId?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Note {
-  id: number;
-  user_id: number;
-  company_id: number;
-  title: string;
-  type: NoteType;
-  color: string;
-  isPinned?: boolean;
-  is_archived: boolean;
-  labels?: string[];
-  created_at: string;
-  updated_at?: string;
-  // Type-specific fields (mutually exclusive)
-  content?: string; // HTML content for TEXT_NOTE only
-  items?: ChecklistItem[]; // For CHECKLIST_NOTE only
-}
-
-export interface NoteCreate {
-  title: string;
-  type: NoteType;
-  color?: string;
-  content?: string; // For TEXT_NOTE
-  items?: ChecklistItem[]; // For CHECKLIST_NOTE
-}
-
-export interface NoteUpdate {
-  title?: string;
-  type?: NoteType;
-  color?: string;
-  is_archived?: boolean;
-  content?: string; // For TEXT_NOTE
-  items?: ChecklistItem[]; // For CHECKLIST_NOTE
-}
+export type NoteType = NoteTypeDto;
+export type ChecklistItem = ChecklistItemDto;
+export type Note = NoteDto;
+export type NoteCreate = CreateNoteDto;
+export type NoteUpdate = UpdateNoteDto;
 
 // Type conversion helpers
 export function convertTextToChecklist(content: string): ChecklistItem[] {

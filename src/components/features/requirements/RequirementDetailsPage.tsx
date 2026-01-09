@@ -346,7 +346,7 @@ export function RequirementDetailsPage() {
                           <h4 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-2">Key Deliverables</h4>
                           <ul className="space-y-2">
                             {deliverables.map((item, idx) => {
-                              const cleanItem = item.replace(/^[•\-\*]\s*/, '').trim();
+                              const cleanItem = item.replace(/^[•\-*]\s*/, '').trim();
                               return (
                                 <li key={idx} className="text-[14px] text-[#444444] font-['Inter:Regular',sans-serif] leading-relaxed flex items-start">
                                   <span className="text-[#ff3b3b] mr-2">•</span>
@@ -364,7 +364,7 @@ export function RequirementDetailsPage() {
                           <h4 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-2">Technical Requirements</h4>
                           <ul className="space-y-2">
                             {technical.map((item, idx) => {
-                              const cleanItem = item.replace(/^[•\-\*]\s*/, '').trim();
+                              const cleanItem = item.replace(/^[•\-*]\s*/, '').trim();
                               return (
                                 <li key={idx} className="text-[14px] text-[#444444] font-['Inter:Regular',sans-serif] leading-relaxed flex items-start">
                                   <span className="text-[#ff3b3b] mr-2">•</span>
@@ -713,7 +713,7 @@ export function RequirementDetailsPage() {
             maxDate.setHours(0, 0, 0, 0);
 
             // Calculate columns based on view mode
-            let columnDates: Date[] = [];
+            const columnDates: Date[] = [];
             const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
             if (ganttView === 'day') {

@@ -14,11 +14,12 @@ import {
   updateCurrentUserCompany,
   getCurrentUserCompany,
   getRoles,
+  upsertRole,
+  getRolePermissions,
+  updateRolePermissions,
   // updatePassword,
-  type UserType,
-  type ClientOrOutsourceType,
-  type CompanyDepartmentType,
 } from "../services/user";
+import { UserDto, RoleDto, ModuleActionGroupDto } from "../types/dto/user.dto";
 import { ProfileUpdateInput, CompanyUpdateInput } from "../types/genericTypes";
 
 import { mapUserDtoToEmployee } from "../utils/mappers/user.mapper";
@@ -59,7 +60,6 @@ export const useOutsourcePartners = (options: string = "") => {
   });
 };
 
-import { UserDto } from "../types/dto/user.dto";
 
 // ...
 
@@ -152,7 +152,7 @@ export const useCreateClient = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: UserType) => createUser(params),
+    mutationFn: (params: Partial<UserDto>) => createUser(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
     },
@@ -189,14 +189,7 @@ export const useRoles = () => {
   });
 };
 
-// Role permission hooks
-import {
-  upsertRole,
-  getRolePermissions,
-  updateRolePermissions,
-  type RoleType,
-  type ModuleActionGroup,
-} from "../services/user";
+
 
 export const useRolePermissions = (roleId: number | null) => {
   return useQuery({
@@ -211,7 +204,7 @@ export const useUpsertRole = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: Partial<RoleType>) => upsertRole(params),
+    mutationFn: (params: Partial<RoleDto>) => upsertRole(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["roles"] });
     },

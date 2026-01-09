@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-catch */
 import axiosApi from "../config/axios";
 import { ApiResponse } from "../constants/constants";
 

@@ -74,17 +74,19 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
       case 'this_month':
         newRange = [now.startOf('month'), now.endOf('month')];
         break;
-      case 'last_month':
+      case 'last_month': {
         const lastMonth = now.subtract(1, 'month');
         newRange = [lastMonth.startOf('month'), lastMonth.endOf('month')];
         break;
+      }
       case 'this_year':
         newRange = [now.startOf('year'), now.endOf('year')];
         break;
-      case 'last_year':
+      case 'last_year': {
         const lastYear = now.subtract(1, 'year');
         newRange = [lastYear.startOf('year'), lastYear.endOf('year')];
         break;
+      }
       default:
         newRange = null;
     }

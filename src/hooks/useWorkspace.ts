@@ -12,9 +12,9 @@ import {
   approveRequirement,
   getCollaborativeRequirements,
   reactivateWorkspace,
-  type WorkspaceType,
-  type RequirementType,
 } from "../services/workspace";
+import { WorkspaceDto } from "../types/dto/workspace.dto";
+import { RequirementDto } from "../types/dto/requirement.dto";
 import { getTasks } from "../services/task";
 export { usePartners } from "./useUser";
 
@@ -61,7 +61,7 @@ export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: WorkspaceType) => createWorkspace(params),
+    mutationFn: (params: WorkspaceDto) => createWorkspace(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });
     },
@@ -72,7 +72,7 @@ export const useUpdateWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...params }: WorkspaceType) => updateWorkspace({ id, ...params } as WorkspaceType),
+    mutationFn: ({ id, ...params }: WorkspaceDto) => updateWorkspace({ id, ...params } as WorkspaceDto),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["workspaces"] });
       queryClient.invalidateQueries({ queryKey: ["workspace", variables.id] });
@@ -118,7 +118,7 @@ export const useCreateRequirement = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: RequirementType) => addRequirementToWorkspace(params),
+    mutationFn: (params: Partial<RequirementDto>) => addRequirementToWorkspace(params),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["requirements", variables.workspace_id] });
       queryClient.invalidateQueries({ queryKey: ["workspace", variables.workspace_id] });
@@ -132,7 +132,7 @@ export const useUpdateRequirement = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: RequirementType) => updateRequirementById(params),
+    mutationFn: (params: Partial<RequirementDto>) => updateRequirementById(params),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["requirements", variables.workspace_id] });
       queryClient.invalidateQueries({ queryKey: ["workspace", variables.workspace_id] });

@@ -50,4 +50,23 @@ export interface UserDto {
   workingHours?: number;
   user_profile?: { mobile_number?: string; phone?: string };
   user?: { mobile_number?: string; phone?: string }; // Nested user object sometimes returned
+  company?: string; // Company name (from ClientOrOutsourceType)
+}
+
+// Role types for access management
+export interface RoleDto {
+  id?: number;
+  name: string;
+  color?: string;
+}
+
+export interface PermissionActionDto {
+  id: number;
+  name: string;
+  assigned: boolean;
+}
+
+export interface ModuleActionGroupDto {
+  module: string;
+  actions: PermissionActionDto[];
 }
