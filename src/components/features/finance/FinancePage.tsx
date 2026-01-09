@@ -1,23 +1,27 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
-import { format } from 'date-fns';
+import { useState, useMemo } from 'react';
 import { 
   CheckCircle, 
-  Clock, 
   FileText, 
   ChevronDown, 
   ChevronRight, 
   Download, 
   Check, 
-  Briefcase,
-  X 
+  X,
+  CreditCard,
+  Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, Modal } from 'antd'; // Using AntD components to match new UI
+import { Modal, Button } from 'antd';
+import dayjs from 'dayjs';
+import isBetween from 'dayjs/plugin/isBetween';
 
 import { PageLayout } from '../../layout/PageLayout';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
+import { DateRangeSelector } from '../../common/DateRangeSelector';
+
+dayjs.extend(isBetween);
 
 // --- Types ---
 
@@ -131,8 +135,10 @@ export function FinancePage() {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   // Filter State
-  const [yearFilter, setYearFilter] = useState<string>('All');
-  const [monthFilter, setMonthFilter] = useState<string>('All');
+  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>([
+    dayjs().startOf('month'),
+    dayjs().endOf('month')
+  ]);
   const [clientFilter, setClientFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('All');
 
@@ -142,27 +148,6 @@ export function FinancePage() {
 
   // --- Derived Data & helpers ---
 
-  const monthOptions = useMemo(() => {
-    const dates = new Set<string>();
-    invoices.forEach(inv => dates.add(inv.date));
-    requirements.forEach(req => {
-      if (req.dueDate) dates.add(req.dueDate);
-    });
-    
-    const uniqueMonths = new Map();
-    Array.from(dates).forEach(d => {
-      const date = new Date(d);
-      const label = format(date, 'MMMM yyyy');
-      if (!uniqueMonths.has(label)) {
-        uniqueMonths.set(label, date.getTime());
-      }
-    });
-
-    return Array.from(uniqueMonths.entries())
-      .map(([value, timestamp]) => ({ value, timestamp }))
-      .sort((a, b) => b.timestamp - a.timestamp);
-  }, [invoices, requirements]);
-
   const clientOptions = useMemo(() => {
     const clients = new Set<string>();
     invoices.forEach(inv => clients.add(inv.client));
@@ -170,30 +155,7 @@ export function FinancePage() {
     return Array.from(clients).sort();
   }, [invoices, requirements]);
 
-  const yearOptions = useMemo(() => {
-    const years = new Set<number>();
-    invoices.forEach(inv => years.add(new Date(inv.date).getFullYear()));
-    requirements.forEach(req => {
-      if (req.dueDate) years.add(new Date(req.dueDate).getFullYear());
-    });
-    return Array.from(years).sort((a, b) => b - a);
-  }, [invoices, requirements]);
-
   const filterOptions: FilterOption[] = [
-    {
-      id: 'year',
-      label: 'Year',
-      options: ['All', ...yearOptions.map(y => y.toString())],
-      placeholder: 'All Years',
-      defaultValue: 'All'
-    },
-    {
-      id: 'month',
-      label: 'Month',
-      options: ['All', ...monthOptions.map(m => m.value)],
-      placeholder: 'All Months',
-      defaultValue: 'All'
-    },
     {
       id: 'client',
       label: 'Client',
@@ -211,15 +173,11 @@ export function FinancePage() {
   ];
 
   const handleFilterChange = (filterId: string, value: string) => {
-    if (filterId === 'year') setYearFilter(value);
-    else if (filterId === 'month') setMonthFilter(value);
-    else if (filterId === 'client') setClientFilter(value);
+    if (filterId === 'client') setClientFilter(value);
     else if (filterId === 'status') setStatusFilter(value);
   };
 
   const clearFilters = () => {
-    setYearFilter('All');
-    setMonthFilter('All');
     setClientFilter('All');
     setStatusFilter('All');
     setSearchQuery('');
@@ -242,13 +200,19 @@ export function FinancePage() {
       }
 
       // Filters
-      if (yearFilter !== 'All' && new Date(req.dueDate).getFullYear().toString() !== yearFilter) return false;
-      if (monthFilter !== 'All' && format(new Date(req.dueDate), 'MMMM yyyy') !== monthFilter) return false;
       if (clientFilter !== 'All' && req.client !== clientFilter) return false;
+      
+      // Date Range (using Due Date)
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        const dueDate = dayjs(req.dueDate);
+        if (!dueDate.isBetween(dateRange[0], dateRange[1], 'day', '[]')) {
+          return false;
+        }
+      }
       
       return true;
     });
-  }, [requirements, searchQuery, yearFilter, monthFilter, clientFilter]);
+  }, [requirements, searchQuery, clientFilter, dateRange]);
 
   const unbilledByClient = useMemo(() => {
     return unbilledReqs.reduce((acc, req) => {
@@ -265,24 +229,40 @@ export function FinancePage() {
       
       if (!matchesSearch) return false;
 
-      if (yearFilter !== 'All' && new Date(inv.date).getFullYear().toString() !== yearFilter) return false;
-      if (monthFilter !== 'All' && format(new Date(inv.date), 'MMMM yyyy') !== monthFilter) return false;
       if (clientFilter !== 'All' && inv.client !== clientFilter) return false;
       if (statusFilter !== 'All' && inv.status !== statusFilter) return false;
 
+      // Date Range (using Invoice Date)
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        const invDate = dayjs(inv.date);
+        if (!invDate.isBetween(dateRange[0], dateRange[1], 'day', '[]')) {
+            return false;
+        }
+      }
+
       return true;
     });
-  }, [invoices, searchQuery, yearFilter, monthFilter, clientFilter, statusFilter]);
+  }, [invoices, searchQuery, clientFilter, statusFilter, dateRange]);
 
   // --- Stats ---
   
-  const totalUnbilledAmount = unbilledReqs.reduce((sum, req) => sum + (req.estimatedCost || 0), 0);
-  const totalInvoicedAmount = filteredInvoices.reduce((sum, inv) => sum + inv.amount, 0);
-  const totalOverdueAmount = filteredInvoices
-    .filter(inv => inv.status === 'overdue')
-    .reduce((sum, inv) => sum + inv.amount, 0);
-  const totalRevenue = totalUnbilledAmount + totalInvoicedAmount;
-  const totalInvestment = totalRevenue * 0.65; // Mock calculation
+  // Card 1: Amount Invoiced (Total), Received (Paid), Due (Unpaid)
+  const kpiInvoiced = useMemo(() => {
+    // For these cards, do we use filtered invoices or all invoices within range?
+    // Usually KPI cards respect the filters.
+    const total = filteredInvoices.reduce((sum, inv) => sum + inv.amount, 0);
+    const received = filteredInvoices.filter(i => i.status === 'paid').reduce((sum, inv) => sum + inv.amount, 0);
+    const due = total - received;
+    return { total, received, due };
+  }, [filteredInvoices]);
+
+  // Card 2: Amount to be Invoiced (Unbilled)
+  const kpiToBeInvoiced = unbilledReqs.reduce((sum, req) => sum + (req.estimatedCost || 0), 0);
+
+  // Card 3: Total Expenses
+  // Mock logic: 65% of revenue (Invoiced + Unbilled)
+  const kpiTotalExpenses = (kpiInvoiced.total + kpiToBeInvoiced) * 0.65;
+
 
   // --- Actions ---
 
@@ -310,7 +290,7 @@ export function FinancePage() {
     }
 
     const totalAmount = itemsToBill.reduce((sum, req) => sum + (req.estimatedCost || 0), 0);
-    const invoiceId = `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`;
+    const invoiceId = `INV-${dayjs().year()}-${String(invoices.length + 1).padStart(3, '0')}`;
     
     const newInvoice: Invoice = {
       id: invoiceId,
@@ -350,7 +330,6 @@ export function FinancePage() {
     // Find invoice items and update requirements
     const invoice = invoices.find(inv => inv.id === invoiceId);
     if (invoice) {
-        // In a real app we'd map items to requirements. Here we just update requirements that have this invoiceId
        setRequirements(prev => prev.map(req => req.invoiceId === invoiceId ? { ...req, invoiceStatus: 'paid' as const } : req));
     }
     
@@ -387,33 +366,70 @@ export function FinancePage() {
       searchPlaceholder="Search finance..."
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
-      showFilter={false}
+      showFilter={false} // We implement custom filter bar
+      customFilters={
+        <div className="flex items-center gap-3">
+            <Button
+                onClick={() => toast.info('Download functionality to be implemented')}
+                icon={<Download className="w-4 h-4" />}
+                className="font-['Manrope:SemiBold',sans-serif] text-[13px] rounded-full"
+            >
+                Download
+            </Button>
+            <DateRangeSelector
+                value={dateRange}
+                onChange={setDateRange}
+            />
+        </div>
+      }
     >
-      <div className="flex flex-col h-full bg-white">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          <StatCard 
-            title="Unbilled Amount" 
-            value={totalUnbilledAmount} 
-            icon={<Clock className="w-4 h-4 text-[#FFB020]" />} 
-          />
-          <StatCard 
-            title="Total Invoiced" 
-            value={totalInvoicedAmount} 
-            icon={<CheckCircle className="w-4 h-4 text-[#7ccf00]" />} 
-          />
-          <StatCard 
-            title="Overdue" 
-            value={totalOverdueAmount} 
-            icon={<FileText className="w-4 h-4 text-[#ff3b3b]" />} 
-            valueClass="text-[#ff3b3b]"
-          />
-          <StatCard 
-            title="Est. Expenses" 
-            value={totalInvestment} 
-            icon={<Briefcase className="w-4 h-4 text-[#666666]" />} 
-            valueClass="text-[#666666]"
-          />
+      <div className="flex flex-col h-full bg-white relative">
+        {/* KPI Cards */}
+        {/* Grid layout: First card takes up more space if needed, or equal 3 cols? 
+            Image description suggests 3 blocks. Let's use 3 columns. */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            
+            {/* Card 1: Amount Invoiced | Received | Due */}
+            <div className="bg-white border border-[#EEEEEE] rounded-[16px] p-0 flex flex-col md:flex-row h-auto md:h-[120px]">
+                {/* Main Section: Amount Invoiced */}
+                <div className="flex-1 p-6 border-b md:border-b-0 md:border-r border-[#EEEEEE] flex flex-col justify-between">
+                    <div className="flex justify-between items-start">
+                        <span className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Amount Invoiced</span>
+                        {activeTab === 'history' && <div className="w-2 h-2 rounded-full bg-[#7ccf00]"></div>}
+                    </div>
+                    <span className="text-[28px] font-['Manrope:Bold',sans-serif] text-[#111111]">${kpiInvoiced.total.toLocaleString()}</span>
+                </div>
+                
+                {/* Sub Sections: Received & Due */}
+                <div className="flex-1 flex flex-row">
+                    <div className="flex-1 p-6 border-r border-[#EEEEEE] flex flex-col justify-between">
+                         <span className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">Received</span>
+                         <span className="text-[20px] font-['Manrope:Bold',sans-serif] text-[#4CAF50]">${kpiInvoiced.received.toLocaleString()}</span>
+                    </div>
+                    <div className="flex-1 p-6 flex flex-col justify-between">
+                         <span className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">Due</span>
+                         <span className="text-[20px] font-['Manrope:Bold',sans-serif] text-[#ff3b3b]">${kpiInvoiced.due.toLocaleString()}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Card 2: Amount to be Invoiced */}
+            <div className="bg-white border border-[#EEEEEE] rounded-[16px] p-6 flex flex-col justify-between h-[120px]">
+                <div className="flex justify-between items-start">
+                    <span className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Amount to be Invoiced</span>
+                    <Wallet className="w-5 h-5 text-[#999999]" />
+                </div>
+                <span className="text-[28px] font-['Manrope:Bold',sans-serif] text-[#111111]">${kpiToBeInvoiced.toLocaleString()}</span>
+            </div>
+
+             {/* Card 3: Total Expenses */}
+             <div className="bg-white border border-[#EEEEEE] rounded-[16px] p-6 flex flex-col justify-between h-[120px]">
+                <div className="flex justify-between items-start">
+                    <span className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Total Expenses</span>
+                    <CreditCard className="w-5 h-5 text-[#999999]" />
+                </div>
+                <span className="text-[28px] font-['Manrope:Bold',sans-serif] text-[#111111]">${kpiTotalExpenses.toLocaleString()}</span>
+            </div>
         </div>
 
         {/* Filter Bar */}
@@ -421,8 +437,6 @@ export function FinancePage() {
           <FilterBar
             filters={filterOptions}
             selectedFilters={{
-                year: yearFilter,
-                month: monthFilter,
                 client: clientFilter,
                 status: statusFilter
             }}
@@ -512,7 +526,7 @@ export function FinancePage() {
                                 </td>
                                 <td className="px-6 py-4 text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">{invoice.invoiceNumber}</td>
                                 <td className="px-6 py-4 text-[14px] font-['Manrope:Regular',sans-serif] text-[#111111]">{invoice.client}</td>
-                                <td className="px-6 py-4 text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">{format(new Date(invoice.date), 'MMM d, yyyy')}</td>
+                                <td className="px-6 py-4 text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">{dayjs(invoice.date).format('MMM D, YYYY')}</td>
                                 <td className="px-6 py-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">${invoice.amount.toLocaleString()}</td>
                                 <td className="px-6 py-4">
                                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium capitalize ${getStatusColor(invoice.status)}`}>
@@ -547,7 +561,6 @@ export function FinancePage() {
                    <>
                       <div className="flex items-center gap-2">
                         <span className="text-[13px] text-white/80">
-                           {/* Simplified for now */}
                            Ready to Invoice
                         </span>
                       </div>
@@ -642,20 +655,6 @@ export function FinancePage() {
 }
 
 // --- Sub-Components ---
-
-function StatCard({ title, value, icon, valueClass = "text-[#111111]" }: { title: string, value: number, icon: React.ReactNode, valueClass?: string }) {
-    return (
-        <div className="bg-[#F7F7F7] p-6 rounded-[16px] border border-[#EEEEEE] flex flex-col justify-between h-[120px]">
-          <div className="flex justify-between items-start">
-            <h3 className="text-[#666666] font-['Manrope:SemiBold',sans-serif] text-[14px]">{title}</h3>
-            <div className="p-2 bg-white rounded-full shadow-sm">
-              {icon}
-            </div>
-          </div>
-          <p className={`text-[28px] font-['Manrope:Bold',sans-serif] ${valueClass}`}>${Math.round(value).toLocaleString()}</p>
-        </div>
-    );
-}
 
 function EmptyState({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
     return (
@@ -773,7 +772,7 @@ function ClientGroup({
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-[13px] text-[#666666]">
-                                    {format(new Date(req.dueDate), 'MMM d, yyyy')}
+                                    {dayjs(req.dueDate).format('MMM D, YYYY')}
                                 </td>
                                 <td className="px-6 py-4 text-[14px] font-bold text-[#111111]">
                                     ${(req.estimatedCost || 0).toLocaleString()}

@@ -136,7 +136,10 @@ export function ReportsPage() {
     member: 'All',
     leader: 'All',
     assigned: 'All',
-    status: 'All'
+    status: 'All',
+    type: 'All',
+    priority: 'All',
+    department: 'All'
   });
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -171,7 +174,9 @@ export function ReportsPage() {
       manager: 'All',
       leader: 'All',
       assigned: 'All',
-      department: 'All'
+      department: 'All',
+      type: 'All',
+      priority: 'All'
     });
     setSearchQuery('');
   };
@@ -218,6 +223,9 @@ export function ReportsPage() {
       search: searchQuery,
       partner_id: filters.partner,
       status: filters.status,
+      type: filters.type,
+      priority: filters.priority,
+      department_id: filters.department,
       start_date: dateRange && dateRange[0] ? dateRange[0].toISOString() : undefined,
       end_date: dateRange && dateRange[1] ? dateRange[1].toISOString() : undefined,
     }),
@@ -329,7 +337,10 @@ export function ReportsPage() {
   if (activeTab === 'requirement') {
     filterOptions.push(
       { id: 'partner', label: 'Partner', options: partnerOptions, defaultValue: 'All', placeholder: 'Select Partner' },
-      { id: 'status', label: 'Status', options: ['All', 'Completed', 'In Progress', 'Delayed'], defaultValue: 'All' }
+      { id: 'status', label: 'Status', options: ['All', 'Completed', 'In Progress', 'Delayed'], defaultValue: 'All' },
+      { id: 'type', label: 'Type', options: ['All', 'Inhouse', 'Outsourced'], defaultValue: 'All', placeholder: 'Select Type' },
+      { id: 'priority', label: 'Priority', options: ['All', 'High', 'Normal'], defaultValue: 'All', placeholder: 'Select Priority' },
+      { id: 'department', label: 'Department', options: departmentOptions, defaultValue: 'All', placeholder: 'Select Department' }
     );
   } else if (activeTab === 'task') {
     filterOptions.push(
@@ -730,10 +741,10 @@ export function ReportsPage() {
                     <div className="p-4 bg-[#FAFAFA] rounded-xl border border-[#EEEEEE] flex flex-col items-center text-center">
                         <span className="text-[11px] font-bold text-[#666666] uppercase tracking-wide mb-1">Efficiency</span>
                         <span className={`text-2xl font-['Manrope:Bold',sans-serif] ${
-                          (selectedMember.actualEngagedHrs / selectedMember.totalWorkingHrs * 100) >= 90 ? 'text-[#7ccf00]' : 
-                          (selectedMember.actualEngagedHrs / selectedMember.totalWorkingHrs * 100) >= 75 ? 'text-[#2196F3]' : 'text-[#FF3B3B]'
+                          (selectedMember.taskStats.assigned > 0 && (selectedMember.taskStats.completed / selectedMember.taskStats.assigned * 100) >= 90) ? 'text-[#7ccf00]' : 
+                          (selectedMember.taskStats.assigned > 0 && (selectedMember.taskStats.completed / selectedMember.taskStats.assigned * 100) >= 75) ? 'text-[#2196F3]' : 'text-[#FF3B3B]'
                         }`}>
-                          {Math.round(selectedMember.actualEngagedHrs / selectedMember.totalWorkingHrs * 100)}%
+                          {selectedMember.taskStats.assigned > 0 ? Math.round(selectedMember.taskStats.completed / selectedMember.taskStats.assigned * 100) : 0}%
                         </span>
                     </div>
                 </div>

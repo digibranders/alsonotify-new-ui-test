@@ -13,6 +13,9 @@ export interface RequirementReport {
     extraHrs: number;
     revenue: number;
     revision: number;
+    type?: string;
+    priority?: string;
+    department?: string;
 }
 
 export interface ReportKPI {
@@ -34,6 +37,9 @@ interface GetRequirementReportsParams {
     status?: string;
     start_date?: string;
     end_date?: string;
+    type?: string;
+    priority?: string;
+    department_id?: string;
 }
 
 interface ApiResponse<T> {
@@ -47,6 +53,9 @@ export const getRequirementReports = async (params: GetRequirementReportsParams)
     if (params.search) queryParams.search = params.search;
     if (params.partner_id && params.partner_id !== 'All') queryParams.partner_id = params.partner_id;
     if (params.status && params.status !== 'All') queryParams.status = params.status;
+    if (params.type && params.type !== 'All') queryParams.type = params.type;
+    if (params.priority && params.priority !== 'All') queryParams.priority = params.priority;
+    if (params.department_id && params.department_id !== 'All') queryParams.department_id = params.department_id;
     if (params.start_date) queryParams.start_date = params.start_date;
     if (params.end_date) queryParams.end_date = params.end_date;
 
