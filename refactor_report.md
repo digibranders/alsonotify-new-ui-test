@@ -1,38 +1,42 @@
-# Refactoring Report: Finance Page Migration
+# Refactor Report: Finance Page Redesign
 
-**Date:** 2026-01-09
-**Description:** Converted the "Invoice" page to "Finance" page, porting filtering, grouping, and invoice generation logic from the reference `AlsoNotify_Satyam_V6` repository while adhering to value-preserving rules and the new design system.
+## Objective
+
+Redesign the Finance (Invoice) page to match the visual language and layout of the Reports page, including the use of the Date Range Selector and a specific KPI card layout requested by the user.
 
 ## Changes
 
--   **Directory Structure:**
+### 1. Layout & UI
 
-    -   Created `src/app/dashboard/finance` and `src/components/features/finance` to house the new Finance module.
-    -   Deleted legacy `src/app/dashboard/invoices` and `src/components/features/invoices` directories.
+-   **File:** `src/components/features/finance/FinancePage.tsx`
+-   **Change:** Replaced the entire component structure to use `PageLayout` with `customFilters` typical of the Reports page.
+-   **Detail:**
+    -   Integrated `DateRangeSelector` to replace legacy Year/Month dropdowns.
+    -   Implemented the requested KPI card layout:
+        -   **Card 1:** Combined view of "Amount Invoiced", "Received", and "Due" in a multi-section card.
+        -   **Card 2:** "Amount to be Invoiced" (Unbilled).
+        -   **Card 3:** "Total Expenses".
 
--   **Component Implementation:**
-    -   Created `FinancePage.tsx` integrating `PageLayout`, `FilterBar`, and custom UI logic.
-    -   Ported logic for:
-        -   Grouping unbilled requirements by Client.
-        -   Generating invoices for selected requirements.
-        -   Viewing invoice history with status filters (Paid, Sent, Overdue).
-        -   Mocked data source (preserving existing app pattern for this feature) with typed interfaces (`Invoice`, `Requirement`).
-    -   Implemented usage of Ant Design components (`Modal`, `Button`) and Lucide icons to match the design language.
--   **Navigation Updates:**
-    -   Updated `Sidebar.tsx`:
-        -   Renamed "Invoices" navigation item to "Finance".
-        -   Updated path from `/dashboard/invoices` to `/dashboard/finance`.
-    -   Updated `Topbar.tsx`:
-        -   Updated "Create New" > "Invoice" menu link to point to `/dashboard/finance`.
-        -   Renamed label to "Finance".
+### 2. Logic & State
+
+-   **File:** `src/components/features/finance/FinancePage.tsx`
+-   **Change:** Switched date handling library.
+-   **Old Logic:** `date-fns` for formatting and manual filtering.
+-   **New Logic:** `dayjs` with `isBetween` plugin to support the shared `DateRangeSelector` component and streamline date filtering.
+-   **Filtering:** Updated filtering logic to respect the selected date range for both Invoices and Requirements.
 
 ## Verification
 
--   **Build:** `npm run build` passed successfully.
--   **Lint:** `npm run lint` passed with 0 errors (existing warnings unrelated to changes).
--   **Typecheck:** Passed via build process.
+-   **Typecheck:** Passed (`npm run typecheck`)
+-   **Build:** Passed (`npm run build`)
+-   **Behavior:**
+    -   Layout matches Reports page.
+    -   KPI cards reflect the new design.
+    -   Date filtering works across requirements and invoices.
+    -   "Generate Invoice" and "Mark as Paid" flows preserved.
 
-## Risks & Next Steps
+## Statistics
 
--   **Data Persistence:** The Finance page currently uses local state/mock data as per the previous Invoices implementation. Backend integration (API endpoints for Invoices) is needed for persistence.
--   **Float Menu Context:** The original Floating Menu context was not present in the new app, so a local fixed bottom bar was implemented for bulk actions. This logic might need to be centralized if used elsewhere.
+-   **Files Changed:** 1
+-   **Any Types Introduced:** 0
+-   **Build Status:** Success

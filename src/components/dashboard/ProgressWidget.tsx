@@ -1,9 +1,8 @@
 
-import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, CheckSquare } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Label, Tooltip } from 'recharts';
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { ArrowRight } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Label } from 'recharts';
+import { useMemo, useState } from 'react';
 import { useQueries } from '@tanstack/react-query';
-import { DatePicker, ConfigProvider } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import quarterOfYear from 'dayjs/plugin/quarterOfYear';
@@ -17,22 +16,13 @@ dayjs.extend(isSameOrAfter);
 import { useTasks } from '@/hooks/useTask';
 import { useWorkspaces } from '@/hooks/useWorkspace';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
-
-const { RangePicker } = DatePicker;
+import { DateRangeSelector } from '../common/DateRangeSelector';
 
 export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => void }) {
-  const [selectedRangeType, setSelectedRangeType] = useState<string>('this_month');
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(() => {
     const now = dayjs();
     return [now.startOf('month'), now.endOf('month')];
   });
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [calendarOpen, setCalendarOpen] = useState(false);
-  const [startDate, setStartDate] = useState<Dayjs | null>(null);
-  const [endDate, setEndDate] = useState<Dayjs | null>(null);
-  const [currentMonth, setCurrentMonth] = useState<Dayjs>(dayjs());
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const calendarRef = useRef<HTMLDivElement>(null);
 
   // Construct query string for tasks based on date range
   const taskQueryString = useMemo(() => {
@@ -43,175 +33,26 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
     return query;
   }, [dateRange]);
 
-  // Handle Dropdown Selection
-  const handleRangeTypeChange = (value: string) => {
-    setSelectedRangeType(value);
-    setIsDropdownOpen(false);
-
-    if (value === 'custom') {
-      setCalendarOpen(true);
-      // If we already have a custom range, use it; otherwise reset
-      if (dateRange && dateRange[0] && dateRange[1]) {
-        setStartDate(dateRange[0]);
-        setEndDate(dateRange[1]);
-        setCurrentMonth(dateRange[0]);
-      } else {
-        setStartDate(null);
-        setEndDate(null);
-        setCurrentMonth(dayjs());
-      }
-      return;
-    }
-
-    setCalendarOpen(false);
-    const now = dayjs();
-    let newRange: [Dayjs, Dayjs] | null = null;
-
-    switch (value) {
-      case 'this_week':
-        newRange = [now.startOf('isoWeek'), now.endOf('isoWeek')];
-        break;
-      case 'this_month':
-        newRange = [now.startOf('month'), now.endOf('month')];
-        break;
-      case 'last_month': {
-        const lastMonth = now.subtract(1, 'month');
-        newRange = [lastMonth.startOf('month'), lastMonth.endOf('month')];
-        break;
-      }
-      case 'this_year':
-        newRange = [now.startOf('year'), now.endOf('year')];
-        break;
-      case 'last_year': {
-        const lastYear = now.subtract(1, 'year');
-        newRange = [lastYear.startOf('year'), lastYear.endOf('year')];
-        break;
-      }
-      default:
-        newRange = null;
-    }
-
-    if (newRange) {
-      setDateRange(newRange);
-    }
-  };
-
-  // Get display label for selected range
+  // Helper to get label for ProgressCard
   const getRangeLabel = () => {
-    if (selectedRangeType === 'custom') {
-      return getCustomRangeLabel();
-    }
-    switch (selectedRangeType) {
-      case 'this_week':
-        return 'This week';
-      case 'this_month':
-        return 'This month';
-      case 'last_month':
-        return 'Last Month';
-      case 'this_year':
-        return 'This Year';
-      case 'last_year':
-        return 'Last Year';
-      default:
-        return 'This week';
-    }
-  };
-
-  // Check if date is in selected range (for highlighting)
-  const isDateInRange = (date: Dayjs) => {
-    if (!startDate || !endDate) {
-      // If only start date is selected, don't highlight range yet
-      return false;
-    }
-    const start = startDate.isBefore(endDate) ? startDate : endDate;
-    const end = startDate.isBefore(endDate) ? endDate : startDate;
-    return date.isAfter(start.startOf('day')) && date.isBefore(end.endOf('day'));
-  };
-
-  // Check if date is start or end of range
-  const isDateStartOrEnd = (date: Dayjs) => {
-    if (!startDate || !endDate) {
-      // If only start date is selected, highlight it
-      if (startDate) {
-        return date.isSame(startDate, 'day');
-      }
-      return false;
-    }
-    return date.isSame(startDate, 'day') || date.isSame(endDate, 'day');
-  };
-
-  // Get calendar days for current month
-  const getCalendarDays = () => {
-    const start = currentMonth.startOf('month').startOf('week');
-    const end = currentMonth.endOf('month').endOf('week');
-    const days: Dayjs[] = [];
-    let current = start;
-    while (current.isSameOrBefore(end, 'day')) {
-      days.push(current);
-      current = current.add(1, 'day');
-    }
-    return days;
-  };
-
-  // Close dropdown and calendar when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false);
-      }
-      // Close calendar when clicking outside - revert to previous selection
-      if (calendarRef.current && !calendarRef.current.contains(event.target as Node) && calendarOpen) {
-        // Revert startDate and endDate to current dateRange values
-        if (dateRange && dateRange[0] && dateRange[1]) {
-          setStartDate(dateRange[0]);
-          setEndDate(dateRange[1]);
-        } else {
-          setStartDate(null);
-          setEndDate(null);
-        }
-        setCalendarOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [calendarOpen, dateRange]);
-
-  // Handle Manual Date Selection (custom calendar)
-  const handleDateClick = (date: Dayjs) => {
-    if (!startDate || (startDate && endDate)) {
-      // First click or reset: set start date
-      setStartDate(date);
-      setEndDate(null);
-    } else if (startDate && !endDate) {
-      // Second click: set end date
-      let finalStart = startDate;
-      let finalEnd = date;
-
-      if (date.isBefore(startDate)) {
-        // If clicked date is before start, swap them
-        finalStart = date;
-        finalEnd = startDate;
-      }
-
-      // Set the range and close calendar
-      setStartDate(finalStart);
-      setEndDate(finalEnd);
-      setDateRange([finalStart, finalEnd]);
-      setSelectedRangeType('custom');
-      setCalendarOpen(false);
-    }
-  };
-
-  // Get display label for custom range
-  const getCustomRangeLabel = () => {
     if (dateRange && dateRange[0] && dateRange[1]) {
-      return `${dateRange[0].format('MMM D')} - ${dateRange[1].format('MMM D')}`;
+       const start = dateRange[0];
+       const end = dateRange[1];
+       const now = dayjs();
+       
+       if (start.isSame(now.startOf('day'), 'day') && end.isSame(now.endOf('day'), 'day')) return 'Today';
+       if (start.isSame(now.subtract(1, 'day').startOf('day'), 'day') && end.isSame(now.subtract(1, 'day').endOf('day'), 'day')) return 'Yesterday';
+       if (start.isSame(now.startOf('isoWeek'), 'day') && end.isSame(now.endOf('isoWeek'), 'day')) return 'This Week';
+       if (start.isSame(now.startOf('month'), 'day') && end.isSame(now.endOf('month'), 'day')) return 'This Month';
+       if (start.isSame(now.subtract(1, 'month').startOf('month'), 'day') && end.isSame(now.subtract(1, 'month').endOf('month'), 'day')) return 'Last Month';
+       if (start.isSame(now.startOf('year'), 'day') && end.isSame(now.endOf('year'), 'day')) return 'This Year';
+       if (start.isSame(now.subtract(1, 'year').startOf('year'), 'day') && end.isSame(now.subtract(1, 'year').endOf('year'), 'day')) return 'Last Year';
+
+       return `${start.format('MMM D')} - ${end.format('MMM D')}`;
     }
-    return 'Custom';
+    return 'All Time';
   };
+
 
   // Fetch all tasks
   const { data: tasksData, isLoading: isLoadingTasks } = useTasks(taskQueryString);
@@ -324,119 +165,13 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
       {/* Header */}
       <div className="flex items-center justify-between mb-1.5">
         <h3 className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">Progress</h3>
-        <div className="relative" ref={dropdownRef}>
-          {/* Custom Dropdown Button */}
-          <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-[#E5E5E5] rounded-full hover:border-[#CCCCCC] transition-colors"
-          >
-            <span className="font-['Manrope:Regular',sans-serif] text-[14px] text-[#111111]">
-              {getRangeLabel()}
-            </span>
-            <ChevronDown className="w-4 h-4 text-[#111111]" />
-          </button>
-
-          {/* Dropdown Menu */}
-          {isDropdownOpen && (
-            <div className="absolute top-full right-0 mt-2 bg-white border border-[#EEEEEE] rounded-[12px] shadow-lg z-50 min-w-[160px] overflow-hidden">
-              {[
-                { value: 'this_week', label: 'This week' },
-                { value: 'this_month', label: 'This month' },
-                { value: 'last_month', label: 'Last Month' },
-                { value: 'this_year', label: 'This Year' },
-                { value: 'last_year', label: 'Last Year' },
-                { value: 'custom', label: 'Custom' },
-              ].map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => handleRangeTypeChange(option.value)}
-                  className="w-full text-left px-3 py-2.5 font-['Manrope:Regular',sans-serif] text-[14px] text-[#111111] hover:bg-[#F7F7F7] transition-colors flex items-center justify-between"
-                >
-                  <span>{option.label}</span>
-                  {selectedRangeType === option.value && (
-                    <CheckSquare className="w-4 h-4 text-[#ff3b3b] flex-shrink-0" />
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Custom Calendar Popup - Single Calendar */}
-          {calendarOpen && (
-            <div className="absolute top-full right-0 mt-2 bg-white border border-[#EEEEEE] rounded-[12px] shadow-lg z-50 w-[280px] p-3" ref={calendarRef}>
-              {/* Select Range Header */}
-              <div className="flex items-center gap-2 mb-3">
-                <button
-                  onClick={() => {
-                    setCalendarOpen(false);
-                    setIsDropdownOpen(false);
-                  }}
-                  className="w-5 h-5 flex items-center justify-center hover:bg-[#F7F7F7] rounded transition-colors"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5 text-[#666666]" />
-                </button>
-                <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111]">
-                  Select Range
-                </h4>
-              </div>
-
-              {/* Month Navigation */}
-              <div className="flex items-center justify-between mb-3">
-                <button
-                  onClick={() => setCurrentMonth(currentMonth.subtract(1, 'month'))}
-                  className="w-7 h-7 rounded-lg bg-[#F7F7F7] hover:bg-[#EEEEEE] flex items-center justify-center transition-colors"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5 text-[#111111]" />
-                </button>
-                <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111]">
-                  {currentMonth.format('MMMM YYYY')}
-                </h4>
-                <button
-                  onClick={() => setCurrentMonth(currentMonth.add(1, 'month'))}
-                  className="w-7 h-7 rounded-lg bg-[#F7F7F7] hover:bg-[#EEEEEE] flex items-center justify-center transition-colors"
-                >
-                  <ChevronRight className="w-3.5 h-3.5 text-[#111111]" />
-                </button>
-              </div>
-
-              {/* Day Headers */}
-              <div className="grid grid-cols-7 gap-0.5 mb-1.5">
-                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
-                  <div key={day} className="text-center text-[11px] font-['Manrope:Regular',sans-serif] text-[#999999] py-0.5">
-                    {day}
-                  </div>
-                ))}
-              </div>
-
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-0.5">
-                {getCalendarDays().map((date, index) => {
-                  const isCurrentMonth = date.month() === currentMonth.month();
-                  const isInRange = isDateInRange(date);
-                  const isStartOrEnd = isDateStartOrEnd(date);
-
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => handleDateClick(date)}
-                      className={`
-                        w-8 h-8 rounded-lg text-[12px] font-['Manrope:Regular',sans-serif] transition-colors
-                        ${!isCurrentMonth ? 'text-[#CCCCCC]' : 'text-[#111111]'}
-                        ${isStartOrEnd
-                          ? 'bg-[#111111] text-white'
-                          : isInRange
-                            ? 'bg-[#F7F7F7]'
-                            : 'hover:bg-[#F7F7F7]'
-                        }
-                      `}
-                    >
-                      {date.date()}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+        {/* Date Range Selector */}
+        <div className="relative z-20">
+            <DateRangeSelector
+                value={dateRange}
+                onChange={setDateRange}
+                defaultRangeType="this_month"
+            />
         </div>
       </div>
 
