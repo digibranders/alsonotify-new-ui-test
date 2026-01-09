@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../constants/constants";
-import axios from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from "axios";
 import Cookies from "universal-cookie";
 
 const cookies = new Cookies();
@@ -26,7 +26,7 @@ if (initialToken) {
 
 // Request interceptor to add token to every request
 axiosApi.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = cookies.get("_token");
     if (token) {
       config.headers.Authorization = token;
@@ -34,7 +34,7 @@ axiosApi.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
+  (error: AxiosError) => {
     return Promise.reject(error);
   }
 );
@@ -50,8 +50,8 @@ const CRITICAL_AUTH_ENDPOINTS = [
 
 // Response interceptor to handle 401 errors
 axiosApi.interceptors.response.use(
-  (response) => response,
-  (error) => {
+  (response: AxiosResponse) => response,
+  (error: AxiosError) => {
     if (error.response?.status === 401) {
       const url = error.config?.url || '';
       const isCriticalEndpoint = CRITICAL_AUTH_ENDPOINTS.some(endpoint => url.includes(endpoint));

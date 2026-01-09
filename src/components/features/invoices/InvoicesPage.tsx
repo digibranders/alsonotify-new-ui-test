@@ -174,7 +174,7 @@ export function InvoicesPage() {
         { id: 'draft', label: 'Draft' }
       ]}
       activeTab={activeTab}
-      onTabChange={(tabId) => setActiveTab(tabId as any)}
+      onTabChange={(tabId) => setActiveTab(tabId as 'all' | 'paid' | 'pending' | 'overdue' | 'draft')}
       searchPlaceholder="Search invoices..."
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}

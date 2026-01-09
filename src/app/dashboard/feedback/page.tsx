@@ -25,7 +25,7 @@ import {
 import { FeedbackItem, FeedbackStatus, FeedbackType } from '@/services/feedback';
 import { useUserDetails } from '@/hooks/useUser';
 import { getRoleFromUser } from '@/utils/roleUtils';
-import { AlsonotifyLayoutWrapper } from '../../AlsonotifyLayoutWrapper';
+
 import { PaginationBar } from '@/components/ui/PaginationBar';
 
 /* ---------- Helpers & Config ---------- */
@@ -201,7 +201,7 @@ export default function AdminFeedbackPage() {
   // Show loading state while checking user
   if (isLoadingUser) {
     return (
-      <AlsonotifyLayoutWrapper>
+
         <PageLayout title="Feedback Admin">
           <div className="flex items-center justify-center h-[60vh]">
             <div className="text-center">
@@ -210,14 +210,14 @@ export default function AdminFeedbackPage() {
             </div>
           </div>
         </PageLayout>
-      </AlsonotifyLayoutWrapper>
+
     );
   }
 
   // Show unauthorized message if not Admin
   if (!isAdmin) {
     return (
-      <AlsonotifyLayoutWrapper>
+
         <PageLayout title="Feedback Admin">
           <div className="flex items-center justify-center h-[60vh]">
             <div className="text-center max-w-md">
@@ -233,13 +233,13 @@ export default function AdminFeedbackPage() {
             </div>
           </div>
         </PageLayout>
-      </AlsonotifyLayoutWrapper>
+
     );
   }
 
   /* ----- Render ----- */
   return (
-    <AlsonotifyLayoutWrapper>
+
       <PageLayout 
         title="Feedback Management"
       customFilters={
@@ -534,6 +534,6 @@ export default function AdminFeedbackPage() {
         </Modal>
       </div>
     </PageLayout>
-    </AlsonotifyLayoutWrapper>
+
   );
 }

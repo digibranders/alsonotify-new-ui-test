@@ -33,7 +33,6 @@ export function InvitationPopup() {
                 const res = await getReceivedInvites();
                 if (res.success && Array.isArray(res.result)) {
                     // Filter only PENDING invites
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const pending = res.result.filter((i: any) => i.status !== 'REJECTED' && i.status !== 'ACCEPTED');
 
                     if (pending.length > 0) {

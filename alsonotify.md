@@ -1,142 +1,111 @@
-# alsonotify.md Project Scoped Ruleset for Antigravity IDE (Frontend Only)
+# alsonotify.md Project Scoped Ruleset for Antigravity IDE (Frontend Only) Development Phase
 
-## 0) Non-negotiable constraints (hard stops)
+## 0) Hard stops
 
--   Frontend-only edits. Backend is read-only reference.
--   Do not change UI visuals, layout, copy, styling, or component structure in a way that changes pixels.
--   Do not change user flows, routing behavior, access rules, redirects, or guard logic unless the step explicitly scopes it.
--   Do not change functional behavior. Every change must be behavior-preserving.
--   Do not change API contracts:
-    -   No endpoint path changes.
-    -   No request payload key changes.
-    -   No response parsing semantic changes.
--   Auth contract is fixed:
-    -   Backend expects JWT token as a raw string in request header `authorization` (no `Bearer` prefix).
-    -   Preserve current header behavior exactly (including casing if both are set today).
+-   **Frontend-only edits.** Backend is read-only reference.
+-   **Do not break API contracts by accident.**
+    -   Do not change endpoint paths, request payload keys, or response parsing semantics unless the step explicitly calls it out and you have verified backend compatibility.
+-   **Auth contract is fixed unless explicitly scoped:**
+    -   JWT token is a **raw string** in request header `authorization` (no `Bearer` prefix).
+    -   Preserve current header casing and interceptor behavior unless the step explicitly scopes a change.
+-   **Security hard stops**
+    -   Never log tokens or secrets.
+    -   Never store auth tokens in localStorage.
+    -   Do not bypass the centralized rich-text sanitizer. No raw untrusted HTML rendering.
 
-## 1) Mandatory execution protocol (must follow every time)
+## 1) Mandatory execution protocol (every prompt)
 
-1. Read this file (`alsonotify.md`) fully before doing anything.
-2. Read the latest `/mnt/data/refactor_report.md` to understand current state and prior decisions.
+1. Read this file (`alsonotify.md`) fully before starting.
+2. Read the latest `/mnt/data/refactor_report.md` to understand current baseline and open risks.
 3. Run baseline gates before edits:
     - `npm run lint`
     - `npm run typecheck`
+    - `npm run test`
     - `npm run build`
-    - `npm run test` (run it; if suite is not configured, do not “fix tests” unless the step is explicitly test-focused. Record the failure and proceed only if lint/typecheck/build are green.)
-4. Make changes in small, reviewable diffs. One concern per step.
-5. Re-run the same gates after changes and confirm results.
+4. Make changes in **small, reviewable diffs**.
+5. Re-run the same gates after changes and record results.
 
 ## 2) Definition of Done (per step)
 
 A step is complete only when all are true:
 
--   No UI or behavior changes (pixel, flow, or network contract).
--   `npm run lint` passes with **no new warnings introduced**.
--   `npm run typecheck` passes with zero new `any`.
+-   The change matches the step’s stated scope and acceptance criteria.
+-   `npm run typecheck` passes.
 -   `npm run build` passes.
--   `npm run test` is executed and status is recorded.
--   No unused vars/imports introduced.
--   No new console logs in production paths.
--   No dead code or commented-out blocks introduced.
+-   `npm run test` is executed and status is recorded (pass is expected unless the step explicitly documents why not).
+-   `npm run lint` has **0 errors** (warnings may exist, but do not introduce lint errors).
+-   No new production console logs.
+-   No dead/commented-out code shipped.
 
-## 3) Strict lint policy (no warning suppression shortcuts)
+## 3) Change scoping rules (UI + functionality is allowed)
 
--   Do not add file-level or project-level lint suppressions to “make it pass”.
-    -   Forbidden examples:
-        -   `/* eslint-disable */`
-        -   `/* eslint-disable no-useless-catch */`
-        -   `// eslint-disable-next-line ...` unless it is a single-line, narrowly justified exception with a comment explaining why it is safe and necessary.
--   If a rule is noisy (existing debt), avoid touching unrelated files. Do not spread suppressions across the repo.
--   If a change triggers warnings in a file you touched, fix the warning properly or revert the change.
+-   UI changes are allowed, but every prompt must state:
+    -   **Intended UI change** (what the user will see)
+    -   **Intended behavior change** (what the app will do differently)
+    -   **Non-goals** (what must not change)
+    -   **Acceptance criteria** (explicit checks)
+-   If the change affects routing/auth/guards, the prompt must include manual verification flows (token/no-token, deep links, refresh).
 
-## 4) Security safety rules (frontend-focused)
+## 4) Lint and TypeScript safety
 
-### 4.1 XSS / HTML injection
+-   Do not introduce `any` unless the step explicitly justifies it. Prefer `unknown` + narrowing.
+-   Avoid `as any`. If unavoidable:
+    -   keep it single-line and tightly scoped,
+    -   add a short justification comment,
+    -   add a TODO to remove it with a tracking note.
+-   **No suppression shortcuts**
+    -   Do not add `/* eslint-disable */`, broad `eslint-disable-next-line`, `@ts-ignore`, or `@ts-expect-error`.
+    -   If an existing suppression exists, remove it only if you can replace it safely without breaking behavior.
 
--   Never render untrusted HTML without sanitization.
--   If rich text exists:
-    -   Sanitize on write and sanitize on read.
-    -   Use the centralized sanitizer utilities. Do not bypass them.
--   Do not remove sanitization to “fix formatting”.
+## 5) Security rules (must always hold)
 
-### 4.2 Token handling
+### 5.1 XSS / HTML
+
+-   Any use of `dangerouslySetInnerHTML` must be preceded by the centralized sanitizer output.
+-   Editor write path and render path must remain sanitized.
+-   Do not relax sanitizer allowlists to “fix formatting” unless the step explicitly scopes a security review.
+
+### 5.2 Token and cookies
 
 -   Never log tokens.
--   Never store tokens in localStorage.
--   Do not change auth storage mechanism unless explicitly scoped.
--   Cookie flags must remain correct:
-    -   `Secure=true` only in HTTPS environments as currently implemented.
-    -   `SameSite=Lax` unless a scoped requirement proves otherwise.
-    -   Preserve path and expiry semantics.
+-   Keep cookies secure:
+    -   `Secure` is environment-aware (HTTPS only).
+    -   `SameSite` remains as implemented unless explicitly scoped.
+-   Do not change token storage mechanism unless explicitly scoped.
 
-### 4.3 Requests and headers
+### 5.3 Requests
 
--   Preserve request behavior and headers.
--   Do not switch auth scheme (raw token vs Bearer).
--   Do not introduce new request wrappers unless the step explicitly scopes it.
+-   Preserve axios interceptor behavior unless explicitly scoped.
+-   Do not alter auth header format (raw token) unless explicitly scoped.
 
-## 5) TypeScript discipline (senior-level constraints)
+## 6) Architecture guardrails (keep the refined shape)
 
--   Do not introduce `any`.
--   Prefer DTO-first types at service boundaries.
--   Prefer `unknown` at unsafe boundaries plus runtime checks only when needed.
--   Do not widen types to “make it compile”.
--   Avoid `as any`. If unavoidable in a single line, it must be:
-    -   tightly scoped,
-    -   justified by a comment,
-    -   and accompanied by a TODO referencing the intended type.
+-   Services remain DTO-shaped.
+-   Hooks remain the boundary (DTO → Domain mapping) unless explicitly scoped.
+-   UI should prefer Domain types.
+-   React Query queryKeys should keep using the canonical key factory unless explicitly scoped.
 
-## 6) Architecture boundaries (must be maintained)
+## 7) Reporting requirement (end of every step)
 
--   Services return DTO-shaped data.
--   Hooks are the mapping boundary:
-    -   Map DTO → Domain via `select` in React Query (or equivalent) when scoped.
--   UI consumes Domain types (camelCase).
--   Do not standardize query keys, invalidations, staleTime, or cache policies unless the step explicitly scopes it.
--   Do not change middleware/route-guard behavior unless the step explicitly scopes it.
+Rewrite `/mnt/data/refactor_report.md` with:
 
-## 7) Refactoring constraints
+-   Step title and scope
+-   What changed (UI + behavior + technical)
+-   Files touched (exact paths)
+-   Commands executed and results (lint/typecheck/test/build)
+-   Risks introduced or retired (concrete, file-anchored)
+-   Next step recommendation
 
--   No big-bang rewrites.
--   Split files only when behavior-preserving:
-    -   Move pure helpers first.
-    -   Extract presentational components with identical props.
--   Do not rename public exports unless all imports are updated in the same step.
--   No formatting-only sweeps. Only format files you touch, and only if required.
+## 8) Completion message format (every step)
 
-## 8) Required measurements (record deltas per step)
+-   ✅ What you changed (scope + intent)
+-   ✅ Files changed (paths)
+-   ✅ Verification results (lint/typecheck/test/build)
+-   ✅ Any known risks or follow-ups
+-   ✅ `/mnt/data/refactor_report.md` updated
 
-For the touched scope, collect and report before/after counts:
-
--   `any` (overall for touched directories)
--   `as any`
--   `dangerouslySetInnerHTML` occurrences (if touched files include rich text render paths)
--   try/catch and `no-useless-catch` candidates (if touched files include services)
-
-## 9) Mandatory refactor report update (end of every step)
-
-At the end of every step, rewrite `refactor_report.md to include:
-
--   Executive summary (what changed, why, behavior-preserving proof).
--   Files touched (exact paths).
--   Commands executed and results (lint/typecheck/test/build).
--   Before/after metrics (from section 8).
--   Risk notes (file-anchored, concrete).
--   Next step pointer (which roadmap step is next).
-
-## 10) Output format for each agent completion message
-
--   Files changed (exact paths).
--   What changed (bullets).
--   Why it is behavior-preserving (bullets tied to constraints).
--   Verification results (commands + pass/fail).
--   Metrics deltas.
--   Rollback plan (git revert / file list).
-
-## 11) If blocked
-
-If a requirement conflicts with this ruleset:
+## 9) If blocked
 
 -   Stop.
--   State the conflict precisely.
--   Propose the smallest safe alternative that preserves behavior.
+-   State the exact blocker with file paths and error output.
+-   Propose the smallest safe alternative plan.

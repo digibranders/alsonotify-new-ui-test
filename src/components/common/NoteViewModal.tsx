@@ -79,7 +79,6 @@ export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete
   }, [note, open]);
 
   const updateMutation = useMutation({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mutationFn: (params: { id: number; data: any }) => updateNote(params.id, params.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.notes.all() });

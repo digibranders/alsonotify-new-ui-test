@@ -127,7 +127,7 @@ export function CalendarPage() {
         { id: 'agenda', label: 'Agenda' }
       ]}
       activeTab={activeView}
-      onTabChange={(tabId) => setActiveView(tabId as any)}
+      onTabChange={(tabId) => setActiveView(tabId as 'month' | 'week' | 'day' | 'agenda')}
       titleAction={{
         onClick: () => { }
       }}

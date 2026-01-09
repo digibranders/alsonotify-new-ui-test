@@ -1,8 +1,10 @@
 import axiosApi, { setAuthToken } from "../config/axios";
 import { ApiResponse } from "../constants/constants";
 
-export const doLogin = async (params: { email: string; password: string }) => {
-    const { data } = await axiosApi.post("/auth/login", params);
+import { LoginResponse } from "../types/auth";
+
+export const doLogin = async (params: { email: string; password: string }): Promise<ApiResponse<LoginResponse>> => {
+    const { data } = await axiosApi.post<ApiResponse<LoginResponse>>("/auth/login", params);
     return data;
 };
 
@@ -33,8 +35,8 @@ export const doCompleteSignup = async (
   firstName?: string,
   lastName?: string,
   phone?: string
-) => {
-    const { data } = await axiosApi.post("/auth/register/complete", {
+): Promise<ApiResponse<{ token: string; user: any }>> => { // TODO: Replace 'any' with specific user type if aligned
+    const { data } = await axiosApi.post<ApiResponse<{ token: string; user: any }>>("/auth/register/complete", {
       registerToken,
       companyName,
       businessType,
@@ -49,20 +51,20 @@ export const doCompleteSignup = async (
     return data;
 };
 
-export const verifyRegisterToken = async (registerToken: string) => {
-    const { data } = await axiosApi.get(`/auth/register/verify-token?registerToken=${registerToken}`);
+export const verifyRegisterToken = async (registerToken: string): Promise<ApiResponse<any>> => {
+    const { data } = await axiosApi.get<ApiResponse<any>>(`/auth/register/verify-token?registerToken=${registerToken}`);
     return data;
 };
 
-export const forgetPassword = async (email: string) => {
-    const { data } = await axiosApi.post("/auth/password/forgot", {
+export const forgetPassword = async (email: string): Promise<ApiResponse<any>> => {
+    const { data } = await axiosApi.post<ApiResponse<any>>("/auth/password/forgot", {
       email: email,
     });
     return data;
 };
 
-export const resetPassword = async (reset_token: string, password: string) => {
-    const { data } = await axiosApi.post("/auth/password/reset", {
+export const resetPassword = async (reset_token: string, password: string): Promise<ApiResponse<any>> => {
+    const { data } = await axiosApi.post<ApiResponse<any>>("/auth/password/reset", {
       reset_token,
       password,
     });

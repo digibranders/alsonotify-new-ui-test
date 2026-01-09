@@ -26,6 +26,7 @@ dayjs.extend(isSameOrAfter);
 
 import { Task, TaskStatus } from '@/types/domain';
 import { TaskDto, CreateTaskRequestDto, UpdateTaskRequestDto } from '@/types/dto/task.dto';
+import { getErrorMessage } from '@/types/api-utils';
 
 // Local alias if needed to avoid massive rename, or just use Task
 // transforming UITask -> Task in the code
@@ -585,8 +586,7 @@ export function TasksPage() {
         setIsDialogOpen(false);
       },
       onError: (error: Error) => {
-        const errorMessage =
-          (error as any)?.response?.data?.message || (error as any)?.message || "Failed to create task";
+        const errorMessage = getErrorMessage(error, "Failed to create task");
         message.error(errorMessage);
       },
     });
@@ -613,8 +613,7 @@ export function TasksPage() {
             message.success("Task deleted successfully!");
           },
           onError: (error: Error) => {
-            const errorMessage =
-              (error as any)?.response?.data?.message || (error as any)?.message || "Failed to delete task";
+            const errorMessage = getErrorMessage(error, "Failed to delete task");
             message.error(errorMessage);
           },
         });
@@ -915,7 +914,7 @@ export function TasksPage() {
               onSelect={() => toggleSelect(task.id)}
               onEdit={() => handleEditTask(task)}
               onDelete={() => handleDeleteTask(task.id)}
-              onStatusChange={(status) => updateTaskMutation.mutate({ id: task.id, status } as any)}
+              onStatusChange={(status) => updateTaskMutation.mutate({ id: Number(task.id), status })}
               currentUserId={currentUserId ? Number(currentUserId) : undefined}
             />
           ))}

@@ -2,12 +2,24 @@
  * Auth and User Session related types
  */
 
+export interface LoginResponse {
+  token: string;
+  user: SessionUser;
+  // refreshing_token?: string; // Add if needed
+}
+
 export interface SessionUser {
   id: number;
   name: string;
   email: string;
   role: string;
   avatar?: string;
+}
+
+export interface CompanyLeaveSetting {
+  id: string | number;
+  name: string;
+  count: number;
 }
 
 export interface CompanyProfile {
@@ -27,7 +39,8 @@ export interface CompanyProfile {
   country?: string;
   default_employee_password?: string;
   account_type?: string;
-  leaves?: any[]; // Defined more specifically if possible
+
+  leaves?: CompanyLeaveSetting[];
   working_hours?: {
     start_time?: string;
     end_time?: string;

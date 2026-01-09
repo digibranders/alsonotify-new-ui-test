@@ -650,7 +650,7 @@ export function RequirementsPage() {
         setPendingReqId(null);
       },
       onError: (err: Error) => {
-        messageApi.error(err?.message || "Failed to submit quotation");
+        messageApi.error(getErrorMessage(err, "Failed to submit quotation"));
       }
     });
   };
@@ -792,7 +792,7 @@ export function RequirementsPage() {
 
     // Pending Tab: Waiting/Review status for either side
     if (activeStatusTab === 'pending') {
-      const isPendingWorkflow = req.rawStatus === 'Waiting' || (req.rawStatus as any) === 'Review';
+      const isPendingWorkflow = req.rawStatus === 'Waiting' || req.rawStatus === ('Review' as string);
       return isPendingWorkflow || req.approvalStatus === 'pending';
     }
 

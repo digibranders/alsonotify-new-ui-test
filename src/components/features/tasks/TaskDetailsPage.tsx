@@ -235,7 +235,7 @@ export function TaskDetailsPage() {
         { id: 'steps', label: `Steps (${steps.length})` }
       ]}
       activeTab={activeTab}
-      onTabChange={(id) => setActiveTab(id as any)}
+      onTabChange={(id) => setActiveTab(id as 'details' | 'steps')}
       sideContent={rightDrawer}
     >
       <div className="h-full overflow-y-auto p-0 bg-[#FAFAFA]">

@@ -4,12 +4,15 @@ import { Plus, Edit, Trash2, X, Pencil, CreditCard, Bell, Lock, Database, AlertT
 import { Button, Input, Select, Switch, Divider, App, Modal, DatePicker, Collapse, Checkbox } from "antd";
 import { useUpdateCompany, useCurrentUserCompany, useRoles, useRolePermissions, useUpsertRole, useUpdateRolePermissions, useUserDetails } from '@/hooks/useUser';
 import { usePublicHolidays, useCreateHoliday, useUpdateHoliday, useDeleteHoliday } from '@/hooks/useHoliday';
+import { getErrorMessage } from '@/types/api-utils';
 import { DEFAULT_DOCUMENT_TYPES, DOCUMENT_TYPES_STORAGE_KEY } from '@/constants/documentTypes';
 import { getRoleFromUser } from '@/utils/roleUtils';
 import { People24Filled } from "@fluentui/react-icons";
 import { commonCountries } from '@/data/defaultData';
 import dayjs from 'dayjs';
 import { Department, Holiday, Role } from '@/types/domain';
+import { CompanyUpdateInput } from '@/types/genericTypes';
+import { CompanyLeaveSetting } from '@/types/auth';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -199,11 +202,8 @@ const getTimezones = (): Array<{ value: string; label: string }> => {
 
 // Removed local Department and Holiday interfaces in favor of domain types
 
-interface LeaveType {
-  id: string;
-  name: string;
-  count: number;
-}
+// Types declaration
+// CompanyLeaveSetting imported from types/auth
 
 interface DocumentTypeLocal {
   id: string;
@@ -228,7 +228,7 @@ export function SettingsPage() {
   }, [searchParams]);
 
   const handleTabChange = useCallback((tab: string) => {
-    setActiveTab(tab as any);
+    setActiveTab(tab as 'company' | 'leaves' | 'working-hours' | 'integrations' | 'notifications' | 'security' | 'access-management');
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', tab);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
@@ -300,7 +300,7 @@ export function SettingsPage() {
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed.map((doc: any, index: number) => ({
+            return parsed.map((doc: DocumentTypeLocal, index: number) => ({
               id: String(doc.id ?? index + 1),
               name: String(doc.name ?? ''),
               required: Boolean(doc.required),
@@ -330,7 +330,7 @@ export function SettingsPage() {
   }, [requiredDocuments]);
 
   // Leaves State
-  const [leaves, setLeaves] = useState<LeaveType[]>([
+  const [leaves, setLeaves] = useState<CompanyLeaveSetting[]>([
     { id: '1', name: 'Sick Leave', count: 10 },
     { id: '2', name: 'Casual Leave', count: 5 }
   ]);
@@ -518,8 +518,8 @@ export function SettingsPage() {
         setRoleFormColor('#BBBBBB');
         setEditingRole(null);
       },
-      onError: (error: any) => {
-        message.error(error?.response?.data?.message || `Failed to ${editingRole ? 'update' : 'add'} role`);
+      onError: (error: unknown) => {
+        message.error(getErrorMessage(error, `Failed to ${editingRole ? 'update' : 'add'} role`));
       },
     });
   };
@@ -531,7 +531,7 @@ export function SettingsPage() {
   const handleSaveChanges = async () => {
     try {
       // Prepare company update payload based on active tab
-      const payload: any = {};
+      const payload: Record<string, unknown> = {};
 
       if (activeTab === 'company') {
         payload.name = companyName;
@@ -558,11 +558,11 @@ export function SettingsPage() {
         };
       }
 
-      await updateCompanyMutation.mutateAsync(payload);
+      await updateCompanyMutation.mutateAsync(payload as unknown as CompanyUpdateInput);
       message.success('Settings saved successfully!');
       setIsEditing(false);
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || "Failed to update settings";
+    } catch (error: unknown) {
+      const errorMessage = getErrorMessage(error, "Failed to update settings");
       message.error(errorMessage);
     }
   };
@@ -1044,7 +1044,7 @@ export function SettingsPage() {
                   <div className="flex items-center gap-3">
                     <Input
                       value={leave.count}
-                      onChange={(e) => handleUpdateLeaveCount(leave.id, e.target.value)}
+                      onChange={(e) => handleUpdateLeaveCount(String(leave.id), e.target.value)}
                       className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
                     />
                     <button className="p-2 text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] rounded-full transition-colors">
@@ -1272,8 +1272,8 @@ export function SettingsPage() {
                 <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                   <div className="space-y-1">
                     {rolesData?.result
-                      ?.filter((role: any) => role.name !== 'Super Admin')
-                      ?.sort((a: any, b: any) => {
+                      ?.filter((role: Role) => role.name !== 'Super Admin')
+                      ?.sort((a: Role, b: Role) => {
                         const order = ['Admin', 'Manager', 'Leader', 'Employee'];
                         const aIdx = order.indexOf(a.name);
                         const bIdx = order.indexOf(b.name);
@@ -1282,7 +1282,7 @@ export function SettingsPage() {
                         if (bIdx !== -1) return 1;
                         return a.name.localeCompare(b.name);
                       })
-                      ?.map((role: any) => (
+                      ?.map((role: Role) => (
                         <div
                           key={role.id}
                           onClick={() => setSelectedRoleId(role.id)}
@@ -1324,7 +1324,7 @@ export function SettingsPage() {
                   <div className="flex flex-col h-full">
                     <div className="flex items-center justify-between h-10 mb-2 px-1">
                       <span className="text-[12px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider">
-                        Permissions for {rolesData?.result?.find((r: any) => r.id === selectedRoleId)?.name}
+                        Permissions for {rolesData?.result?.find((r: Role) => r.id === selectedRoleId)?.name}
                       </span>
                       <Button
                         onClick={() => {

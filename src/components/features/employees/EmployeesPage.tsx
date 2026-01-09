@@ -24,6 +24,7 @@ import { UserDto, CreateEmployeeRequestDto, UpdateEmployeeRequestDto } from '@/t
 import { useQueryClient } from '@tanstack/react-query';
 import { getRoleFromUser } from '@/utils/roleUtils';
 import { queryKeys } from "../../../lib/queryKeys";
+import { getErrorMessage } from '@/types/api-utils';
 
 export function EmployeesPage() {
   const router = useRouter();
@@ -234,7 +235,7 @@ export function EmployeesPage() {
           message.success(`Employee ${isCurrentlyActive ? 'deactivated' : 'activated'} successfully!`);
         },
         onError: (error: Error) => {
-          const errorMessage = (error as any)?.response?.data?.message || (error as any)?.message || "Failed to update employee status";
+          const errorMessage = getErrorMessage(error, "Failed to update employee status");
           message.error(errorMessage);
         },
       }
@@ -321,7 +322,7 @@ export function EmployeesPage() {
             setEditingEmployee(null);
           },
           onError: (error: Error) => {
-            const errorMessage = (error as any)?.response?.data?.message || "Failed to update employee";
+            const errorMessage = getErrorMessage(error, "Failed to update employee");
             message.error(errorMessage);
           },
         }
@@ -361,7 +362,7 @@ export function EmployeesPage() {
             setIsDialogOpen(false);
           },
           onError: (error: Error) => {
-            const errorMessage = (error as any)?.response?.data?.message || "Failed to create employee";
+            const errorMessage = getErrorMessage(error, "Failed to create employee");
             message.error(errorMessage);
           },
         }

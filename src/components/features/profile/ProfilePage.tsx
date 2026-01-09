@@ -11,6 +11,38 @@ import {
     DEFAULT_DOCUMENT_TYPES,
     DOCUMENT_TYPES_STORAGE_KEY,
 } from "@/constants/documentTypes";
+import { getErrorMessage } from "@/types/api-utils";
+
+interface DocumentTypeLocal {
+    id: string;
+    name: string;
+    required: boolean;
+}
+
+interface UserProfile {
+    first_name?: string;
+    middle_name?: string;
+    last_name?: string;
+    mobile_number?: string;
+    phone?: string;
+    address?: string;
+    working_hours?: { start_time?: string; end_time?: string };
+    designation?: string;
+    date_of_birth?: string;
+    gender?: string;
+    employee_id?: string;
+    employment_type?: string;
+    date_of_joining?: string;
+    experience?: number;
+    salary_yearly?: number;
+    hourly_rates?: number;
+    no_of_leaves?: number;
+    city?: string;
+    state?: string;
+    zipcode?: string;
+    country?: string;
+    emergency_contact?: { name?: string; relationship?: string; phone?: string };
+}
 
 const { Option } = Select;
 
@@ -34,7 +66,7 @@ export function ProfilePage() {
     const initialProfile = useMemo(() => {
         // user_profile is an array in the User model definition
         const rawUserProfile = user?.user_profile;
-        const userProfile = Array.isArray(rawUserProfile) ? rawUserProfile[0] : rawUserProfile || {};
+        const userProfile = (Array.isArray(rawUserProfile) ? rawUserProfile[0] : rawUserProfile || {}) as UserProfile;
 
         const fullName = user?.name || "";
         const nameParts = fullName.split(" ");
@@ -70,8 +102,8 @@ export function ProfilePage() {
 
         // Parse Working Hours
         const workingHours = userProfile?.working_hours || {};
-        const startTime = (workingHours as any)?.start_time || "09:30";
-        const endTime = (workingHours as any)?.end_time || "18:30";
+        const startTime = workingHours?.start_time || "09:30";
+        const endTime = workingHours?.end_time || "18:30";
 
         return {
             firstName: userProfile?.first_name || nameParts[0] || "",
@@ -109,9 +141,9 @@ export function ProfilePage() {
             state: userProfile?.state || "",
             zipCode: userProfile?.zipcode || "",
             country: userProfile?.country || "India",
-            emergencyContactName: (userProfile?.emergency_contact as any)?.name || "",
-            emergencyRelationship: (userProfile?.emergency_contact as any)?.relationship || "",
-            emergencyContactNumber: (userProfile?.emergency_contact as any)?.phone || "",
+            emergencyContactName: userProfile?.emergency_contact?.name || "",
+            emergencyRelationship: userProfile?.emergency_contact?.relationship || "",
+            emergencyContactNumber: userProfile?.emergency_contact?.phone || "",
         };
     }, [user]);
 
@@ -143,7 +175,7 @@ export function ProfilePage() {
                 if (stored) {
                     const parsed = JSON.parse(stored);
                     if (Array.isArray(parsed) && parsed.length > 0) {
-                        return parsed.map((doc: any, index: number) => ({
+                        return parsed.map((doc: DocumentTypeLocal, index: number) => ({
                             id: String(doc.id ?? index + 1),
                             name: String(doc.name ?? ""),
                             required: Boolean(doc.required),
@@ -346,9 +378,8 @@ export function ProfilePage() {
 
             message.success("Profile updated successfully!");
             setIsEditing(false);
-        } catch (error: any) {
-            const errorMessage =
-                error?.response?.data?.message || "Failed to update profile";
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error, "Failed to update profile");
             message.error(errorMessage);
         }
     };
@@ -863,8 +894,8 @@ export function ProfilePage() {
                                             });
                                             setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
                                             message.success("Password updated successfully!");
-                                        } catch (error: any) {
-                                            message.error(error?.response?.data?.message || "Failed to update password");
+                                        } catch (error: unknown) {
+                                            message.error(getErrorMessage(error, "Failed to update password"));
                                         }
                                     }}
                                     loading={updatePasswordMutation.isPending}

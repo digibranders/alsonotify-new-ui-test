@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { AlsonotifyLayoutWrapper } from '../AlsonotifyLayoutWrapper';
+
 import { ProgressWidget } from '../../components/dashboard/ProgressWidget';
 import { MeetingsWidget } from '../../components/dashboard/MeetingsWidget';
 import { TodoWidget } from '../../components/dashboard/TodoWidget';
@@ -15,7 +15,7 @@ export default function DashboardPage() {
   const router = useRouter();
 
   return (
-    <AlsonotifyLayoutWrapper>
+    <>
       {/* Row 2 & 3: Widgets - Fill remaining space */}
       <div className="flex-1 flex flex-col gap-5 overflow-y-auto min-h-0 pr-1">
         {/* Row 2: Task/Progress Widget & Meetings */}
@@ -54,6 +54,6 @@ export default function DashboardPage() {
       <div className="shrink-0">
         <ProductivityWidget />
       </div>
-    </AlsonotifyLayoutWrapper>
+    </>
   );
 }

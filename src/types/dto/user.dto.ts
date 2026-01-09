@@ -53,6 +53,13 @@ export interface UserDto {
   user?: { mobile_number?: string; phone?: string }; // Nested user object sometimes returned
   company?: string | { id: number; name: string }; // Company name (from ClientOrOutsourceType) or object
   company_id?: number;
+  
+  // Partner specific fields
+  association_id?: number;
+  partner_user_id?: number;
+  invite_id?: number;
+  associated_date?: string;
+  timezone?: string;
 }
 
 // Role types for access management
