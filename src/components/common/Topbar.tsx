@@ -151,7 +151,6 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
       try {
         const response = await searchEmployees();
         if (response.success) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const transformed = (response.result || []).map((item: any) => ({
             id: item.value || item.id,
             name: item.label || item.name,
@@ -217,8 +216,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
 
 
   // Handle requirement creation
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleCreateRequirement = async (data: any) => {
+  const handleCreateRequirement = async (data: RequirementFormData | any) => {
     if (!data.title) {
       message.error("Requirement title is required");
       return;
@@ -345,7 +343,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
           key: 'notes',
           label: 'Add Note',
           icon: <Notepad24Filled className="w-4 h-4" />,
-          onClick: () => router.push('/dashboard/todo'),
+          onClick: () => router.push('/dashboard/notes'),
           className: "font-['Manrope:Medium',sans-serif]"
         },
       ],

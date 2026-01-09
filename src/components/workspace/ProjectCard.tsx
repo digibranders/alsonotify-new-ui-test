@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import dayjs from 'dayjs';
 import { Workspace, Task as DomainTask } from '@/types/domain';
 import { TaskDto, CreateTaskRequestDto } from '@/types/dto/task.dto';
+import { getErrorMessage } from '@/types/api-utils';
 
 
 const { TextArea } = Input;
@@ -69,13 +70,20 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
   });
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [newTask, setNewTask] = useState({
+  const [newTask, setNewTask] = useState<{
+    name: string;
+    description: string;
+    assigneeId: string;
+    status: 'Todo' | 'In Progress' | 'Review' | 'Completed';
+    priority: 'Medium' | 'High' | 'Low';
+    dueDate: Date | null;
+  }>({
     name: '',
     description: '',
     assigneeId: '',
     status: 'Todo',
     priority: 'Medium',
-    dueDate: null as any
+    dueDate: null
   });
 
   const workspace = useMemo((): Workspace | undefined => {
@@ -177,7 +185,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
         });
       },
       onError: (error: Error) => {
-        message.error((error as any)?.response?.data?.message || 'Failed to create task');
+        message.error(getErrorMessage(error, 'Failed to create task'));
       }
     });
   };

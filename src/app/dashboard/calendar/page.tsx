@@ -1,17 +1,20 @@
 'use client';
 
 import { Suspense } from 'react';
-import { AlsonotifyLayoutWrapper } from '../../AlsonotifyLayoutWrapper';
-import { CalendarPage } from '../../../components/features/calendar/CalendarPage';
+
+import dynamic from 'next/dynamic';
+const CalendarPage = dynamic(() => import('../../../components/features/calendar/CalendarPage').then(mod => mod.CalendarPage), {
+  loading: () => <div className="flex h-full items-center justify-center">Loading calendar...</div>
+});
 
 export default function CalendarPageRoute() {
   return (
-    <AlsonotifyLayoutWrapper>
+
       <div className="flex-1 overflow-hidden">
         <Suspense fallback={<div>Loading calendar...</div>}>
           <CalendarPage />
         </Suspense>
       </div>
-    </AlsonotifyLayoutWrapper>
+
   );
 }

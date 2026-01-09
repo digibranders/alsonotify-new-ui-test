@@ -3,8 +3,8 @@ import { AlertCircle, CheckCircle2, Clock, Loader2, MoreVertical, ArrowRightCirc
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MenuProps } from "antd";
-import { useState, useEffect } from "react";
-import { provideEstimate, updateWorklog } from "../../../../services/task";
+import { useState, useEffect, memo } from "react";
+import { provideEstimate } from "../../../../services/task";
 import { SegmentedProgressBar } from "./SegmentedProgressBar";
 import { useTimer } from "../../../../context/TimerContext";
 import { Task } from "../../../../types/domain";
@@ -24,7 +24,7 @@ interface TaskRowProps {
   onRequestRevision?: () => void;
 }
 
-export function TaskRow({
+const TaskRowComponent = memo(function TaskRow({
   task,
   selected,
   onSelect,
@@ -449,7 +449,9 @@ export function TaskRow({
       </Modal>
     </div>
   );
-}
+});
+
+export const TaskRow = TaskRowComponent;
 
 function StatusBadge({
   status,

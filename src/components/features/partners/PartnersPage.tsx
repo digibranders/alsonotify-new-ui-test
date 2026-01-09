@@ -37,6 +37,23 @@ import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { PartnerRow, Partner, PartnerStatus } from './rows/PartnerRow';
 import { acceptInvitation, updatePartnerStatus, getReceivedInvites, acceptInviteById, declineInviteById, getPartners, deletePartner } from '@/services/user';
 import { BankOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined } from '@ant-design/icons';
+import { UserDto } from '@/types/dto/user.dto';
+import { getErrorMessage } from '@/types/api-utils';
+
+interface ReceivedInvite {
+    id: number;
+    inviterName: string;
+    inviterCompany: string;
+    inviterImage: string | null;
+    type: string;
+    date: string;
+    email?: string;
+    inviterEmail?: string;
+    inviter_email?: string;
+    status?: string;
+    company?: string;
+    name?: string;
+}
 
 // Mock Data
 const { Option } = Select;
@@ -54,7 +71,7 @@ const countryCodes = [
 export function PartnersPageContent() {
     const { message } = App.useApp();
     const [partners, setPartners] = useState<Partner[]>([]);
-    const [pendingInvites, setPendingInvites] = useState<any[]>([]); // New state
+    const [pendingInvites, setPendingInvites] = useState<ReceivedInvite[]>([]); // New state
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
@@ -81,22 +98,22 @@ export function PartnersPageContent() {
                 getReceivedInvites() // Fetch invites
             ]);
 
-            if (invitesRes.success) {
-                setPendingInvites(invitesRes.result as any[]);
+            if (invitesRes.success && invitesRes.result) {
+                setPendingInvites(invitesRes.result as ReceivedInvite[]);
             }
 
-            if (partnersRes.success) {
-                const mappedPartners: Partner[] = partnersRes.result.map((item: any) => {
+            if (partnersRes.success && partnersRes.result) {
+                const mappedPartners: Partner[] = partnersRes.result.map((item: UserDto) => {
                     let status: 'active' | 'inactive' | 'pending' = 'pending';
                     if (item.status === 'ACCEPTED') {
                         status = item.is_active ? 'active' : 'inactive';
                     }
 
                     return {
-                        id: item.association_id || item.invite_id,
+                        id: item.association_id || item.invite_id || 0,
                         association_id: item.association_id,
                         name: item.name || '',
-                        company: item.company || '',
+                        company: typeof item.company === 'object' ? item.company?.name || '' : item.company || '',
                         type: item.company ? 'ORGANIZATION' : 'INDIVIDUAL',
                         email: item.email || '',
                         phone: item.phone || '',
@@ -149,8 +166,8 @@ export function PartnersPageContent() {
                     } else {
                         message.error(result.message || 'Failed to accept invitation.');
                     }
-                } catch (error: any) {
-                    const msg = error?.response?.data?.message || 'Something went wrong while accepting invitation.';
+                } catch (error: unknown) {
+                    const msg = getErrorMessage(error, 'Something went wrong while accepting invitation.');
                     message.error(msg);
                 } finally {
                     hide();
@@ -293,8 +310,8 @@ export function PartnersPageContent() {
             } else {
                 message.error(res.message || 'Failed to accept invite');
             }
-        } catch (error: any) {
-            message.error(error?.response?.data?.message || 'Failed to accept invite');
+        } catch (error: unknown) {
+            message.error(getErrorMessage(error, 'Failed to accept invite'));
         }
     };
 
@@ -307,8 +324,8 @@ export function PartnersPageContent() {
             } else {
                 message.error(res.message || 'Failed to decline invite');
             }
-        } catch (error: any) {
-            message.error(error?.response?.data?.message || 'Failed to decline invite');
+        } catch (error: unknown) {
+            message.error(getErrorMessage(error, 'Failed to decline invite'));
         }
     };
 
@@ -331,8 +348,8 @@ export function PartnersPageContent() {
                     } else {
                         message.error(result.message || 'Failed to cancel request');
                     }
-                } catch (error: any) {
-                     message.error(error?.response?.data?.message || 'Failed to cancel request');
+                } catch (error: unknown) {
+                     message.error(getErrorMessage(error, 'Failed to cancel request'));
                 }
             }
         });
@@ -354,9 +371,9 @@ export function PartnersPageContent() {
             setIsModalOpen(false);
             form.resetFields();
             fetchPartners();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to send invitation:', error);
-            const errorMessage = error?.response?.data?.message || error?.message || 'Failed to send invitation. Please check your connection and try again.';
+            const errorMessage = getErrorMessage(error, 'Failed to send invitation. Please check your connection and try again.');
             message.error(errorMessage);
         }
     };
@@ -426,7 +443,7 @@ export function PartnersPageContent() {
             ]}
             activeTab={activeTab}
             onTabChange={(tabId) => {
-                setActiveTab(tabId as any);
+                setActiveTab(tabId as 'active' | 'inactive' | 'requests');
                 setPagination(prev => ({ ...prev, current: 1 }));
                 setSelectedPartners([]);
             }}
@@ -438,7 +455,7 @@ export function PartnersPageContent() {
                     selectedFilters={activeTab === 'requests' ? { requestType: requestTypeFilter } : filters}
                     onFilterChange={(id, val) => {
                         if (id === 'requestType') {
-                            setRequestTypeFilter(val as any);
+                            setRequestTypeFilter(val as 'All' | 'Sent' | 'Received');
                             setPagination(prev => ({ ...prev, current: 1 }));
                         } else {
                             handleFilterChange(id, val);

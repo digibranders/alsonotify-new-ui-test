@@ -1,4 +1,4 @@
-/* eslint-disable no-useless-catch */
+
 import axiosApi from "../config/axios";
 import { ApiResponse } from "../constants/constants";
 
@@ -19,20 +19,12 @@ export interface MeetingType {
 
 // Get meetings
 export const getMeetings = async (options: string = ""): Promise<ApiResponse<MeetingType[]>> => {
-    try {
-        const { data } = await axiosApi.get<ApiResponse<MeetingType[]>>(`/meeting?${options}`);
-        return data;
-    } catch (error) {
-        throw error;
-    }
+    const { data } = await axiosApi.get<ApiResponse<MeetingType[]>>(`/meeting?${options}`);
+    return data;
 };
 
 // Get meeting by id
 export const getMeetingById = async (id: number): Promise<ApiResponse<MeetingType>> => {
-    try {
-        const { data } = await axiosApi.get<ApiResponse<MeetingType>>(`/meeting/${id}`);
-        return data;
-    } catch (error) {
-        throw error;
-    }
+    const { data } = await axiosApi.get<ApiResponse<MeetingType>>(`/meeting/${id}`);
+    return data;
 };

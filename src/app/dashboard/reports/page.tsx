@@ -2,17 +2,20 @@
 
 import { Suspense } from 'react';
 
-import { AlsonotifyLayoutWrapper } from '../../AlsonotifyLayoutWrapper';
-import { ReportsPage } from '../../../components/features/reports/ReportsPage';
+
+import dynamic from 'next/dynamic';
+const ReportsPage = dynamic(() => import('../../../components/features/reports/ReportsPage').then(mod => mod.ReportsPage), {
+  loading: () => <div className="flex h-full items-center justify-center">Loading reports...</div>
+});
 
 export default function ReportsPageRoute() {
   return (
-    <AlsonotifyLayoutWrapper>
+
       <div className="flex-1 overflow-hidden">
         <Suspense fallback={<div>Loading reports...</div>}>
           <ReportsPage />
         </Suspense>
       </div>
-    </AlsonotifyLayoutWrapper>
+
   );
 }

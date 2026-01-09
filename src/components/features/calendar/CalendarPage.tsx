@@ -28,7 +28,8 @@ import { useEmployees, useCurrentUserCompany, useUserDetails } from '@/hooks/use
 // import { TaskType } from '@/services/task'; // Removed to avoid confusion
 import { MeetingType } from '@/services/meeting';
 import { LeaveType } from '@/services/leave';
-import { Holiday, Task } from '@/types/domain';
+import { Holiday, Task, Employee } from '@/types/domain';
+import { getErrorMessage } from '@/types/api-utils';
 
 import { MonthView } from './MonthView';
 import { WeekView } from './WeekView';
@@ -98,7 +99,8 @@ export function CalendarPage() {
 
   const availableLeaveTypes = useMemo((): string[] => {
     if (!leavesData?.result) return ['Sick Leave', 'Casual Leave', 'Vacation'];
-    const types = new Set((leavesData.result as any[]).map((leave: any) => leave.leave_type)); // leavesData type might be generic, casting to any[] for map if needed or strictly typing if possible. Assuming leavesData result is generic array.
+    if (!leavesData?.result) return ['Sick Leave', 'Casual Leave', 'Vacation'];
+    const types = new Set((leavesData.result as LeaveType[]).map((leave) => leave.leave_type));
     return Array.from(types).filter(Boolean).length > 0
       ? Array.from(types).filter((t): t is string => Boolean(t))
       : ['Sick Leave', 'Casual Leave', 'Vacation'];
@@ -172,8 +174,8 @@ export function CalendarPage() {
             message.success("Event created successfully!");
             handleCancel();
             await refetchCalendarEvents();
-        } catch (error: any) {
-            const errorMessage = error?.response?.data?.message || "Failed to create event";
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error, "Failed to create event");
             message.error(errorMessage);
         } finally {
             setSubmitting(false);
@@ -196,7 +198,7 @@ export function CalendarPage() {
             });
             message.success("Leave applied successfully!");
             handleCancel();
-        } catch (error: any) {
+        } catch (error: unknown) {
              // Error already handled generally
         } finally {
             setSubmitting(false);
@@ -252,7 +254,7 @@ export function CalendarPage() {
           location: event.isOnlineMeeting ? 'Microsoft Teams' : undefined,
           description: event.body?.content || '',
           status: 'scheduled',
-          participants: event.attendees?.map((a: any) => ({
+          participants: event.attendees?.map((a) => ({
             name: a.emailAddress?.name || a.emailAddress?.address?.split('@')[0] || 'Unknown',
             avatar: undefined
           })),
@@ -274,7 +276,10 @@ export function CalendarPage() {
           location: meeting.platform || meeting.meeting_link,
           description: meeting.description,
           status: meeting.status,
-          participants: meeting.participants?.map((p: any) => ({ name: p.name || 'Unknown', avatar: p.avatar })), // meeting participants typed as unknown[] in service. keeping any cast or refining if possible. defining strictly:
+          participants: meeting.participants?.map((p) => {
+            const part = p as { name?: string; avatar?: string };
+            return { name: part.name || 'Unknown', avatar: part.avatar };
+          }), 
           // We can try to cast p as {name: string, avatar: string} if we trust backend
           color: '#3B82F6',
           raw: meeting
@@ -370,7 +375,7 @@ export function CalendarPage() {
         if (!isFuture) return false;
 
         if (e.type === 'meeting') return true;
-        if (e.type === 'leave') return (e.raw as any).user_id === currentUserId;
+        if (e.type === 'leave') return (e.raw as LeaveType).user_id === currentUserId;
         if (e.type === 'holiday') {
           const eventDate = dayjs(e.date);
           const now = dayjs();
@@ -393,7 +398,7 @@ export function CalendarPage() {
         { id: 'day', label: 'Day' }
       ]}
       activeTab={activeView}
-      onTabChange={(tabId) => setActiveView(tabId as any)}
+      onTabChange={(tabId) => setActiveView(tabId as 'month' | 'week' | 'day')}
       titleAction={{ onClick: () => { setShowEventDialog(true); setEventType('event'); } }}
       action={
         <div className="flex items-center gap-3">
@@ -665,13 +670,13 @@ export function CalendarPage() {
 }
 
 // Reuse AttendeesField as is or keep it here if not moved
-function AttendeesField({ attendees, onAddAttendee, onRemoveAttendee, employeesData }: { attendees: Attendee[]; onAddAttendee: (attendee: Attendee) => void; onRemoveAttendee: (index: number) => void; employeesData: any; }) {
+function AttendeesField({ attendees, onAddAttendee, onRemoveAttendee, employeesData }: { attendees: Attendee[]; onAddAttendee: (attendee: Attendee) => void; onRemoveAttendee: (index: number) => void; employeesData: { result?: Employee[] } | undefined; }) {
   const [searchValue, setSearchValue] = useState('');
   
   // Filter employees based on search
   const filteredEmployees = useMemo(() => {
     if (!searchValue || !employeesData?.result) return [];
-    return employeesData.result.filter((emp: any) => 
+    return employeesData.result.filter((emp: Employee) => 
       emp.name.toLowerCase().includes(searchValue.toLowerCase()) || 
       emp.email.toLowerCase().includes(searchValue.toLowerCase())
     ).slice(0, 5);
@@ -708,7 +713,7 @@ function AttendeesField({ attendees, onAddAttendee, onRemoveAttendee, employeesD
         />
         {searchValue && filteredEmployees.length > 0 && (
           <div className="absolute top-full left-0 w-full bg-white border border-[#EEEEEE] rounded-lg shadow-lg mt-1 z-50">
-            {filteredEmployees.map((emp: any) => (
+            {filteredEmployees.map((emp: Employee) => (
               <div 
                 key={emp.id} 
                 className="px-4 py-2 hover:bg-[#F7F7F7] cursor-pointer flex items-center gap-2"

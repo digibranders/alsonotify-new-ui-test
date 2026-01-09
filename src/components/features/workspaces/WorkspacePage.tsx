@@ -61,7 +61,6 @@ export function WorkspacePage() {
        if (filters.organization === selfLabel || filters.organization === 'Self') {
          params.append('in_house', 'true');
        } else {
-         // eslint-disable-next-line @typescript-eslint/no-explicit-any
          const partner = partnersData?.result?.find((p: any) => (p.name || p.partner_company?.name || p.email) === filters.organization);
          if (partner) params.append('partner_id', partner.id.toString());
        }
@@ -98,7 +97,6 @@ export function WorkspacePage() {
   // Transform backend data to frontend format with requirements counts
   const workspaces = useMemo((): Workspace[] => {
     if (!workspacesData?.result?.workspaces) return [];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return workspacesData.result.workspaces.map((w: any) => {
       // Find requirements for this workspace
       const reqQuery = requirementQueries.find((q, idx) => workspaceIds[idx] === w.id);
@@ -160,7 +158,6 @@ export function WorkspacePage() {
     {
       id: 'organization',
       label: 'Organization',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       options: ['All', `${companyData?.result?.name || 'Current Company'} (Self)`, ...(partnersData?.result?.map((p: any) => p.name || p.partner_company?.name || p.email) || [])],
       defaultValue: 'All'
     }

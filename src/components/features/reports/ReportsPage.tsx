@@ -9,7 +9,10 @@ import { PageLayout } from '../../layout/PageLayout';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { DateRangeSelector } from '../../common/DateRangeSelector';
 import { Drawer, Tooltip, Button } from "antd";
-import { ReportsPdfTemplate, IndividualEmployeePdfTemplate, generatePdf } from './ReportsPdfGeneration'; // New Import
+import dynamic from 'next/dynamic'; 
+
+const ReportsPdfTemplate = dynamic(() => import('./ReportsPdfGeneration').then(m => m.ReportsPdfTemplate), { ssr: false });
+const IndividualEmployeePdfTemplate = dynamic(() => import('./ReportsPdfGeneration').then(m => m.IndividualEmployeePdfTemplate), { ssr: false });
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import { useTabSync } from '@/hooks/useTabSync';
@@ -110,15 +113,15 @@ export function ReportsPage() {
 
   const partnerOptions = [
       { label: 'All', value: 'All' }, 
-      ...(partnersData?.result || []).map((p: any) => ({ label: p.name, value: String(p.id) }))
+      ...(partnersData?.result || []).map((p) => ({ label: p.name, value: String(p.id) }))
   ];
   const employeeOptions = [
       { label: 'All', value: 'All' }, 
-      ...(employeesData?.result || []).map((e: any) => ({ label: e.name, value: String(e.id) }))
+      ...(employeesData?.result || []).map((e) => ({ label: e.name, value: String(e.id) }))
   ];
   const departmentOptions = [
       { label: 'All', value: 'All' },
-      ...(departmentsData?.result || []).map((d: any) => ({ label: d.name, value: String(d.id) }))
+      ...(departmentsData?.result || []).map((d) => ({ label: d.name, value: String(d.id) }))
   ];
 
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
@@ -177,6 +180,7 @@ export function ReportsPage() {
     setIsDownloading(true);
     try {
       const fileName = `alsonotify_${activeTab}_report_${dayjs().format('YYYY-MM-DD')}.pdf`;
+      const { generatePdf } = await import('./ReportsPdfGeneration');
       await generatePdf(fileName, 'pdf-report-container');
     } catch (error) {
       console.error('PDF Generation failed:', error);
@@ -191,6 +195,7 @@ export function ReportsPage() {
     setIsDownloadingIndividual(true);
     try {
       const fileName = `alsonotify_employee_${selectedMember.member.replace(/\s+/g, '_')}_${dayjs().format('YYYY-MM-DD')}.pdf`;
+      const { generatePdf } = await import('./ReportsPdfGeneration');
       await generatePdf(fileName, 'pdf-individual-report-container');
     } catch (error) {
          console.error('PDF Generation failed:', error);
@@ -289,8 +294,11 @@ export function ReportsPage() {
     if (!sortConfig) return data;
 
     return [...data].sort((a, b) => {
-      const aVal = (a as any)[sortConfig.key];
-      const bVal = (b as any)[sortConfig.key];
+      // Safe access using the key as keyof T
+      // We assume sortConfig.key is a valid key of T based on usage
+      const key = sortConfig.key as keyof T;
+      const aVal = a[key] as string | number | undefined | null;
+      const bVal = b[key] as string | number | undefined | null;
 
       if (aVal === bVal) return 0;
       if (aVal === null || aVal === undefined) return 1;
@@ -373,7 +381,7 @@ export function ReportsPage() {
 
       ]}
       activeTab={activeTab}
-      onTabChange={(tabId) => setActiveTab(tabId as any)}
+      onTabChange={(tabId) => setActiveTab(tabId as 'requirement' | 'task' | 'member')}
       customFilters={
         <div className="flex items-center gap-3">
           <Button
