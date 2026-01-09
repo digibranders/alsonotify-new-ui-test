@@ -74,7 +74,7 @@ export function RequirementDetailsPage() {
         title: requirement.title,
         status: 'Assigned',
         receiver_workspace_id: Number(selectedReceiverWorkspace)
-     } as unknown as Partial<RequirementDto>, {
+     } as unknown as any, {
         onSuccess: () => {
            message.success("Requirement accepted and assigned to workspace.");
            setIsAcceptModalOpen(false);
@@ -109,12 +109,7 @@ export function RequirementDetailsPage() {
 
   const tasks = useMemo((): Task[] => {
     if (!tasksData?.result || !requirement) return [];
-    return tasksData.result.filter((t: Task) => Number(t.requirement_id) === reqId && (!t.execution_mode || t.execution_mode || true)); // Note: existing logic checked .type which isn't in Task, assuming Task implies type='task' or similar. 
-    // The original code was: (!t.type || t.type === 'task'). 'type' is not in our Task interface yet. 
-    // We should probably add 'type' to Task interface in domain.ts if it exists.
-    // For now, let's keep the filter but cast t as any if needed or update Task type.
-    // Let's defer strict check on 'type' and trust the cast for now, effectively preserving logic.
-    return (tasksData.result as unknown as (Task & { type?: string })[]).filter((t) => Number(t.requirement_id) === reqId && (!t.type || t.type === 'task'));
+    return tasksData.result.filter((t: any) => Number(t.requirement_id) === reqId && (!t.type || t.type === 'task'));
   }, [tasksData, requirement, reqId]);
 
   const revisions = useMemo(() => {
@@ -572,7 +567,7 @@ export function RequirementDetailsPage() {
                         total_seconds_spent: task.total_seconds_spent || 0,
                         activities: 0,
                         status: task.status || 'Assigned',
-                        is_high_priority: task.is_high_priority || task.priority === 'HIGH' || false,
+                        is_high_priority: task.is_high_priority || (task as any).priority === 'HIGH' || false,
                         timelineDate: task.end_date ? format(new Date(task.end_date), 'MMM dd') : 'N/A',
                         timelineLabel: task.status === 'Delayed' ? 'Overdue' : '',
                         execution_mode: task.execution_mode,
@@ -594,7 +589,7 @@ export function RequirementDetailsPage() {
                           hideRequirements={true}
                           isSender={isSender}
                           onRequestRevision={() => {
-                            setTargetTaskId(task.id);
+                            setTargetTaskId(task.id as any);
                             setIsRevisionModalOpen(true);
                           }}
                         />

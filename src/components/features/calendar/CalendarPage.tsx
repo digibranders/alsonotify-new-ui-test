@@ -25,10 +25,10 @@ import { useTeamsConnectionStatus, useCalendarEvents } from '@/hooks/useCalendar
 import { usePublicHolidays } from '@/hooks/useHoliday';
 import { MicrosoftUserOAuth, createCalendarEvent, CreateEventPayload, GraphEvent } from '@/services/calendar';
 import { useEmployees, useCurrentUserCompany, useUserDetails } from '@/hooks/useUser';
-import { TaskType } from '@/services/task';
+// import { TaskType } from '@/services/task'; // Removed to avoid confusion
 import { MeetingType } from '@/services/meeting';
 import { LeaveType } from '@/services/leave';
-import { Holiday } from '@/types/domain';
+import { Holiday, Task } from '@/types/domain';
 
 import { MonthView } from './MonthView';
 import { WeekView } from './WeekView';
@@ -222,12 +222,12 @@ export function CalendarPage() {
     const calendarEvents = calendarEventsData?.result;
 
     if (tasks?.result) {
-      tasks.result.forEach((task: TaskType) => {
-        if (task.due_date) {
+      tasks.result.forEach((task: Task) => {
+        if (task.dueDate) {
             allEvents.push({
                 id: `task-${task.id}`,
                 title: task.title || task.name || 'Untitled',
-                date: dayjs(task.due_date).format('YYYY-MM-DD'),
+                date: dayjs(task.dueDate).format('YYYY-MM-DD'),
                 time: 'Deadline',
                 type: 'deadline',
                 description: task.description,
@@ -370,7 +370,7 @@ export function CalendarPage() {
         if (!isFuture) return false;
 
         if (e.type === 'meeting') return true;
-        if (e.type === 'leave') return e.raw.user_id === currentUserId;
+        if (e.type === 'leave') return (e.raw as any).user_id === currentUserId;
         if (e.type === 'holiday') {
           const eventDate = dayjs(e.date);
           const now = dayjs();

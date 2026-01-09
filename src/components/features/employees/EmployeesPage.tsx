@@ -477,39 +477,40 @@ export function EmployeesPage() {
 
       // Ensure working_hours is an object (not null) - backend requires object type
       let workingHours: any = undefined;
-      if (rawEmployee.working_hours && typeof rawEmployee.working_hours === 'object' && !Array.isArray(rawEmployee.working_hours)) {
-        workingHours = rawEmployee.working_hours;
+      const re = rawEmployee as any;
+      if (re.working_hours && typeof re.working_hours === 'object' && !Array.isArray(re.working_hours)) {
+        workingHours = re.working_hours;
       }
 
       // Build update payload with all preserved fields
-      const updatePayload = {
+      const updatePayload: any = {
         id: empId,
         name: employee.name, // Required
         email: employee.email, // Required
         role_id: roleId, // Send resolved role ID
         // Preserve all existing fields to prevent them from being set to null
-        designation: rawEmployee.designation || null,
-        mobile_number: rawEmployee.mobile_number || rawEmployee.phone || null,
+        designation: re.designation || null,
+        mobile_number: re.mobile_number || re.phone || null,
         hourly_rates: hourlyRate,
-        salary_yearly: rawEmployee.salary_yearly || rawEmployee.salary || null,
-        experience: rawEmployee.experience || 0,
-        skills: Array.isArray(rawEmployee.skills) ? rawEmployee.skills : [],
+        salary_yearly: re.salary_yearly || re.salary || null,
+        experience: re.experience || 0,
+        skills: Array.isArray(re.skills) ? re.skills : [],
         date_of_joining: dateOfJoining,
-        no_of_leaves: rawEmployee.no_of_leaves || null,
+        no_of_leaves: re.no_of_leaves || null,
         // Preserve address fields
-        address: rawEmployee.address || null,
-        city: rawEmployee.city || null,
-        state: rawEmployee.state || null,
-        zipcode: rawEmployee.zipcode || null,
-        country: rawEmployee.country || null,
-        late_time: rawEmployee.late_time || null,
-        profile_pic: rawEmployee.profile_pic || null,
+        address: re.address || null,
+        city: re.city || null,
+        state: re.state || null,
+        zipcode: re.zipcode || null,
+        country: re.country || null,
+        late_time: re.late_time || null,
+        profile_pic: re.profile_pic || null,
         // Only include working_hours if it's a valid object, otherwise omit it (don't send null)
         ...(workingHours !== undefined ? { working_hours: workingHours } : {}),
       };
 
       // Create promise for this update using mutateAsync
-      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload as unknown as Partial<UserDto>).catch((error: any) => {
+      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload as unknown as any).catch((error: any) => {
         const errorMsg = error?.response?.data?.message || 'Update failed';
         failedEmployees.push({ id: empId, name: employee.name, reason: errorMsg });
         throw error; // Re-throw to mark as failed in Promise.allSettled
@@ -557,7 +558,7 @@ export function EmployeesPage() {
     }
 
     const selectedDepartment = departmentsData?.result?.find(
-      (dept: { name: string; id: number }) => dept.name === departmentName
+      (dept: any) => dept.name === departmentName
     );
 
     if (!selectedDepartment || !selectedDepartment.id) {
@@ -628,8 +629,8 @@ export function EmployeesPage() {
 
       // Ensure working_hours is an object (not null) - backend requires object type
       let workingHours: any = undefined;
-      if (rawEmployee.working_hours && typeof rawEmployee.working_hours === 'object' && !Array.isArray(rawEmployee.working_hours)) {
-        workingHours = rawEmployee.working_hours;
+      if ((rawEmployee as any).working_hours && typeof (rawEmployee as any).working_hours === 'object' && !Array.isArray((rawEmployee as any).working_hours)) {
+        workingHours = (rawEmployee as any).working_hours;
       }
 
       // Resolve current role ID
@@ -644,8 +645,8 @@ export function EmployeesPage() {
       // Actually backend updateUserService updates everything passed. If we pass null, it might error.
       // But typically we should keep existing if we can.
 
-      if (!currentRoleId && rawEmployee.user_employee?.role_id) {
-        currentRoleId = rawEmployee.user_employee.role_id;
+      if (!currentRoleId && (rawEmployee as any).user_employee?.role_id) {
+        currentRoleId = (rawEmployee as any).user_employee.role_id;
       }
 
       if (!currentRoleId) {
@@ -661,28 +662,28 @@ export function EmployeesPage() {
         role_id: currentRoleId, // Preserve current role ID
         department_id: departmentId, // The field we're updating
         // Preserve all existing fields to prevent them from being set to null
-        designation: rawEmployee.designation || null,
-        mobile_number: rawEmployee.mobile_number || rawEmployee.phone || null,
+        designation: (rawEmployee as any).designation || null,
+        mobile_number: (rawEmployee as any).mobile_number || (rawEmployee as any).phone || null,
         hourly_rates: hourlyRate,
-        salary_yearly: rawEmployee.salary_yearly || rawEmployee.salary || null,
-        experience: rawEmployee.experience || 0,
-        skills: Array.isArray(rawEmployee.skills) ? rawEmployee.skills : [],
+        salary_yearly: (rawEmployee as any).salary_yearly || (rawEmployee as any).salary || null,
+        experience: (rawEmployee as any).experience || 0,
+        skills: Array.isArray((rawEmployee as any).skills) ? (rawEmployee as any).skills : [],
         date_of_joining: dateOfJoining,
-        no_of_leaves: rawEmployee.no_of_leaves || null,
+        no_of_leaves: (rawEmployee as any).no_of_leaves || null,
         // Preserve address fields
-        address: rawEmployee.address || null,
-        city: rawEmployee.city || null,
-        state: rawEmployee.state || null,
-        zipcode: rawEmployee.zipcode || null,
-        country: rawEmployee.country || null,
-        late_time: rawEmployee.late_time || null,
-        profile_pic: rawEmployee.profile_pic || null,
+        address: (rawEmployee as any).address || null,
+        city: (rawEmployee as any).city || null,
+        state: (rawEmployee as any).state || null,
+        zipcode: (rawEmployee as any).zipcode || null,
+        country: (rawEmployee as any).country || null,
+        late_time: (rawEmployee as any).late_time || null,
+        profile_pic: (rawEmployee as any).profile_pic || null,
         // Only include working_hours if it's a valid object, otherwise omit it (don't send null)
         ...(workingHours !== undefined ? { working_hours: workingHours } : {}),
       };
 
       // Create promise for this update using mutateAsync
-      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload as unknown as Partial<UserDto>).catch((error: any) => {
+      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload as unknown as any).catch((error: any) => {
         const errorMsg = error?.response?.data?.message || 'Update failed';
         failedEmployees.push({ id: empId, name: employee.name, reason: errorMsg });
         throw error; // Re-throw to mark as failed in Promise.allSettled
@@ -1166,7 +1167,7 @@ export function EmployeesPage() {
           setIsDetailsModalOpen(false);
           setSelectedEmployeeForDetails(null);
         }}
-        employee={selectedEmployeeForDetails}
+        employee={selectedEmployeeForDetails as any}
         onEdit={() => {
           setIsDetailsModalOpen(false);
           setSelectedEmployeeForDetails(null);

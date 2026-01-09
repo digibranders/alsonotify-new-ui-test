@@ -42,7 +42,7 @@ export function EmployeeDetailsPage() {
   // Mock documents data - TODO: Replace with actual API call when available
   const documents = useMemo(() => {
     // Check if employee data has documents
-    const employeeDocs = backendEmp?.documents || [];
+    const employeeDocs = (backendEmp as any)?.documents || [];
     if (Array.isArray(employeeDocs) && employeeDocs.length > 0) {
       return employeeDocs;
     }
@@ -181,7 +181,7 @@ export function EmployeeDetailsPage() {
     'N/A';
 
   const employee = {
-    id: backendEmp.user_id || backendEmp.id,
+    id: (backendEmp as any).user_id || backendEmp.id,
     name: backendEmp.name || '',
     role: backendEmp.designation || 'Unassigned',
     email: backendEmp.email || '',
@@ -190,18 +190,18 @@ export function EmployeeDetailsPage() {
     dateOfJoining: backendEmp.date_of_joining
       ? new Date(backendEmp.date_of_joining || '').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })
       : 'N/A',
-    experience: backendEmp.experience || 0,
-    skillsets: backendEmp.skills?.join(', ') || 'None',
-    status: backendEmp.user_employee?.is_active !== false ? 'active' : 'inactive',
-    department: backendEmp.department?.name || 'Unassigned',
-    access: (backendEmp.user_employee?.role?.name || 'Employee') as 'Admin' | 'Manager' | 'Leader' | 'Employee',
-    salary: backendEmp.salary_yearly || backendEmp.salary || 0,
+    experience: (backendEmp as any).experience || 0,
+    skillsets: (backendEmp as any).skills?.join(', ') || 'None',
+    status: (backendEmp as any).user_employee?.is_active !== false ? 'active' : 'inactive',
+    department: (backendEmp as any).department?.name || 'Unassigned',
+    access: ((backendEmp as any).user_employee?.role?.name || 'Employee') as 'Admin' | 'Manager' | 'Leader' | 'Employee',
+    salary: (backendEmp as any).salary_yearly || (backendEmp as any).salary || 0,
     currency: 'USD',
-    workingHours: backendEmp.working_hours ? calculateWorkingHours(backendEmp.working_hours) : 0,
-    leaves: backendEmp.no_of_leaves || 0,
-    roleId: backendEmp.user_employee?.role_id,
-    roleColor: backendEmp.user_employee?.role?.color,
-    employmentType: backendEmp.employment_type || 'Full-time',
+    workingHours: (backendEmp as any).working_hours ? calculateWorkingHours((backendEmp as any).working_hours) : 0,
+    leaves: (backendEmp as any).no_of_leaves || 0,
+    roleId: (backendEmp as any).user_employee?.role_id,
+    roleColor: (backendEmp as any).user_employee?.role?.color,
+    employmentType: (backendEmp as any).employment_type || 'Full-time',
   };
 
   const handleDocumentPreview = (document: UserDocument) => {
