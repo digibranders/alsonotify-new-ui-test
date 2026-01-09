@@ -1,5 +1,5 @@
 import svgPaths from "../../constants/iconPaths";
-import { ChevronLeft, ChevronRight, Video, Calendar, Clock, Plus, ExternalLink } from "lucide-react";
+import { ChevronLeft, ChevronRight, Video, Calendar as CalendarIcon, Clock, Plus, ExternalLink, X } from "lucide-react";
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Modal, Input, Button, Select, DatePicker, Spin, Tag, Popover, App } from 'antd';
 import dayjs from 'dayjs';
@@ -9,6 +9,7 @@ import { useEmployees, useCurrentUserCompany } from '@/hooks/useUser';
 import { useTeamsConnectionStatus, useCalendarEvents } from '../../hooks/useCalendar';
 import { MicrosoftUserOAuth, GraphEvent, createCalendarEvent, CreateEventPayload } from '../../services/calendar';
 import { useQueryClient } from '@tanstack/react-query';
+import { queryKeys } from '../../lib/queryKeys';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);

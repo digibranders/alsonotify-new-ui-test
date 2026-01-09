@@ -125,8 +125,10 @@ export const useCreateRequirement = () => {
   return useMutation({
     mutationFn: (params: Partial<RequirementDto>) => addRequirementToWorkspace(params),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.requirements.byWorkspace(variables.workspace_id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(variables.workspace_id) });
+      if (variables.workspace_id) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.requirements.byWorkspace(variables.workspace_id) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(variables.workspace_id) });
+      }
       // Invalidate all requirements queries
       queryClient.invalidateQueries({ queryKey: queryKeys.requirements.all() });
     },
@@ -139,8 +141,10 @@ export const useUpdateRequirement = () => {
   return useMutation({
     mutationFn: (params: Partial<RequirementDto>) => updateRequirementById(params),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.requirements.byWorkspace(variables.workspace_id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(variables.workspace_id) });
+      if (variables.workspace_id) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.requirements.byWorkspace(variables.workspace_id) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(variables.workspace_id) });
+      }
       // Invalidate all requirements queries
       queryClient.invalidateQueries({ queryKey: queryKeys.requirements.all() });
     },

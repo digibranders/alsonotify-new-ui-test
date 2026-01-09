@@ -27,7 +27,7 @@ export function useCreateFeedback() {
 
 export function useFeedbackList(filters?: FeedbackListFilters) {
   return useQuery({
-    queryKey: queryKeys.feedback.list(filters),
+    queryKey: queryKeys.feedback.list(filters as Record<string, unknown> | undefined),
     queryFn: () => getFeedbackList(filters),
   });
 }
@@ -47,7 +47,7 @@ export function useToggleFeedbackVote() {
 
 export function useAdminFeedbackList(filters?: AdminFeedbackFilters) {
   return useQuery({
-    queryKey: queryKeys.feedback.adminList(filters),
+    queryKey: queryKeys.feedback.adminList(filters as Record<string, unknown> | undefined),
     queryFn: () => getAdminFeedbackList(filters),
   });
 }

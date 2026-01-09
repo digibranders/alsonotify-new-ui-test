@@ -1,4 +1,4 @@
-/* eslint-disable no-useless-catch */
+
 import axiosApi from "../config/axios";
 import { ApiResponse } from "../constants/constants";
 
@@ -56,35 +56,23 @@ export const getCalendarEvents = async (
   startISO: string,
   endISO: string
 ): Promise<ApiResponse<GraphEvent[]>> => {
-  try {
-    const { data } = await axiosApi.get<ApiResponse<GraphEvent[]>>(
-      "/calendar/events",
-      { params: { start: startISO, end: endISO } }
-    );
-    return data;
-  } catch (error) {
-    throw error;
-  }
+  const { data } = await axiosApi.get<ApiResponse<GraphEvent[]>>(
+    "/calendar/events",
+    { params: { start: startISO, end: endISO } }
+  );
+  return data;
 };
 
 // Get Teams connection status
 export const getTeamsConnectionStatus = async (): Promise<ApiResponse<TeamsConnectionStatus>> => {
-  try {
-    const { data } = await axiosApi.get<ApiResponse<TeamsConnectionStatus>>("/calendar/connection-status");
-    return data;
-  } catch (error) {
-    throw error;
-  }
+  const { data } = await axiosApi.get<ApiResponse<TeamsConnectionStatus>>("/calendar/connection-status");
+  return data;
 };
 
 // Connect to Microsoft Teams (OAuth)
 export const MicrosoftUserOAuth = async (): Promise<ApiResponse<string>> => {
-  try {
-    const { data } = await axiosApi.get<ApiResponse<string>>("/microsoft/auth/login");
-    return data;
-  } catch (error) {
-    throw error;
-  }
+  const { data } = await axiosApi.get<ApiResponse<string>>("/microsoft/auth/login");
+  return data;
 };
 
 // Create Event Payload Interface
@@ -102,10 +90,6 @@ export interface CreateEventPayload {
 export const createCalendarEvent = async (
   payload: CreateEventPayload
 ): Promise<ApiResponse<GraphEvent>> => {
-  try {
-    const { data } = await axiosApi.post<ApiResponse<GraphEvent>>("/calendar/events", payload);
-    return data;
-  } catch (error) {
-    throw error;
-  }
+  const { data } = await axiosApi.post<ApiResponse<GraphEvent>>("/calendar/events", payload);
+  return data;
 };

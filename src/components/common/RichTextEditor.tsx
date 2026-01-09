@@ -134,7 +134,7 @@ export function RichTextEditor({ value, onChange, placeholder = "Note content...
     if (editorRef.current && isMounted) {
       // Ensure proper initial state
       if (!editorRef.current.innerHTML && value) {
-        editorRef.current.innerHTML = value;
+        editorRef.current.innerHTML = sanitizeRichTextForEditor(value);
       }
       // Reset any unwanted styles that might cause overlap
       const computedStyle = window.getComputedStyle(editorRef.current);
