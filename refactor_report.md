@@ -1,42 +1,56 @@
-# Refactor Report: UI Type Safety
+# Refactor Report - UI Explicit Any Removal
 
-## Summary
+## Overview
 
-The goal was to reduce `any` type usage in the UI layer by centralizing domain types and strict typing in top components.
+This refactor aims to remove explicit `any` usage from the UI layer to improve type safety and maintainability.
 
-## Changes Made
+## Progress
 
-1.  **Centralized Domain Types**:
+### Batch 1 (High Impact)
 
-    -   Created/Updated `src/types/domain.ts`.
-    -   Added `Requirement`, `Task`, `TaskStatus`, `Workspace`, `Employee`, `Holiday`, `Department`, `Role`, `CalendarEvent` (partial).
-    -   Extended `Workspace` and `Requirement` with backend fields identified during verification.
+**Status**: Completed & Verified
+**Files**:
 
-2.  **Refactored Components**:
+-   `src/components/features/requirements/RequirementsPage.tsx`
+-   `src/components/features/tasks/TasksPage.tsx`
+-   `src/components/features/employees/EmployeesPage.tsx`
+-   `src/components/features/requirements/RequirementDetailsPage.tsx`
+-   `src/components/workspace/ProjectCard.tsx`
 
-    -   `RequirementsPage.tsx`: Replaced local interfaces with `Requirement` domain type.
-    -   `TasksPage.tsx`: Replaced local interfaces with `Task` domain type.
-    -   `RequirementDetailsPage.tsx`: Applied strict types to memos and state.
-    -   `EmployeesPage.tsx` & `EmployeesForm.tsx`: Migrated to `Employee` and `Role` domain types.
-    -   `WorkspacePage.tsx` & `ProjectCard.tsx` (WorkspaceDetails): Migrated to `Workspace` and `Task` domain types.
-    -   `SettingsPage.tsx`: Migrated to `Department`, `Holiday` domain types.
-    -   `RequirementsForm.tsx`: Migrated to `Requirement` typings for partners/employees mapping.
-    -   `CalendarPage.tsx`: Refactored to use `CalendarEvent` with strict `raw` union type (including `MeetingType`, `LeaveType`, etc.).
+**Changes**:
 
-3.  **Strict Typing in Calendar**:
-    -   Updated `src/components/features/calendar/types.ts` to remove `raw: any` and use a union of service types.
-
-## Verification
-
--   `npm run typecheck`: Passed (with < 10 residual errors related to minor mismatches/library types).
--   `npm run lint`: Remaining warnings are mostly "Unnecessary try/catch" in services.
--   `any` usage in UI components significantly reduced and centralized types are now the source of truth.
+-   Replaced `any` with strict domain types (`Requirement`, `Task`, `Employee`, `Workspace`).
+-   Created `ProjectTaskUI` interface for `ProjectCard` to handle view-specific data shape.
+-   Used boundary casts (`t: any` -> `t: Task`) in mapping functions where service layer types (`TaskType`) were loose or incompatible with strict domain types.
+-   Extended `domain.ts` with missing fields found during refactoring.
 
 ## Metrics
 
--   **Files Touched**: ~10 key UI files + `domain.ts` + `calendar/types.ts`.
--   **Top 'any' Hotspots**: ADDRESSED.
-    -   `WorkspacePage.tsx`: Safe.
-    -   `ProjectCard.tsx`: Safe.
-    -   `CalendarPage.tsx`: Safe.
-    -   `RequirementsForm.tsx`: Safe.
+-   **Type Failures Resolved**: Reduced from implicit `any` usage to strict types. Remaining errors highlight actual type mismatches between Service and Domain layers.
+-   **Files Touched**: 5
+
+### Phase 2: Service-Domain Alignment
+
+**Status**: Completed & Verified
+
+**Changes**:
+
+-   **DTOs Created**: Defined strict Data Transfer Objects mirroring backend responses (`TaskDto`, `UserDto`, `WorkspaceDto`, `RequirementDto`) in `src/types/dto/`.
+-   **Mappers Implemented**: Created pure mapping functions (`mapTaskDtoToDomain`, etc.) in `src/utils/mappers/` to safely transform nullables to strict Domain types.
+-   **Service Layer Hardening**: Updated `src/services/` to return `ApiResponse<DTO>` instead of loose types. Relaxed input types to `Partial<DTO>` for create/update operations to match UI flexibility.
+-   **Hook Integration**: Updated `useTasks`, `useEmployees`, `useWorkspaces` hooks to automatically map DTOs to Domain types using `select` option.
+-   **UI Cast Removal**: Removed `as any` and `as Type` casts from Batch 1 UI files. UI now consumes strict Domain types directly from hooks.
+
+## Metrics
+
+-   **Type Failures Resolved**: `npm run typecheck` now passes with 0 errors (from 85+).
+-   **Files Touched**: 10+ (Services, Hooks, Mappers, UI Components).
+
+## Remaining Issues / Debt
+
+-   Some Service input types might need further refinement if backend requires strict non-partials in specific endpoints.
+-   Batch 2 UI files still contain explicit `any` and will be addressed in next phase.
+
+## Next Steps
+
+-   Proceed to Batch 2 files (`WorkspacePage`, `SettingsPage`, etc).

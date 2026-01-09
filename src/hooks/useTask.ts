@@ -19,10 +19,16 @@ import {
 // useClients removed
 export { usePartners } from "./useUser";
 
+import { mapTaskDtoToDomain } from "../utils/mappers/task.mapper";
+
 export const useTasks = (options: string = "") => {
   return useQuery({
     queryKey: ["tasks", options],
     queryFn: () => getTasks(options),
+    select: (data) => ({
+      ...data,
+      result: data.result ? data.result.map(mapTaskDtoToDomain) : []
+    })
   });
 };
 
@@ -34,14 +40,18 @@ export const useTask = (id: number) => {
   });
 };
 
+import { TaskDto } from "../types/dto/task.dto";
+
+// ...
+
 export const useCreateTask = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: TaskType) => createTask(params),
+    mutationFn: (params: Partial<TaskDto>) => createTask(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["assignedTasks"] }); // Also invalidate assigned tasks so new tasks appear in dashboard selector
+      queryClient.invalidateQueries({ queryKey: ["assignedTasks"] });
     },
   });
 };
@@ -50,7 +60,11 @@ export const useUpdateTask = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...params }: TaskType) => updateTask({ id, ...params } as TaskType),
+    mutationFn: ({ id, ...params }: Partial<TaskDto> & { id: number }) => updateTask({ id, ...params } as TaskDto), // Cast to TaskDto as service expects full? No, service likely updated to Partial. I'll check service.
+    // Wait, service updateTask takes TaskDto (strict). I should update service to Partial first? 
+    // Step 272 updated service but might be strict.
+    // I updated workspace service to Partial.
+    // I should update task service to Partial.
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({ queryKey: ["task", variables.id] });

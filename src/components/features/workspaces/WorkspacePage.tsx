@@ -83,7 +83,7 @@ export function WorkspacePage() {
     return workspacesData?.result?.workspaces?.map((w: any) => w.id) || [];
   }, [workspacesData]);
 
-  const totalItems = workspacesData?.result?.workspaces?.[0]?.total_count || 0;
+  const totalItems = (workspacesData?.result as any)?.total_count || 0;
 
   // Fetch requirements for all workspaces
   const requirementQueries = useQueries({

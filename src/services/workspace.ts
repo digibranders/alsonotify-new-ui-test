@@ -58,9 +58,15 @@ export interface CommentType {
 }
 
 // Create workspace
-export const createWorkspace = async (params: WorkspaceType): Promise<ApiResponse<WorkspaceType>> => {
+import { WorkspaceDto } from "../types/dto/workspace.dto";
+import { RequirementDto } from "../types/dto/requirement.dto";
+
+// ... imports
+
+// Create workspace
+export const createWorkspace = async (params: WorkspaceDto): Promise<ApiResponse<WorkspaceDto>> => {
   try {
-    const { data } = await axiosApi.post<ApiResponse<WorkspaceType>>("/workspace/create", params);
+    const { data } = await axiosApi.post<ApiResponse<WorkspaceDto>>("/workspace/create", params);
     return data;
   } catch (error) {
     throw error;
@@ -68,9 +74,9 @@ export const createWorkspace = async (params: WorkspaceType): Promise<ApiRespons
 };
 
 // Update workspace
-export const updateWorkspace = async (params: WorkspaceType): Promise<ApiResponse<WorkspaceType>> => {
+export const updateWorkspace = async (params: WorkspaceDto): Promise<ApiResponse<WorkspaceDto>> => {
   try {
-    const { data } = await axiosApi.put<ApiResponse<WorkspaceType>>(`/workspace/update/${params.id}`, params);
+    const { data } = await axiosApi.put<ApiResponse<WorkspaceDto>>(`/workspace/update/${params.id}`, params);
     return data;
   } catch (error) {
     throw error;
@@ -78,9 +84,9 @@ export const updateWorkspace = async (params: WorkspaceType): Promise<ApiRespons
 };
 
 // Delete workspace
-export const deleteWorkspace = async (id: number): Promise<ApiResponse<WorkspaceType>> => {
+export const deleteWorkspace = async (id: number): Promise<ApiResponse<WorkspaceDto>> => {
   try {
-    const { data } = await axiosApi.delete<ApiResponse<WorkspaceType>>(`/workspace/delete/${id}`);
+    const { data } = await axiosApi.delete<ApiResponse<WorkspaceDto>>(`/workspace/delete/${id}`);
     return data;
   } catch (error) {
     throw error;
@@ -88,9 +94,9 @@ export const deleteWorkspace = async (id: number): Promise<ApiResponse<Workspace
 };
 
 // Reactivate workspace
-export const reactivateWorkspace = async (id: number): Promise<ApiResponse<WorkspaceType>> => {
+export const reactivateWorkspace = async (id: number): Promise<ApiResponse<WorkspaceDto>> => {
   try {
-    const { data } = await axiosApi.patch<ApiResponse<WorkspaceType>>(`/workspace/reactivate/${id}`);
+    const { data } = await axiosApi.patch<ApiResponse<WorkspaceDto>>(`/workspace/reactivate/${id}`);
     return data;
   } catch (error) {
     throw error;
@@ -98,13 +104,13 @@ export const reactivateWorkspace = async (id: number): Promise<ApiResponse<Works
 };
 
 // Get workspaces
-type TeamWorkspaceType = {
-  workspaces: WorkspaceType[];
+type TeamWorkspaceDto = {
+  workspaces: WorkspaceDto[];
 };
 
-export const getWorkspace = async (options: string = ""): Promise<ApiResponse<TeamWorkspaceType>> => {
+export const getWorkspace = async (options: string = ""): Promise<ApiResponse<TeamWorkspaceDto>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<TeamWorkspaceType>>(`/workspace?${options}`);
+    const { data } = await axiosApi.get<ApiResponse<TeamWorkspaceDto>>(`/workspace?${options}`);
     return data;
   } catch (error) {
     throw error;
@@ -112,9 +118,9 @@ export const getWorkspace = async (options: string = ""): Promise<ApiResponse<Te
 };
 
 // Get workspace by id
-export const getWorkspaceById = async (id: number): Promise<ApiResponse<WorkspaceType>> => {
+export const getWorkspaceById = async (id: number): Promise<ApiResponse<WorkspaceDto>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<WorkspaceType>>(`/workspace/${id}`);
+    const { data } = await axiosApi.get<ApiResponse<WorkspaceDto>>(`/workspace/${id}`);
     return data;
   } catch (error) {
     throw error;
@@ -122,9 +128,9 @@ export const getWorkspaceById = async (id: number): Promise<ApiResponse<Workspac
 };
 
 // Search workspaces
-export const searchWorkspaces = async (name = ""): Promise<ApiResponse<WorkspaceType[]>> => {
+export const searchWorkspaces = async (name = ""): Promise<ApiResponse<WorkspaceDto[]>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<WorkspaceType[]>>(`/workspace/dropdown?name=${name}`);
+    const { data } = await axiosApi.get<ApiResponse<WorkspaceDto[]>>(`/workspace/dropdown?name=${name}`);
     return data;
   } catch (error) {
     throw error;
@@ -132,27 +138,27 @@ export const searchWorkspaces = async (name = ""): Promise<ApiResponse<Workspace
 };
 
 // Requirement operations
-export const addRequirementToWorkspace = async (params: RequirementType): Promise<ApiResponse<RequirementType>> => {
+export const addRequirementToWorkspace = async (params: Partial<RequirementDto>): Promise<ApiResponse<RequirementDto>> => {
   try {
-    const { data } = await axiosApi.post<ApiResponse<RequirementType>>("/requirement", params);
+    const { data } = await axiosApi.post<ApiResponse<RequirementDto>>("/requirement", params);
     return data;
   } catch (error) {
     throw error;
   }
 };
 
-export const updateRequirementById = async (params: RequirementType): Promise<ApiResponse<RequirementType>> => {
+export const updateRequirementById = async (params: Partial<RequirementDto>): Promise<ApiResponse<RequirementDto>> => {
   try {
-    const { data } = await axiosApi.patch<ApiResponse<RequirementType>>(`/requirement/update/${params.id}`, params);
+    const { data } = await axiosApi.patch<ApiResponse<RequirementDto>>(`/requirement/update/${params.id}`, params);
     return data;
   } catch (error) {
     throw error;
   }
 };
 
-export const deleteRequirementById = async (id: number, workspace_id: number): Promise<ApiResponse<RequirementType>> => {
+export const deleteRequirementById = async (id: number, workspace_id: number): Promise<ApiResponse<RequirementDto>> => {
   try {
-    const { data } = await axiosApi.patch<ApiResponse<RequirementType>>(`/workspace/requirement/update/${id}`, {
+    const { data } = await axiosApi.patch<ApiResponse<RequirementDto>>(`/workspace/requirement/update/${id}`, {
       is_deleted: true,
       workspace_id: workspace_id,
     });
@@ -165,9 +171,9 @@ export const deleteRequirementById = async (id: number, workspace_id: number): P
 export const approveRequirement = async (
   requirement_id: number,
   status: "Assigned" | "Rejected"
-): Promise<ApiResponse<RequirementType>> => {
+): Promise<ApiResponse<RequirementDto>> => {
   try {
-    const { data } = await axiosApi.post<ApiResponse<RequirementType>>("/workspace/requirement/approve", {
+    const { data } = await axiosApi.post<ApiResponse<RequirementDto>>("/workspace/requirement/approve", {
       requirement_id,
       status,
     });
@@ -177,18 +183,18 @@ export const approveRequirement = async (
   }
 };
 
-export const getRequirementsByWorkspaceId = async (workspaceId: number): Promise<ApiResponse<RequirementType[]>> => {
+export const getRequirementsByWorkspaceId = async (workspaceId: number): Promise<ApiResponse<RequirementDto[]>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<RequirementType[]>>(`/requirement/${workspaceId}`);
+    const { data } = await axiosApi.get<ApiResponse<RequirementDto[]>>(`/requirement/${workspaceId}`);
     return data;
   } catch (error) {
     throw error;
   }
 };
 
-export const getCollaborativeRequirements = async (): Promise<ApiResponse<RequirementType[]>> => {
+export const getCollaborativeRequirements = async (): Promise<ApiResponse<RequirementDto[]>> => {
   try {
-    const { data } = await axiosApi.get<ApiResponse<RequirementType[]>>(`/requirement/collaborative`);
+    const { data } = await axiosApi.get<ApiResponse<RequirementDto[]>>(`/requirement/collaborative`);
     return data;
   } catch (error) {
     throw error;

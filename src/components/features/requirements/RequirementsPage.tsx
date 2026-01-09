@@ -29,6 +29,7 @@ import { WorkspaceForm } from '../../modals/WorkspaceForm';
 
 
 import { Requirement } from '@/types/domain';
+import { RequirementDto } from '@/types/dto/requirement.dto';
 
 // Quotation Dialog Component
 function QuotationDialog({
@@ -254,7 +255,7 @@ function InternalMappingModal({
               <Option key="create_new" value="create_new" className="text-[#ff3b3b] font-medium border-b border-gray-100 pb-2 mb-2">
                 + Create New Workspace
               </Option>
-              {workspaces.map((w: any) => (
+              {workspaces.map((w: { id: number | string; name: string }) => (
                 <Option key={String(w.id)} value={w.id}>
                   {w.name}
                 </Option>
@@ -267,7 +268,7 @@ function InternalMappingModal({
       <WorkspaceForm
         open={isCreateOpen}
         onCancel={() => setIsCreateOpen(false)}
-        onSuccess={(data: any) => {
+        onSuccess={(data: { result?: { id: number }; id?: number }) => {
            // data needs to be inspected. Usually creation returns result object.
            // Assuming standard hook return { result: { id, name, ... } } or just result.
            // We will try to extract ID.
@@ -297,7 +298,7 @@ export function RequirementsPage() {
 
   // Get all workspace IDs
   const workspaceIds = useMemo(() => {
-    return workspacesData?.result?.workspaces?.map((w: any) => w.id) || [];
+    return workspacesData?.result?.workspaces?.map((w: { id: number }) => w.id) || [];
   }, [workspacesData]);
 
   // Fetch requirements for all workspaces
@@ -352,7 +353,7 @@ export function RequirementsPage() {
     requirementQueries.forEach((query, index) => {
       const workspaceIdFromQuery = workspaceIds[index];
       if (query.data?.result && workspaceIdFromQuery) {
-        const requirementsWithWorkspace = query.data.result.map((req: any) => ({
+        const requirementsWithWorkspace = query.data.result.map((req: Requirement) => ({
           ...req,
           workspace_id: req.workspace_id ?? workspaceIdFromQuery,
         }));
@@ -362,7 +363,7 @@ export function RequirementsPage() {
 
     // Add collaborative requirements (avoid duplicates if possible)
     if (collaborativeData?.result) {
-      collaborativeData.result.forEach((collab: any) => {
+      collaborativeData.result.forEach((collab: Requirement) => {
         if (!combined.some(req => req.id === collab.id)) {
           combined.push(collab as Requirement);
         }
@@ -375,7 +376,7 @@ export function RequirementsPage() {
   // Create a map of workspace ID to workspace data for client/company lookup
   // Workspace API returns: { client: {id, name}, client_company_name, company_name }
   const workspaceMap = useMemo(() => {
-    const map = new Map<number, any>();
+    const map = new Map<number, Workspace>(); // using simplified type for now
     workspacesData?.result?.workspaces?.forEach((w: any) => {
       map.set(w.id, w);
     });
@@ -384,7 +385,7 @@ export function RequirementsPage() {
 
   // Transform backend data to UI format with placeholder/mock data where API data is not available
   const requirements = useMemo(() => {
-    const mappedData = allRequirements.map((req: any) => {
+    const mappedData = allRequirements.map((req: Requirement) => {
       // Get workspace data for this requirement to access client/company information
       // NOTE: The requirement API (getRequirements.sql) doesn't include project/client data
       // It only returns: requirement fields, department, manager, leader, created_user, approved_by
@@ -618,13 +619,13 @@ export function RequirementsPage() {
       quoted_price: amount,
       estimated_hours: hours,
       status: 'Review' // Or PENDING_CLIENT_APPROVAL as per design, using Review as proxy
-    } as any, {
+    } as unknown as Partial<RequirementDto>, {
       onSuccess: () => {
         messageApi.success("Quotation submitted successfully");
         setIsQuotationOpen(false);
         setPendingReqId(null);
       },
-      onError: (err: any) => {
+      onError: (err: Error) => {
         messageApi.error(err?.message || "Failed to submit quotation");
       }
     });
@@ -639,7 +640,7 @@ export function RequirementsPage() {
       workspace_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
       status: 'Rejected',
       rejection_reason: reason
-    } as any, {
+    } as unknown as Partial<RequirementDto>, {
       onSuccess: () => {
         messageApi.success("Requirement rejected");
         setIsRejectOpen(false);
@@ -648,7 +649,7 @@ export function RequirementsPage() {
     });
   };
 
-  const handleCreateRequirement = (data: any) => {
+  const handleCreateRequirement = (data: RequirementFormData) => {
     if (!data.title) {
       messageApi.error("Requirement title is required");
       return;
@@ -681,12 +682,13 @@ export function RequirementsPage() {
       contact_person_id: data.contact_person_id,
       contact_person: data.contactPerson,
       receiver_company_id: data.receiver_company_id, // Pass the receiver company ID
-    } as any, {
+    } as unknown as Partial<RequirementDto>, {
       onSuccess: () => {
         messageApi.success("Requirement created successfully");
         setIsDialogOpen(false);
       },
       onError: (error: any) => {
+        // Keeping error as any for now as AxiosError typing can be verbose to import
         messageApi.error(error?.response?.data?.message || "Failed to create requirement");
       }
     });
@@ -710,7 +712,7 @@ export function RequirementsPage() {
       contact_person_id: data.contact_person_id,
       contact_person: data.contactPerson,
       receiver_company_id: data.receiver_company_id, // Pass the receiver company ID
-    } as any, {
+    } as unknown as Partial<RequirementDto>, {
       onSuccess: () => {
         messageApi.success("Requirement updated successfully");
         setIsDialogOpen(false);

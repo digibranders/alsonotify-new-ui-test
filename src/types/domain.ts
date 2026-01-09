@@ -43,6 +43,7 @@ export interface Requirement {
   contact_person_id?: number;
   sender_company_id?: number;
   receiver_company_id?: number;
+  receiver_company?: { name: string; id: number };
   receiver_workspace_id?: number;
   negotiation_reason?: string;
   isReceiver?: boolean;
@@ -66,9 +67,20 @@ export interface Requirement {
   manager_user?: { name: string; id?: number; avatar?: string };
   sender_company?: { name: string; id?: number };
   document_link?: string;
+  
+  // Expanded fields for UI usage
+  // 'title' is already defined above
+  total_tasks?: number; // Backend alias
+  // sender_company already defined above
+  created_user?: { name: string; id: number };
+  created_user_data?: { name: string; id: number };
+  approved_by?: { id: number; name?: string };
+  invoice?: { status: string; id?: number };
+  invoice_id?: number;
+  contact_person?: { name: string; id: number };
 }
 
-export type TaskStatus = 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck';
+export type TaskStatus = 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck' | 'In Progress' | 'Todo';
 
 export interface Task {
   id: string;
@@ -112,6 +124,33 @@ export interface Task {
       profile_pic?: string;
     };
   }[];
+  // Expanded fields for UI usage
+  start_date?: string;
+  end_date?: string; 
+  estimated_time?: number;
+  time_spent?: number;
+  worklogs?: Array<{ id: number; time_spent: number }>;
+  company?: { name: string; id?: number };
+  company_name?: string;
+  client_company_name?: string; // Added for TasksPage
+  title?: string; // Added for TasksPage compatibility
+  
+  // Relations used in TasksPage
+  task_project?: {
+    client_user?: { company?: { name: string } };
+    company?: { name: string };
+    company_name?: string;
+  };
+  member_user?: { name: string; id: number; profile_pic?: string };
+  leader_user?: { name: string; id: number; profile_pic?: string };
+  assigned_to_user?: { name: string; id: number };
+  assigned_to?: { name: string; id: number } | string; // Sometimes string in older parts
+  
+  // Requirement relation aliases
+  task_requirement?: { name: string; id: number };
+  requirement_relation?: { name: string; id: number };
+  requirement_name?: string;
+  requirement?: { name: string; id: number };
 }
 
 export interface Workspace {
@@ -173,8 +212,18 @@ export interface Employee {
   emergencyContactPhone?: string;
   timezone?: string;
   
-  // Add index signature if we want to allow extra props for now, 
-  // but better to be strict. I'll omit it to force discovery.
+  // Extended fields for EmployeesPage mapping
+  user_id?: number;
+  designation?: string;
+  mobile_number?: string;
+  user_profile?: { mobile_number?: string; phone?: string };
+  user?: { mobile_number?: string; phone?: string };
+  hourly_rates?: number;
+  date_of_joining?: string;
+  skills?: string[];
+  user_employee?: { is_active?: boolean };
+  employee_type?: string;
+  employee_access?: string;
 }
 
 export interface CalendarEvent {

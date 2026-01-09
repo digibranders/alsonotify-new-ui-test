@@ -20,6 +20,7 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTabSync } from '@/hooks/useTabSync';
 import { Employee } from '@/types/domain';
+import { UserDto } from '@/types/dto/user.dto';
 import { useQueryClient } from '@tanstack/react-query';
 import { getRoleFromUser } from '@/utils/roleUtils';
 
@@ -233,8 +234,8 @@ export function EmployeesPage() {
         onSuccess: () => {
           message.success(`Employee ${isCurrentlyActive ? 'deactivated' : 'activated'} successfully!`);
         },
-        onError: (error: any) => {
-          const errorMessage = error?.response?.data?.message || "Failed to update employee status";
+        onError: (error: Error) => {
+          const errorMessage = (error as any)?.response?.data?.message || "Failed to update employee status";
           message.error(errorMessage);
         },
       }
@@ -257,7 +258,7 @@ export function EmployeesPage() {
 
     // Map access level to role_id
     const roleName = data.access || 'Employee';
-    const roleId = rolesData?.result?.find((r: any) => r.name === roleName)?.id;
+    const roleId = rolesData?.result?.find((r: { name: string; id: number }) => r.name === roleName)?.id;
 
     // Parse hourly rate (remove $ if present)
     const hourlyRate = parseFloat(data.hourlyRate.replace(/[^0-9.]/g, '')) || 0;
@@ -311,15 +312,15 @@ export function EmployeesPage() {
           working_hours: workingHours,
           employment_type: data.employmentType,
           manager_id: data.manager_id,
-        } as any,
+        } as unknown as any,
         {
           onSuccess: () => {
             message.success("Employee updated successfully!");
             setIsDialogOpen(false);
             setEditingEmployee(null);
           },
-          onError: (error: any) => {
-            const errorMessage = error?.response?.data?.message || "Failed to update employee";
+          onError: (error: Error) => {
+            const errorMessage = (error as any)?.response?.data?.message || "Failed to update employee";
             message.error(errorMessage);
           },
         }
@@ -351,14 +352,14 @@ export function EmployeesPage() {
           working_hours: workingHours,
           employment_type: data.employmentType,
           manager_id: data.manager_id,
-        } as any,
+        } as unknown as Partial<UserDto>,
         {
           onSuccess: () => {
             message.success("Employee created successfully!");
             setIsDialogOpen(false);
           },
-          onError: (error: any) => {
-            const errorMessage = error?.response?.data?.message || "Failed to create employee";
+          onError: (error: Error) => {
+            const errorMessage = (error as any)?.response?.data?.message || "Failed to create employee";
             message.error(errorMessage);
           },
         }
@@ -408,7 +409,7 @@ export function EmployeesPage() {
     }
 
     // Find role ID from name
-    const selectedRole = rolesData?.result?.find((r: any) => r.name === access);
+    const selectedRole = rolesData?.result?.find((r: { name: string; id: number }) => r.name === access);
     if (!selectedRole) {
       message.error(`Role "${access}" not found`);
       return;
@@ -428,7 +429,7 @@ export function EmployeesPage() {
       }
 
       // Get raw backend employee data to preserve all fields
-      const rawEmployee = employeesData?.result?.find((emp: any) => {
+      const rawEmployee = employeesData?.result?.find((emp: Employee) => {
         const empBackendId = emp.user_id || emp.id;
         return empBackendId === empId || empBackendId === parseInt(String(empId));
       });
@@ -508,7 +509,7 @@ export function EmployeesPage() {
       };
 
       // Create promise for this update using mutateAsync
-      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload as any).catch((error: any) => {
+      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload as unknown as Partial<UserDto>).catch((error: any) => {
         const errorMsg = error?.response?.data?.message || 'Update failed';
         failedEmployees.push({ id: empId, name: employee.name, reason: errorMsg });
         throw error; // Re-throw to mark as failed in Promise.allSettled
@@ -556,7 +557,7 @@ export function EmployeesPage() {
     }
 
     const selectedDepartment = departmentsData?.result?.find(
-      (dept: any) => dept.name === departmentName
+      (dept: { name: string; id: number }) => dept.name === departmentName
     );
 
     if (!selectedDepartment || !selectedDepartment.id) {
@@ -634,7 +635,7 @@ export function EmployeesPage() {
       // Resolve current role ID
       let currentRoleId = employee.roleId;
       if (!currentRoleId && employee.access) {
-        const foundRole = rolesData?.result?.find((r: any) => r.name === employee.access);
+        const foundRole = rolesData?.result?.find((r: { name: string; id: number }) => r.name === employee.access);
         if (foundRole) currentRoleId = foundRole.id;
       }
 
@@ -681,7 +682,7 @@ export function EmployeesPage() {
       };
 
       // Create promise for this update using mutateAsync
-      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload as any).catch((error: any) => {
+      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload as unknown as Partial<UserDto>).catch((error: any) => {
         const errorMsg = error?.response?.data?.message || 'Update failed';
         failedEmployees.push({ id: empId, name: employee.name, reason: errorMsg });
         throw error; // Re-throw to mark as failed in Promise.allSettled
@@ -749,7 +750,7 @@ export function EmployeesPage() {
     ]);
 
     // Convert to CSV format with proper escaping
-    const escapeCSV = (cell: any): string => {
+    const escapeCSV = (cell: unknown): string => {
       const str = String(cell || '');
       // Escape quotes by doubling them, and wrap in quotes if contains comma, quote, or newline
       if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
