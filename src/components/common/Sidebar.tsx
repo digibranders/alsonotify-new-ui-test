@@ -113,9 +113,9 @@ const NAV_ITEMS: NavItemConfig[] = [
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
   {
-    id: 'invoices',
-    path: '/dashboard/invoices',
-    label: 'Invoices',
+    id: 'finance',
+    path: '/dashboard/finance',
+    label: 'Finance',
     icon: <Receipt24Filled />,
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
