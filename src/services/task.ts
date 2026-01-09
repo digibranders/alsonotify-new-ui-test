@@ -2,7 +2,7 @@
 import axiosApi from "../config/axios";
 import { ApiResponse } from "../types/api";
 import { ApiError, NetworkError, getErrorMessage, isAxiosError } from "../types/errors";
-import { TaskDto, WorklogDto, AssignedTaskDetailDto } from "../types/dto/task.dto";
+import { TaskDto, WorklogDto, AssignedTaskDetailDto, CreateTaskRequestDto, UpdateTaskRequestDto } from "../types/dto/task.dto";
 
 /**
  * Validate task ID
@@ -28,18 +28,17 @@ function validatePagination(limit: number, skip: number): void {
 /**
  * Create a new task
  */
-export const createTask = async (params: Partial<TaskDto> & { name?: string }): Promise<ApiResponse<TaskDto>> => {
+export const createTask = async (params: CreateTaskRequestDto): Promise<ApiResponse<TaskDto>> => {
   try {
-    // Handle both 'name' (from form) and 'title' (from TaskDto) - backend expects 'name'
-    const taskName = params.name || params.title;
+    // Backend expects 'name'
+    const taskName = params.name;
 
     // Validate name/title field
     if (!taskName || (typeof taskName === 'string' && taskName.trim().length === 0)) {
       throw new ApiError('Task title is required', 400);
     }
 
-    // Map to backend 'name' field (remove title from params, then add name)
-    const { title: _title, name: _name, ...restParams } = params;
+    const { name: _name, ...restParams } = params;
     const payload = {
       ...restParams,
       name: taskName,
@@ -70,7 +69,7 @@ export const createTask = async (params: Partial<TaskDto> & { name?: string }): 
 /**
  * Update an existing task
  */
-export const updateTask = async (params: TaskDto): Promise<ApiResponse<TaskDto>> => {
+export const updateTask = async (params: UpdateTaskRequestDto): Promise<ApiResponse<TaskDto>> => {
   try {
     validateTaskId(params.id);
 

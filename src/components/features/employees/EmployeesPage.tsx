@@ -20,7 +20,7 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTabSync } from '@/hooks/useTabSync';
 import { Employee } from '@/types/domain';
-import { UserDto } from '@/types/dto/user.dto';
+import { UserDto, CreateEmployeeRequestDto, UpdateEmployeeRequestDto } from '@/types/dto/user.dto';
 import { useQueryClient } from '@tanstack/react-query';
 import { getRoleFromUser } from '@/utils/roleUtils';
 import { queryKeys } from "../../../lib/queryKeys";
@@ -291,27 +291,29 @@ export function EmployeesPage() {
     const fullMobileNumber = `${countryCode} ${phoneNumber}`.trim();
 
     if (editingEmployee) {
+      const updatePayload: UpdateEmployeeRequestDto = {
+        id: editingEmployee.id,
+        name: fullName,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        mobile_number: fullMobileNumber,
+        designation: data.role,
+        department_id: departmentId || undefined,
+        role_id: roleId,
+        experience: Number.parseInt(data.experience) || 0,
+        skills: data.skillsets.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0),
+        date_of_joining: dateOfJoining,
+        salary_yearly: Number.parseFloat(data.salary) || 0,
+        hourly_rates: hourlyRate,
+        no_of_leaves: Number.parseFloat(data.leaves) || 0,
+        working_hours: workingHours,
+        employment_type: data.employmentType,
+        manager_id: data.manager_id,
+      };
+
       updateEmployeeMutation.mutate(
-        {
-          id: editingEmployee.id,
-          name: fullName,
-          first_name: data.firstName,
-          last_name: data.lastName,
-          email: data.email,
-          mobile_number: fullMobileNumber,
-          designation: data.role,
-          department_id: departmentId,
-          role_id: roleId, // Send resolved role ID
-          experience: parseInt(data.experience) || 0,
-          skills: data.skillsets.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0),
-          date_of_joining: dateOfJoining,
-          salary_yearly: parseFloat(data.salary) || 0,
-          hourly_rates: hourlyRate,
-          no_of_leaves: parseFloat(data.leaves) || 0,
-          working_hours: workingHours,
-          employment_type: data.employmentType,
-          manager_id: data.manager_id,
-        } as unknown as any,
+        updatePayload,
         {
           onSuccess: () => {
             message.success("Employee updated successfully!");
@@ -331,27 +333,28 @@ export function EmployeesPage() {
         return;
       }
 
-      createEmployeeMutation.mutate(
-        {
-          name: fullName,
-          first_name: data.firstName,
-          last_name: data.lastName,
-          email: data.email,
-          mobile_number: fullMobileNumber,
-          designation: data.role,
-          department_id: departmentId,
-          role_id: roleId, // Send resolved role ID
-          experience: parseInt(data.experience) || 0,
-          skills: data.skillsets.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0),
-          date_of_joining: dateOfJoining,
+      const createPayload: CreateEmployeeRequestDto = {
+        name: fullName,
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        mobile_number: fullMobileNumber,
+        designation: data.role,
+        department_id: departmentId || undefined,
+        role_id: roleId,
+        experience: Number.parseInt(data.experience) || 0,
+        skills: data.skillsets.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0),
+        date_of_joining: dateOfJoining,
+        salary_yearly: Number.parseFloat(data.salary) || 0,
+        hourly_rates: hourlyRate,
+        no_of_leaves: Number.parseFloat(data.leaves) || 0,
+        working_hours: workingHours,
+        employment_type: data.employmentType,
+        manager_id: data.manager_id,
+      };
 
-          salary_yearly: parseFloat(data.salary) || 0,
-          hourly_rates: hourlyRate,
-          no_of_leaves: parseFloat(data.leaves) || 0,
-          working_hours: workingHours,
-          employment_type: data.employmentType,
-          manager_id: data.manager_id,
-        } as unknown as Partial<UserDto>,
+      createEmployeeMutation.mutate(
+        createPayload,
         {
           onSuccess: () => {
             message.success("Employee created successfully!");
@@ -482,34 +485,34 @@ export function EmployeesPage() {
       }
 
       // Build update payload with all preserved fields
-      const updatePayload: any = {
+      const updatePayload: UpdateEmployeeRequestDto = {
         id: empId,
         name: employee.name, // Required
         email: employee.email, // Required
         role_id: roleId, // Send resolved role ID
         // Preserve all existing fields to prevent them from being set to null
-        designation: re.designation || null,
-        mobile_number: re.mobile_number || re.phone || null,
-        hourly_rates: hourlyRate,
-        salary_yearly: re.salary_yearly || re.salary || null,
+        designation: re.designation || undefined,
+        mobile_number: (re.mobile_number || re.phone) || undefined,
+        hourly_rates: hourlyRate || undefined,
+        salary_yearly: (re.salary_yearly || re.salary) || undefined,
         experience: re.experience || 0,
         skills: Array.isArray(re.skills) ? re.skills : [],
-        date_of_joining: dateOfJoining,
-        no_of_leaves: re.no_of_leaves || null,
+        date_of_joining: dateOfJoining || undefined,
+        no_of_leaves: re.no_of_leaves || undefined,
         // Preserve address fields
-        address: re.address || null,
-        city: re.city || null,
-        state: re.state || null,
-        zipcode: re.zipcode || null,
-        country: re.country || null,
-        late_time: re.late_time || null,
-        profile_pic: re.profile_pic || null,
+        address: re.address || undefined,
+        city: re.city || undefined,
+        state: re.state || undefined,
+        zipcode: re.zipcode || undefined,
+        country: re.country || undefined,
+        late_time: re.late_time || undefined,
+        profile_pic: re.profile_pic || undefined,
         // Only include working_hours if it's a valid object, otherwise omit it (don't send null)
         ...(workingHours !== undefined ? { working_hours: workingHours } : {}),
       };
 
       // Create promise for this update using mutateAsync
-      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload as unknown as any).catch((error: any) => {
+      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload).catch((error: any) => {
         const errorMsg = error?.response?.data?.message || 'Update failed';
         failedEmployees.push({ id: empId, name: employee.name, reason: errorMsg });
         throw error; // Re-throw to mark as failed in Promise.allSettled
@@ -654,35 +657,35 @@ export function EmployeesPage() {
       }
 
       // Build update payload with all preserved fields
-      const updatePayload = {
+      const updatePayload: UpdateEmployeeRequestDto = {
         id: empId,
         name: employee.name, // Required
         email: employee.email, // Required
         role_id: currentRoleId, // Preserve current role ID
-        department_id: departmentId, // The field we're updating
+        department_id: departmentId || undefined, // The field we're updating
         // Preserve all existing fields to prevent them from being set to null
-        designation: (rawEmployee as any).designation || null,
-        mobile_number: (rawEmployee as any).mobile_number || (rawEmployee as any).phone || null,
-        hourly_rates: hourlyRate,
-        salary_yearly: (rawEmployee as any).salary_yearly || (rawEmployee as any).salary || null,
+        designation: (rawEmployee as any).designation || undefined,
+        mobile_number: ((rawEmployee as any).mobile_number || (rawEmployee as any).phone) || undefined,
+        hourly_rates: hourlyRate || undefined,
+        salary_yearly: ((rawEmployee as any).salary_yearly || (rawEmployee as any).salary) || undefined,
         experience: (rawEmployee as any).experience || 0,
         skills: Array.isArray((rawEmployee as any).skills) ? (rawEmployee as any).skills : [],
-        date_of_joining: dateOfJoining,
-        no_of_leaves: (rawEmployee as any).no_of_leaves || null,
+        date_of_joining: dateOfJoining || undefined,
+        no_of_leaves: (rawEmployee as any).no_of_leaves || undefined,
         // Preserve address fields
-        address: (rawEmployee as any).address || null,
-        city: (rawEmployee as any).city || null,
-        state: (rawEmployee as any).state || null,
-        zipcode: (rawEmployee as any).zipcode || null,
-        country: (rawEmployee as any).country || null,
-        late_time: (rawEmployee as any).late_time || null,
-        profile_pic: (rawEmployee as any).profile_pic || null,
+        address: (rawEmployee as any).address || undefined,
+        city: (rawEmployee as any).city || undefined,
+        state: (rawEmployee as any).state || undefined,
+        zipcode: (rawEmployee as any).zipcode || undefined,
+        country: (rawEmployee as any).country || undefined,
+        late_time: (rawEmployee as any).late_time || undefined,
+        profile_pic: (rawEmployee as any).profile_pic || undefined,
         // Only include working_hours if it's a valid object, otherwise omit it (don't send null)
         ...(workingHours !== undefined ? { working_hours: workingHours } : {}),
       };
 
       // Create promise for this update using mutateAsync
-      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload as unknown as any).catch((error: any) => {
+      const updatePromise = updateEmployeeMutation.mutateAsync(updatePayload).catch((error: any) => {
         const errorMsg = error?.response?.data?.message || 'Update failed';
         failedEmployees.push({ id: empId, name: employee.name, reason: errorMsg });
         throw error; // Re-throw to mark as failed in Promise.allSettled

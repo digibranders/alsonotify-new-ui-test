@@ -6,6 +6,8 @@ import { FolderOpen } from 'lucide-react';
 import { useCreateWorkspace, useUpdateWorkspace } from '@/hooks/useWorkspace';
 import { usePartners, useCurrentUserCompany } from '@/hooks/useUser';
 
+import { CreateWorkspaceRequestDto, UpdateWorkspaceRequestDto } from '@/types/dto/workspace.dto';
+
 const { TextArea } = Input;
 const { Option } = Select;
 
@@ -57,30 +59,44 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
             return;
         }
 
-        const payload = {
-            name: newWorkspace.name,
-            description: newWorkspace.description || '',
-            partner_id: newWorkspace.inHouse ? null : newWorkspace.partner_id,
-            in_house: newWorkspace.inHouse,
-        };
-
-        const mutation = initialData ? updateWorkspaceMutation : createWorkspaceMutation;
-        const mutationParams = initialData ? { id: initialData.id, ...payload } : payload;
-
-        mutation.mutate(
-            mutationParams as any,
-            {
+        if (initialData) {
+            const updatePayload: UpdateWorkspaceRequestDto = {
+                id: initialData.id,
+                name: newWorkspace.name,
+                description: newWorkspace.description || '',
+                partner_id: newWorkspace.inHouse ? undefined : (newWorkspace.partner_id || undefined),
+                in_house: newWorkspace.inHouse,
+            };
+            updateWorkspaceMutation.mutate(updatePayload, {
                 onSuccess: (data: any) => {
-                    message.success(`Workspace ${initialData ? 'updated' : 'created'} successfully!`);
+                    message.success(`Workspace updated successfully!`);
                     if (onSuccess) onSuccess(data);
                     onCancel();
                 },
                 onError: (error: any) => {
-                    const errorMessage = error?.response?.data?.message || `Failed to ${initialData ? 'update' : 'create'} workspace`;
+                    const errorMessage = error?.response?.data?.message || `Failed to update workspace`;
                     message.error(errorMessage);
                 },
-            }
-        );
+            });
+        } else {
+            const createPayload: CreateWorkspaceRequestDto = {
+                name: newWorkspace.name,
+                description: newWorkspace.description || '',
+                partner_id: newWorkspace.inHouse ? undefined : (newWorkspace.partner_id || undefined),
+                in_house: newWorkspace.inHouse,
+            };
+            createWorkspaceMutation.mutate(createPayload, {
+                onSuccess: (data: any) => {
+                    message.success(`Workspace created successfully!`);
+                    if (onSuccess) onSuccess(data);
+                    onCancel();
+                },
+                onError: (error: any) => {
+                    const errorMessage = error?.response?.data?.message || `Failed to create workspace`;
+                    message.error(errorMessage);
+                },
+            });
+        }
     };
 
     return (

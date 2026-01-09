@@ -19,7 +19,7 @@ import {
   updateRolePermissions,
   // updatePassword,
 } from "../services/user";
-import { UserDto, RoleDto, ModuleActionGroupDto } from "../types/dto/user.dto";
+import { UserDto, RoleDto, ModuleActionGroupDto, CreateEmployeeRequestDto, UpdateEmployeeRequestDto, UpdateUserProfileRequestDto } from "../types/dto/user.dto";
 import { ProfileUpdateInput, CompanyUpdateInput } from "../types/genericTypes";
 
 import { mapUserDtoToEmployee, mapUserToDomain } from "../utils/mappers/user";
@@ -72,7 +72,7 @@ export const useCreateEmployee = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: Partial<UserDto>) => createUser(params),
+    mutationFn: (params: CreateEmployeeRequestDto) => createUser(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.users.employeesRoot() });
     },
@@ -83,7 +83,7 @@ export const useUpdateEmployee = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...params }: { id: number } & Partial<UserDto>) => updateUserById(id, params),
+    mutationFn: (data: UpdateEmployeeRequestDto) => updateUserById(data.id, data),
     onSuccess: (_, variables) => {
       // Invalidate all employee queries (both active and inactive)
       queryClient.invalidateQueries({ queryKey: queryKeys.users.employeesRoot() });
@@ -98,7 +98,7 @@ export const useUpdateProfile = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: ProfileUpdateInput) => updateCurrentUserProfile(params),
+    mutationFn: (params: UpdateUserProfileRequestDto) => updateCurrentUserProfile(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
     },
@@ -161,7 +161,7 @@ export const useCreateClient = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: Partial<UserDto>) => createUser(params),
+    mutationFn: (params: CreateEmployeeRequestDto) => createUser(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.users.clients() });
     },

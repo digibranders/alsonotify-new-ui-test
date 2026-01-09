@@ -3,7 +3,7 @@ import axiosApi from "../config/axios";
 import { ApiResponse } from "../types/api";
 import { ProfileUpdateInput, CompanyUpdateInput } from "../types/genericTypes";
 import { CompanyProfile } from "../types/auth";
-import { UserDto, RoleDto, ModuleActionGroupDto } from "../types/dto/user.dto";
+import { UserDto, RoleDto, ModuleActionGroupDto, CreateEmployeeRequestDto, UpdateEmployeeRequestDto, UpdateUserProfileRequestDto } from "../types/dto/user.dto";
 
 // Get user details
 export const getUserDetails = async () => {
@@ -12,13 +12,13 @@ export const getUserDetails = async () => {
 };
 
 // Create user/employee
-export const createUser = async (params: Partial<UserDto>): Promise<ApiResponse<UserDto>> => {
+export const createUser = async (params: CreateEmployeeRequestDto): Promise<ApiResponse<UserDto>> => {
   const { data } = await axiosApi.post<ApiResponse<UserDto>>("/user/create", params);
   return data;
 };
 
 // Update user by ID
-export const updateUserById = async (id: number, params: Partial<UserDto>): Promise<ApiResponse<UserDto>> => {
+export const updateUserById = async (id: number, params: UpdateEmployeeRequestDto): Promise<ApiResponse<UserDto>> => {
   const { data } = await axiosApi.put<ApiResponse<UserDto>>(`/user/update/${id}`, params);
   return data;
 };
@@ -68,7 +68,7 @@ export const searchEmployees = async (): Promise<ApiResponse<{ label: string; va
 
 // Update user profile
 export const updateCurrentUserProfile = async (
-  params: ProfileUpdateInput
+  params: UpdateUserProfileRequestDto
 ): Promise<ApiResponse<UserDto>> => {
   // Ensure mobile_number is sent if phone is provided
   const payload = {

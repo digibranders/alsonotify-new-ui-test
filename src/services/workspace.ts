@@ -1,17 +1,17 @@
 
 import axiosApi from "../config/axios";
 import { ApiResponse } from "../types/api";
-import { WorkspaceDto, ProjectCommentDto } from "../types/dto/workspace.dto";
-import { RequirementDto } from "../types/dto/requirement.dto";
+import { WorkspaceDto, ProjectCommentDto, CreateWorkspaceRequestDto, UpdateWorkspaceRequestDto } from "../types/dto/workspace.dto";
+import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDto } from "../types/dto/requirement.dto";
 
 // Create workspace
-export const createWorkspace = async (params: WorkspaceDto): Promise<ApiResponse<WorkspaceDto>> => {
+export const createWorkspace = async (params: CreateWorkspaceRequestDto): Promise<ApiResponse<WorkspaceDto>> => {
   const { data } = await axiosApi.post<ApiResponse<WorkspaceDto>>("/workspace/create", params);
   return data;
 };
 
 // Update workspace
-export const updateWorkspace = async (params: WorkspaceDto): Promise<ApiResponse<WorkspaceDto>> => {
+export const updateWorkspace = async (params: UpdateWorkspaceRequestDto): Promise<ApiResponse<WorkspaceDto>> => {
   const { data } = await axiosApi.put<ApiResponse<WorkspaceDto>>(`/workspace/update/${params.id}`, params);
   return data;
 };
@@ -51,12 +51,12 @@ export const searchWorkspaces = async (name = ""): Promise<ApiResponse<Workspace
 };
 
 // Requirement operations
-export const addRequirementToWorkspace = async (params: Partial<RequirementDto>): Promise<ApiResponse<RequirementDto>> => {
+export const addRequirementToWorkspace = async (params: CreateRequirementRequestDto): Promise<ApiResponse<RequirementDto>> => {
   const { data } = await axiosApi.post<ApiResponse<RequirementDto>>("/requirement", params);
   return data;
 };
 
-export const updateRequirementById = async (params: Partial<RequirementDto>): Promise<ApiResponse<RequirementDto>> => {
+export const updateRequirementById = async (params: UpdateRequirementRequestDto): Promise<ApiResponse<RequirementDto>> => {
   const { data } = await axiosApi.patch<ApiResponse<RequirementDto>>(`/requirement/update/${params.id}`, params);
   return data;
 };

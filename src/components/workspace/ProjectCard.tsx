@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 
 import dayjs from 'dayjs';
 import { Workspace, Task as DomainTask } from '@/types/domain';
-import { TaskDto } from '@/types/dto/task.dto';
+import { TaskDto, CreateTaskRequestDto } from '@/types/dto/task.dto';
 
 
 const { TextArea } = Input;
@@ -152,8 +152,8 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
       return;
     }
 
-    createTaskMutation.mutate({
-      title: newTask.name,
+    const taskPayload: CreateTaskRequestDto = {
+      name: newTask.name,
       description: newTask.description,
       workspace_id: Number(id),
       assigned_to: newTask.assigneeId ? Number(newTask.assigneeId) : undefined,
@@ -161,7 +161,9 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
       end_date: newTask.dueDate ? newTask.dueDate.toISOString() : new Date().toISOString(),
       status: newTask.status,
       priority: newTask.priority.toUpperCase(),
-    } as unknown as Partial<TaskDto>, { // Assuming create payload is partial task
+    };
+
+    createTaskMutation.mutate(taskPayload, { // Assuming create payload is partial task
       onSuccess: () => {
         message.success('Task created successfully');
         setIsTaskModalOpen(false);

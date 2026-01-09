@@ -23,13 +23,13 @@ import dayjs, { Dayjs } from 'dayjs';
 const { TextArea } = Input;
 const { Option } = Select;
 
-import { RequirementsForm, RequirementFormData } from '../../modals/RequirementsForm';
+import { RequirementsForm } from '../../modals/RequirementsForm';
 import { WorkspaceForm } from '../../modals/WorkspaceForm';
 
 
 
 import { Requirement, Workspace } from '@/types/domain';
-import { RequirementDto } from '@/types/dto/requirement.dto';
+import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDto } from '@/types/dto/requirement.dto';
 
 // Quotation Dialog Component
 function QuotationDialog({
@@ -649,70 +649,38 @@ export function RequirementsPage() {
     });
   };
 
-  const handleCreateRequirement = (data: RequirementFormData) => {
-    if (!data.title) {
+  const handleCreateRequirement = (data: CreateRequirementRequestDto) => {
+    if (!data.title && !data.name) {
       messageApi.error("Requirement title is required");
       return;
     }
-    if (!data.workspace) {
+    if (!data.workspace_id) {
       messageApi.error("Please select a workspace");
       return;
     }
 
-    console.log('handleCreateRequirement DEBUG:', {
-      type: data.type,
-      contact_person_id: data.contact_person_id,
-      receiver_company_id: data.receiver_company_id,
-      // priority: data.priority, // removed
-      // project_id: data.project_id, // removed
-    });
-
-    createRequirementMutation.mutate({
-      workspace_id: Number(data.workspace),
-      project_id: Number(data.workspace),
-      name: data.title,
-      description: data.description || '',
-      start_date: new Date().toISOString(),
-      end_date: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
-      // Status is determined by backend based on type (outsourced=Waiting, etc.)
-      is_high_priority: data.is_high_priority,
-
-      type: data.type,
-      budget: Number(data.budget) || 0,
-      contact_person_id: data.contact_person_id,
-      contact_person: data.contactPerson,
-      receiver_company_id: data.receiver_company_id, // Pass the receiver company ID
-    } as unknown as any, {
+    createRequirementMutation.mutate(data, {
       onSuccess: () => {
         messageApi.success("Requirement created successfully");
         setIsDialogOpen(false);
       },
       onError: (error: any) => {
-        // Keeping error as any for now as AxiosError typing can be verbose to import
         messageApi.error(error?.response?.data?.message || "Failed to create requirement");
       }
     });
-
   };
 
-  const handleUpdateRequirement = (data: RequirementFormData) => {
+  const handleUpdateRequirement = (data: CreateRequirementRequestDto) => {
     if (!editingReq) return;
 
-    updateRequirementMutation.mutate({
-      requirement_id: editingReq.id,
-      name: data.title,
-      description: data.description || '',
-      workspace_id: Number(data.workspace),
-      project_id: Number(data.workspace),
-      is_high_priority: data.is_high_priority,
-      start_date: editingReq.startDate,
-      end_date: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
-      type: data.type,
-      budget: Number(data.budget) || 0,
-      contact_person_id: data.contact_person_id,
-      contact_person: data.contactPerson,
-      receiver_company_id: data.receiver_company_id, // Pass the receiver company ID
-    } as unknown as any, {
+    // We need to construct UpdateRequirementRequestDto which includes id.
+    // The incoming data is CreateRequirementRequestDto (from form).
+    const updatePayload: UpdateRequirementRequestDto = {
+      ...data,
+      id: editingReq.id,
+    };
+
+    updateRequirementMutation.mutate(updatePayload, {
       onSuccess: () => {
         messageApi.success("Requirement updated successfully");
         setIsDialogOpen(false);

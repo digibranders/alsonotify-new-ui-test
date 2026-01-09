@@ -101,3 +101,23 @@ export interface AssignedTaskDetailDto {
     time_in_seconds: number | null;
   } | null;
 }
+
+export interface CreateTaskRequestDto {
+  name: string;
+  description?: string;
+  status?: string;
+  priority?: string;
+  due_date?: string;
+  start_date?: string;
+  end_date?: string;
+  assigned_to?: number;
+  workspace_id?: number;
+  requirement_id?: number;
+  parent_task_id?: number;
+  estimated_time?: number;
+  is_high_priority?: boolean;
+}
+
+export interface UpdateTaskRequestDto extends Partial<CreateTaskRequestDto> {
+  id: number;
+}

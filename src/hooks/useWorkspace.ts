@@ -13,8 +13,8 @@ import {
   getCollaborativeRequirements,
   reactivateWorkspace,
 } from "../services/workspace";
-import { WorkspaceDto } from "../types/dto/workspace.dto";
-import { RequirementDto } from "../types/dto/requirement.dto";
+import { WorkspaceDto, CreateWorkspaceRequestDto, UpdateWorkspaceRequestDto } from "../types/dto/workspace.dto";
+import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDto } from "../types/dto/requirement.dto";
 import { getTasks } from "../services/task";
 export { usePartners } from "./useUser";
 
@@ -66,7 +66,7 @@ export const useCreateWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: WorkspaceDto) => createWorkspace(params),
+    mutationFn: (params: CreateWorkspaceRequestDto) => createWorkspace(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.listRoot() });
     },
@@ -77,7 +77,7 @@ export const useUpdateWorkspace = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...params }: WorkspaceDto) => updateWorkspace({ id, ...params } as WorkspaceDto),
+    mutationFn: ({ id, ...params }: UpdateWorkspaceRequestDto) => updateWorkspace({ id, ...params } as UpdateWorkspaceRequestDto),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.listRoot() });
       queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(variables.id) });
@@ -123,7 +123,7 @@ export const useCreateRequirement = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: Partial<RequirementDto>) => addRequirementToWorkspace(params),
+    mutationFn: (params: CreateRequirementRequestDto) => addRequirementToWorkspace(params),
     onSuccess: (_, variables) => {
       if (variables.workspace_id) {
         queryClient.invalidateQueries({ queryKey: queryKeys.requirements.byWorkspace(variables.workspace_id) });
@@ -139,7 +139,7 @@ export const useUpdateRequirement = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: Partial<RequirementDto>) => updateRequirementById(params),
+    mutationFn: (params: UpdateRequirementRequestDto) => updateRequirementById(params),
     onSuccess: (_, variables) => {
       if (variables.workspace_id) {
         queryClient.invalidateQueries({ queryKey: queryKeys.requirements.byWorkspace(variables.workspace_id) });

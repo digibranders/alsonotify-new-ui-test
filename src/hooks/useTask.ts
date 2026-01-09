@@ -13,7 +13,7 @@ import {
   getAssignedTaskDetail,
   requestRevision,
 } from "../services/task";
-import { TaskDto } from '@/types/dto/task.dto';
+import { TaskDto, CreateTaskRequestDto, UpdateTaskRequestDto } from '@/types/dto/task.dto';
 
 // Re-export useClients for convenience
 // useClients removed
@@ -53,7 +53,7 @@ export const useCreateTask = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (params: Partial<TaskDto>) => createTask(params),
+    mutationFn: (params: CreateTaskRequestDto) => createTask(params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.assigned() });
@@ -65,11 +65,7 @@ export const useUpdateTask = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...params }: Partial<TaskDto> & { id: number }) => updateTask({ id, ...params } as TaskDto), // Cast to TaskDto as service expects full? No, service likely updated to Partial. I'll check service.
-    // Wait, service updateTask takes TaskDto (strict). I should update service to Partial first? 
-    // Step 272 updated service but might be strict.
-    // I updated workspace service to Partial.
-    // I should update task service to Partial.
+    mutationFn: (params: UpdateTaskRequestDto) => updateTask(params),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(variables.id) });

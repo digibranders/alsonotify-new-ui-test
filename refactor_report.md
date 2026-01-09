@@ -1,45 +1,73 @@
-# Refactor Report: Rich Text Sanitization (Step 5)
+# Refactor Report: Payload DTOs
+
+**Status**: ✅ Complete
+**Date**: 2026-01-09
 
 ## Executive Summary
 
-Roadmap Step 5 is complete. We have secured the application's Rich Text capabilities by enforcing sanitization on both the write and set paths of the `RichTextEditor` and confirming all renderers use `sanitizeRichText`. This eliminates XSS risks from user-generated content in notes, requirements, and tasks. A new test suite was added to prevent regression.
+We have successfully eliminated `as any` casts in payload creation and submission paths for Task, Requirement, Workspace, and Employee entities. We defined strict Request DTOs, updated service and hook signatures, and refactored UI components to comply with these new types.
 
-## Files Touched
+The system now enforces strict type checking on all mutations, preventing payload mismatch regressions. All validation gates (Typecheck, Lint, Build) are passing.
 
--   `src/components/common/RichTextEditor.tsx` (Patched initial mount gap)
--   `src/components/common/RichTextEditor.test.tsx` (New regression tests)
--   `vitest.config.ts` (Updated to support component tests)
+## Changes Implemented
 
-## Security Summary
+### 1. DTO Definitions
 
-| Surface               | Status     | Notes                                                                        |
-| :-------------------- | :--------- | :--------------------------------------------------------------------------- |
-| **Editor Write Path** | ✅ Secured | `onChange` emits sanitized HTML using `sanitizeRichText`.                    |
-| **Editor Set Path**   | ✅ Secured | Sanitizes value before setting `innerHTML` (including initial mount).        |
-| **Renderers**         | ✅ Secured | `NotesWidget`, `NotesPage`, `RequirementDetailsPage` use `sanitizeRichText`. |
+Established strict Request DTOs mirroring backend expectations and UI requirements:
+
+-   `CreateTaskRequestDto`, `UpdateTaskRequestDto`
+-   `CreateRequirementRequestDto`, `UpdateRequirementRequestDto`
+-   `CreateWorkspaceRequestDto`, `UpdateWorkspaceRequestDto`
+-   `CreateEmployeeRequestDto`, `UpdateEmployeeRequestDto`
+-   `UpdateUserProfileRequestDto`
+
+### 2. Service Layer Hardening
+
+Updated service functions in `src/services/` to accept specific DTOs instead of generic `any` or loose partials:
+
+-   `user.ts`: `createUser`, `updateUserById`, `updateCurrentUserProfile`
+-   `task.ts`: `createTask`, `updateTask`
+-   `workspace.ts`: `createWorkspace`, `updateWorkspace`, `addRequirementToWorkspace`, `updateRequirementById`
+
+### 3. Hook Layer Hardening
+
+Refactored React Query hooks in `src/hooks/` to enforce input types on mutations:
+
+-   `useUser.ts`: `useCreateEmployee`, `useUpdateEmployee` (fixed ID handling), `useCreateClient`
+-   `useTask.ts`: `useCreateTask`, `useUpdateTask`
+-   `useWorkspace.ts`: `useCreateWorkspace`, `useUpdateWorkspace`, `useCreateRequirement`, `useUpdateRequirement`
+
+### 4. UI Call Site Refactoring
+
+Systematically removed `as any` casts and fixed payload construction in:
+
+-   **`EmployeesPage.tsx`**: Removed `as any` from create/update/bulk mutations. Corrected field names (`joining_date` -> `date_of_joining`, added `manager_id`).
+-   **`ProjectCard.tsx`**: Secured task creation payload.
+-   **`Topbar.tsx`**: Secured global create actions for Tasks and Requirements.
+-   **`RequirementsForm.tsx`**: Updated form submission to emit strict DTOs.
+-   **`RequirementsPage.tsx`**: Updated handlers to accept DTOs directly, removing redundant logic and casts.
+-   **`WorkspaceForm.tsx`**: Secured workspace creation/update payloads.
 
 ## Verification Results
 
-| Command             | Result   | Notes                              |
-| :------------------ | :------- | :--------------------------------- |
-| `npm run lint`      | **PASS** | 0 errors, ~588 warnings.           |
-| `npm run typecheck` | **PASS** | 0 errors.                          |
-| `npm run test`      | **PASS** | 52/52 tests passed (+2 new tests). |
-| `npm run build`     | **PASS** | Production build successful.       |
+| Gate                | Status    | Notes                                                |
+| ------------------- | --------- | ---------------------------------------------------- |
+| `npm run typecheck` | ✅ PASSED | 0 Errors (down from initial failures)                |
+| `npm run lint`      | ✅ PASSED | 0 Errors, 586 Warnings (pre-existing, no new errors) |
+| `npm run build`     | ✅ PASSED | Successful production build                          |
 
-## Metrics & Health
+## Key Improvements
 
-| Metric                        | Delta | Current Status                             |
-| :---------------------------- | :---- | :----------------------------------------- |
-| **`dangerouslySetInnerHTML`** | 0     | 3 occurrences (Verified Safe).             |
-| **`.innerHTML`**              | 0     | 1 occurrence (RichTextEditor - Secured).   |
-| **Test Count**                | +2    | 52 tests covering utils + editor security. |
+-   **Type Safety**: Mutations now strictly validate payloads at compile time.
+-   **Code Clarity**: Removed ambiguous `any` casts, making data flow transparent.
+-   **Bug Fixes**: Identified and fixed field name mismatches (e.g. `joining_date` vs `date_of_joining`) that were hidden by `any` casts.
 
-## Risk Notes
+## Codebase Metrics (Post-Refactor)
 
--   **Sanitization Strictness**: The current allowlist is strict. If future requirements need `iframe` (e.g. embeds) or specific attributes, `src/utils/sanitizeHtml.ts` must be updated carefully.
--   **Editor Performance**: Double sanitization (on set + on render) is minimal overhead but ensures safety.
-
-## Next Steps
-
-**Roadmap Step 6**: Reduce `as any` payload escapes by aligning DTO inputs. We will focus on `src/dtos` and service call sites.
+| Metric                | Count | Description                                                           |
+| --------------------- | ----- | --------------------------------------------------------------------- |
+| **Typecheck Errors**  | **0** | PASSED. No compilation errors.                                        |
+| **Lint Warnings**     | 586   | Mostly legacy warnings, no new warnings introduced.                   |
+| **`as any` Casts**    | 111   | Reduced from mutation paths. Remaining usage is in legacy components. |
+| **`: any` Types**     | 164   | Remaining usage in legacy services/components.                        |
+| **Total `any` Token** | 771   | Total occurrences including comments and strings.                     |

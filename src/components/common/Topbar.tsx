@@ -40,6 +40,9 @@ const { TextArea } = Input;
 const { Text } = Typography;
 const { Option } = Select;
 
+import { CreateTaskRequestDto } from '@/types/dto/task.dto';
+import { CreateRequirementRequestDto } from '@/types/dto/requirement.dto';
+
 type UserRole = 'Admin' | 'Manager' | 'Leader' | 'Employee';
 
 interface HeaderProps {
@@ -226,8 +229,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
       return;
     }
 
-    createRequirementMutation.mutate(
-      {
+    const requirementPayload: CreateRequirementRequestDto = {
         workspace_id: Number(data.workspace_id),
         project_id: Number(data.workspace_id), // Backward compatibility
         name: data.title,
@@ -241,7 +243,10 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         contact_person_id: data.contact_person_id,
         receiver_company_id: data.receiver_company_id,
         budget: Number(data.budget) || 0,
-      } as any,
+    };
+
+    createRequirementMutation.mutate(
+      requirementPayload,
       {
         onSuccess: () => {
           message.success("Requirement created successfully!");
@@ -507,11 +512,12 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
               message.error("Start Date is required");
               return;
             }
-            const formattedData = {
+            const formattedData: CreateTaskRequestDto = {
               ...data,
               start_date: data.start_date,
+              name: data.title || data.name, // Ensure name is present
             };
-            createTaskMutation.mutate(formattedData as any, {
+            createTaskMutation.mutate(formattedData, {
               onSuccess: () => {
                 setShowTaskDialog(false);
                 message.success("Task created successfully");
