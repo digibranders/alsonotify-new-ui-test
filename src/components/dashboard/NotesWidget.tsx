@@ -1,9 +1,15 @@
+
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNotes } from "@/hooks/useNotes";
 import { sanitizeRichText } from "@/utils/sanitizeHtml";
-import { Plus, Archive, Trash2 } from 'lucide-react';
+import { Archive, Plus, Trash2 } from "lucide-react";
+import { queryKeys } from "../../lib/queryKeys";
 import { Checkbox, App } from 'antd';
-import { getNotes, createNote, deleteNote, archiveNote, Note, NoteType, ChecklistItem } from "@/services/notes";
+import { createNote, deleteNote, archiveNote } from "@/services/notes";
+import { Note } from "@/types/domain";
+import { NoteTypeDto as NoteType } from "@/types/dto/note.dto";
+import { ChecklistItem } from "@/types/domain";
 import Link from "next/link";
 import svgPaths from "../../constants/iconPaths";
 import { NoteComposerModal } from "../common/NoteComposerModal";
@@ -16,10 +22,7 @@ export function NotesWidget({ onNavigate }: { onNavigate?: (page: string) => voi
     const [viewingNote, setViewingNote] = useState<Note | null>(null);
     const [showViewModal, setShowViewModal] = useState(false);
 
-    const { data, isLoading } = useQuery({
-        queryKey: ['notes', 'dashboard'],
-        queryFn: () => getNotes(0, 4, false), // Fetch 4 for the grid, exclude archived
-    });
+    const { data, isLoading } = useNotes(0, 4, false); // Fetch 4 for the grid, exclude archived
 
     const notesList: Note[] = data?.result && Array.isArray(data.result) ? data.result : [];
 
@@ -28,7 +31,7 @@ export function NotesWidget({ onNavigate }: { onNavigate?: (page: string) => voi
         onSuccess: () => {
             messageApi.success("Note created");
             setShowDialog(false);
-            queryClient.invalidateQueries({ queryKey: ['notes'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.notes.all() });
         },
         onError: () => messageApi.error("Failed to create note")
     });
@@ -55,7 +58,7 @@ export function NotesWidget({ onNavigate }: { onNavigate?: (page: string) => voi
             messageApi.success("Note permanently deleted");
             setShowViewModal(false);
             setViewingNote(null);
-            queryClient.invalidateQueries({ queryKey: ['notes'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.notes.all() });
         },
         onError: () => messageApi.error("Failed to delete note")
     });
@@ -66,7 +69,7 @@ export function NotesWidget({ onNavigate }: { onNavigate?: (page: string) => voi
             messageApi.success("Note archived");
             setShowViewModal(false);
             setViewingNote(null);
-            queryClient.invalidateQueries({ queryKey: ['notes'] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.notes.all() });
         },
         onError: () => messageApi.error("Failed to archive note")
     });

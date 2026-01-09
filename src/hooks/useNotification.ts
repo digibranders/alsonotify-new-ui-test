@@ -5,10 +5,11 @@ import {
   markNotificationRead,
   type Notification,
 } from "../services/notification";
+import { queryKeys } from "../lib/queryKeys";
 
 export const useNotifications = () => {
   return useQuery({
-    queryKey: ["notifications"],
+    queryKey: queryKeys.notifications.all(),
     queryFn: () => fetchNotifications(),
     staleTime: 30_000, // 30 seconds
   });
@@ -20,7 +21,7 @@ export const useMarkAllNotificationsRead = () => {
   return useMutation({
     mutationFn: () => markAllNotificationsRead(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() });
     },
   });
 };
@@ -31,7 +32,7 @@ export const useMarkNotificationRead = () => {
   return useMutation({
     mutationFn: (id: number) => markNotificationRead(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() });
     },
   });
 };

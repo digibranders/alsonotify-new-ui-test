@@ -11,6 +11,7 @@ import {
   AdminFeedbackFilters,
   FeedbackStatus,
 } from '@/services/feedback';
+import { queryKeys } from "../lib/queryKeys";
 
 export function useCreateFeedback() {
   const queryClient = useQueryClient();
@@ -18,15 +19,15 @@ export function useCreateFeedback() {
   return useMutation({
     mutationFn: (data: CreateFeedbackDto) => createFeedback(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feedback'] });
-      queryClient.invalidateQueries({ queryKey: ['adminFeedbackList'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.feedback.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.feedback.admin() });
     },
   });
 }
 
 export function useFeedbackList(filters?: FeedbackListFilters) {
   return useQuery({
-    queryKey: ['feedback', filters],
+    queryKey: queryKeys.feedback.list(filters),
     queryFn: () => getFeedbackList(filters),
   });
 }
@@ -37,7 +38,7 @@ export function useToggleFeedbackVote() {
   return useMutation({
     mutationFn: (feedbackId: number) => toggleFeedbackVote(feedbackId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['feedback'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.feedback.all() });
     },
   });
 }
@@ -46,7 +47,7 @@ export function useToggleFeedbackVote() {
 
 export function useAdminFeedbackList(filters?: AdminFeedbackFilters) {
   return useQuery({
-    queryKey: ['adminFeedbackList', filters],
+    queryKey: queryKeys.feedback.adminList(filters),
     queryFn: () => getAdminFeedbackList(filters),
   });
 }
@@ -58,7 +59,7 @@ export function useUpdateFeedbackStatus() {
     mutationFn: ({ id, status }: { id: number; status: FeedbackStatus }) => 
       updateFeedbackStatus(id, status),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminFeedbackList'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.feedback.admin() });
     },
   });
 }
@@ -69,7 +70,7 @@ export function useSoftDeleteFeedback() {
   return useMutation({
     mutationFn: (id: number) => softDeleteFeedback(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminFeedbackList'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.feedback.admin() });
     },
   });
 }

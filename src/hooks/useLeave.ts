@@ -2,24 +2,25 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getLeaves, getLeaveById, getCompanyLeaves, getLeaveBalance, updateLeaveStatus, applyForLeave, ApplyLeaveDto } from "../services/leave";
 import { App } from "antd";
 import { getErrorMessage } from "../types/errors";
+import { queryKeys } from "../lib/queryKeys";
 
 export const useLeaves = (options: string = "") => {
     return useQuery({
-        queryKey: ["leaves", options],
+        queryKey: queryKeys.leaves.list(options),
         queryFn: () => getLeaves(options),
     });
 };
 
 export const useCompanyLeaves = () => {
     return useQuery({
-        queryKey: ["companyLeaves"],
+        queryKey: queryKeys.leaves.company(),
         queryFn: () => getCompanyLeaves(),
     });
 };
 
 export const useLeave = (id: number) => {
     return useQuery({
-        queryKey: ["leave", id],
+        queryKey: queryKeys.leaves.detail(id),
         queryFn: () => getLeaveById(id),
         enabled: !!id,
     });
@@ -27,7 +28,7 @@ export const useLeave = (id: number) => {
 
 export const useLeaveBalance = () => {
     return useQuery({
-        queryKey: ["leaveBalance"],
+        queryKey: queryKeys.leaves.balance(),
         queryFn: () => getLeaveBalance(),
     });
 };
@@ -40,8 +41,8 @@ export const useUpdateLeaveStatus = () => {
         mutationFn: ({ id, status }: { id: number; status: "APPROVED" | "REJECTED" }) => 
             updateLeaveStatus(id, status),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["companyLeaves"] });
-            queryClient.invalidateQueries({ queryKey: ["leaves"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.leaves.company() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.leaves.all() });
             message.success("Leave status updated successfully");
         },
         onError: (error: unknown) => {
@@ -57,8 +58,8 @@ export const useApplyForLeave = () => {
     return useMutation({
         mutationFn: (payload: ApplyLeaveDto) => applyForLeave(payload),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["leaves"] });
-            queryClient.invalidateQueries({ queryKey: ["companyLeaves"] });
+            queryClient.invalidateQueries({ queryKey: queryKeys.leaves.all() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.leaves.company() });
             message.success("Leave request submitted successfully");
         },
         onError: (error: unknown) => {

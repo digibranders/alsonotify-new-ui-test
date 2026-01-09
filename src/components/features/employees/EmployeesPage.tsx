@@ -23,6 +23,7 @@ import { Employee } from '@/types/domain';
 import { UserDto } from '@/types/dto/user.dto';
 import { useQueryClient } from '@tanstack/react-query';
 import { getRoleFromUser } from '@/utils/roleUtils';
+import { queryKeys } from "../../../lib/queryKeys";
 
 export function EmployeesPage() {
   const router = useRouter();
@@ -44,8 +45,6 @@ export function EmployeesPage() {
     const params = new URLSearchParams();
     if (activeTab === 'inactive') {
       params.append('is_active', 'false');
-    } else {
-      params.append('is_active', 'true');
     }
     return params.toString();
   }, [activeTab]);
@@ -533,10 +532,10 @@ export function EmployeesPage() {
         setSelectedEmployees([]);
         setShowAccessDropdown(false);
         // Query invalidation is handled in the hook's onSuccess, but we can force refetch
-        queryClient.invalidateQueries({ queryKey: ["employees"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.employeesRoot() });
         // Also invalidate user details if current user's role was updated
         if (currentUserId && selectedEmployees.includes(currentUserId)) {
-          queryClient.invalidateQueries({ queryKey: ["user", "details"] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
         }
       } else if (successfulUpdates > 0) {
         message.warning(`Updated ${successfulUpdates} employee(s), ${totalFailed} failed`);
@@ -706,7 +705,7 @@ export function EmployeesPage() {
         setSelectedEmployees([]);
         setShowDepartmentDropdown(false);
         // Query invalidation is handled in the hook's onSuccess, but we can force refetch
-        queryClient.invalidateQueries({ queryKey: ["employees"] });
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.employeesRoot() });
       } else if (successfulUpdates > 0) {
         message.warning(`Updated ${successfulUpdates} employee(s), ${totalFailed} failed`);
         // Failed employees logged

@@ -483,6 +483,7 @@ export function TasksPage() {
         endDateIso: t.end_date || '',
         task_members: t.task_members || [],
         total_seconds_spent: t.total_seconds_spent || 0,
+        totalSecondsSpent: t.total_seconds_spent || 0,
         execution_mode: t.execution_mode,
       };
     });

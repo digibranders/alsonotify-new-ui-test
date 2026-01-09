@@ -7,41 +7,9 @@ import { useState, useEffect } from "react";
 import { provideEstimate, updateWorklog } from "../../../../services/task";
 import { SegmentedProgressBar } from "./SegmentedProgressBar";
 import { useTimer } from "../../../../context/TimerContext";
+import { Task } from "../../../../types/domain";
 
-export interface Task {
-  id: string;
-  name: string;
-  taskId: string;
-  client: string;
-  project: string;
-  leader: string;
-  assignedTo: string;
-  startDate: string;
-  dueDate: string;
-  estTime: number; // Total Estimate Hours (Static)
-  timeSpent: number; // Legacy Total Time (Closed Logs), mapped from total_seconds_spent
-  total_seconds_spent: number; // Total Closed Seconds
-  activities: number;
-  status: 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck';
-  is_high_priority: boolean;
-  timelineDate: string;
-  timelineLabel: string;
-  execution_mode?: 'parallel' | 'sequential';
-  task_members?: {
-    id: number;
-    user_id: number;
-    status: string;
-    estimated_time: number | null;
-    seconds_spent: number; // Closed logs seconds
-    active_worklog_start_time?: string | null; // If running
-    is_current_turn: boolean;
-    user: {
-      id: number;
-      name: string;
-      profile_pic?: string;
-    };
-  }[];
-}
+
 
 interface TaskRowProps {
   task: Task;
@@ -316,9 +284,9 @@ export function TaskRow({
                 </Tooltip>
               ))
             ) : (
-              <Tooltip title={isSender ? 'Partner Resource' : task.assignedTo}>
+              <Tooltip title={isSender ? 'Partner Resource' : (typeof task.assignedTo === 'string' ? task.assignedTo : task.assignedTo?.name)}>
                 <Avatar style={{ backgroundColor: '#CCCCCC' }}>
-                  {isSender ? 'P' : (task.assignedTo ? task.assignedTo.charAt(0).toUpperCase() : 'U')}
+                  {isSender ? 'P' : (task.assignedTo ? (typeof task.assignedTo === 'string' ? task.assignedTo.charAt(0).toUpperCase() : task.assignedTo.name?.charAt(0).toUpperCase()) : 'U')}
                 </Avatar>
               </Tooltip>
             )}

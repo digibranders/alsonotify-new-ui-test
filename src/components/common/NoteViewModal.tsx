@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, KeyboardEvent } from 'react';
 
 import { Modal, Button, Input, Checkbox, App } from 'antd';
-import { Note, ChecklistItem } from '../../services/notes';
+import { Note, ChecklistItem } from '../../types/domain';
 import { updateNote } from '../../services/notes';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { RichTextEditor, formatText } from './RichTextEditor';
 import { ChecklistEditor } from './ChecklistEditor';
-import { Bold, Italic, List, CheckSquare } from 'lucide-react';
+import { queryKeys } from "../../lib/queryKeys";
+import { Bold, Italic, List, CheckSquare, Trash2, Archive, ArchiveRestore } from 'lucide-react';
 import { NoteType, convertTextToChecklist, convertChecklistToText, createEmptyChecklistItem } from '../../types/notes';
 
 interface NoteViewModalProps {
@@ -79,7 +80,7 @@ export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete
   const updateMutation = useMutation({
     mutationFn: (params: { id: number; data: any }) => updateNote(params.id, params.data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notes.all() });
       setHasChanges(false);
     },
     onError: () => message.error("Failed to update note")

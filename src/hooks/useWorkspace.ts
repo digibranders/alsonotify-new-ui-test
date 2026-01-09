@@ -18,12 +18,13 @@ import { RequirementDto } from "../types/dto/requirement.dto";
 import { getTasks } from "../services/task";
 export { usePartners } from "./useUser";
 
-import { mapWorkspaceDtoToDomain } from "../utils/mappers/workspace.mapper";
+import { mapWorkspaceDtoToDomain } from "../utils/mappers/workspace";
+import { queryKeys } from "../lib/queryKeys";
 
 // Workspaces
 export const useWorkspaces = (options: string = "") => {
   return useQuery({
-    queryKey: ["workspaces", options],
+    queryKey: queryKeys.workspaces.list(options),
     queryFn: () => getWorkspace(options),
     select: (data) => ({
       ...data,
@@ -35,11 +36,11 @@ export const useWorkspaces = (options: string = "") => {
   });
 };
 
-import { mapTaskDtoToDomain } from "../utils/mappers/task.mapper";
+import { mapTaskDtoToDomain } from "../utils/mappers/task";
 
 export const useWorkspaceTasks = (workspaceId: number) => {
   return useQuery({
-    queryKey: ["tasks", "workspace", workspaceId],
+    queryKey: queryKeys.tasks.byWorkspace(workspaceId),
     queryFn: () => getTasks(`workspace_id=${workspaceId}`),
     enabled: !!workspaceId,
     select: (data) => ({
@@ -51,9 +52,13 @@ export const useWorkspaceTasks = (workspaceId: number) => {
 
 export const useWorkspace = (id: number) => {
   return useQuery({
-    queryKey: ["workspace", id],
+    queryKey: queryKeys.workspaces.detail(id),
     queryFn: () => getWorkspaceById(id),
     enabled: !!id,
+    select: (data) => ({
+      ...data,
+      result: data.result ? mapWorkspaceDtoToDomain(data.result) : undefined
+    })
   });
 };
 
@@ -63,7 +68,7 @@ export const useCreateWorkspace = () => {
   return useMutation({
     mutationFn: (params: WorkspaceDto) => createWorkspace(params),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.listRoot() });
     },
   });
 };
@@ -74,8 +79,8 @@ export const useUpdateWorkspace = () => {
   return useMutation({
     mutationFn: ({ id, ...params }: WorkspaceDto) => updateWorkspace({ id, ...params } as WorkspaceDto),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
-      queryClient.invalidateQueries({ queryKey: ["workspace", variables.id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.listRoot() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(variables.id) });
     },
   });
 };
@@ -86,17 +91,17 @@ export const useDeleteWorkspace = () => {
   return useMutation({
     mutationFn: (id: number) => deleteWorkspace(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.listRoot() });
     },
   });
 };
 
-import { mapRequirementDtoToDomain } from "../utils/mappers/requirement.mapper";
+import { mapRequirementDtoToDomain } from "../utils/mappers/requirement";
 
 // Requirements
 export const useRequirements = (workspaceId: number) => {
   return useQuery({
-    queryKey: ["requirements", workspaceId],
+    queryKey: queryKeys.requirements.byWorkspace(workspaceId),
     queryFn: () => getRequirementsByWorkspaceId(workspaceId),
     enabled: !!workspaceId,
     select: (data) => ({
@@ -109,7 +114,7 @@ export const useRequirements = (workspaceId: number) => {
 
 export const useCollaborativeRequirements = () => {
   return useQuery({
-    queryKey: ["requirements", "collaborative"],
+    queryKey: queryKeys.requirements.collaborative(),
     queryFn: () => getCollaborativeRequirements(),
   });
 };
@@ -120,10 +125,10 @@ export const useCreateRequirement = () => {
   return useMutation({
     mutationFn: (params: Partial<RequirementDto>) => addRequirementToWorkspace(params),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["requirements", variables.workspace_id] });
-      queryClient.invalidateQueries({ queryKey: ["workspace", variables.workspace_id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.requirements.byWorkspace(variables.workspace_id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(variables.workspace_id) });
       // Invalidate all requirements queries
-      queryClient.invalidateQueries({ queryKey: ["requirements"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.requirements.all() });
     },
   });
 };
@@ -134,10 +139,10 @@ export const useUpdateRequirement = () => {
   return useMutation({
     mutationFn: (params: Partial<RequirementDto>) => updateRequirementById(params),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["requirements", variables.workspace_id] });
-      queryClient.invalidateQueries({ queryKey: ["workspace", variables.workspace_id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.requirements.byWorkspace(variables.workspace_id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(variables.workspace_id) });
       // Invalidate all requirements queries
-      queryClient.invalidateQueries({ queryKey: ["requirements"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.requirements.all() });
     },
   });
 };
@@ -149,10 +154,10 @@ export const useDeleteRequirement = () => {
     mutationFn: ({ id, workspace_id }: { id: number; workspace_id: number }) =>
       deleteRequirementById(id, workspace_id),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["requirements", variables.workspace_id] });
-      queryClient.invalidateQueries({ queryKey: ["workspace", variables.workspace_id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.requirements.byWorkspace(variables.workspace_id) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.detail(variables.workspace_id) });
       // Invalidate all requirements queries
-      queryClient.invalidateQueries({ queryKey: ["requirements"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.requirements.all() });
     },
   });
 };
@@ -165,7 +170,7 @@ export const useApproveRequirement = () => {
       approveRequirement(requirement_id, status),
     onSuccess: () => {
       // Invalidate all requirements queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ["requirements"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.requirements.all() });
     },
   });
 };
@@ -175,7 +180,7 @@ export const useReactivateWorkspace = () => {
   return useMutation({
     mutationFn: (id: number) => reactivateWorkspace(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.workspaces.listRoot() });
     },
   });
 };

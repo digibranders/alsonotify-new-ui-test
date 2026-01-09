@@ -15,6 +15,7 @@ export interface Requirement {
   dueDate: string;
   createdDate: string;
   startDate?: string;
+  isHighPriority?: boolean;
   is_high_priority: boolean;
   type: 'inhouse' | 'outsourced' | 'client';
   status: 'in-progress' | 'completed' | 'delayed' | 'draft' | 'Waiting';
@@ -24,6 +25,7 @@ export interface Requirement {
   tasksCompleted: number;
   tasksTotal: number;
   workspaceId: number;
+  workspace_id?: number;
   workspace: string;
   approvalStatus?: 'pending' | 'approved' | 'rejected';
   invoiceStatus?: 'unbilled' | 'billed' | 'paid';
@@ -31,52 +33,72 @@ export interface Requirement {
   budget?: number;
   hourlyRate?: number;
   estimatedHours?: number;
-  pricingModel?: 'hourly' | 'project';
+  pricingModel?: 'hourly' | 'requirement' | 'project';
   contactPerson?: string;
   rejectionReason?: string;
   headerContact?: string;
-  workspace_id?: number;
+  // workspace_id?: number; // defined via camelCase above with alias
   headerCompany?: string;
   quotedPrice?: number;
   rawStatus?: string;
+  clientId?: number;
   client_id?: number;
+  contactPersonId?: number;
   contact_person_id?: number;
+  senderCompanyId?: number;
   sender_company_id?: number;
+  receiverCompanyId?: number;
   receiver_company_id?: number;
   receiver_company?: { name: string; id: number };
+  receiverWorkspaceId?: number;
   receiver_workspace_id?: number;
+  negotiationReason?: string;
   negotiation_reason?: string;
   isReceiver?: boolean;
   isSender?: boolean;
+  receiverProjectId?: number;
   receiver_project_id?: number;
   
   // These fields might be needed based on usage in other files, 
   // keeping them optional for now as we discover them
+  projectId?: number;
   project_id?: number;
   manager?: { name: string; id?: number };
   leader?: { name: string; id?: number };
   department?: { name: string; id?: number };
   
   // Backend fields used in RequirementDetailsPage (snake_case)
-  pricing_model?: 'hourly' | 'project';
-  start_date?: string;
+  pricing_model?: 'hourly' | 'project'; // covered by pricingModel
+  start_date?: string; // covered by startDate
+  endDate?: string;
   end_date?: string;
-  quoted_price?: number;
+  quoted_price?: number; // covered by quotedPrice
+  totalTask?: number;
   total_task?: number;
+  leaderUser?: { name: string; id?: number; avatar?: string };
   leader_user?: { name: string; id?: number; avatar?: string };
+  managerUser?: { name: string; id?: number; avatar?: string };
   manager_user?: { name: string; id?: number; avatar?: string };
+  senderCompany?: { name: string; id?: number };
   sender_company?: { name: string; id?: number };
+  documentLink?: string;
   document_link?: string;
   
   // Expanded fields for UI usage
   // 'title' is already defined above
+  totalTasks?: number;
   total_tasks?: number; // Backend alias
   // sender_company already defined above
+  createdUser?: { name: string; id: number };
   created_user?: { name: string; id: number };
+  createdUserData?: { name: string; id: number };
   created_user_data?: { name: string; id: number };
+  approvedBy?: { id: number; name?: string };
   approved_by?: { id: number; name?: string };
   invoice?: { status: string; id?: number };
+  invoiceId?: number;
   invoice_id?: number;
+  // contactPerson: ... defined above
   contact_person?: { name: string; id: number };
 }
 
@@ -89,27 +111,54 @@ export interface Task {
   client: string;
   project: string;
   leader: string;
-  assignedTo: string;
+  assignedTo: string | { name: string; id: number };
   startDate: string;
   dueDate: string;
   estTime: number;
   timeSpent: number;
   activities: number;
   status: TaskStatus;
+  isHighPriority?: boolean;
   is_high_priority: boolean;
   timelineDate: string;
   timelineLabel: string;
   // For date-range filtering
   dueDateValue: number | null;
   // For editing
+  workspaceId?: number;
   workspace_id?: number;
+  requirementId?: number;
   requirement_id?: number;
+  memberId?: number;
   member_id?: number;
+  leaderId?: number;
   leader_id?: number;
   description?: string;
   endDateIso?: string; // Raw ISO string for form editing
+  executionMode?: 'parallel' | 'sequential';
   execution_mode?: 'parallel' | 'sequential';
+  totalSecondsSpent: number;
   total_seconds_spent: number;
+  taskMembers?: {
+     id: number;
+     userId: number;
+     user_id: number;
+     status: string;
+     estimatedTime: number | null;
+     estimated_time: number | null;
+     secondsSpent: number;
+     seconds_spent: number;
+     activeWorklogStartTime?: string | null;
+     active_worklog_start_time?: string | null;
+     isCurrentTurn: boolean;
+     is_current_turn: boolean;
+     user: {
+       id: number;
+       name: string;
+       profilePic?: string;
+       profile_pic?: string;
+     };
+   }[];
   task_members?: {
     id: number;
     user_id: number;
@@ -127,28 +176,48 @@ export interface Task {
   // Expanded fields for UI usage
   start_date?: string;
   end_date?: string; 
+  estimatedTime?: number;
   estimated_time?: number;
+  // timeSpent already defined as number
+  // removing duplicate definition if it persists
   time_spent?: number;
-  worklogs?: Array<{ id: number; time_spent: number }>;
+  worklogs?: Array<{ id: number; timeSpent: number; time_spent: number }>;
   company?: { name: string; id?: number };
+  companyName?: string;
   company_name?: string;
+  clientCompanyName?: string;
   client_company_name?: string; // Added for TasksPage
   title?: string; // Added for TasksPage compatibility
   
   // Relations used in TasksPage
+  taskProject?: {
+    clientUser?: { company?: { name: string } };
+    client_user?: { company?: { name: string } };
+    company?: { name: string };
+    companyName?: string;
+    company_name?: string;
+  };
   task_project?: {
     client_user?: { company?: { name: string } };
     company?: { name: string };
     company_name?: string;
   };
+  memberUser?: { name: string; id: number; profilePic?: string; profile_pic?: string };
   member_user?: { name: string; id: number; profile_pic?: string };
+  leaderUser?: { name: string; id: number; profilePic?: string; profile_pic?: string };
   leader_user?: { name: string; id: number; profile_pic?: string };
+  assignedToUser?: { name: string; id: number };
   assigned_to_user?: { name: string; id: number };
+  // assignedTo already defined as string, but UI usage suggests object or string
+  // Changing base definition to union
   assigned_to?: { name: string; id: number } | string; // Sometimes string in older parts
   
   // Requirement relation aliases
+  taskRequirement?: { name: string; id: number };
   task_requirement?: { name: string; id: number };
+  requirementRelation?: { name: string; id: number };
   requirement_relation?: { name: string; id: number };
+  requirementName?: string;
   requirement_name?: string;
   requirement?: { name: string; id: number };
 }
@@ -166,17 +235,27 @@ export interface Workspace {
   status: string;
   isActive: boolean;
   description?: string;
+  partnerId?: number;
   partner_id?: number;
+  inHouse?: boolean;
   in_house?: boolean;
+  partnerName?: string;
   partner_name?: string;
+  companyName?: string;
   company_name?: string;
   client?: { id: number; name: string } | null;
+  client_user?: { id: number; name: string } | null;
   company?: { id: number; name: string } | null;
   // Additional fields used in ProjectCard
+  clientCompanyName?: string;
   client_company_name?: string;
+  endDate?: string;
   end_date?: string;
+  assignedUsers?: { name: string; imageUrl?: string; image_url?: string }[];
   assigned_users?: { name: string; image_url?: string }[];
+  totalTask?: number;
   total_task?: number;
+  totalTaskCompleted?: number;
   total_task_completed?: number;
 }
 
@@ -194,6 +273,7 @@ export interface Employee {
   department: string;
   access: string; // 'Admin' | 'Manager' | 'Leader' | 'Employee' but might be loose
   managerName?: string;
+  managerId?: number;
   manager_id?: number;
   salary: number;
   currency: string;
@@ -203,6 +283,7 @@ export interface Employee {
   roleColor?: string;
   employmentType?: string; // 'Full-time' | 'Contract' etc
   rawWorkingHours?: Record<string, unknown>; // Keeping loose for now as backend object structure varies
+  profilePic?: string;
   profile_pic?: string;
   bio?: string;
   linkedin?: string;
@@ -213,17 +294,28 @@ export interface Employee {
   timezone?: string;
   
   // Extended fields for EmployeesPage mapping
+  userId?: number;
   user_id?: number;
   designation?: string;
+  mobileNumber?: string;
   mobile_number?: string;
+  userProfile?: { mobileNumber?: string; mobile_number?: string; phone?: string };
   user_profile?: { mobile_number?: string; phone?: string };
   user?: { mobile_number?: string; phone?: string };
+  hourlyRates?: number;
   hourly_rates?: number;
+  // dateOfJoining defined above
   date_of_joining?: string;
   skills?: string[];
+  userEmployee?: { isActive?: boolean; is_active?: boolean };
   user_employee?: { is_active?: boolean };
+  employeeType?: string;
   employee_type?: string;
+  employeeAccess?: string;
   employee_access?: string;
+  company_id?: number;
+  isActive?: boolean;
+  is_active?: boolean;
 }
 
 export interface CalendarEvent {
@@ -240,7 +332,9 @@ export interface Holiday {
   id: number | string;
   name: string;
   date: string;
+  isApi?: boolean;
   is_api?: boolean;
+  isDeleted?: boolean;
   is_deleted?: boolean;
 }
 
@@ -248,6 +342,7 @@ export interface Department {
   id: string | number;
   name: string;
   active?: boolean;
+  isActive?: boolean;
   is_active?: boolean;
 }
 
@@ -256,5 +351,53 @@ export interface Role {
   name: string;
   color?: string;
   description?: string;
+  isActive?: boolean;
   is_active?: boolean;
+}
+
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  profilePic?: string;
+  profile_pic?: string;
+  mobileNumber?: string;
+  mobile_number?: string;
+  isActive?: boolean;
+  is_active?: boolean;
+  company?: { id: number; name: string };
+  department?: { id: number; name: string };
+}
+
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  isChecked: boolean;
+  order: number;
+  indentLevel: number;
+  parentId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Note {
+  id: number;
+  userId: number;
+  user_id: number;
+  companyId: number;
+  company_id: number;
+  title: string;
+  type: 'TEXT_NOTE' | 'CHECKLIST_NOTE';
+  color: string;
+  isPinned?: boolean;
+  isArchived: boolean;
+  is_archived: boolean;
+  labels?: string[];
+  createdAt: string;
+  created_at: string;
+  updatedAt?: string;
+  updated_at?: string;
+  content?: string;
+  items?: ChecklistItem[];
 }

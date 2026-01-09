@@ -1,5 +1,5 @@
 import svgPaths from "../../constants/iconPaths";
-import { Plus, Clock, Calendar as CalendarIcon, X, Video } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Video, Calendar, Clock, Plus, ExternalLink } from "lucide-react";
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Modal, Input, Button, Select, DatePicker, Spin, Tag, Popover, App } from 'antd';
 import dayjs from 'dayjs';
@@ -168,7 +168,7 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
       });
 
       // Invalidate and refetch calendar events to show the new event
-      queryClient.invalidateQueries({ queryKey: ["calendarEvents"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.calendar.eventsRoot() });
       await refetchCalendarEvents();
     } catch (error: any) {
       const errorMessage = error?.response?.data?.message || "Failed to create event";

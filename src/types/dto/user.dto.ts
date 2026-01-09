@@ -50,7 +50,8 @@ export interface UserDto {
   workingHours?: number;
   user_profile?: { mobile_number?: string; phone?: string };
   user?: { mobile_number?: string; phone?: string }; // Nested user object sometimes returned
-  company?: string; // Company name (from ClientOrOutsourceType)
+  company?: string | { id: number; name: string }; // Company name (from ClientOrOutsourceType) or object
+  company_id?: number;
 }
 
 // Role types for access management

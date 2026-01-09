@@ -1,7 +1,7 @@
 import { RequirementDto } from '../../types/dto/requirement.dto';
 import { Requirement } from '../../types/domain';
 
-export function mapRequirementDtoToDomain(dto: RequirementDto): Requirement {
+export function mapRequirementToDomain(dto: RequirementDto): Requirement {
   return {
     id: dto.id,
     title: dto.title,
@@ -22,6 +22,7 @@ export function mapRequirementDtoToDomain(dto: RequirementDto): Requirement {
     createdDate: dto.createdDate || '', // Needs mapping if blank?
     startDate: dto.start_date || '',
     
+    isHighPriority: dto.is_high_priority || dto.priority === 'High',
     is_high_priority: dto.is_high_priority || dto.priority === 'High',
     
     category: dto.category || '',
@@ -44,29 +45,42 @@ export function mapRequirementDtoToDomain(dto: RequirementDto): Requirement {
     quoted_price: dto.quoted_price,
     
     // Relations
-    contactPerson: dto.contactPerson,
+    contactPerson: dto.contactPerson || dto.contact_person?.name,
     rejectionReason: dto.rejectionReason,
     headerContact: dto.headerContact,
     headerCompany: dto.headerCompany,
     rawStatus: dto.rawStatus || dto.status,
     
+    clientId: dto.client_id,
     client_id: dto.client_id,
+    contactPersonId: dto.contact_person_id,
     contact_person_id: dto.contact_person_id,
+    senderCompanyId: dto.sender_company_id,
     sender_company_id: dto.sender_company_id,
+    receiverCompanyId: dto.receiver_company_id,
     receiver_company_id: dto.receiver_company_id,
+    receiverWorkspaceId: dto.receiver_workspace_id,
     receiver_workspace_id: dto.receiver_workspace_id,
+    negotiationReason: dto.negotiation_reason,
     negotiation_reason: dto.negotiation_reason,
     isReceiver: dto.isReceiver,
     isSender: dto.isSender,
+    receiverProjectId: dto.receiver_project_id,
     receiver_project_id: dto.receiver_project_id,
     
     receiver_company: dto.receiver_company,
+    senderCompany: dto.sender_company,
     sender_company: dto.sender_company,
+    createdUser: dto.created_user,
     created_user: dto.created_user,
+    createdUserData: dto.created_user_data,
     created_user_data: dto.created_user_data,
+    approvedBy: dto.approved_by,
     approved_by: dto.approved_by,
     invoice: dto.invoice,
+    invoiceId: dto.invoice_id,
     invoice_id: dto.invoice_id,
+    // contactPerson already handled above
     contact_person: dto.contact_person,
     
     // Snake case aliases - Ensure stricter type compliance
@@ -74,10 +88,17 @@ export function mapRequirementDtoToDomain(dto: RequirementDto): Requirement {
     leader: dto.leader,
     department: undefined, 
     
+    leaderUser: dto.leader_user ? { ...dto.leader_user, name: dto.leader_user.name || 'Unknown' } : undefined,
     leader_user: dto.leader_user ? { ...dto.leader_user, name: dto.leader_user.name || 'Unknown' } : undefined,
+    managerUser: dto.manager_user ? { ...dto.manager_user, name: dto.manager_user.name || 'Unknown' } : undefined,
     manager_user: dto.manager_user ? { ...dto.manager_user, name: dto.manager_user.name || 'Unknown' } : undefined,
+    
+    documentLink: dto.document_link,
     document_link: dto.document_link,
     
-    total_tasks: dto.total_task
+    totalTasks: dto.total_task,
+    total_task: dto.total_task
   };
 }
+
+export const mapRequirementDtoToDomain = mapRequirementToDomain;

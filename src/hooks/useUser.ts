@@ -22,11 +22,12 @@ import {
 import { UserDto, RoleDto, ModuleActionGroupDto } from "../types/dto/user.dto";
 import { ProfileUpdateInput, CompanyUpdateInput } from "../types/genericTypes";
 
-import { mapUserDtoToEmployee } from "../utils/mappers/user.mapper";
+import { mapUserDtoToEmployee, mapUserToDomain } from "../utils/mappers/user";
+import { queryKeys } from "../lib/queryKeys";
 
 export const useEmployees = (options: string = "") => {
   return useQuery({
-    queryKey: ["employees", options],
+    queryKey: queryKeys.users.employees(options),
     queryFn: () => getEmployees(options),
     staleTime: 5 * 1000, // 5 seconds
     select: (data) => ({
@@ -38,15 +39,19 @@ export const useEmployees = (options: string = "") => {
 
 export const useEmployee = (id: number) => {
   return useQuery({
-    queryKey: ["employee", id],
+    queryKey: queryKeys.users.detail(id),
     queryFn: () => getUserById(id),
     enabled: !!id,
+    select: (data) => ({
+      ...data,
+      result: data.result ? mapUserDtoToEmployee(data.result) : undefined
+    })
   });
 };
 
 export const usePartners = (options: string = "") => {
   return useQuery({
-    queryKey: ["partners", options],
+    queryKey: queryKeys.users.partners(options),
     queryFn: () => getPartners(options),
     staleTime: 5 * 1000,
   });
@@ -54,7 +59,7 @@ export const usePartners = (options: string = "") => {
 
 export const useOutsourcePartners = (options: string = "") => {
   return useQuery({
-    queryKey: ["partners", options],
+    queryKey: queryKeys.users.partners(options),
     queryFn: () => getPartners(options),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -69,7 +74,7 @@ export const useCreateEmployee = () => {
   return useMutation({
     mutationFn: (params: Partial<UserDto>) => createUser(params),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.employeesRoot() });
     },
   });
 };
@@ -81,10 +86,10 @@ export const useUpdateEmployee = () => {
     mutationFn: ({ id, ...params }: { id: number } & Partial<UserDto>) => updateUserById(id, params),
     onSuccess: (_, variables) => {
       // Invalidate all employee queries (both active and inactive)
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
-      queryClient.invalidateQueries({ queryKey: ["employee", variables.id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.employeesRoot() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(variables.id) });
       // Also invalidate user details if updating current user's own data
-      queryClient.invalidateQueries({ queryKey: ["user", "details"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
     },
   });
 };
@@ -95,7 +100,7 @@ export const useUpdateProfile = () => {
   return useMutation({
     mutationFn: (params: ProfileUpdateInput) => updateCurrentUserProfile(params),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
     },
   });
 };
@@ -108,7 +113,7 @@ export const useUpdatePassword = () => {
 
 export const useCompanyDepartments = () => {
   return useQuery({
-    queryKey: ["companyDepartments"],
+    queryKey: queryKeys.company.departments(),
     queryFn: getCompanyDepartments,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -121,16 +126,20 @@ export const useUpdateEmployeeStatus = () => {
     mutationFn: (params: { user_id: number; is_active: boolean }) => updateUserStatus(params),
     onSuccess: () => {
       // Invalidate all employee queries (both active and inactive) when status changes
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.employeesRoot() });
     },
   });
 };
 
 export const useUserDetails = () => {
   return useQuery({
-    queryKey: ["user", "details"],
+    queryKey: queryKeys.users.me(),
     queryFn: () => getUserDetails(),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    select: (data) => ({
+      ...data,
+      result: data.result ? mapUserDtoToEmployee(data.result) : undefined
+    })
   });
 };
 
@@ -142,7 +151,7 @@ export const useInviteUser = () => {
     mutationFn: (params: { email: string; requestSentFor: string }) =>
       inviteUser(params.email, params.requestSentFor),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.clients() });
     },
   });
 };
@@ -154,7 +163,7 @@ export const useCreateClient = () => {
   return useMutation({
     mutationFn: (params: Partial<UserDto>) => createUser(params),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.clients() });
     },
   });
 };
@@ -162,7 +171,7 @@ export const useCreateClient = () => {
 // Get current user company
 export const useCurrentUserCompany = () => {
   return useQuery({
-    queryKey: ["user", "company"],
+    queryKey: queryKeys.users.company(),
     queryFn: () => getCurrentUserCompany(),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -175,15 +184,15 @@ export const useUpdateCompany = () => {
   return useMutation({
     mutationFn: (params: CompanyUpdateInput) => updateCurrentUserCompany(params),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user", "company"] });
-      queryClient.invalidateQueries({ queryKey: ["user", "details"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.company() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
     },
   });
 };
 // Get all roles
 export const useRoles = () => {
   return useQuery({
-    queryKey: ["roles"],
+    queryKey: queryKeys.roles.all(),
     queryFn: () => getRoles(),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -193,7 +202,7 @@ export const useRoles = () => {
 
 export const useRolePermissions = (roleId: number | null) => {
   return useQuery({
-    queryKey: ["rolePermissions", roleId],
+    queryKey: queryKeys.roles.permissions(roleId),
     queryFn: () => getRolePermissions(roleId!),
     enabled: !!roleId,
     staleTime: 5 * 60 * 1000,
@@ -206,7 +215,7 @@ export const useUpsertRole = () => {
   return useMutation({
     mutationFn: (params: Partial<RoleDto>) => upsertRole(params),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["roles"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.roles.all() });
     },
   });
 };
@@ -218,7 +227,7 @@ export const useUpdateRolePermissions = () => {
     mutationFn: ({ roleId, actions }: { roleId: number; actions: number[] }) =>
       updateRolePermissions(roleId, actions),
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["rolePermissions", variables.roleId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.roles.permissions(variables.roleId) });
     },
   });
 };

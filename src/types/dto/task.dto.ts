@@ -78,6 +78,13 @@ export interface TaskDto {
   client_company_name?: string;
   manager_user?: { name: string };
   total_count?: number; // Metadata often mixed in
+  total_seconds_spent?: number;
+  company?: { name: string };
+  company_name?: string;
+  
+  // Requirement relations
+  requirement_relation?: { name: string; id: number };
+  requirement_name?: string;
 }
 
 export interface AssignedTaskDetailDto {
