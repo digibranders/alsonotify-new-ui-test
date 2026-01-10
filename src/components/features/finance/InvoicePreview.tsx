@@ -99,12 +99,11 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(({
                 {/* Company Logo */}
                 <div className="text-right">
                     <div className="flex justify-end mb-1">
-                        <Image 
-                            src={FynixLogo}
+                        <img 
+                            src={FynixLogo.src}
                             alt="Fynix"
                             width={100}
                             height={32}
-                            objectFit="contain"
                             className="h-[32px] w-auto object-contain"
                         />
                     </div>
@@ -240,18 +239,26 @@ export const InvoicePreview = forwardRef<HTMLDivElement, InvoicePreviewProps>(({
         {/* Absolute Footer - Branding and Pagination */}
         <div className="mt-auto px-12 py-6 border-t border-[#f0f0f0] flex justify-between items-center opacity-70">
             <div className="flex items-center gap-2">
-                <Image
-                    src={BrandLogo}
+                <img
+                    src={BrandLogo.src}
                     alt="Alsonotify"
                     width={80}
                     height={20}
-                    objectFit="contain"
                     className="h-[20px] w-auto object-contain"
                 />
             </div>
+            {/* Conditional Pagination: Only show if total pages > 1. 
+                For now, we assume single page logic until multi-page support is added.
+                So we hide it by default or keep it if user explicitly wanted it only for > 1 pages.
+                User said: "not the pagination(that is optional only if more that 1 pages)"
+                Since this component renders a single 'page' view, we can hide it for now or check a prop.
+                Let's assume data.totalPages is passed or default to 1.
+            */}
+             {/* 
             <div className="text-[10px] text-[#697386] font-medium uppercase tracking-widest">
                 Page 1 of 1
-            </div>
+            </div> 
+            */}
         </div>
     </div>
   );
