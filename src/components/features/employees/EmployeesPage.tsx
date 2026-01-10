@@ -1,7 +1,7 @@
 import { PageLayout } from '../../layout/PageLayout';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
-import { Checkbox, Tooltip, Dropdown, App, Modal } from "antd";
+
 import { ShieldCheck, Briefcase, Download, Trash2, User as UserIcon, Users } from 'lucide-react';
 import { EmployeeForm, EmployeeFormData } from '../../modals/EmployeesForm';
 import { EmployeeDetailsModal } from '../../modals/EmployeeDetailsModal';
@@ -21,6 +21,8 @@ import { CompanyDepartmentType } from '../../../services/user';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTabSync } from '@/hooks/useTabSync';
 import { Employee } from '@/types/domain';
+import { Plus, Search, Filter, X, ChevronDown, Check, ChevronsRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button, Input, Select, Drawer, Form, message, Modal, Checkbox, Dropdown, App, Tooltip } from "antd";
 import { UserDto, CreateEmployeeRequestDto, UpdateEmployeeRequestDto } from '@/types/dto/user.dto';
 import { useQueryClient } from '@tanstack/react-query';
 import { getRoleFromUser } from '@/utils/roleUtils';
@@ -152,10 +154,14 @@ export function EmployeesPage() {
   const uniqueRoles = useMemo(() => ['All', ...Array.from(new Set(employees.map(emp => emp.role)))], [employees]);
 
   // Get departments from backend if available, otherwise from employees
+  // Get departments from backend if available
   const uniqueDepts = useMemo(() => {
     if (departmentsData?.result && departmentsData.result.length > 0) {
-      return ['All', ...departmentsData.result.filter((dept: CompanyDepartmentType) => dept.is_active !== false).map((dept: CompanyDepartmentType) => dept.name)];
+      return ['All', ...departmentsData.result
+        .filter((dept: CompanyDepartmentType) => dept.is_active !== false)
+        .map((dept: CompanyDepartmentType) => dept.name)];
     }
+    // Fallback if no settings found (unlikely but safe)
     return ['All', ...Array.from(new Set(employees.map(emp => emp.department)))];
   }, [departmentsData, employees]);
 
@@ -164,7 +170,7 @@ export function EmployeesPage() {
     if (rolesData?.result && rolesData.result.length > 0) {
       return ['All', ...rolesData.result.map((r: { name: string }) => r.name)];
     }
-    return ['All', 'Admin', 'Manager', 'Leader', 'Employee'];
+    return ['All'];
   }, [rolesData]);
 
   const filterOptions: FilterOption[] = [
@@ -224,21 +230,31 @@ export function EmployeesPage() {
       message.error("You cannot deactivate your own account.");
       return;
     }
-    updateEmployeeStatusMutation.mutate(
-      {
-        user_id: employeeId,
-        is_active: !isCurrentlyActive,
-      },
-      {
-        onSuccess: () => {
-          message.success(`Employee ${isCurrentlyActive ? 'deactivated' : 'activated'} successfully!`);
-        },
-        onError: (error: Error) => {
-          const errorMessage = getErrorMessage(error, "Failed to update employee status");
-          message.error(errorMessage);
-        },
+
+    Modal.confirm({
+      title: isCurrentlyActive ? 'Deactivate Employee' : 'Activate Employee',
+      content: `Are you sure you want to ${isCurrentlyActive ? 'deactivate' : 'activate'} this employee? ${isCurrentlyActive ? 'They will lose access to the system.' : ''}`,
+      okText: isCurrentlyActive ? 'Deactivate' : 'Activate',
+      okType: isCurrentlyActive ? 'danger' : 'primary',
+      cancelText: 'Cancel',
+      onOk: () => {
+        updateEmployeeStatusMutation.mutate(
+          {
+            user_id: employeeId,
+            is_active: !isCurrentlyActive,
+          },
+          {
+            onSuccess: () => {
+              message.success(`Employee ${isCurrentlyActive ? 'deactivated' : 'activated'} successfully!`);
+            },
+            onError: (error: Error) => {
+              const errorMessage = getErrorMessage(error, "Failed to update employee status");
+              message.error(errorMessage);
+            },
+          }
+        );
       }
-    );
+    });
   };
 
   const handleSaveEmployee = async (data: EmployeeFormData) => {

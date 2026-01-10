@@ -619,3 +619,76 @@ Resolve the visual issue of the "faded" HR badge and fix the "company mismatch" 
 -   **Validation:**
     -   HR badge is now vibrant and clearly visible.
     -   Deactivation requests now consistently use the User ID, preventing company mismatch errors.
+
+---
+
+## Update: Deactivation Confirmation & UI Restriction
+
+**Timestamp:** 2026-01-10T21:15:00+05:30
+
+### Objective
+
+Improve the user experience and safety of employee deactivation by:
+
+1.  Adding a confirmation modal before any deactivation/activation action.
+2.  Disabling the "Deactivate" button for the logged-in user in the UI instead of relying on an error toast.
+
+### Changes
+
+#### 1. `EmployeesPage.tsx`
+
+-   **Confirmation Modal**: Wrapped the `updateEmployeeStatusMutation` call in an Ant Design `Modal.confirm` dialog.
+    -   Displays a warning message: "Are you sure you want to deactivate/activate this employee?"
+    -   Uses "danger" button type for deactivation actions.
+-   **Import Cleanup**: Consolidated duplicate imports to resolve build errors.
+
+#### 2. `EmployeeRow.tsx`
+
+-   **Robust Disable Logic**: Refined the logic for disabling the "Deactivate" menu item for the current user.
+    -   Added `item.key === 'deactivate'` check to filter out the active action and show the disabled state correctly.
+    -   Ensured `currentUserId` comparison handles potential null/undefined values gracefully.
+
+### Files Modified
+
+| File                                                     | Change                                         |
+| -------------------------------------------------------- | ---------------------------------------------- |
+| `src/components/features/employees/EmployeesPage.tsx`    | Added `Modal.confirm`, cleaned imports         |
+| `src/components/features/employees/rows/EmployeeRow.tsx` | Improved disabling logic for self-deactivation |
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Validation:**
+    -   "Deactivate" button is visibly disabled (grayed out) for the current user.
+    -   Clicking "Deactivate" for other users triggers a confirmation popup.
+    -   Confirming the popup executes the action; cancelling aborts it.
+
+---
+
+## Update: Dynamic Employee Filters
+
+**Timestamp:** 2026-01-10T21:30:00+05:30
+
+### Objective
+
+Transition the filters on the Employees page from hardcoded lists to dynamic data sources to reflect the actual company settings.
+
+### Changes
+
+#### `EmployeesPage.tsx`
+
+-   **Access Level Filter**: Now fetches roles dynamically via the `useRoles` hook. Removed the hardcoded fallback list `['Admin', 'Manager', 'Leader', 'Employee']`.
+-   **Department Filter**: Prioritizes fetching departments via the `useCompanyDepartments` hook from company settings.
+-   **Designation Filter**: Continues to be derived dynamically from the unique values in the current employee list.
+-   **Employment Type**: Remains hardcoded as no backend setting exists for this configuration.
+
+### Files Modified
+
+| File                                                  | Change                                           |
+| ----------------------------------------------------- | ------------------------------------------------ |
+| `src/components/features/employees/EmployeesPage.tsx` | Updated filter options to use dynamic data hooks |
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Expected Behavior:** Filters dropdowns should now populate with data from the company settings API, ensuring consistency with the backend configuration.
