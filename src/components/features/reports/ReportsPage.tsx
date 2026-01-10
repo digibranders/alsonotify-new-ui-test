@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Download,
   Clock, CheckCircle2, AlertCircle, Loader2,
@@ -229,7 +229,7 @@ export function ReportsPage() {
       start_date: dateRange && dateRange[0] ? dateRange[0].toISOString() : undefined,
       end_date: dateRange && dateRange[1] ? dateRange[1].toISOString() : undefined,
     }),
-    enabled: activeTab === 'requirement' || true
+    enabled: activeTab === 'requirement'
   });
 
 
@@ -244,7 +244,7 @@ export function ReportsPage() {
       start_date: dateRange && dateRange[0] ? dateRange[0].toISOString() : undefined,
       end_date: dateRange && dateRange[1] ? dateRange[1].toISOString() : undefined,
     }),
-    enabled: activeTab === 'task' || true
+    enabled: activeTab === 'task'
   });
 
   // Employees Query
@@ -257,7 +257,7 @@ export function ReportsPage() {
       start_date: dateRange && dateRange[0] ? dateRange[0].toISOString() : undefined,
       end_date: dateRange && dateRange[1] ? dateRange[1].toISOString() : undefined,
     }),
-    enabled: activeTab === 'member' || true
+    enabled: activeTab === 'member'
   });
 
   console.log('Reports Debug:', { 
@@ -362,27 +362,29 @@ export function ReportsPage() {
   });
 
 
-  // Filter Configuration
-  const filterOptions: FilterOption[] = [];
-
-  if (activeTab === 'requirement') {
-    filterOptions.push(
-      { id: 'partner', label: 'Partner', options: partnerOptions, defaultValue: 'All', placeholder: 'Select Partner' },
-      { id: 'status', label: 'Status', options: ['All', 'Completed', 'In Progress', 'Delayed'], defaultValue: 'All' },
-      { id: 'type', label: 'Type', options: ['All', 'Inhouse', 'Outsourced'], defaultValue: 'All', placeholder: 'Select Type' },
-      { id: 'priority', label: 'Priority', options: ['All', 'High', 'Normal'], defaultValue: 'All', placeholder: 'Select Priority' },
-      { id: 'department', label: 'Department', options: departmentOptions, defaultValue: 'All', placeholder: 'Select Department' }
-    );
-  } else if (activeTab === 'task') {
-    filterOptions.push(
-      { id: 'leader', label: 'Leader', options: employeeOptions, defaultValue: 'All', placeholder: 'Select Leader' },
-      { id: 'assigned', label: 'Assigned', options: employeeOptions, defaultValue: 'All', placeholder: 'Select Member' },
-      { id: 'status', label: 'Status', options: ['All', 'Completed', 'In Progress', 'Delayed'], defaultValue: 'All' }
-    );
-  } else if (activeTab === 'member') {
-    filterOptions.push({ id: 'member', label: 'Member', options: employeeOptions, defaultValue: 'All', placeholder: 'Select Member' });
-    filterOptions.push({ id: 'department', label: 'Department', options: departmentOptions, defaultValue: 'All', placeholder: 'Select Department' });
-  }
+  // Filter Configuration - memoized to prevent unnecessary re-renders
+  const filterOptions: FilterOption[] = useMemo(() => {
+    if (activeTab === 'requirement') {
+      return [
+        { id: 'partner', label: 'Partner', options: partnerOptions, defaultValue: 'All', placeholder: 'Select Partner' },
+        { id: 'status', label: 'Status', options: ['All', 'Completed', 'In Progress', 'Delayed'], defaultValue: 'All' },
+        { id: 'type', label: 'Type', options: ['All', 'Inhouse', 'Outsourced'], defaultValue: 'All', placeholder: 'Select Type' },
+        { id: 'priority', label: 'Priority', options: ['All', 'High', 'Normal'], defaultValue: 'All', placeholder: 'Select Priority' },
+        { id: 'department', label: 'Department', options: departmentOptions, defaultValue: 'All', placeholder: 'Select Department' }
+      ];
+    } else if (activeTab === 'task') {
+      return [
+        { id: 'leader', label: 'Leader', options: employeeOptions, defaultValue: 'All', placeholder: 'Select Leader' },
+        { id: 'assigned', label: 'Assigned', options: employeeOptions, defaultValue: 'All', placeholder: 'Select Member' },
+        { id: 'status', label: 'Status', options: ['All', 'Completed', 'In Progress', 'Delayed'], defaultValue: 'All' }
+      ];
+    } else {
+      return [
+        { id: 'member', label: 'Member', options: employeeOptions, defaultValue: 'All', placeholder: 'Select Member' },
+        { id: 'department', label: 'Department', options: departmentOptions, defaultValue: 'All', placeholder: 'Select Department' }
+      ];
+    }
+  }, [activeTab, partnerOptions, employeeOptions, departmentOptions]);
 
   // Selected Member Logic
   // Find member in the fetched employees list
@@ -455,273 +457,275 @@ export function ReportsPage() {
             showClearButton={true}
           />
 
-          {/* Summary Cards */}
-          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${activeTab === 'member' ? 'md:grid-cols-4' : 'md:grid-cols-5'}`}>
-            {activeTab === 'requirement' && (
-              <>
-                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Total Requirements</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{kpi.totalRequirements}</span>
-                </div>
-                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">On Time Completed</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">{kpi.onTimeCompleted}</span>
-                </div>
-                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">In Progress</span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{kpi.inProgress}</span>
-                  </div>
-                </div>
-                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Delayed</span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#FF3B3B]">{kpi.delayed}</span>
-                    <span className="text-sm font-medium text-[#FF3B3B]">(+{kpi.totalExtraHrs}h)</span>
-                  </div>
-                </div>
-                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Avg. Efficiency</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
-                    {kpi.efficiency}%
-                  </span>
-                </div>
-              </>
-            )}
+          {/* Summary Cards - Using CSS display to prevent DOM removal/insertion */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:grid-cols-5 min-h-[88px]">
+            {/* Requirement KPI Cards */}
+            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">Total Requirements</span>
+              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{kpi.totalRequirements}</span>
+            </div>
+            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">On Time Completed</span>
+              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">{kpi.onTimeCompleted}</span>
+            </div>
+            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">In Progress</span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{kpi.inProgress}</span>
+              </div>
+            </div>
+            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">Delayed</span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#FF3B3B]">{kpi.delayed}</span>
+                <span className="text-sm font-medium text-[#FF3B3B]">(+{kpi.totalExtraHrs}h)</span>
+              </div>
+            </div>
+            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">Avg. Efficiency</span>
+              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
+                {kpi.efficiency}%
+              </span>
+            </div>
 
-            {activeTab === 'task' && (
-              <>
-                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Total Tasks</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{taskKPI.totalTasks}</span>
-                </div>
-                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">On Time Completed</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">{taskKPI.onTimeCompleted}</span>
-                </div>
-                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">In Progress</span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{taskKPI.inProgress}</span>
-                  </div>
-                </div>
-                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Delayed</span>
-                  <div className="flex items-baseline gap-2">
-                     <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#FF3B3B]">{taskKPI.delayed}</span>
-                     <span className="text-sm font-medium text-[#FF3B3B]">(+{taskKPI.totalExtraHrs}h)</span>
-                  </div>
-                </div>
-                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Avg. Efficiency</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
-                    {taskKPI.efficiency}%
-                  </span>
-                </div>
-              </>
-            )}
+            {/* Task KPI Cards */}
+            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">Total Tasks</span>
+              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{taskKPI.totalTasks}</span>
+            </div>
+            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">On Time Completed</span>
+              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">{taskKPI.onTimeCompleted}</span>
+            </div>
+            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">In Progress</span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{taskKPI.inProgress}</span>
+              </div>
+            </div>
+            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">Delayed</span>
+              <div className="flex items-baseline gap-2">
+                 <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#FF3B3B]">{taskKPI.delayed}</span>
+                 <span className="text-sm font-medium text-[#FF3B3B]">(+{taskKPI.totalExtraHrs}h)</span>
+              </div>
+            </div>
+            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">Avg. Efficiency</span>
+              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
+                {taskKPI.efficiency}%
+              </span>
+            </div>
 
-            {activeTab === 'member' && (
-              <>
-                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Total Investment</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">${employeeKPI.totalInvestment.toLocaleString()}</span>
-                </div>
-                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Total Revenue</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">${employeeKPI.totalRevenue.toLocaleString()}</span>
-                </div>
-                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Net Profit</span>
-                  <span className={`text-2xl font-['Manrope:Bold',sans-serif] ${employeeKPI.netProfit >= 0 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
-                    ${employeeKPI.netProfit.toLocaleString()}
-                  </span>
-                </div>
-                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Avg. Rate/Hr</span>
-                  <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
-                    ${employeeKPI.avgRatePerHr.toLocaleString()}
-                  </span>
-                </div>
-              </>
-            )}
+            {/* Member/Employee KPI Cards - 4 columns layout */}
+            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'member' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">Total Investment</span>
+              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">${employeeKPI.totalInvestment.toLocaleString()}</span>
+            </div>
+            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'member' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">Total Revenue</span>
+              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">${employeeKPI.totalRevenue.toLocaleString()}</span>
+            </div>
+            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'member' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">Net Profit</span>
+              <span className={`text-2xl font-['Manrope:Bold',sans-serif] ${employeeKPI.netProfit >= 0 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
+                ${employeeKPI.netProfit.toLocaleString()}
+              </span>
+            </div>
+            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'member' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">Avg. Rate/Hr</span>
+              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
+                ${employeeKPI.avgRatePerHr.toLocaleString()}
+              </span>
+            </div>
           </div>
         </div>
 
 
-        {/* Table Content */}
-        <div className="flex-1 overflow-y-auto pb-6">
-          {isLoadingRequirements || (activeTab === 'task' && isLoadingTasks) || (activeTab === 'member' && isLoadingEmployees) ? (
+        {/* Table Content - Using CSS display to prevent DOM removal/insertion */}
+        <div className="flex-1 overflow-y-auto pb-6 min-h-[200px]">
+          {/* Loading spinner - shown on top if loading */}
+          {((activeTab === 'requirement' && isLoadingRequirements) || 
+           (activeTab === 'task' && isLoadingTasks) || 
+           (activeTab === 'member' && isLoadingEmployees)) && (
             <div className="flex items-center justify-center h-40">
               <Loader2 className="w-6 h-6 animate-spin text-[#999999]" />
             </div>
-          ) : activeTab === 'requirement' && (
-            <table className="w-full text-left border-collapse min-w-[1000px]">
-              <thead className="sticky top-0 z-10 bg-white">
-                <tr className="border-b border-[#EEEEEE] h-10">
-                   <th className="pl-6 pr-4 w-[50px]"><TableHeader label="No" /></th>
-                   <th className="px-4 w-[250px]"><TableHeader label="Requirement" sortKey="requirement" currentSort={sortConfig} onSort={handleSort} /></th>
-                   <th className="px-4"><TableHeader label="Manager" sortKey="manager" currentSort={sortConfig} onSort={handleSort} /></th>
-                   <th className="px-4 w-[140px]"><TableHeader label="Timeline" /></th>
-                   <th className="px-4 w-[150px]"><TableHeader label="Hours Utilization" sortKey="efficiency" currentSort={sortConfig} onSort={handleSort} /></th>
-                   <th className="px-4"><TableHeader label="Revenue" sortKey="revenue" currentSort={sortConfig} onSort={handleSort} /></th>
-                   <th className="px-4"><TableHeader label="Status" sortKey="status" currentSort={sortConfig} onSort={handleSort} /></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRequirements.map((row, idx) => {
-                  const percentage = row.allottedHrs > 0 ? Math.min((row.engagedHrs / row.allottedHrs) * 100, 100) : 0;
-                  const isOverBudget = row.engagedHrs > row.allottedHrs;
+          )}
 
-                  return (
-                    <tr key={row.id} className="border-b border-[#FAFAFA] hover:bg-[#FAFAFA] transition-colors h-16 group">
-                      <td className="pl-6 pr-4 text-[13px] text-[#999999] font-['Inter:Medium',sans-serif]">{idx + 1}</td>
-                      <td className="px-4">
-                        <div className="flex flex-col justify-center h-full">
-                          <span className="text-[14px] text-[#111111] font-['Manrope:Bold',sans-serif] mb-0.5">{row.requirement}</span>
-                          <span className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.partner}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.manager || 'Unassigned'}</td>
-                     <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">
-                        <div className="flex flex-col gap-0.5">
-                            <span className="text-[#111111] font-medium">{row.startDate ? dayjs(row.startDate).format('MMM DD') : '-'}</span>
-                            <span className="text-[11px] text-[#999999]">to {row.endDate ? dayjs(row.endDate).format('MMM DD') : '-'}</span>
-                        </div>
-                     </td>
-                     <td className="px-4">
-                         <div className="flex flex-col gap-1.5 justify-center h-full">
-                           <div className="flex justify-between text-[11px]">
-                             <span className="font-medium text-[#111111]">{row.engagedHrs}h</span>
-                             <span className="text-[#999999]">of {row.allottedHrs}h</span>
-                           </div>
-                           <div className="w-full h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
-                             <div 
-                                className={`h-full rounded-full ${row.engagedHrs > row.allottedHrs ? 'bg-[#FF3B3B]' : 'bg-[#111111]'}`}
-                                style={{ width: `${Math.min((row.engagedHrs / (row.allottedHrs || 1)) * 100, 100)}%` }}
-                             ></div>
-                           </div>
+          {/* Requirements Table */}
+          <table 
+            className="w-full text-left border-collapse min-w-[1000px]" 
+            style={{ display: activeTab === 'requirement' && !isLoadingRequirements ? 'table' : 'none' }}
+          >
+            <thead className="sticky top-0 z-10 bg-white">
+              <tr className="border-b border-[#EEEEEE] h-10">
+                 <th className="pl-6 pr-4 w-[50px]"><TableHeader label="No" /></th>
+                 <th className="px-4 w-[250px]"><TableHeader label="Requirement" sortKey="requirement" currentSort={sortConfig} onSort={handleSort} /></th>
+                 <th className="px-4"><TableHeader label="Manager" sortKey="manager" currentSort={sortConfig} onSort={handleSort} /></th>
+                 <th className="px-4 w-[140px]"><TableHeader label="Timeline" /></th>
+                 <th className="px-4 w-[150px]"><TableHeader label="Hours Utilization" sortKey="efficiency" currentSort={sortConfig} onSort={handleSort} /></th>
+                 <th className="px-4"><TableHeader label="Revenue" sortKey="revenue" currentSort={sortConfig} onSort={handleSort} /></th>
+                 <th className="px-4"><TableHeader label="Status" sortKey="status" currentSort={sortConfig} onSort={handleSort} /></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRequirements.map((row, idx) => {
+                const percentage = row.allottedHrs > 0 ? Math.min((row.engagedHrs / row.allottedHrs) * 100, 100) : 0;
+                const isOverBudget = row.engagedHrs > row.allottedHrs;
+
+                return (
+                  <tr key={row.id} className="border-b border-[#FAFAFA] hover:bg-[#FAFAFA] transition-colors h-16 group">
+                    <td className="pl-6 pr-4 text-[13px] text-[#999999] font-['Inter:Medium',sans-serif]">{idx + 1}</td>
+                    <td className="px-4">
+                      <div className="flex flex-col justify-center h-full">
+                        <span className="text-[14px] text-[#111111] font-['Manrope:Bold',sans-serif] mb-0.5">{row.requirement}</span>
+                        <span className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.partner}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.manager || 'Unassigned'}</td>
+                   <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">
+                      <div className="flex flex-col gap-0.5">
+                          <span className="text-[#111111] font-medium">{row.startDate ? dayjs(row.startDate).format('MMM DD') : '-'}</span>
+                          <span className="text-[11px] text-[#999999]">to {row.endDate ? dayjs(row.endDate).format('MMM DD') : '-'}</span>
+                      </div>
+                   </td>
+                   <td className="px-4">
+                       <div className="flex flex-col gap-1.5 justify-center h-full">
+                         <div className="flex justify-between text-[11px]">
+                           <span className="font-medium text-[#111111]">{row.engagedHrs}h</span>
+                           <span className="text-[#999999]">of {row.allottedHrs}h</span>
                          </div>
-                     </td>
-                     <td className="px-4 text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">${row.revenue?.toLocaleString() || 0}</td>
-                     <td className="px-4"><StatusBadge status={row.status} /></td>
-                    </tr>
-                  );
-                })}
-                {filteredRequirements.length === 0 && (
-                  <tr><td colSpan={7} className="text-center py-8 text-[#999999] text-[13px]">No requirements found matching your filters.</td></tr>
-                )}
-              </tbody>
-            </table>
-          )}
-
-          {activeTab === 'task' && (
-            <table className="w-full text-left border-collapse min-w-[1000px]">
-              <thead className="sticky top-0 z-10 bg-white">
-                <tr className="border-b border-[#EEEEEE] h-10">
-                  <th className="pl-6 pr-4 w-[50px]"><TableHeader label="No" /></th>
-                  <th className="px-4"><TableHeader label="Task" sortKey="task" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Requirement" sortKey="requirement" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Leader" sortKey="leader" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Assigned" sortKey="assigned" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Allotted" sortKey="allottedHrs" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Engaged" sortKey="engagedHrs" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Extra" sortKey="extraHrs" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Status" sortKey="status" currentSort={sortConfig} onSort={handleSort} /></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTasks.map((row, idx) => (
-                  <tr key={row.id} className="border-b border-[#FAFAFA] hover:bg-[#FAFAFA] transition-colors h-14">
-                    <td className="pl-6 pr-4 text-[13px] text-[#999999] font-['Inter:Medium',sans-serif]">{idx + 1}</td>
-                    <td className="px-4 text-[13px] text-[#111111] font-['Manrope:SemiBold',sans-serif]">{row.task}</td>
-                    <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.requirement}</td>
-                    <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.leader}</td>
-                    <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.assigned}</td>
-                    <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.dueDate ? dayjs(row.dueDate).format('MMM D, YYYY') : '-'}</td>
-                    <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.allottedHrs}h</td>
-                    <td className="px-4 text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">{row.engagedHrs}h</td>
-                    <td className="px-4 text-[13px] font-['Inter:Medium',sans-serif] text-[#FF3B3B]">{row.extraHrs > 0 ? `+${row.extraHrs}h` : '-'}</td>
-                    <td className="px-4"><StatusBadge status={row.status} /></td>
+                         <div className="w-full h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
+                           <div 
+                              className={`h-full rounded-full ${row.engagedHrs > row.allottedHrs ? 'bg-[#FF3B3B]' : 'bg-[#111111]'}`}
+                              style={{ width: `${Math.min((row.engagedHrs / (row.allottedHrs || 1)) * 100, 100)}%` }}
+                           ></div>
+                         </div>
+                       </div>
+                   </td>
+                   <td className="px-4 text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">${row.revenue?.toLocaleString() || 0}</td>
+                   <td className="px-4"><StatusBadge status={row.status} /></td>
                   </tr>
-                ))}
-                {filteredTasks.length === 0 && (
-                  <tr><td colSpan={10} className="text-center py-8 text-[#999999] text-[13px]">No tasks found matching your filters.</td></tr>
-                )}
-              </tbody>
-            </table>
-          )}
+                );
+              })}
+              {filteredRequirements.length === 0 && (
+                <tr><td colSpan={7} className="text-center py-8 text-[#999999] text-[13px]">No requirements found matching your filters.</td></tr>
+              )}
+            </tbody>
+          </table>
 
-          {activeTab === 'member' && (
-             <table className="w-full text-left border-collapse min-w-[1000px]">
-              <thead className="sticky top-0 z-10 bg-white">
-                <tr className="border-b border-[#EEEEEE] h-10">
-                  <th className="pl-6 pr-4 w-[50px]"><TableHeader label="No" /></th>
-                  <th className="px-4 w-[250px]"><TableHeader label="Employee" sortKey="member" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Tasks Performance" /></th>
-                  <th className="px-4"><TableHeader label="Load" sortKey="utilization" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Investment" sortKey="investment" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Revenue" sortKey="revenue" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Net Profit" sortKey="profit" currentSort={sortConfig} onSort={handleSort} /></th>
+          {/* Tasks Table */}
+          <table 
+            className="w-full text-left border-collapse min-w-[1000px]" 
+            style={{ display: activeTab === 'task' && !isLoadingTasks ? 'table' : 'none' }}
+          >
+            <thead className="sticky top-0 z-10 bg-white">
+              <tr className="border-b border-[#EEEEEE] h-10">
+                <th className="pl-6 pr-4 w-[50px]"><TableHeader label="No" /></th>
+                <th className="px-4"><TableHeader label="Task" sortKey="task" currentSort={sortConfig} onSort={handleSort} /></th>
+                <th className="px-4"><TableHeader label="Requirement" sortKey="requirement" currentSort={sortConfig} onSort={handleSort} /></th>
+                <th className="px-4"><TableHeader label="Leader" sortKey="leader" currentSort={sortConfig} onSort={handleSort} /></th>
+                <th className="px-4"><TableHeader label="Assigned" sortKey="assigned" currentSort={sortConfig} onSort={handleSort} /></th>
+                <th className="px-4"><TableHeader label="Allotted" sortKey="allottedHrs" currentSort={sortConfig} onSort={handleSort} /></th>
+                <th className="px-4"><TableHeader label="Engaged" sortKey="engagedHrs" currentSort={sortConfig} onSort={handleSort} /></th>
+                <th className="px-4"><TableHeader label="Extra" sortKey="extraHrs" currentSort={sortConfig} onSort={handleSort} /></th>
+                <th className="px-4"><TableHeader label="Status" sortKey="status" currentSort={sortConfig} onSort={handleSort} /></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredTasks.map((row, idx) => (
+                <tr key={row.id} className="border-b border-[#FAFAFA] hover:bg-[#FAFAFA] transition-colors h-14">
+                  <td className="pl-6 pr-4 text-[13px] text-[#999999] font-['Inter:Medium',sans-serif]">{idx + 1}</td>
+                  <td className="px-4 text-[13px] text-[#111111] font-['Manrope:SemiBold',sans-serif]">{row.task}</td>
+                  <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.requirement}</td>
+                  <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.leader}</td>
+                  <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.assigned}</td>
+                  <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.dueDate ? dayjs(row.dueDate).format('MMM D, YYYY') : '-'}</td>
+                  <td className="px-4 text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.allottedHrs}h</td>
+                  <td className="px-4 text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">{row.engagedHrs}h</td>
+                  <td className="px-4 text-[13px] font-['Inter:Medium',sans-serif] text-[#FF3B3B]">{row.extraHrs > 0 ? `+${row.extraHrs}h` : '-'}</td>
+                  <td className="px-4"><StatusBadge status={row.status} /></td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredEmployees.map((row, idx) => (
-                  <tr key={row.id} className="border-b border-[#FAFAFA] hover:bg-[#FAFAFA] transition-colors h-16 cursor-pointer group" onClick={() => setSelectedMemberId(String(row.id))}>
-                    <td className="pl-6 pr-4 text-[13px] text-[#999999] font-['Inter:Medium',sans-serif]">{idx + 1}</td>
-                    <td className="px-4">
-                        <div className="flex flex-col justify-center">
-                            <span className="text-[14px] text-[#111111] font-['Manrope:Bold',sans-serif]">{row.member}</span>
-                            <span className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.designation} <span className="text-[#E5E5E5] mx-1">|</span> {row.department}</span>
-                        </div>
-                    </td>
-                    <td className="px-4">
-                        <div className="flex flex-col">
-                            <span className="text-[14px] text-[#111111] font-['Manrope:Bold',sans-serif]">
-                                {row.taskStats.assigned} <span className="text-[#666666] font-['Inter:Regular',sans-serif] text-[13px]">Assigned</span>
-                            </span>
-                            <div className="flex gap-3 mt-1 text-[11px] font-medium text-[#666666]">
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-[#0F9D58]"></div>
-                                    <span>{row.taskStats.completed}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-[#1A73E8]"></div>
-                                    <span>{row.taskStats.inProgress}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-[#FF3B3B]"></div>
-                                    <span>{row.taskStats.delayed}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                    <td className="px-4 w-[150px]">
-                        <div className="flex flex-col gap-1">
-                             <div className="flex justify-between text-[11px]">
-                                <span className="font-medium text-[#111111]">{row.utilization}%</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full ${row.utilization > 100 ? 'bg-[#FF3B3B]' : 'bg-[#111111]'}`}
-                                  style={{ width: `${Math.min(row.utilization, 100)}%` }}
-                                ></div>
-                            </div>
-                        </div>
-                    </td>
-                    <td className="px-4 text-[13px] text-[#666666] font-['Inter:Medium',sans-serif]">${row.investment?.toLocaleString()}</td>
-                    <td className="px-4 text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">${row.revenue.toLocaleString()}</td>
-                    <td className={`px-4 text-[13px] font-['Manrope:Bold',sans-serif] ${row.profit >= 0 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
-                        ${row.profit.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-                 {filteredEmployees.length === 0 && (
-                  <tr><td colSpan={8} className="text-center py-8 text-[#999999] text-[13px]">No employees found matching your filters.</td></tr>
-                )}
-              </tbody>
-            </table>
-          )}
+              ))}
+              {filteredTasks.length === 0 && (
+                <tr><td colSpan={10} className="text-center py-8 text-[#999999] text-[13px]">No tasks found matching your filters.</td></tr>
+              )}
+            </tbody>
+          </table>
+
+          {/* Member/Employee Table */}
+          <table 
+            className="w-full text-left border-collapse min-w-[1000px]" 
+            style={{ display: activeTab === 'member' && !isLoadingEmployees ? 'table' : 'none' }}
+          >
+            <thead className="sticky top-0 z-10 bg-white">
+              <tr className="border-b border-[#EEEEEE] h-10">
+                <th className="pl-6 pr-4 w-[50px]"><TableHeader label="No" /></th>
+                <th className="px-4 w-[250px]"><TableHeader label="Employee" sortKey="member" currentSort={sortConfig} onSort={handleSort} /></th>
+                <th className="px-4"><TableHeader label="Tasks Performance" /></th>
+                <th className="px-4"><TableHeader label="Load" sortKey="utilization" currentSort={sortConfig} onSort={handleSort} /></th>
+                <th className="px-4"><TableHeader label="Investment" sortKey="investment" currentSort={sortConfig} onSort={handleSort} /></th>
+                <th className="px-4"><TableHeader label="Revenue" sortKey="revenue" currentSort={sortConfig} onSort={handleSort} /></th>
+                <th className="px-4"><TableHeader label="Net Profit" sortKey="profit" currentSort={sortConfig} onSort={handleSort} /></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredEmployees.map((row, idx) => (
+                <tr key={row.id} className="border-b border-[#FAFAFA] hover:bg-[#FAFAFA] transition-colors h-16 cursor-pointer group" onClick={() => setSelectedMemberId(String(row.id))}>
+                  <td className="pl-6 pr-4 text-[13px] text-[#999999] font-['Inter:Medium',sans-serif]">{idx + 1}</td>
+                  <td className="px-4">
+                      <div className="flex flex-col justify-center">
+                          <span className="text-[14px] text-[#111111] font-['Manrope:Bold',sans-serif]">{row.member}</span>
+                          <span className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif]">{row.designation} <span className="text-[#E5E5E5] mx-1">|</span> {row.department}</span>
+                      </div>
+                  </td>
+                  <td className="px-4">
+                      <div className="flex flex-col">
+                          <span className="text-[14px] text-[#111111] font-['Manrope:Bold',sans-serif]">
+                              {row.taskStats.assigned} <span className="text-[#666666] font-['Inter:Regular',sans-serif] text-[13px]">Assigned</span>
+                          </span>
+                          <div className="flex gap-3 mt-1 text-[11px] font-medium text-[#666666]">
+                              <div className="flex items-center gap-1.5">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-[#0F9D58]"></div>
+                                  <span>{row.taskStats.completed}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-[#1A73E8]"></div>
+                                  <span>{row.taskStats.inProgress}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-[#FF3B3B]"></div>
+                                  <span>{row.taskStats.delayed}</span>
+                              </div>
+                          </div>
+                      </div>
+                  </td>
+                  <td className="px-4 w-[150px]">
+                      <div className="flex flex-col gap-1">
+                           <div className="flex justify-between text-[11px]">
+                              <span className="font-medium text-[#111111]">{row.utilization}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${row.utilization > 100 ? 'bg-[#FF3B3B]' : 'bg-[#111111]'}`}
+                                style={{ width: `${Math.min(row.utilization, 100)}%` }}
+                              ></div>
+                          </div>
+                      </div>
+                  </td>
+                  <td className="px-4 text-[13px] text-[#666666] font-['Inter:Medium',sans-serif]">${row.investment?.toLocaleString()}</td>
+                  <td className="px-4 text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">${row.revenue.toLocaleString()}</td>
+                  <td className={`px-4 text-[13px] font-['Manrope:Bold',sans-serif] ${row.profit >= 0 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
+                      ${row.profit.toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+               {filteredEmployees.length === 0 && (
+                <tr><td colSpan={8} className="text-center py-8 text-[#999999] text-[13px]">No employees found matching your filters.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
 
         <Drawer

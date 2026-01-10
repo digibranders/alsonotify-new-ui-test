@@ -67,7 +67,7 @@ export function useTabSync<T extends string>({
 
         // Use window.location.pathname to ensure we stay on the same page
         const newPath = `${window.location.pathname}?${params.toString()}`;
-        router.push(newPath);
+        router.replace(newPath, { scroll: false });
     }, [router, searchParams, paramName, defaultTab, stableValidTabs]);
 
     return [activeTab, setActiveTab] as const;

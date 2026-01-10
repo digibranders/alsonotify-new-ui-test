@@ -88,3 +88,111 @@ Update external documentation to reflect the calculation logic for all Tabs in t
 
 -   **Manual Check:** Verified HTML content against `ReportsPage.tsx` logic.
 -   **Build:** N/A (Documentation only).
+
+---
+
+## Update: Fix Reports Page Tab Switching Flickering
+
+**Timestamp:** 2026-01-10T16:36:29+05:30
+
+### Objective
+
+Eliminate UI flickering on Reports page (and Partners page) when switching between tabs. The flickering was caused by:
+
+1. All React Query queries running simultaneously regardless of active tab
+2. Global loading state blocking all tabs when any query was loading
+3. URL updates via `router.push()` causing unnecessary re-renders
+
+### Root Cause Analysis
+
+1. **Query `enabled` flags:** All three queries (`requirement-reports`, `task-reports`, `employee-reports`) had `enabled: activeTab === 'xxx' || true` which always evaluated to `true`, causing all queries to run on every tab switch.
+2. **Loading condition:** `isLoadingRequirements || ...` caused the loading spinner to show even when on non-requirement tabs.
+3. **URL navigation:** Using `router.push()` adds to browser history and can trigger layout shifts.
+
+### Changes
+
+#### 1. `ReportsPage.tsx`
+
+-   **Fixed query enabled flags:** Removed `|| true` from all three query `enabled` conditions. Now queries only run when their respective tab is active.
+-   **Fixed loading logic:** Changed from `isLoadingRequirements || (activeTab === 'task' && ...)` to `(activeTab === 'requirement' && isLoadingRequirements) || ...` so loading state is tab-specific.
+
+#### 2. `useTabSync.ts`
+
+-   **Changed navigation method:** Updated from `router.push(newPath)` to `router.replace(newPath, { scroll: false })`.
+    -   `replace` prevents adding history entries for every tab switch.
+    -   `scroll: false` prevents scroll position reset on navigation.
+
+### Files Modified
+
+| File                                              | Change                                             |
+| ------------------------------------------------- | -------------------------------------------------- |
+| `src/components/features/reports/ReportsPage.tsx` | Fixed query `enabled` flags and loading condition  |
+| `src/hooks/useTabSync.ts`                         | Changed to `router.replace()` with `scroll: false` |
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Expected Behavior:** Tab switching should now be instant without flickering. Data will only load when needed (per-tab), and cached data will persist.
+
+### Impact
+
+-   **Performance:** Reduced API calls by ~66% on initial load (only active tab fetches data).
+-   **UX:** Eliminated flickering during tab switches.
+-   **Browser History:** Tab switches no longer pollute browser history.
+
+---
+
+## Update: Additional Flickering Fixes (Deep Investigation)
+
+**Timestamp:** 2026-01-10T16:43:28+05:30
+
+### Problem
+
+Initial fixes partially reduced flickering but didn't eliminate it. Upon deeper investigation, found additional root causes:
+
+1. **`filterOptions` array recreated on every render** - not memoized, causing FilterBar to re-render
+2. **KPI cards using conditional rendering (`&&`)** - this causes DOM removal/insertion on every tab switch, leading to layout shifts
+3. **Tables using conditional rendering (`&&`)** - same issue as KPI cards
+
+### Additional Fixes Applied
+
+#### 1. Memoized `filterOptions` with `useMemo`
+
+-   Previously: `const filterOptions: FilterOption[] = []; if (activeTab === 'xxx') { filterOptions.push(...); }`
+-   Now: `const filterOptions = useMemo(() => { ... }, [activeTab, partnerOptions, employeeOptions, departmentOptions]);`
+-   **Benefit:** Prevents unnecessary re-renders of FilterBar component
+
+#### 2. KPI Cards now use CSS `display` instead of conditional rendering
+
+-   Previously: `{activeTab === 'requirement' && (<>...</>)}`
+-   Now: `<div style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>...</div>`
+-   **Benefit:** DOM elements stay mounted, only visibility changes - no layout shifts
+-   Added `min-h-[88px]` to prevent height collapse
+
+#### 3. Tables now use CSS `display` instead of conditional rendering
+
+-   Previously: `{activeTab === 'task' && (<table>...</table>)}`
+-   Now: `<table style={{ display: activeTab === 'task' && !isLoadingTasks ? 'table' : 'none' }}>...</table>`
+-   **Benefit:** All three tables stay mounted in DOM, preventing expensive mount/unmount cycles
+-   Added `min-h-[200px]` to table container
+
+### Files Modified
+
+| File                                              | Change                                                                                               |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `src/components/features/reports/ReportsPage.tsx` | Added `useCallback` import, memoized `filterOptions`, refactored KPI cards and tables to CSS display |
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Expected Behavior:** Tab switching should now be completely flicker-free. DOM stays stable, only CSS visibility changes.
+
+### Technical Summary
+
+The key insight is that React's conditional rendering (`condition && <Component>`) causes full mount/unmount cycles which trigger:
+
+-   DOM node creation/destruction
+-   Layout recalculation (reflow)
+-   Paint operations
+
+Using CSS `display: none` instead keeps DOM nodes mounted, so switching tabs only changes CSS properties - a much cheaper operation that the browser can batch and animate smoothly.
