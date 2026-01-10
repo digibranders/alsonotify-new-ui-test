@@ -13,8 +13,9 @@ export interface Requirement {
 
 export interface InvoiceItem {
   requirementId: number;
-  title: string;
-  cost: number;
+  description: string;
+  quantity: number;
+  unitPrice: number;
 }
 
 export interface Invoice {
@@ -161,7 +162,10 @@ export const MOCK_INVOICES: Invoice[] = [
     dueDate: '2025-11-15T09:00:00Z',
     amount: 15000,
     status: 'paid',
-    items: []
+    items: [
+        { requirementId: 110, description: 'Q3 Maintenance', quantity: 1, unitPrice: 3000 },
+        { requirementId: 901, description: 'Security Consultation', quantity: 1, unitPrice: 12000 }
+    ]
   },
   {
     id: 'INV-2025-002',
@@ -171,7 +175,9 @@ export const MOCK_INVOICES: Invoice[] = [
     dueDate: '2025-11-20T09:00:00Z',
     amount: 8500,
     status: 'sent',
-    items: []
+    items: [
+        { requirementId: 902, description: 'Network Setup', quantity: 1, unitPrice: 8500 }
+    ]
   },
   {
     id: 'INV-2025-003',
@@ -181,7 +187,10 @@ export const MOCK_INVOICES: Invoice[] = [
     dueDate: '2025-11-05T09:00:00Z',
     amount: 22000,
     status: 'overdue',
-    items: []
+    items: [
+        { requirementId: 105, description: 'Cloud Migration Strategy', quantity: 1, unitPrice: 12000 },
+        { requirementId: 903, description: 'Legacy System Integration', quantity: 1, unitPrice: 10000 }
+    ]
   },
   {
     id: 'INV-2025-004',
@@ -191,7 +200,9 @@ export const MOCK_INVOICES: Invoice[] = [
     dueDate: '2025-12-02T09:00:00Z',
     amount: 4200,
     status: 'sent',
-    items: []
+    items: [
+        { requirementId: 106, description: 'Backend Optimization', quantity: 1, unitPrice: 4200 }
+    ]
   },
   {
     id: 'INV-2025-005',
@@ -201,7 +212,9 @@ export const MOCK_INVOICES: Invoice[] = [
     dueDate: '2025-09-30T09:00:00Z',
     amount: 12500,
     status: 'paid',
-    items: []
+    items: [
+        { requirementId: 904, description: 'Dynamic Analysis', quantity: 1, unitPrice: 12500 }
+    ]
   },
    {
     id: 'INV-2025-006',
@@ -211,6 +224,9 @@ export const MOCK_INVOICES: Invoice[] = [
     dueDate: '2025-12-10T09:00:00Z',
     amount: 6700,
     status: 'draft',
-    items: []
+    items: [
+        { requirementId: 905, description: 'Initial Consultation', quantity: 1, unitPrice: 1700 },
+        { requirementId: 906, description: 'Blueprint Design', quantity: 1, unitPrice: 5000 }
+    ]
   }
 ];
