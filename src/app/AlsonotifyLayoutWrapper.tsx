@@ -19,9 +19,22 @@ interface AlsonotifyLayoutWrapperProps {
   children: ReactNode;
 }
 
+import { SidebarProvider, useSidebar } from '../context/SidebarContext';
+
 export function AlsonotifyLayoutWrapper({ children }: AlsonotifyLayoutWrapperProps) {
+  return (
+    <SidebarProvider>
+      <AlsonotifyLayoutContent>
+        {children}
+      </AlsonotifyLayoutContent>
+    </SidebarProvider>
+  );
+}
+
+function AlsonotifyLayoutContent({ children }: AlsonotifyLayoutWrapperProps) {
   const { data: userDetailsData } = useUserDetails();
   const [isMounted, setIsMounted] = useState(false);
+  const { isCollapsed } = useSidebar();
 
   useEffect(() => {
     setIsMounted(true);
@@ -115,8 +128,10 @@ export function AlsonotifyLayoutWrapper({ children }: AlsonotifyLayoutWrapperPro
         {/* Main Layout - Visible on all screens */}
         <div className="flex gap-5 w-full h-full overflow-hidden">
           {/* Left Sidebar - Hidden on mobile, visible on lg+ */}
-          <div className="hidden lg:block w-[292px] shrink-0 h-full overflow-y-auto">
-            <Sidebar userRole={userRole} permissions={permissions} />
+          <div 
+            className={`hidden lg:block shrink-0 h-full overflow-y-auto transition-all duration-300 ${isCollapsed ? 'w-[80px]' : 'w-[292px]'}`}
+          >
+            <Sidebar userRole={userRole} permissions={permissions} collapsed={isCollapsed} />
           </div>
 
           {/* Main Content Area */}

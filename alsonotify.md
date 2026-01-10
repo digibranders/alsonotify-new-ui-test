@@ -2,9 +2,9 @@
 
 ## 0) Hard stops
 
--   **Frontend-only edits.** Backend is read-only reference.
--   **Do not break API contracts by accident.**
+        -   **Do not break API contracts by accident.**
     -   Do not change endpoint paths, request payload keys, or response parsing semantics unless the step explicitly calls it out and you have verified backend compatibility.
+
 -   **Auth contract is fixed unless explicitly scoped:**
     -   JWT token is a **raw string** in request header `authorization` (no `Bearer` prefix).
     -   Preserve current header casing and interceptor behavior unless the step explicitly scopes a change.

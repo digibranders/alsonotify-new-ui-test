@@ -9,7 +9,6 @@ import { FeedbackType } from '@/services/feedback';
 const { TextArea } = Input;
 
 interface FeedbackFormValues {
-  title: string;
   description: string;
 }
 
@@ -69,11 +68,17 @@ export function FeedbackWidget({ open, onClose }: FeedbackWidgetProps) {
 
   const handleSubmit = async (values: FeedbackFormValues) => {
     try {
+      const trimmedDescription = values.description.trim();
+      if (!trimmedDescription) {
+        message.error('Please enter a description');
+        return;
+      }
+
       const categoryLabel = FEEDBACK_TYPE_OPTIONS.find(opt => opt.value === selectedType)?.label || selectedType;
       
       await mutateAsync({
         title: categoryLabel,
-        description: values.description.trim(),
+        description: trimmedDescription,
         type: selectedType,
       });
       message.success('Thank you for your feedback! 🙌');
@@ -171,7 +176,7 @@ export function FeedbackWidget({ open, onClose }: FeedbackWidgetProps) {
                   Details
                 </span>
               }
-              rules={[{ required: true, message: 'Please describe your feedback' }]}
+              rules={[{ required: true, whitespace: true, message: 'Please describe your feedback' }]}
             >
               <TextArea
                 rows={6}

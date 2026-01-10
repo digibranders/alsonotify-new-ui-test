@@ -16,7 +16,6 @@ import {
   Calendar24Filled,
   WeatherRainShowersDay24Filled,
   Receipt24Filled,
-  Sparkle24Filled,
   Notepad24Filled,
   Video24Filled,
   Settings24Filled
@@ -28,6 +27,7 @@ type UserRole = 'Admin' | 'Manager' | 'Leader' | 'Employee';
 interface SidebarProps {
   userRole: UserRole;
   permissions?: { Navigation?: Record<string, boolean> };
+  collapsed?: boolean;
 }
 
 type NavItemConfig = {
@@ -128,8 +128,17 @@ const NAV_ITEMS: NavItemConfig[] = [
   },
 ];
 
+import { useSidebar } from '@/context/SidebarContext';
+import { 
+    PanelLeftContract24Regular,
+    PanelLeftExpand24Regular
+} from "@fluentui/react-icons";
+
+// ... existing imports ...
+
 export const Sidebar = React.memo(function Sidebar({ userRole, permissions }: SidebarProps) {
   const pathname = usePathname();
+  const { isCollapsed, toggleSidebar } = useSidebar();
 
   const filteredNavItems = React.useMemo(() => NAV_ITEMS.filter(item => {
     const permissionKey = navPermissionMap[item.id];
@@ -153,24 +162,53 @@ export const Sidebar = React.memo(function Sidebar({ userRole, permissions }: Si
   }, [pathname]);
 
   return (
-    <div className="bg-white rounded-[24px] p-6 w-full flex flex-col" style={{ height: 'calc(100vh - 40px)' }}>
+    <div 
+      className={`bg-white rounded-[24px] ${isCollapsed ? 'px-2' : 'px-6'} py-6 w-full flex flex-col transition-all duration-300 relative group/sidebar`} 
+      style={{ height: 'calc(100vh - 40px)' }}
+    >
+      {/* Toggle Button - Visible on hover or always? Let's make it subtle */}
+      <button
+          onClick={toggleSidebar}
+          className={`
+            absolute top-6 
+            ${isCollapsed ? 'left-1/2 -translate-x-1/2 mt-10' : 'right-4'} 
+            w-8 h-8 flex items-center justify-center 
+            text-[#999999] hover:text-[#111111] hover:bg-[#F7F7F7] 
+            rounded-full transition-all z-10
+            ${!isCollapsed && 'opacity-0 group-hover/sidebar:opacity-100'}
+          `}
+          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+      >
+          {isCollapsed ? <PanelLeftExpand24Regular /> : <PanelLeftContract24Regular />}
+      </button>
+
       {/* Logo */}
-      <div className="flex items-center justify-center mb-6">
-        <Image
-          src={BrandLogo}
-          alt="Alsonotify"
-          width={120}
-          height={29}
-          className="h-[29px] w-auto object-contain"
-          priority
-        />
+      <div className={`flex items-center justify-center mb-6 h-8 overflow-hidden transition-all duration-300`}>
+        {isCollapsed ? (
+             <Image
+                src="/favicon.png"
+                alt="Alsonotify"
+                width={32}
+                height={32}
+                className="w-8 h-8 object-contain"
+             />
+        ) : (
+            <Image
+            src={BrandLogo}
+            alt="Alsonotify"
+            width={120}
+            height={29}
+            className="h-[29px] w-auto object-contain"
+            priority
+            />
+        )}
       </div>
 
       {/* Divider */}
       <div className="h-px bg-[#EEEEEE] mb-6" />
 
       {/* Navigation */}
-      <nav className="flex flex-col gap-2 flex-1 overflow-y-auto scrollbar-hide">
+      <nav className="flex flex-col gap-2 flex-1 overflow-y-auto scrollbar-hide items-center w-full">
         {filteredNavItems.map((item) => (
           <NavItem
             key={item.id}
@@ -178,20 +216,23 @@ export const Sidebar = React.memo(function Sidebar({ userRole, permissions }: Si
             icon={item.icon}
             label={item.label}
             active={isActive(item.path)}
+            collapsed={isCollapsed}
           />
         ))}
       </nav>
 
 
-      {/* Premium Card at bottom - Only show for Admin/Manager? Optional, keeping for all for now */}
-      <div className="mt-6">
-        <PremiumCard />
-      </div>
+      {/* Premium Card at bottom - Hide when collapsed */}
+      {!isCollapsed && (
+          <div className="mt-6">
+            <PremiumCard />
+          </div>
+      )}
     </div>
   );
 });
 
-const NavItem = React.memo(function NavItem({ href, icon, label, active = false }: { href: string; icon: React.ReactNode; label: string; active?: boolean }) {
+const NavItem = React.memo(function NavItem({ href, icon, label, active = false, collapsed = false }: { href: string; icon: React.ReactNode; label: string; active?: boolean; collapsed?: boolean }) {
   const iconColor = active ? '#ff3b3b' : '#434343';
   const iconWithColor = React.isValidElement(icon)
     ? React.cloneElement(icon as React.ReactElement<any>, { color: iconColor })
@@ -201,8 +242,9 @@ const NavItem = React.memo(function NavItem({ href, icon, label, active = false 
     <Link
       href={href}
       className={`
-        relative w-full h-[40px] rounded-full transition-all group shrink-0
-        flex items-center gap-4 px-6
+        relative h-[40px] rounded-full transition-all group shrink-0
+        flex items-center 
+        ${collapsed ? 'justify-center w-[40px] px-0' : 'w-full gap-4 px-6'}
         ${active
           ? 'bg-[#FEF3F2] border-2 border-[#ff3b3b]'
           : 'bg-white hover:bg-[#F7F7F7] border-2 border-transparent'
@@ -210,6 +252,7 @@ const NavItem = React.memo(function NavItem({ href, icon, label, active = false 
         cursor-pointer outline-none
         no-underline
       `}
+      title={collapsed ? label : undefined}
     >
       {/* Icon */}
       <div className="flex-shrink-0">
@@ -217,12 +260,14 @@ const NavItem = React.memo(function NavItem({ href, icon, label, active = false 
       </div>
 
       {/* Label */}
-      <span className={`
-        font-['Manrope:SemiBold',sans-serif] text-[14px] leading-normal
-        ${active ? 'text-[#ff3b3b]' : 'text-[#434343]'}
-      `}>
-        {label}
-      </span>
+      {!collapsed && (
+        <span className={`
+            font-['Manrope:SemiBold',sans-serif] text-[14px] leading-normal whitespace-nowrap
+            ${active ? 'text-[#ff3b3b]' : 'text-[#434343]'}
+        `}>
+            {label}
+        </span>
+      )}
     </Link>
   );
 });

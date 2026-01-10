@@ -283,7 +283,7 @@ export function EmployeeDetailsModal({
             </div>
             <div className="grid grid-cols-2 gap-y-5 gap-x-12 pl-3">
               <DetailItem label="Date of Joining" value={formatDate(employee.dateOfJoining)} icon={<Calendar className="w-3.5 h-3.5" />} />
-              <DetailItem label="Annual Salary" value={employee.salary ? `${(employee as any).currency || '$'}${Number(employee.salary).toLocaleString()}` : 'N/A'} icon={<DollarSign className="w-3.5 h-3.5" />} />
+              <DetailItem label="Annual Salary" value={employee.salary ? `${employee.currency || '$'} ${Number(employee.salary).toLocaleString()}` : 'N/A'} icon={<DollarSign className="w-3.5 h-3.5" />} />
               <DetailItem label="Hourly Cost" value={hourlyRate} icon={<DollarSign className="w-3.5 h-3.5" />} />
               <DetailItem label="Employment Type" value={employee.employmentType || "Full-time"} icon={<Briefcase className="w-3.5 h-3.5" />} />
               {employee.timezone && (

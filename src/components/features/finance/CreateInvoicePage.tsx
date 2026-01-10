@@ -41,7 +41,10 @@ export function CreateInvoicePage() {
   
   // --- Query Params ---
   const clientId = searchParams.get('clientId');
-  const reqIds = searchParams.get('reqIds')?.split(',') || [];
+  const reqIds = useMemo(() => {
+    const raw = searchParams.get('reqIds');
+    return raw ? raw.split(',') : [];
+  }, [searchParams]);
 
   // --- State ---
   const [invoiceNumber] = useState(`YEAR${dayjs().year()}-${String(Math.floor(Math.random() * 1000)).padStart(4, '0')}-DRAFT`);
@@ -165,80 +168,91 @@ export function CreateInvoicePage() {
       <div className="flex-1 flex overflow-hidden">
         {/* LEFT PANEL: Editor */}
         <div className="flex-1 overflow-y-auto p-8 border-r border-[#EEEEEE] bg-white max-w-[50%]">
-           <div className="max-w-[600px] mx-auto space-y-8">
+           <div className="max-w-none mx-auto space-y-10">
                
                {/* Customer Section */}
                <section>
-                   <h3 className="text-[18px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4">Customer</h3>
-                   <div className="p-4 rounded-[12px] border border-[#EEEEEE] bg-[#FAFAFA]">
+                   <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] uppercase tracking-wider mb-4">Customer</h3>
+                   <div className="p-4 rounded-[12px] border border-[#EEEEEE] bg-white hover:border-[#ff3b3b]/30 transition-colors group cursor-pointer relative">
                        <div className="flex justify-between items-start">
                            <div>
-                               <p className="font-bold text-[#111111] text-[14px]">{clientId || 'Select Customer'}</p>
-                               <p className="text-[#666666] text-[13px]">saurabh_j@triamsecurity.com</p>
+                               <p className="font-bold text-[#111111] text-[16px] mb-1">{clientId || 'Select Customer'}</p>
+                               <p className="text-[#666666] text-[14px]">saurabh_j@triamsecurity.com</p>
                            </div>
-                           <button className="text-[#ff3b3b] text-[12px] font-bold hover:underline">Change</button>
+                           <span className="text-[#ff3b3b] text-[12px] font-bold opacity-0 group-hover:opacity-100 transition-opacity absolute top-4 right-4">Change</span>
                        </div>
                    </div>
                </section>
 
                {/* Invoice Details */}
-               <section className="grid grid-cols-2 gap-6">
-                   <div>
-                       <label className="block text-[12px] font-bold text-[#666666] uppercase mb-1.5">Invoice Number</label>
-                       <input 
-                          type="text" 
-                          value={invoiceNumber}
-                          readOnly
-                          className="w-full px-3 py-2 bg-[#F7F7F7] border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#999999]"
-                       />
-                   </div>
-                   <div>
-                       <label className="block text-[12px] font-bold text-[#666666] uppercase mb-1.5">Currency</label>
-                       <div className="w-full px-3 py-2 bg-[#F7F7F7] border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111]">
-                           INR - Indian Rupee
+               <section>
+                   <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] uppercase tracking-wider mb-4">Invoice Details</h3>
+                   <div className="grid grid-cols-2 gap-6">
+                       <div className="space-y-1.5">
+                           <label className="block text-[12px] font-medium text-[#666666]">Invoice Number</label>
+                           <input 
+                              type="text" 
+                              value={invoiceNumber}
+                              readOnly
+                              className="w-full px-3 py-2.5 bg-[#F9FAFB] border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#666666] font-mono"
+                           />
                        </div>
-                   </div>
-                   <div>
-                       <label className="block text-[12px] font-bold text-[#666666] uppercase mb-1.5">Issue Date</label>
-                       <input 
-                          type="date" 
-                          value={issueDate}
-                          onChange={(e) => setIssueDate(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] focus:ring-1 focus:ring-[#ff3b3b] outline-none"
-                       />
-                   </div>
-                   <div>
-                       <label className="block text-[12px] font-bold text-[#666666] uppercase mb-1.5">Due Date</label>
-                       <input 
-                          type="date" 
-                          value={dueDate}
-                          onChange={(e) => setDueDate(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] focus:ring-1 focus:ring-[#ff3b3b] outline-none"
-                       />
+                       <div className="space-y-1.5">
+                           <label className="block text-[12px] font-medium text-[#666666]">Currency</label>
+                           <div className="w-full px-3 py-2.5 bg-[#F9FAFB] border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111]">
+                               INR - Indian Rupee
+                           </div>
+                       </div>
+                       <div className="space-y-1.5">
+                           <label className="block text-[12px] font-medium text-[#666666]">Issue Date</label>
+                           <input 
+                              type="date" 
+                              value={issueDate}
+                              onChange={(e) => setIssueDate(e.target.value)}
+                              className="w-full px-3 py-2.5 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] focus:ring-1 focus:ring-[#ff3b3b] outline-none transition-all"
+                           />
+                       </div>
+                       <div className="space-y-1.5">
+                           <label className="block text-[12px] font-medium text-[#666666]">Due Date</label>
+                           <input 
+                              type="date" 
+                              value={dueDate}
+                              onChange={(e) => setDueDate(e.target.value)}
+                              className="w-full px-3 py-2.5 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] focus:ring-1 focus:ring-[#ff3b3b] outline-none transition-all"
+                           />
+                       </div>
                    </div>
                </section>
 
                {/* Items Section */}
                <section>
                    <div className="flex justify-between items-center mb-4">
-                       <h3 className="text-[18px] font-['Manrope:Bold',sans-serif] text-[#111111]">Items</h3>
+                       <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] uppercase tracking-wider">Items</h3>
                        <button className="text-[#666666] hover:text-[#111111]">
                            <Settings className="w-4 h-4" />
                        </button>
                    </div>
                    
+                   {/* Table Headers for Editor */}
+                   <div className="flex gap-3 mb-2 px-1">
+                        <span className="flex-1 text-[11px] font-bold text-[#999999] uppercase">Description</span>
+                        <span className="w-20 text-[11px] font-bold text-[#999999] uppercase text-right">Qty</span>
+                        <span className="w-32 text-[11px] font-bold text-[#999999] uppercase text-right">Price</span>
+                        <span className="w-28 text-[11px] font-bold text-[#999999] uppercase text-right">Total</span>
+                        <span className="w-8"></span> {/* Spacer for delete icon */}
+                   </div>
+
                    <div className="space-y-3 mb-4">
                        {items.map((item, index) => (
                            <div key={item.id} className="group flex gap-3 items-start">
-                               <div className="flex-1 space-y-2">
+                               <div className="flex-1">
                                    <input 
                                       type="text" 
                                       placeholder="Item description"
                                       value={item.description}
                                       onChange={(e) => handleUpdateItem(item.id, 'description', e.target.value)}
-                                      className="w-full px-3 py-2 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] placeholder:text-[#999999] focus:ring-1 focus:ring-[#ff3b3b] outline-none"
+                                      className="w-full px-3 py-2 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] placeholder:text-[#999999] focus:ring-1 focus:ring-[#ff3b3b] outline-none transition-all"
                                    />
-                                   {/* Mobile view usually hides columns, keeping simple for now */}
                                </div>
                                <div className="w-20">
                                    <input 
@@ -246,7 +260,7 @@ export function CreateInvoicePage() {
                                       placeholder="Qty"
                                       value={item.quantity}
                                       onChange={(e) => handleUpdateItem(item.id, 'quantity', parseFloat(e.target.value))}
-                                      className="w-full px-3 py-2 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] text-right focus:ring-1 focus:ring-[#ff3b3b] outline-none"
+                                      className="w-full px-3 py-2 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] text-right focus:ring-1 focus:ring-[#ff3b3b] outline-none transition-all"
                                    />
                                </div>
                                <div className="w-32">
@@ -255,15 +269,15 @@ export function CreateInvoicePage() {
                                       placeholder="Price"
                                       value={item.unitPrice}
                                       onChange={(e) => handleUpdateItem(item.id, 'unitPrice', parseFloat(e.target.value))}
-                                      className="w-full px-3 py-2 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] text-right focus:ring-1 focus:ring-[#ff3b3b] outline-none"
+                                      className="w-full px-3 py-2 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] text-right focus:ring-1 focus:ring-[#ff3b3b] outline-none transition-all"
                                    />
                                </div>
-                               <div className="w-28 pt-2 text-right text-[14px] font-bold text-[#111111]">
+                               <div className="w-28 pt-2.5 text-right text-[14px] font-bold text-[#111111]">
                                    ₹{(item.quantity * item.unitPrice).toLocaleString()}
                                </div>
                                <button 
                                   onClick={() => handleRemoveItem(item.id)}
-                                  className="pt-2 text-[#999999] hover:text-[#ff3b3b] opacity-0 group-hover:opacity-100 transition-opacity"
+                                  className="w-8 pt-2.5 flex justify-end text-[#999999] hover:text-[#ff3b3b] opacity-0 group-hover:opacity-100 transition-opacity"
                                >
                                    <Trash2 className="w-4 h-4" />
                                </button>
@@ -281,7 +295,7 @@ export function CreateInvoicePage() {
                </section>
                
                {/* Discounts & Tax */}
-               <section className="space-y-4 pt-4 border-t border-[#EEEEEE]">
+               <section className="space-y-4 pt-6 border-t border-[#EEEEEE]">
                    <div className="flex justify-between items-center text-[14px]">
                        <span className="text-[#666666]">Subtotal</span>
                        <span className="font-bold text-[#111111]">₹{totals.subtotal.toLocaleString()}</span>

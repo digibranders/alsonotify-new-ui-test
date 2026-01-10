@@ -363,8 +363,8 @@ export function TaskForm({
               dropdownStyle={{ borderRadius: '8px', padding: '8px' }}
               showSearch={{
                 filterOption: (input, option) => {
-                  const label = option?.label as string;
-                  return label.toLowerCase().includes(input.toLowerCase());
+                  const label = String(option?.label ?? '').toLowerCase();
+                  return label.includes(input.toLowerCase());
                 }
               }}
             >
