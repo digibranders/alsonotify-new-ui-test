@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   ArrowLeft, 
@@ -26,6 +26,7 @@ import { MOCK_REQUIREMENTS, Requirement } from '../../../data/mockFinanceData';
 import { useCurrentUserCompany, usePartners } from '@/hooks/useUser';
 import { commonCountries } from '@/data/defaultData';
 import { Select } from 'antd';
+import { InvoicePreview } from './InvoicePreview';
 
 const { Option } = Select;
 
@@ -66,6 +67,9 @@ export function CreateInvoicePage() {
   const [taxConfig, setTaxConfig] = useState<TaxConfig>({ id: 'gst_18', name: 'IGST', rate: 18 });
   const [memo, setMemo] = useState('Payment is due within 7 days. Please include the invoice number on your wire transfer.');
   const [footer, setFooter] = useState<string>('Bank: Kotak Mahindra Bank\nA/C: 5345861934\nIFSC: KKBK0000632\nBranch: CBD Belapur, Mumbai');
+
+  const [isDownloading, setIsDownloading] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
   
   // --- Dynamic Data ---
   const { data: companyRes } = useCurrentUserCompany();
@@ -208,6 +212,65 @@ export function CreateInvoicePage() {
       router.push('/dashboard/finance');
   };
 
+  const handleDownloadPDF = async () => {
+    if (!previewRef.current) return;
+    
+    try {
+        setIsDownloading(true);
+        // Dynamically import html2canvas and jspdf to avoid SSR issues
+        const html2canvas = (await import('html2canvas')).default;
+        const jsPDF = (await import('jspdf')).default;
+
+        const canvas = await html2canvas(previewRef.current, {
+            scale: 2, // Higher scale for better quality
+            useCORS: true,
+            logging: false
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        const imgWidth = 210; // A4 width in mm
+        const pageHeight = 297; // A4 height in mm
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+        pdf.save(`${invoiceId}.pdf`);
+        toast.success("Invoice downloaded successfully!");
+    } catch (error) {
+        console.error("PDF Download Error:", error);
+        toast.error("Failed to download invoice");
+    } finally {
+        setIsDownloading(false);
+    }
+  };
+
+  // Prepare data for shared preview component
+  const invoiceData = {
+    invoiceId,
+    issueDate,
+    dueDate,
+    currencyCode,
+    senderName,
+    senderAddress,
+    senderEmail,
+    senderTaxId,
+    clientName,
+    clientAddress,
+    clientEmail,
+    clientPhone,
+    clientTaxId,
+    items,
+    totals,
+    taxConfig,
+    memo,
+    footer
+  };
+
   return (
     <div className="h-full bg-[#F9FAFB] flex flex-col rounded-[24px] overflow-hidden">
       {/* Header */}
@@ -229,6 +292,18 @@ export function CreateInvoicePage() {
                 onClick={() => router.back()}
              >
                  Cancel
+             </button>
+             <button 
+                onClick={handleDownloadPDF}
+                disabled={isDownloading}
+                className="px-4 py-2 border border-[#EEEEEE] bg-white text-[#111111] rounded-full font-bold text-[13px] hover:bg-[#F7F7F7] transition-colors flex items-center gap-2"
+             >
+                 {isDownloading ? (
+                     <span className="w-4 h-4 border-2 border-[#111111] border-t-transparent rounded-full animate-spin"></span>
+                 ) : (
+                    <Download className="w-4 h-4" />
+                 )}
+                 Download PDF
              </button>
              <button 
                 onClick={handleSaveInvoice}
@@ -519,178 +594,7 @@ export function CreateInvoicePage() {
         {/* RIGHT PANEL: Live Preview - A4 Size (210mm × 297mm) */}
         <div className="w-1/2 bg-[#E5E7EB] p-6 overflow-y-auto">
           <div className="flex justify-center">
-            {/* A4 Container: 210mm = 794px, 297mm = 1123px at 96 DPI */}
-              <div 
-                className="bg-white shadow-2xl flex flex-col"
-                style={{
-                  width: '794px',
-                  minHeight: '1123px',
-                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                }}
-              >
-                {/* Main Content - Reduced padding for more space */}
-              <div className="flex-1 px-12 py-8">
-                {/* Top Section: Logo & Invoice Title */}
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h1 className="text-[28px] font-semibold text-[#1a1a1a] tracking-tight mb-0.5">Invoice</h1>
-                    <p className="text-[12px] text-[#697386]">{invoiceId}</p>
-                  </div>
-                  {/* Company Logo */}
-                  <div className="text-right">
-                    <div className="flex justify-end mb-1">
-                      <Image 
-                        src={FynixLogo}
-                        alt="Fynix"
-                        width={100}
-                        height={32}
-                        className="h-[32px] w-auto object-contain"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Invoice Details Row - Compact */}
-                <div className="flex gap-12 mb-6 pb-5 border-b border-[#e6e6e6]">
-                  <div>
-                    <p className="text-[10px] font-semibold text-[#697386] uppercase tracking-wider mb-0.5">Issue Date</p>
-                    <p className="text-[12px] text-[#1a1a1a] font-medium">{dayjs(issueDate).format('MMM D, YYYY')}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-semibold text-[#697386] uppercase tracking-wider mb-0.5">Due Date</p>
-                    <p className="text-[12px] text-[#1a1a1a] font-medium">{dayjs(dueDate).format('MMM D, YYYY')}</p>
-                  </div>
-                  <div className="ml-auto text-right">
-                    <p className="text-[10px] font-semibold text-[#697386] uppercase tracking-wider mb-0.5">Amount Due</p>
-                    <p className="text-[20px] text-[#1a1a1a] font-bold">{currencyCode === 'INR' ? '₹' : (currencyCode === 'USD' ? '$' : (currencyCode === 'EUR' ? '€' : '£'))}{totals.total.toLocaleString()}</p>
-                  </div>
-                </div>
-
-                {/* Billed To / From Section - Compact */}
-                <div className="flex justify-between mb-6">
-                  <div className="max-w-[260px]">
-                    <p className="text-[10px] font-semibold text-[#697386] uppercase tracking-wider mb-2">Bill To</p>
-                    <p className="text-[14px] font-semibold text-[#1a1a1a] mb-1">{clientName || 'Triem Security'}</p>
-                    <div className="text-[11px] text-[#697386] leading-snug space-y-px whitespace-pre-wrap">
-                      <p>{clientAddress}</p>
-                      {clientEmail && <p>{clientEmail}</p>}
-                      {clientPhone && <p>{clientPhone}</p>}
-                      {clientTaxId && <p className="mt-1 font-medium">GSTIN: {clientTaxId}</p>}
-                    </div>
-                  </div>
-                  <div className="max-w-[260px] text-right">
-                    <p className="text-[10px] font-semibold text-[#697386] uppercase tracking-wider mb-2">From</p>
-                    <p className="text-[14px] font-semibold text-[#1a1a1a] mb-1">{senderName}</p>
-                    <div className="text-[11px] text-[#697386] leading-snug space-y-px whitespace-pre-wrap">
-                      <p>{senderAddress}</p>
-                      {senderEmail && <p>{senderEmail}</p>}
-                      {senderTaxId && <p className="mt-1 font-medium">GSTIN: {senderTaxId}</p>}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Line Items Table - Compact */}
-                <div className="mb-4">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b-2 border-[#1a1a1a]">
-                        <th className="text-left py-2 text-[10px] font-semibold text-[#697386] uppercase tracking-wider">Description</th>
-                        <th className="text-center py-2 text-[10px] font-semibold text-[#697386] uppercase tracking-wider w-16">Qty</th>
-                        <th className="text-right py-2 text-[10px] font-semibold text-[#697386] uppercase tracking-wider w-24">Unit Price</th>
-                        <th className="text-right py-2 text-[10px] font-semibold text-[#697386] uppercase tracking-wider w-24">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {items.map((item) => (
-                        <tr key={item.id} className="border-b border-[#e6e6e6]">
-                          <td className="py-2.5 text-[12px] text-[#1a1a1a]">{item.description}</td>
-                          <td className="py-2.5 text-center text-[12px] text-[#697386]">{item.quantity}</td>
-                          <td className="py-2.5 text-right text-[12px] text-[#697386]">{currencyCode === 'INR' ? '₹' : (currencyCode === 'USD' ? '$' : (currencyCode === 'EUR' ? '€' : '£'))}{item.unitPrice.toLocaleString()}</td>
-                          <td className="py-2.5 text-right text-[12px] font-medium text-[#1a1a1a]">{currencyCode === 'INR' ? '₹' : (currencyCode === 'USD' ? '$' : (currencyCode === 'EUR' ? '€' : '£'))}{(item.quantity * item.unitPrice).toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Summary - Right Aligned, Compact */}
-                    <div className="flex justify-end">
-                  <div className="w-[240px]">
-                    <div className="flex justify-between py-1.5 text-[12px]">
-                      <span className="text-[#697386]">Subtotal</span>
-                      <span className="text-[#1a1a1a]">{currencyCode === 'INR' ? '₹' : (currencyCode === 'USD' ? '$' : (currencyCode === 'EUR' ? '€' : '£'))}{totals.subtotal.toLocaleString()}</span>
-                    </div>
-                    {discount > 0 && (
-                      <div className="flex justify-between py-1.5 text-[12px]">
-                        <span className="text-[#697386]">Discount</span>
-                        <span className="text-[#0F9D58]">-{currencyCode === 'INR' ? '₹' : (currencyCode === 'USD' ? '$' : (currencyCode === 'EUR' ? '€' : '£'))}{discount.toLocaleString()}</span>
-                      </div>
-                    )}
-                    {taxConfig.id === 'gst_local' && taxConfig.rate > 0 ? (
-                      <>
-                        <div className="flex justify-between py-1.5 text-[12px]">
-                          <span className="text-[#697386]">CGST ({(taxConfig.rate / 2)}%)</span>
-                          <span className="text-[#1a1a1a]">{currencyCode === 'INR' ? '₹' : (currencyCode === 'USD' ? '$' : (currencyCode === 'EUR' ? '€' : '£'))}{(totals.totalTax / 2).toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between py-1.5 text-[12px]">
-                          <span className="text-[#697386]">SGST ({(taxConfig.rate / 2)}%)</span>
-                          <span className="text-[#1a1a1a]">{currencyCode === 'INR' ? '₹' : (currencyCode === 'USD' ? '$' : (currencyCode === 'EUR' ? '€' : '£'))}{(totals.totalTax / 2).toLocaleString()}</span>
-                        </div>
-                      </>
-                    ) : (
-                      taxConfig.rate > 0 && (
-                        <div className="flex justify-between py-1.5 text-[12px]">
-                          <span className="text-[#697386]">{taxConfig.name} ({taxConfig.rate}%)</span>
-                          <span className="text-[#1a1a1a]">{currencyCode === 'INR' ? '₹' : (currencyCode === 'USD' ? '$' : (currencyCode === 'EUR' ? '€' : '£'))}{totals.totalTax.toLocaleString()}</span>
-                        </div>
-                      )
-                    )}
-                    <div className="flex justify-between py-2 mt-1.5 border-t-2 border-[#1a1a1a]">
-                      <span className="text-[14px] font-semibold text-[#1a1a1a]">Total</span>
-                      <span className="text-[14px] font-bold text-[#1a1a1a]">{currencyCode === 'INR' ? '₹' : (currencyCode === 'USD' ? '$' : (currencyCode === 'EUR' ? '€' : '£'))}{totals.total.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Memo - Compact */}
-                {memo && (
-                  <div className="mt-6 pt-4 border-t border-[#e6e6e6]">
-                    <p className="text-[10px] font-semibold text-[#697386] uppercase tracking-wider mb-1">Notes</p>
-                    <p className="text-[11px] text-[#697386] leading-relaxed">{memo}</p>
-                  </div>
-                )}
-                {/* Payment Details Section - Clean, above absolute footer */}
-                <div className="mt-8 pt-6 border-t border-[#e6e6e6]">
-                  <div className="flex items-start gap-4">
-                    <div className="w-8 h-8 border border-[#e6e6e6] rounded-lg flex items-center justify-center text-[#1a1a1a] font-bold text-[12px]">
-                      {currencyCode === 'INR' ? '₹' : (currencyCode === 'USD' ? '$' : (currencyCode === 'EUR' ? '€' : '£'))}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[10px] font-semibold text-[#697386] uppercase tracking-wider mb-1.5">Payment Instructions</p>
-                      <div className="text-[11px] text-[#1a1a1a] whitespace-pre-wrap leading-relaxed font-medium">
-                        {footer}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Absolute Footer - Branding and Pagination */}
-              <div className="mt-auto px-12 py-6 border-t border-[#f0f0f0] flex justify-between items-center opacity-70">
-                <div className="flex items-center gap-2">
-                  <Image
-                    src={BrandLogo}
-                    alt="Alsonotify"
-                    width={80}
-                    height={20}
-                    className="h-[20px] w-auto object-contain"
-                  />
-                </div>
-                <div className="text-[10px] text-[#697386] font-medium uppercase tracking-widest">
-                  Page 1 of 1
-                </div>
-              </div>
-            </div>
+             <InvoicePreview ref={previewRef} data={invoiceData} />
           </div>
         </div>
       </div>

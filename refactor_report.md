@@ -692,3 +692,57 @@ Transition the filters on the Employees page from hardcoded lists to dynamic dat
 
 -   **`npm run build`:** ✅ Passed (Exit code: 0)
 -   **Expected Behavior:** Filters dropdowns should now populate with data from the company settings API, ensuring consistency with the backend configuration.
+
+---
+
+## Update: Implement Invoice PDF Download
+
+**Timestamp:** 2026-01-10T22:00:00+05:30
+
+### Objective
+
+Add functionality to download invoices as PDF files from both the "Create Invoice" page and the "Invoice History" list, ensuring consistent branding and layout.
+
+### Changes
+
+#### 1. `InvoicePreview.tsx` (New Component)
+
+-   Extracted the A4 invoice preview design into a reusable `InvoicePreview` component.
+-   Updated to handle dynamic data via props instead of assuming local state.
+-   Used `forwardRef` to allow parent components to capture the DOM for PDF generation.
+
+#### 2. `CreateInvoicePage.tsx`
+
+-   Replaced inline preview JSX with `<InvoicePreview />`.
+-   Added "Download PDF" button to the header.
+-   Implemented `handleDownloadPDF` using `html2canvas` and `jspdf` to capture the preview and save as PDF.
+
+#### 3. `FinancePage.tsx`
+
+-   Added PDF download support to the "Invoice History" table.
+-   Implemented a hidden rendering mechanism to generate PDFs for historical invoices in the background without navigating away.
+-   Passes parsed mock data to `<InvoicePreview />` for accurate historical reproduction.
+
+#### 4. `mockFinanceData.ts`
+
+-   Updated `InvoiceItem` interface to include `quantity` and `unitPrice`.
+-   Populated `items` array for all `MOCK_INVOICES` to ensure historical PDFs have complete line item details.
+
+### Files Modified
+
+| File                                                    | Change                                        |
+| ------------------------------------------------------- | --------------------------------------------- |
+| `src/components/features/finance/InvoicePreview.tsx`    | New reusable component                        |
+| `src/components/features/finance/CreateInvoicePage.tsx` | Integrated preview component & download logic |
+| `src/components/features/finance/FinancePage.tsx`       | Added history download logic & hidden preview |
+| `src/data/mockFinanceData.ts`                           | Enhanced mock data with item details          |
+
+### Verification
+
+-   **`npm run lint`:** ✅ Passed (450 warnings, 0 errors)
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
+-   **`npm run test`:** ✅ Passed (6 passed, 55 tests)
+-   **Manual Validation:**
+    -   PDFs generated from "Create Invoice" match the on-screen preview.
+    -   PDFs generated from "Invoice History" contain correct historical data and formatting.

@@ -22,13 +22,16 @@ import { DateRangeSelector } from '../../common/DateRangeSelector';
 
 dayjs.extend(isBetween);
 
-import { 
+import {  
   Requirement, 
   Invoice, 
   InvoiceItem, 
   MOCK_REQUIREMENTS, 
   MOCK_INVOICES 
 } from '../../../data/mockFinanceData';
+import { useCurrentUserCompany, usePartners } from '@/hooks/useUser';
+import { InvoicePreview } from './InvoicePreview';
+import { useRef, useEffect } from 'react';
 
 // --- Main Component ---
 
@@ -38,6 +41,15 @@ export function FinancePage() {
   // Local State for Data (Simulating Backend)
   const [requirements, setRequirements] = useState<Requirement[]>(MOCK_REQUIREMENTS);
   const [invoices, setInvoices] = useState<Invoice[]>(MOCK_INVOICES);
+
+  // Download State
+  const [downloadPreviewData, setDownloadPreviewData] = useState<any>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  // Data Hooks
+  const { data: companyRes } = useCurrentUserCompany();
+  const { data: partnersRes } = usePartners();
 
   // UI State
   const [activeTab, setActiveTab] = useState<'unbilled' | 'history'>('unbilled');
@@ -207,6 +219,103 @@ export function FinancePage() {
     toast.success("Invoice marked as paid");
   };
 
+  const handleDownloadHistoryPDF = async (invoice: Invoice) => {
+      try {
+          setIsDownloading(true);
+          const toastId = toast.loading("Preparing PDF...");
+
+          // 1. Prepare Data
+          const companyData = companyRes?.result;
+          const partnerData = partnersRes?.result?.find(p => 
+              String(p.id) === invoice.client || 
+              p.name === invoice.client || 
+              (typeof p.company === 'object' ? p.company.name === invoice.client : p.company === invoice.client)
+          );
+
+          // Calculate totals from items
+          const subtotal = invoice.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+          // Assuming tax is included or calculated. For simplicity, let's reverse calc or assume standard tax if not stored
+          // MOCK_INVOICES just has 'amount'. Let's assume amount is total.
+          // If items sum != amount, we might need to adjust.
+          // For this demo, let's calculate fresh from items
+          const taxRate = 18;
+          const totalTax = (subtotal * taxRate) / 100;
+          const total = subtotal + totalTax;
+
+          const previewData = {
+              invoiceId: invoice.invoiceNumber,
+              issueDate: dayjs(invoice.date).format('YYYY-MM-DD'),
+              dueDate: dayjs(invoice.dueDate).format('YYYY-MM-DD'),
+              currencyCode: companyData?.currency || 'INR',
+              
+              senderName: companyData?.name || 'Fynix Digital Solutions',
+              senderAddress: companyData?.address || '',
+              senderEmail: companyData?.email || '',
+              senderTaxId: companyData?.tax_id || '',
+
+              clientName: invoice.client,
+              clientAddress: partnerData?.address || '',
+              clientEmail: partnerData?.email || '',
+              clientPhone: (partnerData as any)?.phone || '',
+              clientTaxId: (partnerData as any)?.tax_id || '',
+
+              items: invoice.items.map(i => ({...i, taxRate: 18})),
+              totals: {
+                  subtotal,
+                  discount: 0,
+                  taxableAmount: subtotal,
+                  totalTax,
+                  total
+              },
+              taxConfig: { id: 'gst_18', name: 'IGST', rate: 18 },
+              memo: "Thank you for your business.",
+              footer: companyData?.name ? `Bank Details for ${companyData.name}` : "Payment details..."
+          };
+
+          setDownloadPreviewData(previewData);
+
+          // Wait for render
+          setTimeout(async () => {
+              if (previewRef.current) {
+                // Dynamically import
+                const html2canvas = (await import('html2canvas')).default;
+                const jsPDF = (await import('jspdf')).default;
+
+                const canvas = await html2canvas(previewRef.current, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false
+                });
+
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+
+                const imgWidth = 210;
+                const pageHeight = 297;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                pdf.save(`${invoice.invoiceNumber}.pdf`);
+                
+                toast.dismiss(toastId);
+                toast.success("Invoice downloaded!");
+              }
+              setDownloadPreviewData(null);
+              setIsDownloading(false);
+          }, 1000); // 1s delay to ensure render
+
+      } catch (err) {
+          console.error(err);
+          toast.error("Failed to download PDF");
+          setIsDownloading(false);
+          setDownloadPreviewData(null);
+      }
+  };
+
   // --- Render Helpers ---
 
   const getStatusColor = (status: string) => {
@@ -346,7 +455,11 @@ export function FinancePage() {
                                      </span>
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <button className="p-2 hover:bg-white rounded-full transition-colors">
+                                    <button 
+                                        onClick={() => handleDownloadHistoryPDF(invoice)}
+                                        disabled={isDownloading}
+                                        className="p-2 hover:bg-white rounded-full transition-colors disabled:opacity-50"
+                                    >
                                         <Download className="w-4 h-4 text-[#666666]" />
                                     </button>
                                 </td>
@@ -362,6 +475,15 @@ export function FinancePage() {
 
 
       </div>
+
+      {/* Hidden Render Container for PDF Generation */}
+      {downloadPreviewData && (
+        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+            <div className="w-[794px]" ref={previewRef}>
+                <InvoicePreview data={downloadPreviewData} />
+            </div>
+        </div>
+      )}
     </PageLayout>
   );
 }
