@@ -9,8 +9,6 @@ import {
   Download, 
   Check, 
   X,
-  CreditCard,
-  Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Modal, Button } from 'antd';
@@ -44,10 +42,7 @@ export function FinancePage() {
   // UI State
   const [activeTab, setActiveTab] = useState<'unbilled' | 'history'>('unbilled');
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // Selection State
-  const [selectedReqs, setSelectedReqs] = useState<number[]>([]);
-  const [selectedInvoices, setSelectedInvoices] = useState<string[]>([]);
+
   
   // Expansion State
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
@@ -183,14 +178,8 @@ export function FinancePage() {
   // --- Actions ---
 
   const handleCreateInvoice = (client: string) => {
-    // Find selected reqs for this client
     const clientReqs = unbilledByClient[client] || [];
-    const clientSelectedReqIds = selectedReqs.filter(id => clientReqs.some(r => r.id === id));
-    
-    // If none selected but user clicked "Generate Invoice" for the group, select all for that client
-    const idsToInvoice = clientSelectedReqIds.length > 0 
-        ? clientSelectedReqIds 
-        : clientReqs.map(r => r.id);
+    const idsToInvoice = clientReqs.map(r => r.id);
 
     if (idsToInvoice.length === 0) {
         toast.error("No requirements available to invoice");
@@ -216,11 +205,6 @@ export function FinancePage() {
     }
     
     toast.success("Invoice marked as paid");
-  };
-
-  const handleBulkMarkAsPaid = () => {
-    selectedInvoices.forEach(id => handleMarkAsPaid(id));
-    setSelectedInvoices([]);
   };
 
   // --- Render Helpers ---
@@ -258,57 +242,9 @@ export function FinancePage() {
         </div>
       }
     >
-      <div className="flex flex-col h-full bg-white relative">
-        {/* KPI Cards */}
-        {/* Grid layout: First card takes up more space if needed, or equal 3 cols? 
-            Image description suggests 3 blocks. Let's use 3 columns. */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            
-            {/* Card 1: Amount Invoiced | Received | Due */}
-            <div className="bg-white border border-[#EEEEEE] rounded-[16px] p-0 flex flex-col md:flex-row h-auto md:h-[120px]">
-                {/* Main Section: Amount Invoiced */}
-                <div className="flex-1 p-6 border-b md:border-b-0 md:border-r border-[#EEEEEE] flex flex-col justify-between">
-                    <div className="flex justify-between items-start">
-                        <span className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Amount Invoiced</span>
-                        {activeTab === 'history' && <div className="w-2 h-2 rounded-full bg-[#7ccf00]"></div>}
-                    </div>
-                    <span className="text-[28px] font-['Manrope:Bold',sans-serif] text-[#111111]">${kpiInvoiced.total.toLocaleString()}</span>
-                </div>
-                
-                {/* Sub Sections: Received & Due */}
-                <div className="flex-1 flex flex-row">
-                    <div className="flex-1 p-6 border-r border-[#EEEEEE] flex flex-col justify-between">
-                         <span className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">Received</span>
-                         <span className="text-[20px] font-['Manrope:Bold',sans-serif] text-[#4CAF50]">${kpiInvoiced.received.toLocaleString()}</span>
-                    </div>
-                    <div className="flex-1 p-6 flex flex-col justify-between">
-                         <span className="text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">Due</span>
-                         <span className="text-[20px] font-['Manrope:Bold',sans-serif] text-[#ff3b3b]">${kpiInvoiced.due.toLocaleString()}</span>
-                    </div>
-                </div>
-            </div>
-
-            {/* Card 2: Amount to be Invoiced */}
-            <div className="bg-white border border-[#EEEEEE] rounded-[16px] p-6 flex flex-col justify-between h-[120px]">
-                <div className="flex justify-between items-start">
-                    <span className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Amount to be Invoiced</span>
-                    <Wallet className="w-5 h-5 text-[#999999]" />
-                </div>
-                <span className="text-[28px] font-['Manrope:Bold',sans-serif] text-[#111111]">${kpiToBeInvoiced.toLocaleString()}</span>
-            </div>
-
-             {/* Card 3: Total Expenses */}
-             <div className="bg-white border border-[#EEEEEE] rounded-[16px] p-6 flex flex-col justify-between h-[120px]">
-                <div className="flex justify-between items-start">
-                    <span className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Total Expenses</span>
-                    <CreditCard className="w-5 h-5 text-[#999999]" />
-                </div>
-                <span className="text-[28px] font-['Manrope:Bold',sans-serif] text-[#111111]">${kpiTotalExpenses.toLocaleString()}</span>
-            </div>
-        </div>
-
-        {/* Filter Bar */}
-        <div className="mb-6">
+      <div className="flex flex-col h-full relative">
+        {/* Filter Bar - Top position like Reports page */}
+        <div className="mb-6 space-y-4">
           <FilterBar
             filters={filterOptions}
             selectedFilters={{
@@ -318,6 +254,39 @@ export function FinancePage() {
             onFilterChange={handleFilterChange}
             onClearFilters={clearFilters}
           />
+
+          {/* KPI Cards - Double-width first card, single-width others */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Card 1: Amount Invoiced (Double Width) */}
+            <div className="md:col-span-2 p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex items-center justify-between">
+              <div className="w-1/2 border-r border-[#EEEEEE] pr-4 flex flex-col gap-0.5">
+                <span className="text-[12px] font-medium text-[#666666]">Amount Invoiced</span>
+                <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111]">${kpiInvoiced.total.toLocaleString()}</span>
+              </div>
+              <div className="w-1/2 pl-6 flex items-center gap-8">
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[#999999]">Received</span>
+                  <span className="text-[15px] font-['Manrope:Bold',sans-serif] text-[#0F9D58]">${kpiInvoiced.received.toLocaleString()}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-[#999999]">Due</span>
+                  <span className="text-[15px] font-['Manrope:Bold',sans-serif] text-[#FF3B3B]">${kpiInvoiced.due.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 2: Amount to be Invoiced (Single Width) */}
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center">
+              <span className="text-[12px] font-medium text-[#666666]">Amount to be Invoiced</span>
+              <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">${kpiToBeInvoiced.toLocaleString()}</span>
+            </div>
+
+            {/* Card 3: Total Expenses (Single Width) */}
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center">
+              <span className="text-[12px] font-medium text-[#666666]">Total Expenses</span>
+              <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111]">${kpiTotalExpenses.toLocaleString()}</span>
+            </div>
+          </div>
         </div>
 
         {/* Content */}
@@ -337,17 +306,7 @@ export function FinancePage() {
                         client={client}
                         reqs={reqs}
                         collapsed={!!collapsedGroups[client]}
-                        selectedReqs={selectedReqs}
                         onToggleCollapse={() => setCollapsedGroups(prev => ({ ...prev, [client]: !prev[client] }))}
-                        onSelectReq={(id, checked) => {
-                            if (checked) setSelectedReqs(prev => [...prev, id]);
-                            else setSelectedReqs(prev => prev.filter(r => r !== id));
-                        }}
-                        onSelectAll={(checked) => {
-                            const ids = reqs.map(r => r.id);
-                            if (checked) setSelectedReqs(prev => [...new Set([...prev, ...ids])]);
-                            else setSelectedReqs(prev => prev.filter(id => !ids.includes(id)));
-                        }}
                         onGenerateInvoice={() => handleCreateInvoice(client)}
                     />
                   ))}
@@ -359,18 +318,7 @@ export function FinancePage() {
                 <table className="w-full">
                   <thead className="bg-[#F9FAFB] border-b border-[#EEEEEE]">
                     <tr>
-                      <th className="px-6 py-4 w-12 rounded-tl-[16px]">
-                        <input 
-                            type="checkbox"
-                            className="rounded border-[#EEEEEE] text-[#ff3b3b] focus:ring-[#ff3b3b]"
-                            checked={filteredInvoices.length > 0 && selectedInvoices.length === filteredInvoices.length}
-                            onChange={(e) => {
-                                if (e.target.checked) setSelectedInvoices(filteredInvoices.map(i => i.id));
-                                else setSelectedInvoices([]);
-                            }}
-                        />
-                      </th>
-                      <th className="px-6 py-4 text-left text-[12px] font-['Manrope:Bold',sans-serif] text-[#666666] uppercase">Invoice #</th>
+                      <th className="px-6 py-4 text-left text-[12px] font-['Manrope:Bold',sans-serif] text-[#666666] uppercase rounded-tl-[16px]">Invoice #</th>
                       <th className="px-6 py-4 text-left text-[12px] font-['Manrope:Bold',sans-serif] text-[#666666] uppercase">Client</th>
                       <th className="px-6 py-4 text-left text-[12px] font-['Manrope:Bold',sans-serif] text-[#666666] uppercase">Date</th>
                       <th className="px-6 py-4 text-left text-[12px] font-['Manrope:Bold',sans-serif] text-[#666666] uppercase">Amount</th>
@@ -381,24 +329,13 @@ export function FinancePage() {
                   <tbody className="divide-y divide-[#EEEEEE]">
                     {filteredInvoices.length === 0 ? (
                         <tr>
-                            <td colSpan={7} className="px-6 py-12 text-center text-[#999999] font-['Manrope:Regular',sans-serif]">
+                            <td colSpan={6} className="px-6 py-12 text-center text-[#999999] font-['Manrope:Regular',sans-serif]">
                                 No invoices found
                             </td>
                         </tr>
                     ) : (
                         filteredInvoices.map(invoice => (
                             <tr key={invoice.id} className="hover:bg-[#F9FAFB] transition-colors">
-                                <td className="px-6 py-4">
-                                    <input 
-                                        type="checkbox"
-                                        className="rounded border-[#EEEEEE] text-[#ff3b3b] focus:ring-[#ff3b3b]"
-                                        checked={selectedInvoices.includes(invoice.id)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) setSelectedInvoices(prev => [...prev, invoice.id]);
-                                            else setSelectedInvoices(prev => prev.filter(id => id !== invoice.id));
-                                        }}
-                                    />
-                                </td>
                                 <td className="px-6 py-4 text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">{invoice.invoiceNumber}</td>
                                 <td className="px-6 py-4 text-[14px] font-['Manrope:Regular',sans-serif] text-[#111111]">{invoice.client}</td>
                                 <td className="px-6 py-4 text-[14px] font-['Manrope:Regular',sans-serif] text-[#666666]">{dayjs(invoice.date).format('MMM D, YYYY')}</td>
@@ -422,62 +359,7 @@ export function FinancePage() {
           )}
         </div>
 
-        {/* Floating Action Bar equivalent (Fixed at bottom) */}
-        {((activeTab === 'unbilled' && selectedReqs.length > 0) || (activeTab === 'history' && selectedInvoices.length > 0)) && (
-            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-[#111111] text-white px-6 py-3 rounded-full flex items-center gap-6 shadow-2xl z-50">
-               <div className="flex items-center gap-3 border-r border-white/20 pr-6">
-                    <span className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
-                        {activeTab === 'unbilled' ? selectedReqs.length : selectedInvoices.length}
-                    </span>
-                    <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
-               </div>
-               
-               {activeTab === 'unbilled' ? (
-                   <>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[13px] text-white/80">
-                           Ready to Invoice
-                        </span>
-                      </div>
-                      <button 
-                        onClick={() => {
-                            // Find which client(s) selected
-                            const client = Object.keys(unbilledByClient).find(c => unbilledByClient[c].some(r => selectedReqs.includes(r.id))) || '';
-                            handleCreateInvoice(client);
-                        }}
-                        className="flex items-center gap-2 hover:text-[#ff3b3b] transition-colors"
-                      >
-                         <FileText className="w-4 h-4" />
-                         <span className="text-[13px] font-bold">Generate Invoice</span>
-                      </button>
-                   </>
-               ) : (
-                   <>
-                      <button 
-                         onClick={handleBulkMarkAsPaid}
-                         className="flex items-center gap-2 hover:text-[#ff3b3b] transition-colors"
-                      >
-                         <Check className="w-4 h-4" />
-                         <span className="text-[13px] font-bold">Mark Paid</span>
-                      </button>
-                      <button className="flex items-center gap-2 hover:text-[#ff3b3b] transition-colors">
-                         <Download className="w-4 h-4" />
-                         <span className="text-[13px] font-bold">Download</span>
-                      </button>
-                   </>
-               )}
 
-               <button 
-                    onClick={() => {
-                        setSelectedReqs([]);
-                        setSelectedInvoices([]);
-                    }}
-                    className="ml-2 text-[#999999] hover:text-white transition-colors"
-               >
-                    <X className="w-4 h-4" />
-               </button>
-            </div>
-        )}
 
       </div>
     </PageLayout>
@@ -508,23 +390,15 @@ function ClientGroup({
     client, 
     reqs, 
     collapsed, 
-    selectedReqs, 
     onToggleCollapse, 
-    onSelectReq, 
-    onSelectAll,
     onGenerateInvoice 
 }: { 
     client: string, 
     reqs: Requirement[], 
     collapsed: boolean, 
-    selectedReqs: number[], 
     onToggleCollapse: () => void,
-    onSelectReq: (id: number, checked: boolean) => void,
-    onSelectAll: (checked: boolean) => void,
     onGenerateInvoice: () => void
 }) {
-    const allSelected = reqs.every(req => selectedReqs.includes(req.id));
-    const someSelected = reqs.some(req => selectedReqs.includes(req.id));
     const totalAmount = reqs.reduce((sum, req) => sum + (req.estimatedCost || 0), 0);
 
     return (
@@ -532,13 +406,6 @@ function ClientGroup({
             {/* Header */}
             <div className="bg-[#F9FAFB] border-b border-[#EEEEEE] p-4 flex items-center justify-between">
                 <div className="flex items-center gap-4 flex-1">
-                    <input
-                        type="checkbox"
-                        className="rounded border-[#EEEEEE] text-[#ff3b3b] focus:ring-[#ff3b3b]"
-                        checked={allSelected}
-                        ref={input => { if (input) input.indeterminate = someSelected && !allSelected; }}
-                        onChange={(e) => onSelectAll(e.target.checked)}
-                    />
                     <button onClick={onToggleCollapse} className="text-[#666666] hover:text-[#111111]">
                         {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                     </button>
@@ -572,7 +439,6 @@ function ClientGroup({
                 <table className="w-full">
                     <thead className="bg-white border-b border-[#EEEEEE]">
                         <tr>
-                            <th className="w-12 px-6 py-2"></th>
                             <th className="px-6 py-2 text-left text-[11px] text-[#999999] uppercase font-bold">Requirement</th>
                             <th className="px-6 py-2 text-left text-[11px] text-[#999999] uppercase font-bold">Type</th>
                             <th className="px-6 py-2 text-left text-[11px] text-[#999999] uppercase font-bold">Due Date</th>
@@ -582,14 +448,6 @@ function ClientGroup({
                     <tbody className="divide-y divide-[#EEEEEE]">
                         {reqs.map(req => (
                             <tr key={req.id} className="hover:bg-[#F9FAFB]">
-                                <td className="px-6 py-4">
-                                    <input 
-                                        type="checkbox"
-                                        className="rounded border-[#EEEEEE] text-[#ff3b3b] focus:ring-[#ff3b3b]"
-                                        checked={selectedReqs.includes(req.id)}
-                                        onChange={(e) => onSelectReq(req.id, e.target.checked)}
-                                    />
-                                </td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
                                         <CheckCircle className="w-4 h-4 text-[#7ccf00]" />

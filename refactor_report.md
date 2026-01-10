@@ -196,3 +196,383 @@ The key insight is that React's conditional rendering (`condition && <Component>
 -   Paint operations
 
 Using CSS `display: none` instead keeps DOM nodes mounted, so switching tabs only changes CSS properties - a much cheaper operation that the browser can batch and animate smoothly.
+
+---
+
+## Update: Align Finance Page Layout with Reports Page
+
+**Timestamp:** 2026-01-10T17:07:03+05:30
+
+### Objective
+
+Apply the same layout and styles from the Reports page to the Finance page as per user request. This includes:
+
+-   Position of KPI cards (below filters)
+-   Filter bar position (top)
+-   Card styles, colors, and sizes matching Reports page
+
+### Changes
+
+#### 1. `FinancePage.tsx`
+
+**Layout Restructure:**
+
+-   Moved FilterBar to the top (above KPI cards, matching Reports page structure)
+-   KPI cards now render below the FilterBar within the same `mb-6 space-y-4` container
+
+**KPI Card Styling (Before → After):**
+
+-   Card wrapper: `bg-white border border-[#EEEEEE] rounded-[16px] p-6 h-[120px]` → `p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1`
+-   Grid layout: `grid grid-cols-1 md:grid-cols-3 gap-6 mb-6` → `grid grid-cols-1 sm:grid-cols-2 gap-4 md:grid-cols-4 min-h-[88px]`
+-   Label typography: `text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111]` → `text-[12px] font-medium text-[#666666]`
+-   Value typography: `text-[28px] font-['Manrope:Bold',sans-serif]` → `text-2xl font-['Manrope:Bold',sans-serif]`
+-   Background: `bg-white` → `bg-[#FAFAFA]` (matching Reports page cards)
+
+**Code Cleanup:**
+
+-   Removed unused `CreditCard` and `Wallet` icon imports from lucide-react
+
+### Files Modified
+
+| File                                              | Change                                                        |
+| ------------------------------------------------- | ------------------------------------------------------------- |
+| `src/components/features/finance/FinancePage.tsx` | Restructured layout, updated KPI card styles, removed imports |
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Expected Behavior:** Finance page now has the same layout structure as Reports page with FilterBar at top and KPI cards below.
+
+### Visual Changes
+
+-   KPI cards now use lighter `bg-[#FAFAFA]` background instead of white
+-   Cards are more compact with `p-4` padding instead of `p-6`
+-   Grid uses 4-column layout on desktop for better alignment
+-   Typography is consistent with Reports page design system
+
+---
+
+## Update: Fix Create Invoice Page PDF Preview to A4 Size
+
+**Timestamp:** 2026-01-10T17:16:10+05:30
+
+### Objective
+
+Fix the right-side PDF preview on the Create Invoice page to display at exact A4 dimensions, allowing accurate preview of how data will fit on the actual PDF when downloaded.
+
+### Problem
+
+The existing preview had:
+
+-   A4 dimensions using CSS `mm` units: `w-[210mm] min-h-[297mm]`
+-   `transform scale-[0.8]` which scaled it down to 80%
+-   This made it difficult to judge actual content fit
+
+### Solution
+
+Changed to pixel-based A4 dimensions for consistent cross-browser rendering:
+
+-   **A4 at 96 DPI:** 794px × 1123px
+-   Removed the 80% scale transform
+-   Proper scrollable container for full-page preview
+
+### Changes
+
+#### `CreateInvoicePage.tsx`
+
+**Before:**
+
+```tsx
+<div className="flex-1 bg-[#F5F7FA] p-8 flex justify-center overflow-y-auto">
+  <div className="w-[210mm] min-h-[297mm] bg-white shadow-lg p-[15mm] transform scale-[0.8] origin-top">
+```
+
+**After:**
+
+```tsx
+<div className="flex-1 bg-[#E5E7EB] p-6 overflow-auto">
+  <div className="flex justify-center">
+    <div
+      className="bg-white shadow-2xl flex flex-col justify-between"
+      style={{
+        width: '794px',
+        minHeight: '1123px',
+        padding: '56px', // ~15mm padding
+        fontSize: '14px',
+      }}
+    >
+```
+
+### Technical Details
+
+| Property   | Before                      | After                           |
+| ---------- | --------------------------- | ------------------------------- |
+| Width      | `210mm` (browser-dependent) | `794px` (consistent)            |
+| Height     | `297mm`                     | `1123px`                        |
+| Scale      | `scale-[0.8]` (80%)         | No transform (100%)             |
+| Padding    | `15mm`                      | `56px` (~15mm at 96 DPI)        |
+| Background | `#F5F7FA`                   | `#E5E7EB` (darker for contrast) |
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Expected Behavior:** PDF preview now shows exact A4 page size, allowing accurate content fit preview before download.
+
+---
+
+## Update: Stripe-Inspired Invoice Preview Styling
+
+**Timestamp:** 2026-01-10T17:26:56+05:30
+
+### Objective
+
+Fine-tune the invoice PDF preview styling to match industry standards like Stripe invoices. Focused on clean typography, clear information hierarchy, and professional layout.
+
+### Research Summary
+
+Based on Stripe invoice design best practices:
+
+-   **Clean header** with prominent invoice title and company logo
+-   **Structured details row** with Issue Date, Due Date, Amount Due
+-   **Clear Billed To / From sections** with proper alignment
+-   **Clean table design** with proper header styling and borders
+-   **Right-aligned summary** section with clear total
+-   **Footer** with payment details in subtle background
+
+### Changes Applied
+
+#### `CreateInvoicePage.tsx` - PDF Preview Redesign
+
+1. **Brand Accent Line**
+
+    - Added a thin red accent line at the top for brand identity
+
+2. **Header Redesign**
+
+    - Invoice title: `36px` semibold with tight tracking
+    - Invoice number below title in muted color
+    - Logo aligned right with tagline
+
+3. **Invoice Details Row**
+
+    - Structured layout: Issue Date | Due Date | Amount Due (right-aligned)
+    - Labels in `11px` uppercase with letter-spacing
+    - Values in medium-weight darker text
+    - Separated from content with subtle border
+
+4. **Bill To / From Sections**
+
+    - Clean left/right layout with max-width constraints
+    - Company name in `16px` semibold
+    - Address details in `13px` muted color
+    - GSTIN highlighted with font-medium
+    - Proper vertical spacing
+
+5. **Line Items Table**
+
+    - Header row with `2px` dark border
+    - Removed Tax column (cleaner layout)
+    - Centered quantity column
+    - Item rows with subtle bottom border
+
+6. **Summary Section**
+
+    - Right-aligned `280px` width
+    - Clean row structure with subtle spacing
+    - Discount shown in green if applied
+    - Total row with bold top border
+
+7. **Notes Section**
+
+    - Moved below summary with top border
+    - Clean label/content structure
+
+8. **Footer**
+    - Light gray background (`#f7f8f9`)
+    - Rupee icon in dark rounded box
+    - Payment details with proper spacing
+
+### Typography & Colors
+
+| Element        | Before      | After (Stripe-inspired)                  |
+| -------------- | ----------- | ---------------------------------------- |
+| Primary Text   | `#111111`   | `#1a1a1a`                                |
+| Secondary Text | `#666666`   | `#697386`                                |
+| Labels         | `12px bold` | `11px semibold uppercase tracking-wider` |
+| Invoice Title  | `32px bold` | `36px semibold tracking-tight`           |
+| Font Family    | Default     | Inter, -apple-system, BlinkMacSystemFont |
+
+### Files Modified
+
+| File                                                    | Change                        |
+| ------------------------------------------------------- | ----------------------------- |
+| `src/components/features/finance/CreateInvoicePage.tsx` | Complete PDF preview redesign |
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Expected Behavior:** Invoice preview now matches Stripe-level professional design standards.
+
+---
+
+## Update: Optimize Invoice Font Sizes for Better Content Fit
+
+**Timestamp:** 2026-01-10T17:33:16+05:30
+
+### Objective
+
+Optimize font sizes and spacing on the invoice PDF preview to accommodate more items, discounts, and taxes on the A4 page without compromising readability.
+
+### Changes Applied
+
+| Element       | Before      | After       | Savings           |
+| ------------- | ----------- | ----------- | ----------------- |
+| Invoice Title | 36px        | 28px        | ~22%              |
+| Logo          | 28px        | 22px        | ~21%              |
+| Amount Due    | 24px        | 20px        | ~17%              |
+| Company Names | 16px        | 14px        | ~12%              |
+| Address Text  | 13px        | 11px        | ~15%              |
+| Date Values   | 14px        | 12px        | ~14%              |
+| Table Body    | 14px py-4   | 12px py-2.5 | ~37.5% row height |
+| Summary Rows  | 14px py-2   | 12px py-1.5 | ~25% row height   |
+| Total Row     | 16px        | 14px        | ~12%              |
+| Notes         | 14px        | 11px        | ~21%              |
+| Footer Text   | 13px        | 11px        | ~15%              |
+| Main Padding  | px-16 py-12 | px-12 py-8  | ~25% padding      |
+
+### Scroll Fix
+
+Also fixed scrolling issue where users couldn't scroll to footer on both panels:
+
+-   Changed parent container from `overflow-hidden` to explicit height: `calc(100vh - 73px)`
+-   Both panels now use `w-1/2 overflow-y-auto` for consistent scrolling
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Expected Behavior:** Invoice can now accommodate more line items while maintaining professional appearance. Both panels are fully scrollable.
+
+---
+
+## Update: Fix Scroll Issue with Layout Wrapper
+
+**Timestamp:** 2026-01-10T17:38:16+05:30
+
+### Problem
+
+User reported they couldn't scroll to the footer on both panels. The issue was that `CreateInvoicePage` was using `min-h-screen` which conflicted with `AlsonotifyLayoutWrapper`'s `h-screen overflow-hidden` layout.
+
+### Root Cause
+
+The `AlsonotifyLayoutWrapper` (line 125) has:
+
+-   `h-screen` - full viewport height
+-   `overflow-hidden` - clips overflow
+
+The `CreateInvoicePage` was using:
+
+-   `min-h-screen` - tries to be at least viewport height
+-   `height: calc(100vh - 73px)` - fixed calculation ignoring parent constraints
+
+This caused a height calculation mismatch where the component exceeded its parent's bounds and got clipped.
+
+### Fix Applied
+
+Updated `CreateInvoicePage.tsx` to work within parent layout constraints:
+
+| Property        | Before                       | After                                   |
+| --------------- | ---------------------------- | --------------------------------------- |
+| Outer container | `min-h-screen`               | `h-full rounded-[24px] overflow-hidden` |
+| Header          | `sticky top-0 z-10`          | `shrink-0`                              |
+| Content wrapper | `height: calc(100vh - 73px)` | `flex-1 min-h-0`                        |
+
+Key changes:
+
+-   `h-full` - fills parent's available height instead of forcing viewport height
+-   `min-h-0` - critical for flexbox children to allow proper shrinking/scrolling
+-   `shrink-0` on header - prevents header from shrinking
+-   `rounded-[24px]` - matches dashboard content card styling
+-   Removed hardcoded height calculation
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Expected Behavior:** Both panels now properly scroll within the layout wrapper constraints. Footer content is accessible.
+
+---
+
+## Update: Finance Page Layout Refinement & Feature Cleanup
+
+**Timestamp:** 2026-01-10T17:58:16+05:30
+
+### Objective
+
+Further refine the Finance page layout to be more compact, align with the "Employee" reports style, and remove unnecessary bulk selection features.
+
+### Changes
+
+#### Bulk Selection Removal
+
+-   Removed `selectedReqs` and `selectedInvoices` state from `FinancePage`.
+-   Removed checkboxes from `ClientGroup` and `InvoiceHistory` tables.
+-   Removed "Generate Invoice" bulk action bar.
+-   Simplified `handleCreateInvoice` to use all requirements for a specific client.
+-   Removed `handleBulkMarkAsPaid` function.
+
+#### KPI Cards Refactor
+
+-   Redesigned KPI cards for better space efficiency and information hierarchy.
+-   **Amount Invoiced Card:** Changed to double-width (`col-span-2`) with a split layout:
+    -   Left side: Total Amount Invoiced.
+    -   Right side: "Received" and "Due" totals in two-column layout.
+-   **Secondary Cards:** "Amount to be Invoiced" and "Total Expenses" updated to single-width and moved to the right.
+-   **Compact Design:** Reduced vertical padding from `p-4` to `p-3` and decreased font sizes (`text-2xl` to `text-xl`) to reduce overall component height.
+
+### Technical Details
+
+-   Used CSS grid (`md:col-span-2`) for the primary card.
+-   Implemented specialized flex layout for side-by-side metrics in the "Amount Invoiced" card.
+-   Removed unused React state and logic for selection tracking.
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **UI Consistency:** Layout now matches the Reports page spacing while providing a clearer breakdown of unbilled vs. billed totals.
+
+---
+
+## Update: Fix Employee Deactivation Logic
+
+**Timestamp:** 2026-01-10T20:25:00+05:30
+
+### Objective
+
+Fix the issue where users were able to deactivate their own account but unable to deactivate other accounts (e.g., Appurva). This was caused by an incorrect resolution of the `currentUserId` in the `EmployeesPage` component, leading to identity mismatches during deactivation permission checks.
+
+### Changes
+
+#### 1. `EmployeesPage.tsx`
+
+-   **Fixed `currentUserId` resolution:** Updated the `useMemo` block to correctly access the `id` property from the mapped `currentUserData.result` (which is already a mapped `Employee` object).
+-   **Robust `localStorage` check:** Added support for multiple possible user storage formats (`id`, `user_id`, `user.id`, etc.) and ensured numeric conversion for reliable comparisons.
+-   **API Fallback:** Improved fallback logic to use `Number(apiUserId)` for consistency.
+
+#### 2. `EmployeeRow.tsx`
+
+-   **Type-safe ID comparison:** Updated deactivation logic and menu item filtering to use `Number()` conversion for both `employee.id` and `currentUserId` to prevent string vs number comparison failures.
+-   **Disabled State Logic:** Ensured the "Deactivate" option is correctly disabled and tooltipped for the current user's own row.
+
+### Files Modified
+
+| File                                                     | Change                                                        |
+| -------------------------------------------------------- | ------------------------------------------------------------- |
+| `src/components/features/employees/EmployeesPage.tsx`    | Fixed `currentUserId` resolution and `localStorage` detection |
+| `src/components/features/employees/rows/EmployeeRow.tsx` | Implemented type-safe ID comparison for deactivation logic    |
+
+### Verification
+
+-   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Expected Behavior:**
+    -   Users should no longer be able to deactivate their own accounts (the option is disabled).
+    -   Users should be able to consistently deactivate other accounts since the identity comparison now correctly identifies them as "other" users.
+
+---
