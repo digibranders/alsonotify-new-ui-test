@@ -746,3 +746,40 @@ Add functionality to download invoices as PDF files from both the "Create Invoic
 -   **Manual Validation:**
     -   PDFs generated from "Create Invoice" match the on-screen preview.
     -   PDFs generated from "Invoice History" contain correct historical data and formatting.
+
+---
+
+## Update: Fix PDF Footer Logo and Pagination
+
+**Timestamp:** 2026-01-10T22:15:00+05:30
+
+### Objective
+
+Fix the missing Alsonotify logo in the downloaded invoice PDF and handle pagination visibility.
+
+### Problem
+
+1.  **Missing Logo:** The Alsonotify logo in the footer (and Fynix logo in header) was not rendering in the downloaded PDF. This is a common issue when using `next/image` with `html2canvas`, as the lazy-loading or internal structure of `next/image` components can be missed by the canvas capture.
+2.  **Pagination:** The "Page 1 of 1" text was visible even for single-page invoices, which the user found unnecessary.
+
+### Changes
+
+#### `InvoicePreview.tsx`
+
+-   **Replaced `next/image` with `<img>`:** Converted both the Header Logo (Fynix) and Footer Logo (Alsonotify) to use standard HTML `<img>` tags.
+    -   Used `.src` property of the imported image assets to get the correct static path.
+    -   This guarantees that `html2canvas` can locate and render the image data synchronously once loaded.
+-   **Conditional Pagination:** Commented out the pagination indicator for now. Since the current implementation generates single-page invoices, passing a "page count" prop would be the future enhancement trigger. For now, it is hidden as requested for single pages.
+
+### Files Modified
+
+| File                                                 | Change                                                 |
+| ---------------------------------------------------- | ------------------------------------------------------ |
+| `src/components/features/finance/InvoicePreview.tsx` | Use `<img>` tags for print reliability, hide page info |
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Expected Behavior:**
+    -   Downloaded PDFs now clearly show both the Fynix header logo and Alsonotify footer logo.
+    -   "Page 1 of 1" is no longer visible on the footer.
