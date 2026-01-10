@@ -40,7 +40,7 @@ export function EmployeeRow({
       danger: true,
       className: "text-[13px] font-['Manrope:Medium',sans-serif]"
     }] : []),
-    ...(onDeactivate && employee.id === currentUserId && employee.status === 'active' ? [{
+    ...(onDeactivate && Number(employee.id) === Number(currentUserId) && employee.status === 'active' ? [{
       key: 'deactivate-self',
       label: 'Deactivate',
       icon: <Trash2 className="w-3.5 h-3.5" />,
@@ -51,7 +51,7 @@ export function EmployeeRow({
     }] : [])
   ].filter(item => {
     // If it's the current user and we are showing 'deactivate', we want to show the disabled one instead
-    if (employee.id === currentUserId && employee.status === 'active') {
+    if (Number(employee.id) === Number(currentUserId) && employee.status === 'active') {
       return item.key !== 'deactivate';
     }
     return true;

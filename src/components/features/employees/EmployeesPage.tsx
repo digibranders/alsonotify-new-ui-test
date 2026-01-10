@@ -429,14 +429,17 @@ export function EmployeesPage() {
     try {
       if (typeof window !== 'undefined') {
         const localUser = JSON.parse(localStorage.getItem("user") || "{}");
-        if (localUser?.id || localUser?.user_id) {
-          return localUser.id || localUser.user_id;
-        }
+        // Check for various possible ID fields in case of different storage formats
+        const localId = localUser?.id || localUser?.user_id || localUser?.user?.id || localUser?.user?.user_id;
+        if (localId) return Number(localId);
       }
     } catch (error) {
       // Error reading user from localStorage
     }
-    return currentUserData?.result?.user?.id || currentUserData?.result?.user?.user_id || null;
+    
+    // currentUserData.result is mapped via mapUserDtoToEmployee, so it has .id directly
+    const apiUserId = currentUserData?.result?.id || (currentUserData?.result as any)?.user_id;
+    return apiUserId ? Number(apiUserId) : null;
   }, [currentUserData]);
 
   // Bulk update access level
