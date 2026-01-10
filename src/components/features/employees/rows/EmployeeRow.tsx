@@ -47,12 +47,13 @@ export function EmployeeRow({
       disabled: true,
       danger: true,
       title: "You cannot deactivate your own account",
-      className: "text-[13px] font-['Manrope:Medium',sans-serif] opacity-50"
+      className: "text-[13px] font-['Manrope:Medium',sans-serif] opacity-50 cursor-not-allowed"
     }] : [])
   ].filter(item => {
     // If it's the current user and we are showing 'deactivate', we want to show the disabled one instead
-    if (Number(employee.id) === Number(currentUserId) && employee.status === 'active') {
-      return item.key !== 'deactivate';
+    // Check key to avoid filtering out 'deactivate-self'
+    if (Number(employee.id) === Number(currentUserId) && employee.status === 'active' && item.key === 'deactivate') {
+      return false;
     }
     return true;
   });
