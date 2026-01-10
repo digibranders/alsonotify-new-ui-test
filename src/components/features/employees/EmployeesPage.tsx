@@ -92,12 +92,15 @@ export function EmployeesPage() {
       // Resolve access name dynamically from rolesData if available
       let resolvedAccess = emp.access || 'Employee';
       if (rolesData?.result) {
+        // Use the normalized roleName if available, or fall back to role/access
+        const currentRoleName = emp.roleName || emp.role || emp.access;
+        
         // Try precise ID match first (robust against string/number types)
         let foundRole = emp.roleId ? rolesData.result.find((r: { id: number }) => r.id == emp.roleId) : undefined;
         
         // If not found by ID, try finding by name (case-insensitive)
-        if (!foundRole && resolvedAccess) {
-             foundRole = rolesData.result.find((r: { name: string }) => r.name.toLowerCase() === resolvedAccess.toLowerCase());
+        if (!foundRole && currentRoleName) {
+             foundRole = rolesData.result.find((r: { name: string }) => r.name.toLowerCase() === currentRoleName.toLowerCase());
         }
 
         if (foundRole) {
@@ -106,39 +109,11 @@ export function EmployeesPage() {
       }
 
       return {
-        id: emp.user_id || emp.id,
-        name: emp.name || '',
-        role: emp.designation || emp.role || 'Unassigned',
-        email: emp.email || '',
-        phone: emp.mobile_number || emp.phone || emp.user_profile?.mobile_number || emp.user_profile?.phone || emp.user?.mobile_number || '',
-        hourlyRate: emp.hourly_rates ? `${emp.hourly_rates}/Hr` : 'N/A',
-        dateOfJoining: emp.date_of_joining ? new Date(emp.date_of_joining).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'N/A',
-        experience: String(emp.experience || 0),
-        skillsets: emp.skills?.join(', ') || 'None',
-
-        status: (emp.user_employee?.is_active !== false ? 'active' : 'inactive') as 'active' | 'inactive',
-        department: emp.department || 'Unassigned',
+        ...emp,
+        id: Number(emp.id),
         access: resolvedAccess,
-        roleId: emp.roleId,
-      manager_id: emp.managerId, // Employee domain has managerId (and manager_id optionally)
-      managerName: emp.managerName || 'Unassigned',
-      roleColor: emp.roleColor,
-      salary: emp.salary || 0,
-      currency: 'USD',
-      workingHours: emp.workingHours || 0, // Employee has number workingHours
-      rawWorkingHours: emp.rawWorkingHours, // Employee domain has this? domain.ts line 285 says Record<string, unknown>.
-      leaves: emp.leaves || 0,
-      // Map employment type - convert old values to new format
-      employmentType: (() => {
-        // If backend provides employment type, use it; otherwise default
-        const type = emp.employmentType || emp.employeeType;
-        if (type === 'In-house') return 'Full-time';
-        if (type === 'Freelancer' || type === 'Agency') return 'Contract';
-        if (type === 'Full-time' || type === 'Contract' || type === 'Part-time') return type;
-        return 'Full-time';
-      })(),
-    };
-  });
+      };
+    });
   }, [employeesData, rolesData]);
 
   const filteredEmployees = useMemo(() => {

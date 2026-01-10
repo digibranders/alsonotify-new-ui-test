@@ -261,8 +261,10 @@ export interface Workspace {
 
 export interface Employee {
   id: number;
+  profileId?: number; // Original Profile ID (if distinct from User ID)
   name: string;
   role: string;
+  roleName?: string; // Robust role name from role object
   email: string;
   phone: string;
   hourlyRate: string;

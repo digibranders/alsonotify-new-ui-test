@@ -62,6 +62,7 @@ export interface UserDto {
   invite_id?: number;
   associated_date?: string;
   timezone?: string;
+  user_id?: number;
 }
 
 // Role types for access management

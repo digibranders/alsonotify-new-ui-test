@@ -576,3 +576,46 @@ Fix the issue where users were able to deactivate their own account but unable t
     -   Users should be able to consistently deactivate other accounts since the identity comparison now correctly identifies them as "other" users.
 
 ---
+
+## Update: Fix HR Badge and Strict ID Normalization
+
+**Timestamp:** 2026-01-10T21:00:00+05:30
+
+### Objective
+
+Resolve the visual issue of the "faded" HR badge and fix the "company mismatch" error during employee deactivation by normalizing User and Profile IDs across the system.
+
+### Changes
+
+#### 1. UI Enhancements
+
+-   **`AccessBadge.tsx`**: Added explicit styling for the "HR" role (Blue/Cyan colors with `ShieldCheck` icon), ensuring it no longer defaults to a faded gray appearance.
+
+#### 2. Strict ID Normalization Logic
+
+-   **`user.dto.ts`**: Added `user_id?: number` to the `UserDto` interface to accurately represent the backend's employee record structure.
+-   **`user.ts` (Mapper)**: Implemented strict normalization in `mapUserDtoToEmployee`. It now prioritizes `user_id` (the User Table ID) over `id` (the Profile Table ID). This ensures the frontend `Employee.id` is always the ID required by backend update APIs.
+-   **`domain.ts`**: Updated the `Employee` interface with `roleName` and `profileId` fields for better data tracking and role resolution.
+
+#### 3. Component Refactoring
+
+-   **`EmployeesPage.tsx`**: Simplified the `employees` mapping logic to remove redundant transformations. The page now uses the normalized IDs and role data provided by the mapper.
+-   **`EmployeeRow.tsx`**: Leveraged the normalized IDs for all conditional logic and menu actions.
+
+### Files Modified
+
+| File                                                  | Change                                         |
+| ----------------------------------------------------- | ---------------------------------------------- |
+| `src/components/ui/AccessBadge.tsx`                   | Added "HR" role styling                        |
+| `src/types/dto/user.dto.ts`                           | Added `user_id` to DTO                         |
+| `src/utils/mappers/user.ts`                           | Implemented Strict ID Normalization            |
+| `src/types/domain.ts`                                 | Added `roleName` and `profileId` to `Employee` |
+| `src/components/features/employees/EmployeesPage.tsx` | Cleaned up redundant mapping logic             |
+
+### Verification
+
+-   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Validation:**
+    -   HR badge is now vibrant and clearly visible.
+    -   Deactivation requests now consistently use the User ID, preventing company mismatch errors.
