@@ -2,6 +2,12 @@ import { UserDto } from '../../types/dto/user.dto';
 import { Employee, User } from '../../types/domain';
 
 export const mapUserDtoToEmployee = (dto: UserDto): Employee => {
+  // Strict ID Normalization:
+  // Normalize all IDs to the User Table ID (user_id).
+  // Some endpoints return UserProfile as root (id = profileId, user_id = userId).
+  // Some endpoints return User as root (id = userId).
+  const normalizedId = dto.user_id || dto.id;
+  
   // Access Level / Role
   // Allow dto.role to pass through (it might be 'Manager', 'Leader', etc.)
   const access = (dto.employee_access || dto.access || dto.role || 'Employee') as Employee['access'];
@@ -23,9 +29,10 @@ export const mapUserDtoToEmployee = (dto: UserDto): Employee => {
   const dateOfJoining = dto.date_of_joining ? new Date(dto.date_of_joining).toLocaleDateString('en-GB') : 'N/A';
 
   return {
-    id: dto.id,
-    user_id: dto.id, // compatibility
-    userId: dto.id,
+    id: normalizedId,
+    user_id: normalizedId,
+    userId: normalizedId,
+    profileId: dto.user_id ? dto.id : undefined, // Original Profile ID if user_id was the source
     name: dto.name || '',
     role: dto.designation || dto.role || 'Unassigned',
     designation: dto.designation,
@@ -66,6 +73,8 @@ export const mapUserDtoToEmployee = (dto: UserDto): Employee => {
     
     roleId: dto.role_id || dto.user_employee?.role_id,
     roleColor: dto.roleColor || dto.user_employee?.role?.color,
+    
+    roleName: (dto.user_employee as any)?.role?.name || dto.role, // Added roleName for more robust access-badge logic
     
     employmentType,
     employeeType: employmentType,

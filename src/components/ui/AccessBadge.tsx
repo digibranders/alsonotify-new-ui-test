@@ -45,6 +45,12 @@ export function AccessBadge({ role, color, className }: AccessBadgeProps) {
         bgColor = "#F9F5FF"; // Light lavender
         IconComponent = Users; // Two persons icon
         break;
+      case "HR":
+        textColor = "#0284C7"; // Cyan/Blue
+        iconColor = "#0284C7";
+        bgColor = "#F0F9FF";
+        IconComponent = ShieldCheck;
+        break;
       default:
         textColor = "#666666";
         iconColor = "#666666";
