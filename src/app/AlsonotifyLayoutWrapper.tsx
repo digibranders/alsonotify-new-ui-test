@@ -21,7 +21,7 @@ interface AlsonotifyLayoutWrapperProps {
 
 import { SidebarProvider, useSidebar } from '../context/SidebarContext';
 
-export function AlsonotifyLayoutWrapper({ children }: AlsonotifyLayoutWrapperProps) {
+export function AlsonotifyLayoutWrapper({ children }: Readonly<AlsonotifyLayoutWrapperProps>) {
   return (
     <SidebarProvider>
       <AlsonotifyLayoutContent>
@@ -31,7 +31,7 @@ export function AlsonotifyLayoutWrapper({ children }: AlsonotifyLayoutWrapperPro
   );
 }
 
-function AlsonotifyLayoutContent({ children }: AlsonotifyLayoutWrapperProps) {
+function AlsonotifyLayoutContent({ children }: Readonly<AlsonotifyLayoutWrapperProps>) {
   const { data: userDetailsData } = useUserDetails();
   const [isMounted, setIsMounted] = useState(false);
   const { isCollapsed } = useSidebar();
@@ -52,9 +52,7 @@ function AlsonotifyLayoutContent({ children }: AlsonotifyLayoutWrapperProps) {
 
     // Fallback to localStorage if API data not yet available
     if (!user) {
-      try {
-        user = JSON.parse(localStorage.getItem("user") || "{}");
-      } catch (e) { /* ignore */ }
+      user = JSON.parse(localStorage.getItem("user") || "{}");
     }
 
     return {

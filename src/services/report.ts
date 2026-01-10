@@ -22,6 +22,8 @@ export interface ReportKPI {
     totalRequirements: number;
     onTimeCompleted: number;
     delayedCompleted: number;
+    inProgress: number;
+    delayed: number;
     totalExtraHrs: number;
     efficiency: number;
 }
@@ -84,6 +86,8 @@ export interface TaskReportsResponse {
         totalTasks: number;
         onTimeCompleted: number;
         delayedCompleted: number;
+        inProgress: number;
+        delayed: number;
         totalExtraHrs: number;
         efficiency: number;
     };
@@ -122,8 +126,10 @@ export interface EmployeeReport {
     designation: string;
     department: string;
     department_id: number | null;
+    role: string;
     utilization: number;
-    hourlyCost: number;
+    hourlyCost: number; // This is the RATE
+    investment: number; // This is the TOTAL COST
     revenue: number;
     profit: number;
     margin: number;
