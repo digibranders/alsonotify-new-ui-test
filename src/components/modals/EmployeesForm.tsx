@@ -57,7 +57,7 @@ const defaultFormData: EmployeeFormData = {
   dateOfJoining: "",
   experience: "",
   skillsets: "",
-  access: "", // Will default to first available or empty
+  access: "Admin", // Will default to first available or empty
   salary: "",
   currency: "INR",
   workingHoursStart: "",
@@ -124,14 +124,23 @@ export function EmployeeForm({
       let phone = initialData.phone || "";
       let countryCode = initialData.countryCode || "+91";
 
-      // Simple logic to extract country code if phone starts with +
-      if (phone && phone.startsWith("+") && !initialData.countryCode) {
-        // Try to match known codes
-        const matched = countryCodes.find(c => phone.startsWith(c.code));
-        if (matched) {
-          countryCode = matched.code;
-          phone = phone.slice(matched.code.length).trim();
-        }
+      // Improved logic to extract country code
+      if (phone && !initialData.countryCode) {
+        // If it starts with +, try to match known codes first
+        if (phone.startsWith("+")) {
+           const matched = countryCodes.find(c => phone.startsWith(c.code));
+           if (matched) {
+             countryCode = matched.code;
+             phone = phone.slice(matched.code.length).trim();
+           } else {
+             // If + but no match from our limited list, take the first chunk as code if space exists
+             const parts = phone.split(" ");
+             if (parts.length > 1 && parts[0].startsWith("+")) {
+                countryCode = parts[0];
+                phone = parts.slice(1).join(" ");
+             }
+           }
+        } 
       }
 
       const nameParts = (initialData.name || "").split(" ");
@@ -151,7 +160,8 @@ export function EmployeeForm({
         experience: String(initialData.experience || ""),
         currency: initialData.currency || "INR",
         // Map access string to role if available, or keep as is
-        access: initialData.access || (initialData.role_id ? fetchedRoles.find((r: Role) => r.id === initialData.role_id)?.name : "") || "Employee",
+        // Prioritize resolving name from role_id if available, as 'access' string might be stale
+        access: (initialData.role_id ? fetchedRoles.find((r: Role) => r.id === initialData.role_id)?.name : undefined) || initialData.access || "Employee",
         manager_id: initialData.manager_id,
       });
     } else if (companyData?.result && !isEditing) {
@@ -172,7 +182,7 @@ export function EmployeeForm({
         workingHoursStart: stateStart || "9:00 am",
         workingHoursEnd: stateEnd || "6:00 pm",
         leaves: totalLeaves.toString(),
-        access: "Employee" // Default
+        access: "Admin" // Default to Admin as requested
       });
     } else if (!isEditing) {
       setFormData(defaultFormData);

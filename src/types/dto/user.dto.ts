@@ -16,6 +16,8 @@ export interface UserDto {
     is_active?: boolean;
     role_id?: number;
     role?: { color?: string };
+    salary?: number;
+    salary_yearly?: number;
   };
   
   department_id?: number;

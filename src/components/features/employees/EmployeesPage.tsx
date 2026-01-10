@@ -15,8 +15,9 @@ import {
   useCompanyDepartments,
   useUserDetails,
   useRoles,
-  useCurrentUserCompany,
+  useCurrentUserCompany
 } from '../../../hooks/useUser';
+import { CompanyDepartmentType } from '../../../services/user';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTabSync } from '@/hooks/useTabSync';
 import { Employee } from '@/types/domain';
@@ -87,21 +88,38 @@ export function EmployeesPage() {
   // Transform backend data to UI format
   const employees = useMemo(() => {
     if (!employeesData?.result) return [];
-    return employeesData.result.map((emp: Employee) => ({
-      id: emp.user_id || emp.id,
-      name: emp.name || '',
-      role: emp.designation || 'Unassigned',
-      email: emp.email || '',
-      phone: emp.mobile_number || emp.phone || emp.user_profile?.mobile_number || emp.user_profile?.phone || emp.user?.mobile_number || '',
-      hourlyRate: emp.hourly_rates ? `${emp.hourly_rates}/Hr` : 'N/A',
-      dateOfJoining: emp.date_of_joining ? new Date(emp.date_of_joining).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'N/A',
-      experience: String(emp.experience || 0),
-      skillsets: emp.skills?.join(', ') || 'None',
+    return employeesData.result.map((emp: Employee) => {
+      // Resolve access name dynamically from rolesData if available
+      let resolvedAccess = emp.access || 'Employee';
+      if (rolesData?.result) {
+        // Try precise ID match first (robust against string/number types)
+        let foundRole = emp.roleId ? rolesData.result.find((r: { id: number }) => r.id == emp.roleId) : undefined;
+        
+        // If not found by ID, try finding by name (case-insensitive)
+        if (!foundRole && resolvedAccess) {
+             foundRole = rolesData.result.find((r: { name: string }) => r.name.toLowerCase() === resolvedAccess.toLowerCase());
+        }
 
-      status: (emp.user_employee?.is_active !== false ? 'active' : 'inactive') as 'active' | 'inactive',
-      department: emp.department || 'Unassigned',
-      access: emp.access || 'Employee',
-      roleId: emp.roleId,
+        if (foundRole) {
+          resolvedAccess = foundRole.name as Employee['access'];
+        }
+      }
+
+      return {
+        id: emp.user_id || emp.id,
+        name: emp.name || '',
+        role: emp.designation || emp.role || 'Unassigned',
+        email: emp.email || '',
+        phone: emp.mobile_number || emp.phone || emp.user_profile?.mobile_number || emp.user_profile?.phone || emp.user?.mobile_number || '',
+        hourlyRate: emp.hourly_rates ? `${emp.hourly_rates}/Hr` : 'N/A',
+        dateOfJoining: emp.date_of_joining ? new Date(emp.date_of_joining).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'N/A',
+        experience: String(emp.experience || 0),
+        skillsets: emp.skills?.join(', ') || 'None',
+
+        status: (emp.user_employee?.is_active !== false ? 'active' : 'inactive') as 'active' | 'inactive',
+        department: emp.department || 'Unassigned',
+        access: resolvedAccess,
+        roleId: emp.roleId,
       manager_id: emp.managerId, // Employee domain has managerId (and manager_id optionally)
       managerName: emp.managerName || 'Unassigned',
       roleColor: emp.roleColor,
@@ -119,8 +137,9 @@ export function EmployeesPage() {
         if (type === 'Full-time' || type === 'Contract' || type === 'Part-time') return type;
         return 'Full-time';
       })(),
-    }));
-  }, [employeesData]);
+    };
+  });
+  }, [employeesData, rolesData]);
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(emp => {
@@ -160,13 +179,18 @@ export function EmployeesPage() {
   // Get departments from backend if available, otherwise from employees
   const uniqueDepts = useMemo(() => {
     if (departmentsData?.result && departmentsData.result.length > 0) {
-      return ['All', ...departmentsData.result.filter((dept: any) => dept.is_active !== false).map((dept: any) => dept.name)];
+      return ['All', ...departmentsData.result.filter((dept: CompanyDepartmentType) => dept.is_active !== false).map((dept: CompanyDepartmentType) => dept.name)];
     }
     return ['All', ...Array.from(new Set(employees.map(emp => emp.department)))];
   }, [departmentsData, employees]);
 
-  // Defined access levels
-  const accessOptions = ['All', 'Admin', 'Manager', 'Leader', 'Employee'];
+  // Defined access levels - Dynamic from roles
+  const accessOptions = useMemo(() => {
+    if (rolesData?.result && rolesData.result.length > 0) {
+      return ['All', ...rolesData.result.map((r: { name: string }) => r.name)];
+    }
+    return ['All', 'Admin', 'Manager', 'Leader', 'Employee'];
+  }, [rolesData]);
 
   const filterOptions: FilterOption[] = [
     {
@@ -252,13 +276,24 @@ export function EmployeesPage() {
 
     // Find department ID from name
     const selectedDepartment = departmentsData?.result?.find(
-      (dept: any) => dept.name === data.department
+      (dept: CompanyDepartmentType) => dept.name === data.department
     );
     const departmentId = selectedDepartment?.id || null;
 
     // Map access level to role_id
-    const roleName = data.access || 'Employee';
-    const roleId = rolesData?.result?.find((r: { name: string; id: number }) => r.name === roleName)?.id;
+    // Prioritize role_id from form if available (most reliable)
+    let roleId = data.role_id;
+    const roleName = data.access || 'Admin'; // Default to Admin if missing
+
+    if (!roleId) {
+      // Fallback: Find by name
+      roleId = rolesData?.result?.find((r: { name: string; id: number }) => r.name === roleName)?.id;
+      
+      // Fallback: Try case-insensitive match
+      if (!roleId && rolesData?.result) {
+        roleId = rolesData.result.find((r: { name: string }) => r.name.toLowerCase() === roleName.toLowerCase())?.id;
+      }
+    }
 
     // Parse hourly rate (remove $ if present)
     const hourlyRate = parseFloat(data.hourlyRate.replace(/[^0-9.]/g, '')) || 0;
@@ -412,7 +447,11 @@ export function EmployeesPage() {
     }
 
     // Find role ID from name
-    const selectedRole = rolesData?.result?.find((r: { name: string; id: number }) => r.name === access);
+    let selectedRole = rolesData?.result?.find((r: { name: string; id: number }) => r.name === access);
+    if (!selectedRole && rolesData?.result) {
+        selectedRole = rolesData.result.find((r: { name: string }) => r.name.toLowerCase() === access.toLowerCase());
+    }
+
     if (!selectedRole) {
       message.error(`Role "${access}" not found`);
       return;
@@ -420,7 +459,7 @@ export function EmployeesPage() {
     const roleId = selectedRole.id;
 
     // Prepare all update payloads first
-    const updatePromises: Promise<any>[] = [];
+    const updatePromises: Promise<unknown>[] = [];
     const failedEmployees: { id: number; name: string; reason: string }[] = [];
 
     for (const empId of selectedEmployees) {
@@ -562,7 +601,7 @@ export function EmployeesPage() {
     }
 
     const selectedDepartment = departmentsData?.result?.find(
-      (dept: any) => dept.name === departmentName
+      (dept: CompanyDepartmentType) => dept.name === departmentName
     );
 
     if (!selectedDepartment || !selectedDepartment.id) {
@@ -573,7 +612,7 @@ export function EmployeesPage() {
     const departmentId = selectedDepartment.id;
 
     // Prepare all update payloads first
-    const updatePromises: Promise<any>[] = [];
+    const updatePromises: Promise<unknown>[] = [];
     const failedEmployees: { id: number; name: string; reason: string }[] = [];
 
     for (const empId of selectedEmployees) {
@@ -642,7 +681,11 @@ export function EmployeesPage() {
       // Resolve current role ID
       let currentRoleId = employee.roleId;
       if (!currentRoleId && employee.access) {
-        const foundRole = rolesData?.result?.find((r: { name: string; id: number }) => r.name === employee.access);
+        let foundRole = rolesData?.result?.find((r: { name: string; id: number }) => r.name === employee.access);
+        // Robust fallback: Case-insensitive search
+        if (!foundRole && rolesData?.result) {
+            foundRole = rolesData.result.find((r: { name: string }) => r.name.toLowerCase() === employee.access?.toLowerCase());
+        }
         if (foundRole) currentRoleId = foundRole.id;
       }
 

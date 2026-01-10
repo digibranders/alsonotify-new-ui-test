@@ -3,7 +3,8 @@ import { Employee, User } from '../../types/domain';
 
 export const mapUserDtoToEmployee = (dto: UserDto): Employee => {
   // Access Level / Role
-  const access = (dto.employee_access || dto.access || (dto.role === 'Admin' ? 'Admin' : 'Employee')) as Employee['access'];
+  // Allow dto.role to pass through (it might be 'Manager', 'Leader', etc.)
+  const access = (dto.employee_access || dto.access || dto.role || 'Employee') as Employee['access'];
   
   // Employment Type
   let employmentType = dto.employment_type || dto.employmentType || 'Full-time';
@@ -27,6 +28,7 @@ export const mapUserDtoToEmployee = (dto: UserDto): Employee => {
     userId: dto.id,
     name: dto.name || '',
     role: dto.designation || dto.role || 'Unassigned',
+    designation: dto.designation,
     email: dto.email || '',
     phone,
     mobileNumber: phone,
@@ -56,12 +58,13 @@ export const mapUserDtoToEmployee = (dto: UserDto): Employee => {
     managerId: dto.manager_id || undefined,
     manager_id: dto.manager_id || undefined,
     
-    salary: dto.salary || dto.salary_yearly || 0,
+    salary: dto.salary_yearly || dto.salary || dto.user_employee?.salary_yearly || dto.user_employee?.salary || 0,
     currency: dto.currency || 'USD',
     workingHours: dto.workingHours || 0,
+    rawWorkingHours: dto.working_hours,
     leaves: dto.leaves || dto.no_of_leaves || 0,
     
-    roleId: dto.role_id,
+    roleId: dto.role_id || dto.user_employee?.role_id,
     roleColor: dto.roleColor || dto.user_employee?.role?.color,
     
     employmentType,
