@@ -89,6 +89,7 @@
     -   **Logic:** Added trim checks in `handleSubmit` and updated `Form.Item` rules to include `whitespace: true`.
 -   **Display Formatting:**
     -   **Salary:** Added space between currency code (e.g., "USD") and salary amount in `EmployeeDetailsModal` for better readability (Requested by User).
+    -   **Sidebar:** Reduced default width from `292px` to `240px` to optimize screen real estate.
 
 ## Verification
 

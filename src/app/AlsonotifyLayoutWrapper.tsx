@@ -129,8 +129,8 @@ function AlsonotifyLayoutContent({ children }: AlsonotifyLayoutWrapperProps) {
         <div className="flex gap-5 w-full h-full overflow-hidden">
           {/* Left Sidebar - Hidden on mobile, visible on lg+ */}
           <div 
-            className={`hidden lg:block shrink-0 h-full overflow-y-auto transition-all duration-300 ${isCollapsed ? 'w-[80px]' : 'w-[292px]'}`}
-          >
+             className={`hidden lg:block shrink-0 h-full overflow-y-auto transition-all duration-300 ${isCollapsed ? 'w-[80px]' : 'w-[240px]'}`}
+           >
             <Sidebar userRole={userRole} permissions={permissions} collapsed={isCollapsed} />
           </div>
 
