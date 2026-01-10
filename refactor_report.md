@@ -1,110 +1,90 @@
-# Refactor Report: Invoice Generation System, Access Level Fixes, Data Mapping & UI Components
+# Refactor Report: Employee KPI Calculation Update
 
 ## Objective
 
-1.  Implement a professional "Create Invoice" page and enhance the global application layout with a collapsible sidebar ("Focus Mode").
-2.  Fix Access Level assignment issues in the Employees module to ensure robust updates and accurate display of backend roles.
-3.  Ensure "Add Employee" defaults to Admin access.
-4.  **Fix Data Display Issues:** Correctly save and display "Designation" and "Salary" fields for employees.
-5.  **UI Component Hardening:** Fix incorrect usage of Ant Design components and improve form validation logic.
+1.  **Refine Employee KPIs:** Switch Employee KPI calculations from server-side pre-aggregation to robust client-side aggregation (for Filters) AND refactor Backend Revenue logic (for Accuracy).
+2.  **Filter Awareness:** Ensure KPI cards (Investment, Revenue, Profit, Rate/Hr) dynamically update based on active filters (Search, Department, etc.) to match the visible table data.
+3.  **Revenue Accuracy:** Implement "Pro-rated Fixed Price" revenue recognition instead of simple "Time & Materials".
 
 ## Changes
 
-### 1. Fix Data Display Issues (Designation & Salary)
+### 1. Backend Service (`report.service.ts`) - [New]
 
--   **Mapper Logic (`src/utils/mappers/user.ts`):**
-    -   Explicitly mapped `designation` from `dto.designation`.
-    -   Prioritized `salary_yearly` (Annual CTC) over `salary` to ensure the correct annual salary is displayed, fixing the "N/A" or incorrect value issue.
--   **Employees Page (`src/components/features/employees/EmployeesPage.tsx`):**
-    -   Updated the data grid mapping to correctly reference `emp.designation` or fallback to `emp.role`.
+-   **Old Logic:** `Revenue = Engaged Hours * Hourly Rate`. (Removed).
+-   **New Logic:**
+    -   **Formula:** `Revenue = (Quoted Price / Total Duration) * Overlap Duration * (Member Share of Work)`.
+    -   **Time Awareness:** Explicitly calculates the intersection of the Requirement timeframe and the User's selected Date Range.
+    -   **Attribution:** Distributes the recognized revenue to employees based on their logged hours percentage.
+    -   **Fallback:** If no quoted price/dates, falls back to `Hourly Rate`.
+-   **Verification:** `npm run build` passed.
 
-### 2. Robust Access Level Handling
+### 2. Reports Page (`ReportsPage.tsx`)
 
--   **Dynamic Role Display:**
-    -   Updated `src/components/features/employees/EmployeesPage.tsx` to resolve the displayed "Access Level" dynamically from the `roles` list fetched from the backend (Company Settings).
-    -   This replaces potentially stale fallback strings with the _actual_ role name (e.g., "Admin", "Manager", "Leads") corresponding to the employee's `role_id`.
--   **Case-Insensitive Resolution:**
-    -   Enhanced logic to match role names case-insensitively during updates (`handleSaveEmployee`), ensuring updates succeed even if there are casing discrepancies (e.g., "admin" vs "Admin").
--   **Dynamic Filtering:**
-    -   Updated the "Access Level" filter dropdown to populate from the live backend roles list rather than a hardcoded array.
+-   **Logic Update:** Implemented a `useMemo` hook to calculate Employee KPIs directly from the `filteredEmployees` list.
+-   **Calculations:**
+    -   **Total Investment:** Sum of `(engagedHrs * hourlyCost)`.
+    -   **Total Revenue:** Sum of `revenue` (which now comes from the improved Backend logic).
+    -   **Net Profit:** `Total Revenue - Total Investment`.
+    -   **Avg. Rate/Hr:** `Total Revenue / Total Engaged Hours`.
+-   **UI:** Updated rendering to use client-side calculated values.
 
-### 3. Default Access
+### 3. Documentation
 
--   **Defaults:** "Add Employee" form (`EmployeesForm.tsx`) now defaults the Access Level to **"Admin"**.
+-   **Updated `KPI calculations.html`:** Documented the client-side aggregation methodology.
 
-### 4. Global Collapsible Sidebar
+## Current System State
 
--   **Context:** `SidebarContext` manages persistent collapse state (localStorage).
--   **UI:** Updated Sidebar with a toggle button, smooth transitions, and favicon usage when collapsed.
--   **Layout:** Content area dynamically adjusts width.
-
-### 5. Invoice Generation System
-
--   **Page:** New split-screen Create Invoice page with live client-side PDF preview.
--   **Features:** Auto-population, tax/discount toggles, clean UI.
--   **Bug Fix:** Fixed infinite re-render loop in `CreateInvoicePage`.
-
-### 7. Role Update Reliability
-
--   **Fix:** Updated `EmployeesPage.tsx` to prioritize the explicit `role_id` from the form data instead of re-calculating it from the Access Level name. This ensures that the exact role selected by the user is sent to the backend, fixing issues where "Admin" selection resulted in "Employee" due to fallback logic.
--   **Mapper Fix:**
-    -   Corrected logic to allow `dto.role` to pass through (e.g., "Manager", "Leader") instead of defaulting to "Employee" if not "Admin".
-    -   Updated `roleId` mapping to fallback to `dto.user_employee?.role_id` if the root `role_id` is missing (common in list responses). This ensures correct Role Name resolution in the Employee List.
--   **List & Form Hardening:**
-    -   **List:** Updated `EmployeesPage` to perform robust loose-equality checks for `roleId` (handling string vs number mismatches) and fallback to case-insensitive name lookup.
-    -   **Form:** Updated `EmployeesForm` to prioritize resolving the access role from `initialData.role_id` rather than reusing a potentially stale `initialData.access` string.
--   **Data Mapping Fixes:**
-    -   **Working Hours:** Added mapping for `working_hours` object to `rawWorkingHours` in `mapUserDtoToEmployee`. This allows `EmployeeDetailsModal` to correctly display "Start Time - End Time" instead of "N/A".
-    -   **Salary:** Extended salary lookup to check `dto.user_employee.salary` and `dto.user_employee.salary_yearly` as fallbacks, ensuring correct value display even if nested.
-    -   **Type Safety:** Updated `UserDto` to explicitly include `salary` and `salary_yearly` in the nested `user_employee` object, removing the need for `as any` casts in the mapper.
-    -   **Strict Backend Alignment:** Analyzed backend schema (`IUserCreateType`) and enforced strict payload structure in `EmployeesPage.tsx`.
-        -   **Mobile Number:** Strictly using `mobile_number` (removed `phone`).
-        -   **Salary:** Strictly using `salary_yearly` (removed `salary`).
-        -   **Working Hours:** Confirmed object structure `{ start_time, end_time }`.
-    -   **Phone Number Parsing:** Improved `EmployeesForm` initialization logic to robustly handle phone numbers with unknown country codes.
-    -   **Backend Service Fix:** Identified that `getUsersService` in `alsonotify-backend-new/service/user.service.ts` was not selecting `salary_yearly` in its response. Added `salary_yearly: true` to the `select` block to ensure the data is returned to the frontend.
-
-### 6. Bulk Update & Type Safety
-
--   **Hardening:** `handleBulkUpdateDepartment` now robustly preserves the existing Access Level (Role) even if casing mismatches occur (case-insensitive fallback).
--   **Type Safety:** Replaced `any` in `EmployeesPage.tsx` with strict types (`CompanyDepartmentType`, `unknown` in catch blocks), improving codebase reliability.
-
-### 8. Select Component & Form Validation Fixes
-
--   **Ant Design v6 Standardization:**
-    -   Aligned `Select` component search configuration with Ant Design v6 standards.
-    -   Verified usage of `showSearch={{ filterOption: ... }}` pattern, ensuring compliance with deprecation warnings for top-level `filterOption`.
-    -   **Robust Filtering:**
-        -   Fixed potential crashes or specific search failures where `option.children` was a complex ReactNode (e.g., Avatars in TaskForm) by prioritizing `option.label` string checks.
-        -   Ensured search logic safely handles `null`/`undefined` properties without throwing errors.
-    -   **Files Updated:**
-        -   `src/app/company-details/page.tsx`
-        -   `src/components/features/settings/SettingsPage.tsx` (Enhanced timezone search)
-        -   `src/components/modals/WorkspaceForm.tsx`
-        -   `src/components/modals/RequirementsForm.tsx`
-        -   `src/components/modals/TaskForm.tsx` (Fixed Member search)
-        -   `src/app/dashboard/feedback/page.tsx`
--   **Feedback Widget Hardening:**
-    -   **Validation:** Updated `FeedbackWidget.tsx` to prevent submission of whitespace-only descriptions.
-    -   **Logic:** Added trim checks in `handleSubmit` and updated `Form.Item` rules to include `whitespace: true`.
--   **Display Formatting:**
-    -   **Salary:** Added space between currency code (e.g., "USD") and salary amount in `EmployeeDetailsModal` for better readability (Requested by User).
-    -   **Sidebar:** Reduced default width from `292px` to `240px` to optimize screen real estate.
+-   **Reports Module:** Hybrid robust implementation. Backend provides accurate "Attributed Revenue" per employee. Frontend aggregates these values dynamically based on filters.
+-   **Build Status:** Both Frontend and Backend builds passed.
 
 ## Verification
 
--   **Typecheck:** Passed (`npm run typecheck`)
--   **Build:** Passed (`npm run build`)
--   **Manual Verification:**
-    -   **Selects:** Search functionality now works correctly in all refactored dropdowns (Company Details, Settings, Workspaces, Requirements, Tasks, Feedback).
-    -   **Feedback:** Empty/whitespace submissions are now correctly blocked with a validation error.
-    -   **Display:** Verified that Employee list displays correct Role Names fetched from backend.
-    -   **Update:** validated that changing Access Level successfully updates the user's role.
-    -   **Defaults:** "Add Employee" defaults to "Admin".
-    -   **Data Integrity:** Validated that Designation and Salary saved in the form are correctly displayed in the list and details view.
-    -   **Bulk Operations:** Verified Bulk Access and Bulk Department updates work correctly, preserving other fields.
+-   **Automated:**
+    -   Frontend `npm run typecheck` & `build`: Passed.
+    -   Backend `npm run build`: Passed.
+-   **Logic Check:**
+    -   Pro-rated logic correctly handles date overlaps.
+    -   Client-side aggregation correctly handles search/filters.
 
 ## Statistics
 
--   **Files Changed:** 16 (Total across recent sessions)
+-   **Files Changed:**
+    -   `alsonotify-backend-new/service/report.service.ts`
+    -   `alsonotify-new-ui/src/components/features/reports/ReportsPage.tsx`
+    -   `KPI calculations.html`
+-   **Bug Fixes:**
+    -   Fixed deprecated `width` prop warning in `ReportsPage.tsx` Drawer.
+    -   Updated Drawer width to `50%` for responsiveness.
+-   **Type Safety:**
+    -   Removed `any` cast in `report.service.ts` by including `role` relation in Prisma query.
+-   **Logic Update:**
+    -   Employee Cost Calculation now dynamically determines "Annual Working Days" based on Company/Profile working hours (e.g., 6-day work weeks) instead of static 260.
+-   **UI Fix:**
+    -   Updated `ReportsPage.tsx` "Investment" column to display **Total Investment** (`Cost * Hours`) instead of just `Hourly Rate`.
+    -   Renamed "Delayed but Completed" KPI card to **In Progress** and wired it to real backend `inProgress` count.
+    -   Added **Delayed** KPI card (Active Late + Completed Late).
+    -   Updated KPI Grid to **5 columns** (Req/Task) and **4 columns** (Employee) to display cards optimally without gaps.
 -   **Build Status:** Success
+
+---
+
+## Update: Documenting Report Calculations
+
+**Timestamp:** 2026-01-10T16:25:10+05:30
+
+### Objective
+
+Update external documentation to reflect the calculation logic for all Tabs in the Reports module (Requirements, Tasks, Employees).
+
+### Changes
+
+-   **Modified:** `Employee_Report_Calculations.html`
+    -   Renamed title to "Reports Module Calculations".
+    -   Added detailed calculation formulas for **Requirements Tab** (Utilization, Revenue, KPIs).
+    -   Added detailed calculation formulas for **Tasks Tab** (Extra Hours, KPIs).
+    -   Refined **Employees Tab** details including Drawer efficiency stats.
+
+### Verification
+
+-   **Manual Check:** Verified HTML content against `ReportsPage.tsx` logic.
+-   **Build:** N/A (Documentation only).

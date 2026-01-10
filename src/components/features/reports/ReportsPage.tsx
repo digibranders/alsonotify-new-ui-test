@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Download,
   Clock, CheckCircle2, AlertCircle, Loader2,
@@ -275,6 +275,8 @@ export function ReportsPage() {
     totalRequirements: 0,
     onTimeCompleted: 0,
     delayedCompleted: 0,
+    inProgress: 0,
+    delayed: 0,
     totalExtraHrs: 0,
     efficiency: 0
   };
@@ -284,12 +286,15 @@ export function ReportsPage() {
     totalTasks: 0,
     onTimeCompleted: 0,
     delayedCompleted: 0,
+    inProgress: 0,
+    delayed: 0,
     totalExtraHrs: 0,
     efficiency: 0
   };
 
   const employees = employeeData?.data || [];
-  const employeeKPI: EmployeeKPI = employeeData?.kpi || {
+  // Backend KPI (Still used for types or potential future comparison, but we override with calculated below)
+  const _employeeKPI: EmployeeKPI = employeeData?.kpi || {
     totalInvestment: 0,
     totalRevenue: 0,
     netProfit: 0,
@@ -320,6 +325,32 @@ export function ReportsPage() {
   const filteredRequirements = sortData(requirements);
   const filteredTasks = sortData(tasks);
   const filteredEmployees = sortData(employees);
+
+  // Client-side KPI Calculation for Employees
+  const employeeKPI = useMemo(() => {
+    // Start with zero
+    const totals = filteredEmployees.reduce(
+      (acc, employee) => {
+        const inv = employee.engagedHrs * employee.hourlyCost;
+        const rev = employee.revenue;
+        return {
+          totalInvestment: acc.totalInvestment + inv,
+          totalRevenue: acc.totalRevenue + rev,
+          totalEngagedHrs: acc.totalEngagedHrs + employee.engagedHrs
+        };
+      },
+      { totalInvestment: 0, totalRevenue: 0, totalEngagedHrs: 0 }
+    );
+
+    return {
+      totalInvestment: totals.totalInvestment,
+      totalRevenue: totals.totalRevenue,
+      netProfit: totals.totalRevenue - totals.totalInvestment,
+      avgRatePerHr: totals.totalEngagedHrs > 0 
+        ? totals.totalRevenue / totals.totalEngagedHrs 
+        : 0
+    };
+  }, [filteredEmployees]);
 
   // Debug Logs
   console.log('ReportsPage Render:', { 
@@ -425,7 +456,7 @@ export function ReportsPage() {
           />
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${activeTab === 'member' ? 'md:grid-cols-4' : 'md:grid-cols-5'}`}>
             {activeTab === 'requirement' && (
               <>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
@@ -437,10 +468,16 @@ export function ReportsPage() {
                   <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">{kpi.onTimeCompleted}</span>
                 </div>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Delayed but Completed</span>
+                  <span className="text-[12px] font-medium text-[#666666]">In Progress</span>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{kpi.delayedCompleted}</span>
-                    {kpi.totalExtraHrs > 0 && <span className="text-sm font-medium text-[#FF3B3B]">(+{kpi.totalExtraHrs}h)</span>}
+                    <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{kpi.inProgress}</span>
+                  </div>
+                </div>
+                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
+                  <span className="text-[12px] font-medium text-[#666666]">Delayed</span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#FF3B3B]">{kpi.delayed}</span>
+                    <span className="text-sm font-medium text-[#FF3B3B]">(+{kpi.totalExtraHrs}h)</span>
                   </div>
                 </div>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
@@ -463,10 +500,16 @@ export function ReportsPage() {
                   <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">{taskKPI.onTimeCompleted}</span>
                 </div>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
-                  <span className="text-[12px] font-medium text-[#666666]">Delayed but Completed</span>
+                  <span className="text-[12px] font-medium text-[#666666]">In Progress</span>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{taskKPI.delayedCompleted}</span>
-                    {taskKPI.totalExtraHrs > 0 && <span className="text-sm font-medium text-[#FF3B3B]">(+{taskKPI.totalExtraHrs}h)</span>}
+                    <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{taskKPI.inProgress}</span>
+                  </div>
+                </div>
+                <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
+                  <span className="text-[12px] font-medium text-[#666666]">Delayed</span>
+                  <div className="flex items-baseline gap-2">
+                     <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#FF3B3B]">{taskKPI.delayed}</span>
+                     <span className="text-sm font-medium text-[#FF3B3B]">(+{taskKPI.totalExtraHrs}h)</span>
                   </div>
                 </div>
                 <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1">
@@ -617,7 +660,7 @@ export function ReportsPage() {
                   <th className="px-4 w-[250px]"><TableHeader label="Employee" sortKey="member" currentSort={sortConfig} onSort={handleSort} /></th>
                   <th className="px-4"><TableHeader label="Tasks Performance" /></th>
                   <th className="px-4"><TableHeader label="Load" sortKey="utilization" currentSort={sortConfig} onSort={handleSort} /></th>
-                  <th className="px-4"><TableHeader label="Investment" sortKey="hourlyCost" currentSort={sortConfig} onSort={handleSort} /></th>
+                  <th className="px-4"><TableHeader label="Investment" sortKey="investment" currentSort={sortConfig} onSort={handleSort} /></th>
                   <th className="px-4"><TableHeader label="Revenue" sortKey="revenue" currentSort={sortConfig} onSort={handleSort} /></th>
                   <th className="px-4"><TableHeader label="Net Profit" sortKey="profit" currentSort={sortConfig} onSort={handleSort} /></th>
                 </tr>
@@ -666,7 +709,7 @@ export function ReportsPage() {
                             </div>
                         </div>
                     </td>
-                    <td className="px-4 text-[13px] text-[#666666] font-['Inter:Medium',sans-serif]">${row.hourlyCost.toLocaleString()}</td>
+                    <td className="px-4 text-[13px] text-[#666666] font-['Inter:Medium',sans-serif]">${row.investment?.toLocaleString()}</td>
                     <td className="px-4 text-[13px] text-[#111111] font-['Manrope:Bold',sans-serif]">${row.revenue.toLocaleString()}</td>
                     <td className={`px-4 text-[13px] font-['Manrope:Bold',sans-serif] ${row.profit >= 0 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
                         ${row.profit.toLocaleString()}
@@ -684,10 +727,9 @@ export function ReportsPage() {
         <Drawer
           title={null}
           closable={false}
-          width={850}
           onClose={() => setSelectedMemberId(null)}
           open={!!selectedMemberId}
-          styles={{ body: { padding: 0 } }}
+          styles={{ body: { padding: 0 }, wrapper: { width: '50%' } }}
         >
           {selectedMember && (
             <div className="flex flex-col h-full bg-white">
@@ -699,8 +741,11 @@ export function ReportsPage() {
                       {selectedMember.member.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <h2 className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111] m-0">
+                      <h2 className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111] m-0 flex items-center gap-2">
                         {selectedMember.member}
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[#F5F5F7] text-[#666666] border border-[#E5E5E5] uppercase tracking-wide">
+                              {selectedMember.role || 'Member'}
+                        </span>
                       </h2>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-sm text-[#666666] font-['Inter:Medium',sans-serif]">
