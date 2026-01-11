@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Button, Input, Select, Divider, Upload, Switch, Progress, App } from "antd";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { Camera, Pencil, Upload as UploadIcon, FileText, Bell, Shield } from "lucide-react";
 import Image from "next/image";
 import { PageLayout } from "../../layout/PageLayout";
@@ -58,7 +59,7 @@ const countryCodes = [
 
 export function ProfilePage() {
     const { message } = App.useApp();
-    const { data: currentUserData } = useUserDetails();
+    const { data: currentUserData, isLoading } = useUserDetails();
     const user = currentUserData?.result?.user;
     const updateProfileMutation = useUpdateProfile();
     const updatePasswordMutation = useUpdatePassword();
@@ -469,6 +470,57 @@ export function ProfilePage() {
             }
         >
             <div className="flex flex-col h-full">
+                {isLoading ? (
+                    <div className="flex-1 overflow-y-auto pr-2 pb-10 animate-pulse">
+                        <div className="mb-8">
+                            <Skeleton className="h-4 w-64 mb-2" />
+                        </div>
+                        
+                        <section className="mb-10">
+                            <div className="flex flex-col md:flex-row gap-10 items-stretch mb-8">
+                                <div className="shrink-0 w-32 flex flex-col justify-between">
+                                    <Skeleton className="h-6 w-32 mb-8" />
+                                    <Skeleton className="w-32 h-32 rounded-full mx-auto" />
+                                </div>
+                                <div className="flex-1 w-full space-y-6">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-11 w-full rounded-lg" /></div>
+                                        <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-11 w-full rounded-lg" /></div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-11 w-full rounded-lg" /></div>
+                                        <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-11 w-full rounded-lg" /></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-6 mb-6">
+                                <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-11 w-full rounded-lg" /></div>
+                                <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-11 w-full rounded-lg" /></div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-6">
+                                <div className="space-y-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-11 w-full rounded-lg" /></div>
+                                <div className="space-y-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-11 w-full rounded-lg" /></div>
+                                <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-11 w-full rounded-lg" /></div>
+                            </div>
+                        </section>
+
+                        <Divider className="my-8 bg-[#EEEEEE]" />
+
+                        <section className="mb-10">
+                            <Skeleton className="h-6 w-48 mb-6" />
+                            <div className="grid grid-cols-2 gap-6 mb-6">
+                                <div className="space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-11 w-full rounded-lg" /></div>
+                                <div className="space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-11 w-full rounded-lg" /></div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-6">
+                                <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-11 w-full rounded-lg" /></div>
+                                <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-11 w-full rounded-lg" /></div>
+                                <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-11 w-full rounded-lg" /></div>
+                            </div>
+                        </section>
+                    </div>
+                ) : (
+                    <>
                 {/* Header Info - Static area */}
                 <div className="mb-4">
                     <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif]">
@@ -966,8 +1018,10 @@ export function ProfilePage() {
                         </div>
                     </section>
                 </div>
-
-                {/* Document Preview Modal */}
+            </>
+        )}
+    </div>
+    {/* Document Preview Modal */}
                 <DocumentPreviewModal
                     open={isPreviewModalOpen}
                     onClose={() => {
@@ -976,7 +1030,6 @@ export function ProfilePage() {
                     }}
                     document={selectedDocument}
                 />
-            </div>
         </PageLayout>
     );
 }

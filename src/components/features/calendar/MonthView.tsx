@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import dayjs from 'dayjs';
 import { Popover, Spin } from 'antd';
+import { Skeleton } from '../../ui/Skeleton';
 import { CalendarEventPopup } from './CalendarEventPopup';
 import { CalendarEvent } from './types';
 
@@ -85,8 +86,33 @@ export function MonthView({ currentDate, events, isLoading, selectedDate, onSele
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-full">
-                <Spin size="large" />
+            <div className="bg-white border border-[#EEEEEE] rounded-[16px] p-4 h-full flex flex-col animate-pulse">
+                <table className="w-full h-full table-fixed border-separate border-spacing-2">
+                    <thead>
+                        <tr>
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                                <th key={day} className="text-center py-2">
+                                    <Skeleton className="h-4 w-8 mx-auto" />
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {Array.from({ length: 5 }).map((_, i) => (
+                            <tr key={i}>
+                                {Array.from({ length: 7 }).map((_, j) => (
+                                    <td key={j} className="p-2 rounded-[8px] border border-[#EEEEEE] align-top h-24">
+                                        <Skeleton className="h-4 w-4 mb-2" />
+                                        <div className="space-y-1">
+                                            <Skeleton className="h-3 w-full rounded" />
+                                            <Skeleton className="h-3 w-4/5 rounded" />
+                                        </div>
+                                    </td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         );
     }

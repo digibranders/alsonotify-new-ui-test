@@ -8,6 +8,7 @@ import { PageLayout } from '../../layout/PageLayout';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { Modal } from 'antd';
+import { Skeleton } from '../../ui/Skeleton';
 
 interface EmployeeWorkload {
   id: string;
@@ -307,6 +308,15 @@ export function WorkloadChartPage() {
     defaultTab: 'analytics',
     validTabs: ['daily', 'week', 'analytics', 'monthly']
   });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({
     role: 'All',
@@ -653,6 +663,54 @@ export function WorkloadChartPage() {
     }
   };
 
+  const renderSkeletonStats = () => (
+    <div className="grid grid-cols-4 gap-4 mb-6">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="border border-[#EEEEEE] rounded-[16px] p-5 animate-pulse">
+          <div className="flex items-center justify-between mb-2">
+            <Skeleton className="h-5 w-5 rounded" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+          <Skeleton className="h-8 w-16" />
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderSkeletonChart = () => (
+    <div className="bg-white border border-[#EEEEEE] rounded-[16px] p-6 mb-6 animate-pulse">
+      <Skeleton className="h-5 w-48 mb-6" />
+      <Skeleton className="h-[300px] w-full rounded-[8px]" />
+    </div>
+  );
+
+  const renderSkeletonEmployeeList = () => (
+    <div className="space-y-4 animate-pulse">
+      <Skeleton className="h-5 w-32 mb-4" />
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="bg-[#F7F7F7] rounded-[16px] p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+            <div className="text-right space-y-2">
+              <Skeleton className="h-6 w-16" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-3 w-10" />
+            </div>
+            <Skeleton className="h-2 w-full rounded-full" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <PageLayout
       title="Workload Chart"
@@ -679,128 +737,134 @@ export function WorkloadChartPage() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="border border-[#EEEEEE] rounded-[16px] p-5">
-          <div className="flex items-center justify-between mb-2">
-            <Users className="w-5 h-5 text-[#666666]" />
-            <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
-              Total Employees
-            </span>
+      {loading ? renderSkeletonStats() : (
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="border border-[#EEEEEE] rounded-[16px] p-5">
+            <div className="flex items-center justify-between mb-2">
+              <Users className="w-5 h-5 text-[#666666]" />
+              <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
+                Total Employees
+              </span>
+            </div>
+            <p className="font-['Manrope:Bold',sans-serif] text-[24px] text-[#111111]">
+              {employeeWorkloadData.length}
+            </p>
           </div>
-          <p className="font-['Manrope:Bold',sans-serif] text-[24px] text-[#111111]">
-            {employeeWorkloadData.length}
-          </p>
-        </div>
 
-        <div className="border border-[#EEEEEE] rounded-[16px] p-5">
-          <div className="flex items-center justify-between mb-2">
-            <Clock className="w-5 h-5 text-[#4CAF50]" />
-            <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
-              Total Hours
-            </span>
+          <div className="border border-[#EEEEEE] rounded-[16px] p-5">
+            <div className="flex items-center justify-between mb-2">
+              <Clock className="w-5 h-5 text-[#4CAF50]" />
+              <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
+                Total Hours
+              </span>
+            </div>
+            <p className="font-['Manrope:Bold',sans-serif] text-[24px] text-[#111111]">
+              {totalWeeklyHours.toFixed(1)}h
+            </p>
           </div>
-          <p className="font-['Manrope:Bold',sans-serif] text-[24px] text-[#111111]">
-            {totalWeeklyHours.toFixed(1)}h
-          </p>
-        </div>
 
-        <div className="border border-[#EEEEEE] rounded-[16px] p-5">
-          <div className="flex items-center justify-between mb-2">
-            <TrendingUp className="w-5 h-5 text-[#2196F3]" />
-            <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
-              Avg Utilization
-            </span>
+          <div className="border border-[#EEEEEE] rounded-[16px] p-5">
+            <div className="flex items-center justify-between mb-2">
+              <TrendingUp className="w-5 h-5 text-[#2196F3]" />
+              <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
+                Avg Utilization
+              </span>
+            </div>
+            <p className="font-['Manrope:Bold',sans-serif] text-[24px] text-[#111111]">
+              {averageUtilization.toFixed(1)}%
+            </p>
           </div>
-          <p className="font-['Manrope:Bold',sans-serif] text-[24px] text-[#111111]">
-            {averageUtilization.toFixed(1)}%
-          </p>
-        </div>
 
-        <div className="border border-[#EEEEEE] rounded-[16px] p-5">
-          <div className="flex items-center justify-between mb-2">
-            <AlertCircle className="w-5 h-5 text-[#ff3b3b]" />
-            <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
-              Overloaded
-            </span>
+          <div className="border border-[#EEEEEE] rounded-[16px] p-5">
+            <div className="flex items-center justify-between mb-2">
+              <AlertCircle className="w-5 h-5 text-[#ff3b3b]" />
+              <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#999999]">
+                Overloaded
+              </span>
+            </div>
+            <p className="font-['Manrope:Bold',sans-serif] text-[24px] text-[#111111]">
+              {overloadedEmployees}
+            </p>
           </div>
-          <p className="font-['Manrope:Bold',sans-serif] text-[24px] text-[#111111]">
-            {overloadedEmployees}
-          </p>
         </div>
-      </div>
+      )}
 
       {/* Chart based on active tab */}
-      {renderChart()}
+      {loading ? renderSkeletonChart() : renderChart()}
 
       {/* Employee Workload Details */}
       <div className="flex-1 overflow-y-auto">
-        <h3 className="font-['Manrope:SemiBold',sans-serif] text-[15px] text-[#111111] mb-4">
-          Employee Details
-        </h3>
-        <div className="space-y-3">
-          {filteredEmployees.map((employee) => {
-            const utilization = (employee.total / employee.capacity) * 100;
-            const utilizationColor =
-              utilization > 100
-                ? '#ff3b3b'
-                : utilization >= 90
-                  ? '#FF9800'
-                  : utilization >= 70
-                    ? '#4CAF50'
-                    : '#2196F3';
+        {loading ? renderSkeletonEmployeeList() : (
+          <>
+            <h3 className="font-['Manrope:SemiBold',sans-serif] text-[15px] text-[#111111] mb-4">
+              Employee Details
+            </h3>
+            <div className="space-y-3">
+              {filteredEmployees.map((employee) => {
+                const utilization = (employee.total / employee.capacity) * 100;
+                const utilizationColor =
+                  utilization > 100
+                    ? '#ff3b3b'
+                    : utilization >= 90
+                      ? '#FF9800'
+                      : utilization >= 70
+                        ? '#4CAF50'
+                        : '#2196F3';
 
-            return (
-              <div
-                key={employee.id}
-                onClick={() => setSelectedEmployee(employee)}
-                className="bg-[#F7F7F7] rounded-[16px] p-5 hover:bg-[#EEEEEE] transition-all cursor-pointer"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-1">
-                      {employee.name}
-                    </h4>
-                    <p className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
-                      {employee.role}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-['Manrope:Bold',sans-serif] text-[18px] text-[#111111]">
-                      {employee.total}h
-                    </p>
-                    <p className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666]">
-                      of {employee.capacity}h
-                    </p>
-                  </div>
-                </div>
+                return (
+                  <div
+                    key={employee.id}
+                    onClick={() => setSelectedEmployee(employee)}
+                    className="bg-[#F7F7F7] rounded-[16px] p-5 hover:bg-[#EEEEEE] transition-all cursor-pointer"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-1">
+                          {employee.name}
+                        </h4>
+                        <p className="text-[12px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                          {employee.role}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-['Manrope:Bold',sans-serif] text-[18px] text-[#111111]">
+                          {employee.total}h
+                        </p>
+                        <p className="text-[11px] font-['Manrope:Regular',sans-serif] text-[#666666]">
+                          of {employee.capacity}h
+                        </p>
+                      </div>
+                    </div>
 
-                {/* Utilization Bar */}
-                <div className="mb-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#666666]">
-                      Utilization
-                    </span>
-                    <span
-                      className="text-[11px] font-['Manrope:SemiBold',sans-serif]"
-                      style={{ color: utilizationColor }}
-                    >
-                      {utilization.toFixed(1)}%
-                    </span>
+                    {/* Utilization Bar */}
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-['Manrope:Medium',sans-serif] text-[#666666]">
+                          Utilization
+                        </span>
+                        <span
+                          className="text-[11px] font-['Manrope:SemiBold',sans-serif]"
+                          style={{ color: utilizationColor }}
+                        >
+                          {utilization.toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-white rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${Math.min(utilization, 100)}%`,
+                            backgroundColor: utilizationColor
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="w-full h-2 bg-white rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(utilization, 100)}%`,
-                        backgroundColor: utilizationColor
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Employee Details Modal */}

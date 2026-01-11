@@ -6,6 +6,7 @@ import { FolderOpen, Plus, LayoutGrid, List, MoreVertical, Edit, Trash2, RotateC
 import { PaginationBar } from '../../ui/PaginationBar';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { Modal, Dropdown, MenuProps, Checkbox, App } from "antd";
+import { Skeleton } from '../../ui/Skeleton';
 import { WorkspaceForm } from '@/components/modals/WorkspaceForm';
 
 import { useWorkspaces, useDeleteWorkspace, useReactivateWorkspace } from '@/hooks/useWorkspace';
@@ -274,73 +275,122 @@ export function WorkspacePage() {
 
       {/* Workspace Content */}
       <div className="flex-1 overflow-y-auto">
-        {viewMode === 'grid' ? (
-          <div className="grid grid-cols-4 gap-4">
-            {workspaces.map((workspace) => (
-              <WorkspaceCard
-                key={workspace.id}
-                workspace={workspace}
-                onClick={() => handleSelectWorkspace(workspace)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {/* List header – aligned with rows, matches dashboard style */}
-            <div className="grid grid-cols-[40px_1.5fr_1.8fr_0.8fr_0.5fr_40px] gap-4 px-4 py-3 items-center bg-white">
-              <div className="flex justify-center">
-                <Checkbox
-                  className="red-checkbox"
-                  checked={
-                    workspaces.length > 0 &&
-                    workspaces.every((w) => selectedWorkspaces.includes(w.id))
-                  }
-                  indeterminate={
-                    workspaces.some((w) => selectedWorkspaces.includes(w.id)) &&
-                    !workspaces.every((w) => selectedWorkspaces.includes(w.id))
-                  }
-                  onChange={toggleSelectAllWorkspaces}
-                />
-              </div>
-              <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
-                Workspace Name
-              </p>
-              <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
-                Requirements
-              </p>
-              <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
-                Organization
-              </p>
-              <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
-                Status
-              </p>
-              <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide" />
+        {isLoading ? (
+          viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="bg-white border border-[#EEEEEE] rounded-[16px] p-5 h-[180px] animate-pulse flex flex-col justify-between">
+                  <div className="flex items-start gap-4">
+                    <Skeleton className="w-12 h-12 rounded-[14px]" />
+                    <div className="flex-1 space-y-2 pt-1">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
+                  </div>
+                  <div className="border-t border-[#EEEEEE] pt-4 grid grid-cols-3 gap-4">
+                    <div className="space-y-1 text-center"><Skeleton className="h-3 w-8 mx-auto" /><Skeleton className="h-4 w-4 mx-auto" /></div>
+                    <div className="space-y-1 text-center"><Skeleton className="h-3 w-8 mx-auto" /><Skeleton className="h-4 w-4 mx-auto" /></div>
+                    <div className="space-y-1 text-center"><Skeleton className="h-3 w-8 mx-auto" /><Skeleton className="h-4 w-4 mx-auto" /></div>
+                  </div>
+                </div>
+              ))}
             </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-[40px_1.5fr_1.8fr_0.8fr_0.5fr_40px] gap-4 px-4 py-3 items-center bg-white">
+                <div className="flex justify-center"><Checkbox disabled className="red-checkbox" /></div>
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Workspace Name</p>
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Requirements</p>
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Organization</p>
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">Status</p>
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide" />
+              </div>
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div key={i} className="bg-white border border-[#F3F4F6] rounded-[12px] px-4 py-3 flex items-center animate-pulse">
+                  <div className="grid grid-cols-[40px_1.5fr_1.8fr_0.8fr_0.5fr_40px] items-center gap-4 w-full">
+                    <div className="flex justify-center"><Skeleton className="h-5 w-5 rounded" /></div>
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="w-10 h-10 rounded-[10px]" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <div className="space-y-1"><Skeleton className="h-2 w-8" /><Skeleton className="h-3 w-4" /></div>
+                      <div className="space-y-1"><Skeleton className="h-2 w-8" /><Skeleton className="h-3 w-4" /></div>
+                      <div className="space-y-1"><Skeleton className="h-2 w-8" /><Skeleton className="h-3 w-4" /></div>
+                    </div>
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-6 w-20 rounded-full" />
+                    <Skeleton className="h-8 w-8 rounded ml-auto" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {workspaces.map((workspace) => (
+                <WorkspaceCard
+                  key={workspace.id}
+                  workspace={workspace}
+                  onClick={() => handleSelectWorkspace(workspace)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {/* List header – aligned with rows, matches dashboard style */}
+              <div className="grid grid-cols-[40px_1.5fr_1.8fr_0.8fr_0.5fr_40px] gap-4 px-4 py-3 items-center bg-white">
+                <div className="flex justify-center">
+                  <Checkbox
+                    className="red-checkbox"
+                    checked={
+                      workspaces.length > 0 &&
+                      workspaces.every((w) => selectedWorkspaces.includes(w.id))
+                    }
+                    indeterminate={
+                      workspaces.some((w) => selectedWorkspaces.includes(w.id)) &&
+                      !workspaces.every((w) => selectedWorkspaces.includes(w.id))
+                    }
+                    onChange={toggleSelectAllWorkspaces}
+                  />
+                </div>
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+                  Workspace Name
+                </p>
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+                  Requirements
+                </p>
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+                  Organization
+                </p>
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+                  Status
+                </p>
+                <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide" />
+              </div>
 
-            {workspaces.map((workspace) => (
-              <WorkspaceListItem
-                key={workspace.id}
-                workspace={workspace}
-                selected={selectedWorkspaces.includes(workspace.id)}
-                onToggleSelect={() => toggleSelectWorkspaceRow(workspace.id)}
-                onClick={() => handleSelectWorkspace(workspace)}
-              />
-            ))}
-          </div>
+              {workspaces.map((workspace) => (
+                <WorkspaceListItem
+                  key={workspace.id}
+                  workspace={workspace}
+                  selected={selectedWorkspaces.includes(workspace.id)}
+                  onToggleSelect={() => toggleSelectWorkspaceRow(workspace.id)}
+                  onClick={() => handleSelectWorkspace(workspace)}
+                />
+              ))}
+            </div>
+          )
         )}
 
-        {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">Loading workspaces...</p>
-          </div>
-        ) : workspaces.length === 0 ? (
+        {!isLoading && workspaces.length === 0 && (
           <div className="text-center py-12">
             <FolderOpen className="w-12 h-12 text-[#DDDDDD] mx-auto mb-3" />
             <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">
               No workspaces found
             </p>
           </div>
-        ) : null}
+        )}
       </div>
 
       {/* Pagination */}

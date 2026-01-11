@@ -3,6 +3,7 @@
 import { useMemo, useEffect, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import { Popover, Spin } from 'antd';
+import { Skeleton } from '../../ui/Skeleton';
 import { CalendarEventPopup } from './CalendarEventPopup';
 import { CalendarEvent } from './types';
 
@@ -122,8 +123,33 @@ export function WeekView({ currentDate, events, isLoading, onTimeSlotClick }: We
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-full">
-                <Spin size="large" />
+            <div className="flex flex-col h-full bg-white border border-[#EEEEEE] rounded-[16px] overflow-hidden animate-pulse">
+                <div className="flex border-b border-[#EEEEEE] bg-white">
+                    <div className="w-16 flex-shrink-0 border-r border-[#EEEEEE]"></div>
+                    <div className="flex-1 grid grid-cols-7">
+                        {Array.from({ length: 7 }).map((_, i) => (
+                            <div key={i} className="py-2 text-center border-r border-[#EEEEEE] last:border-r-0">
+                                <Skeleton className="h-3 w-8 mx-auto mb-2" />
+                                <Skeleton className="h-7 w-7 rounded-full mx-auto" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <div className="flex-1 overflow-hidden flex">
+                    <div className="w-16 flex-shrink-0 border-r border-[#EEEEEE] space-y-12 py-4">
+                        {Array.from({ length: 12 }).map((_, i) => (
+                            <Skeleton key={i} className="h-3 w-8 mx-auto" />
+                        ))}
+                    </div>
+                    <div className="flex-1 grid grid-cols-7">
+                        {Array.from({ length: 7 }).map((_, i) => (
+                            <div key={i} className="border-r border-[#EEEEEE] last:border-r-0 p-2 space-y-4">
+                                <Skeleton className="h-12 w-full rounded" />
+                                <Skeleton className="h-16 w-full rounded" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
         );
     }
