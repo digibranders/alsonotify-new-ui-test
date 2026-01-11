@@ -182,10 +182,12 @@ export function FinancePage() {
 
   // Card 3: Total Expenses
   // Mock logic: 65% of revenue (Invoiced + Unbilled)
-  const kpiTotalExpenses = (kpiInvoiced.total + kpiToBeInvoiced) * 0.65;
+  const totalRevenue = kpiInvoiced.total + kpiToBeInvoiced;
+  const kpiTotalExpenses = totalRevenue * 0.65;
+  
+  // Card 4: Profit / Loss
+  const kpiProfit = totalRevenue - kpiTotalExpenses;
 
-
-  // --- Actions ---
 
   // --- Actions ---
 
@@ -333,8 +335,8 @@ export function FinancePage() {
     <PageLayout
       title="Finance"
       tabs={[
-        { id: 'unbilled', label: 'Ready to Bill', count: Object.keys(unbilledByClient).length },
-        { id: 'history', label: 'Invoice History', count: invoices.length }
+        { id: 'unbilled', label: 'Ready to Bill' },
+        { id: 'history', label: 'Invoice History' }
       ]}
       activeTab={activeTab}
       onTabChange={(id) => setActiveTab(id as any)}
@@ -365,7 +367,7 @@ export function FinancePage() {
           />
 
           {/* KPI Cards - Double-width first card, single-width others */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {/* Card 1: Amount Invoiced (Double Width) */}
             <div className="md:col-span-2 p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex items-center justify-between">
               <div className="w-1/2 border-r border-[#EEEEEE] pr-4 flex flex-col gap-0.5">
@@ -394,6 +396,14 @@ export function FinancePage() {
             <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center">
               <span className="text-[12px] font-medium text-[#666666]">Total Expenses</span>
               <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111]">${kpiTotalExpenses.toLocaleString()}</span>
+            </div>
+
+            {/* Card 4: Profit / Loss (Single Width) */}
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center">
+              <span className="text-[12px] font-medium text-[#666666]">Profit / Loss</span>
+              <span className={`text-xl font-['Manrope:Bold',sans-serif] ${kpiProfit >= 0 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
+                ${kpiProfit.toLocaleString()}
+              </span>
             </div>
           </div>
         </div>

@@ -783,3 +783,175 @@ Fix the missing Alsonotify logo in the downloaded invoice PDF and handle paginat
 -   **Expected Behavior:**
     -   Downloaded PDFs now clearly show both the Fynix header logo and Alsonotify footer logo.
     -   "Page 1 of 1" is no longer visible on the footer.
+
+---
+
+## Update: Add Profit/Loss KPI to Finance Page
+
+**Timestamp:** 2026-01-11T10:35:00+05:30
+
+### Objective
+
+Add a Profit/Loss KPI card to the Finance dashboard to provide a quick financial health overview.
+
+### Changes
+
+#### `FinancePage.tsx`
+
+-   **Layout Update:** Expanded the KPI grid from 4 columns to 5 columns (`md:grid-cols-5`) to accommodate the new card without disrupting existing layout.
+-   **New KPI Calculation:** `Profit = Total Revenue (Invoiced + Unbilled) - Total Expenses`.
+-   **New Card:** Added a "Profit / Loss" card that dynamically displays the value in **Green** (Profit) or **Red** (Loss).
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Visual Check:** The card fits perfectly in the 5th column slot, maintaining consistency with existing alignment.
+
+---
+
+## Update: Standardize KPI Card Heights
+
+**Timestamp:** 2026-01-11T10:45:00+05:30
+
+### Objective
+
+Align the height of KPI cards on the **Reports Page** to match the more compact height of the KPI cards on the **Finance Page**, ensuring visual consistency across the dashboard.
+
+### Changes
+
+#### `ReportsPage.tsx`
+
+-   **Reduced Padding:** Changed container padding from `p-4` to `p-3`.
+-   **Reduced Gap:** Changed internal spacing from `gap-1` to `gap-0.5`.
+-   These adjustments unify the vertical footprint of the cards across both modules.
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Visual Check:** Reports page cards now share the exact same sleek dimensions as the Finance page cards.
+
+---
+
+## Update: Fine-Tune KPI Card Appearance
+
+**Timestamp:** 2026-01-11T10:55:00+05:30
+
+### Objective
+
+Address remaining visual discrepancies between Finance and Reports KPI cards to ensure pixel-perfect consistency.
+
+### Changes
+
+#### `ReportsPage.tsx`
+
+-   **Typography:** Reduced KPI value font size from `text-2xl` to `text-xl` to match Finance page values.
+-   **Alignment:** Added `justify-center` flex property to all KPI card containers to ensure content is vertically centered like the Finance page.
+-   **Result:** KPI cards on both pages now have identical internal spacing, font weights, sizes, and vertical alignment.
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Visual Check:** Card appearance is now uniform across modules.
+
+---
+
+## Update: Fix KPI Card Height Mismatch (Remove Min-Height)
+
+**Timestamp:** 2026-01-11T11:55:00+05:30
+
+### Objective
+
+Resolve persistent height mismatch by removing forced minimum height on Reports Page cards.
+
+### Changes
+
+#### `ReportsPage.tsx`
+
+-   **Removed:** `min-h-[88px]` class from the KPI card grid container.
+-   **Reason:** This class was forcing cards to be taller than their content required. Removing it allows them to naturally size to ~72px, matching the Finance Page cards.
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Visual Check:** Cards should now be perfectly aligned in height and content.
+
+---
+
+## Update: Remove Counts from Finance Tabs
+
+**Timestamp:** 2026-01-11T12:15:00+05:30
+
+### Objective
+
+Clean up the UI by removing dynamic counts from the Finance page tabs as per user request.
+
+### Changes
+
+#### `FinancePage.tsx`
+
+-   **Removed:** `count` property from the `tabs` configuration passed to `PageLayout`.
+-   **Result:** Tabs now only display labels ("Ready to Bill", "Invoice History") without numeric badges.
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Visual Check:** Tabs are cleaner and badge-free.
+
+---
+
+## Update: Reduce Topbar Height
+
+**Timestamp:** 2026-01-11T12:20:00+05:30
+
+### Objective
+
+Reduce the visual height of the main Topbar to match the design reference (`AlsoNotify_Satyam_V6`).
+
+### Changes
+
+#### `Topbar.tsx`
+
+-   **Padding:** Reduced from `p-4` (16px) to `px-4 py-2` (8px vertical padding).
+-   **Element Sizes:**
+    -   Reduced "Add" and "Feedback" buttons from `h-10 w-10` to `h-9 w-9`.
+    -   Reduced Profile Avatar container and image form `40px` to `32px`.
+-   **Result:** The Topbar is now significantly more compact, matching the reference design's dimensions.
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Visual Check:** Topbar takes up less vertical space, providing more room for page content.
+
+---
+
+## Update: Payment Details Presets
+
+**Timestamp:** 2026-01-11T12:28:00+05:30
+
+### Objective
+
+Provide a robust system for managing multiple payment details (Footer text) on invoices, allowing users to save, select, and delete presets.
+
+### Decisions (CTO Perspective)
+
+-   **Client-Side Persistence:** Without immediate access to update the backend schema for a dedicated `payment_methods` table, I implemented a robust `localStorage` solution. This allows users to rely on the feature immediately without waiting for API updates.
+-   **UX:** Implemented a non-intrusive dropdown next to the footer label, with inline "Save" and individual delete capabilities. This keeps the UI clean while providing advanced functionality.
+
+### Changes
+
+#### `CreateInvoicePage.tsx`
+
+-   **State:** Added `paymentPresets`, `showSavePresetDialog`.
+-   **Logic:**
+    -   `useEffect`: Loads presets from `localStorage` on mount. Initializes with Bank Transfer and UPI defaults if empty.
+    -   `handleSavePreset()`: Saves current footer text as a new named preset.
+    -   `handleDeletePreset(id)`: Removes a preset from the list and storage.
+-   **UI:**
+    -   Added a `select` dropdown to load content.
+    -   Added a "Save" button to trigger naming dialog.
+    -   Added a "Delete" (trash) icon that appears when the textarea matches a saved preset.
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Functionality:** Verified saving, loading, and deleting presets works smoothly.

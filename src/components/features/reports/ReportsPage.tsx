@@ -458,83 +458,83 @@ export function ReportsPage() {
           />
 
           {/* Summary Cards - Using CSS display to prevent DOM removal/insertion */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:grid-cols-5 min-h-[88px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:grid-cols-5">
             {/* Requirement KPI Cards */}
-            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
               <span className="text-[12px] font-medium text-[#666666]">Total Requirements</span>
-              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{kpi.totalRequirements}</span>
+              <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111]">{kpi.totalRequirements}</span>
             </div>
-            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
               <span className="text-[12px] font-medium text-[#666666]">On Time Completed</span>
-              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">{kpi.onTimeCompleted}</span>
+              <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">{kpi.onTimeCompleted}</span>
             </div>
-            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
               <span className="text-[12px] font-medium text-[#666666]">In Progress</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{kpi.inProgress}</span>
+                <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111]">{kpi.inProgress}</span>
               </div>
             </div>
-            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
               <span className="text-[12px] font-medium text-[#666666]">Delayed</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#FF3B3B]">{kpi.delayed}</span>
+                <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#FF3B3B]">{kpi.delayed}</span>
                 <span className="text-sm font-medium text-[#FF3B3B]">(+{kpi.totalExtraHrs}h)</span>
               </div>
             </div>
-            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'requirement' ? 'flex' : 'none' }}>
               <span className="text-[12px] font-medium text-[#666666]">Avg. Efficiency</span>
-              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
+              <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
                 {kpi.efficiency}%
               </span>
             </div>
 
             {/* Task KPI Cards */}
-            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
               <span className="text-[12px] font-medium text-[#666666]">Total Tasks</span>
-              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{taskKPI.totalTasks}</span>
+              <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111]">{taskKPI.totalTasks}</span>
             </div>
-            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
               <span className="text-[12px] font-medium text-[#666666]">On Time Completed</span>
-              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">{taskKPI.onTimeCompleted}</span>
+              <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">{taskKPI.onTimeCompleted}</span>
             </div>
-            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
               <span className="text-[12px] font-medium text-[#666666]">In Progress</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">{taskKPI.inProgress}</span>
+                <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111]">{taskKPI.inProgress}</span>
               </div>
             </div>
-            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
               <span className="text-[12px] font-medium text-[#666666]">Delayed</span>
               <div className="flex items-baseline gap-2">
-                 <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#FF3B3B]">{taskKPI.delayed}</span>
+                 <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#FF3B3B]">{taskKPI.delayed}</span>
                  <span className="text-sm font-medium text-[#FF3B3B]">(+{taskKPI.totalExtraHrs}h)</span>
               </div>
             </div>
-            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'task' ? 'flex' : 'none' }}>
               <span className="text-[12px] font-medium text-[#666666]">Avg. Efficiency</span>
-              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
+              <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
                 {taskKPI.efficiency}%
               </span>
             </div>
 
             {/* Member/Employee KPI Cards - 4 columns layout */}
-            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'member' ? 'flex' : 'none' }}>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'member' ? 'flex' : 'none' }}>
               <span className="text-[12px] font-medium text-[#666666]">Total Investment</span>
-              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#111111]">${employeeKPI.totalInvestment.toLocaleString()}</span>
+              <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111]">${employeeKPI.totalInvestment.toLocaleString()}</span>
             </div>
-            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'member' ? 'flex' : 'none' }}>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'member' ? 'flex' : 'none' }}>
               <span className="text-[12px] font-medium text-[#666666]">Total Revenue</span>
-              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">${employeeKPI.totalRevenue.toLocaleString()}</span>
+              <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#0F9D58]">${employeeKPI.totalRevenue.toLocaleString()}</span>
             </div>
-            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'member' ? 'flex' : 'none' }}>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'member' ? 'flex' : 'none' }}>
               <span className="text-[12px] font-medium text-[#666666]">Net Profit</span>
-              <span className={`text-2xl font-['Manrope:Bold',sans-serif] ${employeeKPI.netProfit >= 0 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
+              <span className={`text-xl font-['Manrope:Bold',sans-serif] ${employeeKPI.netProfit >= 0 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
                 ${employeeKPI.netProfit.toLocaleString()}
               </span>
             </div>
-            <div className="p-4 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-1" style={{ display: activeTab === 'member' ? 'flex' : 'none' }}>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'member' ? 'flex' : 'none' }}>
               <span className="text-[12px] font-medium text-[#666666]">Avg. Rate/Hr</span>
-              <span className="text-2xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
+              <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
                 ${employeeKPI.avgRatePerHr.toLocaleString()}
               </span>
             </div>

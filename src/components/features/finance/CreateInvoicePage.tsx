@@ -4,17 +4,20 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   ArrowLeft, 
-  Plus, 
-  Trash2, 
   Download, 
   Send, 
   FileText,
   CreditCard,
   Building2,
   Mail,
-  Phone,
+  Plus, 
+  X, 
+  CheckCircle, 
+  Loader2,
+  Save,
+  ChevronDown,
   Settings,
-  X
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import dayjs from 'dayjs';
@@ -29,6 +32,13 @@ import { Select } from 'antd';
 import { InvoicePreview } from './InvoicePreview';
 
 const { Option } = Select;
+
+// --- Types ---
+interface PaymentPreset {
+  id: string;
+  name: string;
+  content: string;
+}
 
 interface LineItem {
   id: string;
@@ -129,6 +139,66 @@ export function CreateInvoicePage() {
         setClientName(clientId);
     }
   }, [partnerData, clientId]);
+
+  // Payment Presets State
+  const [paymentPresets, setPaymentPresets] = useState<PaymentPreset[]>([]);
+  const [showSavePresetDialog, setShowSavePresetDialog] = useState(false);
+  const [newPresetName, setNewPresetName] = useState('');
+
+  // Load presets on mount
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('invoice_payment_presets');
+        if (saved) {
+          setPaymentPresets(JSON.parse(saved));
+        } else {
+          // Default presets for new users
+          const defaults: PaymentPreset[] = [
+             { 
+               id: 'bank_transfer', 
+               name: 'Bank Transfer', 
+               content: "Bank: HDFC Bank\nA/C Name: Fynix Digital Pvt Ltd\nA/C No: 50200012345678\nIFSC: HDFC0001234\nBranch: Mumbai" 
+             },
+             { 
+               id: 'upi', 
+               name: 'UPI', 
+               content: "UPI ID: fynix@hdfcbank\nGPay/PhonePe: 9876543210" 
+             }
+          ];
+          setPaymentPresets(defaults);
+          localStorage.setItem('invoice_payment_presets', JSON.stringify(defaults));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load presets", e);
+    }
+  }, []);
+
+  const handleSavePreset = () => {
+      if (!newPresetName.trim() || !footer.trim()) return;
+      
+      const newPreset: PaymentPreset = {
+          id: Date.now().toString(),
+          name: newPresetName.trim(),
+          content: footer
+      };
+      
+      const updated = [...paymentPresets, newPreset];
+      setPaymentPresets(updated);
+      localStorage.setItem('invoice_payment_presets', JSON.stringify(updated));
+      
+      setNewPresetName('');
+      setShowSavePresetDialog(false);
+      toast.success("Payment preset saved!");
+  };
+
+  const handleDeletePreset = (id: string) => {
+      const updated = paymentPresets.filter(p => p.id !== id);
+      setPaymentPresets(updated);
+      localStorage.setItem('invoice_payment_presets', JSON.stringify(updated));
+      toast.success("Preset deleted");
+  };
 
   // --- Initialization ---
   useEffect(() => {
@@ -564,28 +634,110 @@ export function CreateInvoicePage() {
                    </div>
                </section>
 
-               {/* Memo & Footer */}
-               <section className="space-y-6 pt-6">
-                   <div>
-                       <label className="block text-[14px] font-bold text-[#111111] mb-2 flex items-center gap-2">
-                           Memo <span className="text-[11px] font-normal text-[#999999] bg-[#F7F7F7] px-2 py-0.5 rounded-full">Visible to customer</span>
-                       </label>
-                       <textarea 
-                          value={memo}
-                          onChange={(e) => setMemo(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] min-h-[80px] focus:ring-1 focus:ring-[#ff3b3b] outline-none resize-none"
-                       />
-                   </div>
-                   
-                   <div>
-                       <label className="block text-[14px] font-bold text-[#111111] mb-2 flex items-center gap-2">
-                           Footer <span className="text-[11px] font-normal text-[#999999] bg-[#F7F7F7] px-2 py-0.5 rounded-full">Payment details</span>
-                       </label>
-                       <textarea 
-                          value={footer}
-                          onChange={(e) => setFooter(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] min-h-[100px] focus:ring-1 focus:ring-[#ff3b3b] outline-none resize-none"
-                       />
+                {/* Payment Details / Footer */}
+                <section className="space-y-6 pt-6">
+                    <div>
+                        <label className="block text-[14px] font-bold text-[#111111] mb-2 flex items-center gap-2">
+                            Memo <span className="text-[11px] font-normal text-[#999999] bg-[#F7F7F7] px-2 py-0.5 rounded-full">Visible to customer</span>
+                        </label>
+                        <textarea 
+                           value={memo}
+                           onChange={(e) => setMemo(e.target.value)}
+                           className="w-full px-3 py-2 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] min-h-[80px] focus:ring-1 focus:ring-[#ff3b3b] outline-none resize-none"
+                        />
+                    </div>
+                    
+                    <div>
+                        <div className="flex justify-between items-center mb-2">
+                            <label className="block text-[14px] font-bold text-[#111111] flex items-center gap-2">
+                                Payment Details <span className="text-[11px] font-normal text-[#999999] bg-[#F7F7F7] px-2 py-0.5 rounded-full">Footer</span>
+                            </label>
+                            
+                            <div className="flex items-center gap-2">
+                                {/* Preset Selector */}
+                                {paymentPresets.length > 0 && (
+                                    <div className="relative group">
+                                        <select 
+                                            className="appearance-none bg-[#F7F7F7] hover:bg-[#EEEEEE] text-[12px] font-medium text-[#111111] pl-3 pr-8 py-1.5 rounded-full outline-none cursor-pointer border border-transparent focus:border-[#ff3b3b] transition-all"
+                                            onChange={(e) => {
+                                                const preset = paymentPresets.find(p => p.id === e.target.value);
+                                                if (preset) setFooter(preset.content);
+                                            }}
+                                            value=""
+                                        >
+                                            <option value="" disabled selected>Load saved details...</option>
+                                            {paymentPresets.map(preset => (
+                                                <option key={preset.id} value={preset.id}>{preset.name}</option>
+                                            ))}
+                                        </select>
+                                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#666666] pointer-events-none" />
+                                    </div>
+                                )}
+
+                                {/* Save Button */}
+                                <button 
+                                    onClick={() => setShowSavePresetDialog(true)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#F7F7F7] hover:bg-[#EEEEEE] text-[12px] font-medium text-[#111111] rounded-full transition-colors"
+                                    title="Save as new preset"
+                                >
+                                    <Save className="w-3.5 h-3.5" />
+                                    <span>Save</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Save Dialog Overlay (Inline for simplicity) */}
+                        {showSavePresetDialog && (
+                            <div className="mb-3 p-3 bg-[#F9FAFB] border border-[#EEEEEE] rounded-lg animate-in fade-in slide-in-from-top-1">
+                                <label className="block text-[12px] font-bold text-[#111111] mb-1.5">Name this payment method</label>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        value={newPresetName}
+                                        onChange={(e) => setNewPresetName(e.target.value)}
+                                        placeholder="e.g. Bank Transfer (HDFC)"
+                                        className="flex-1 px-3 py-1.5 bg-white border border-[#EEEEEE] rounded-md text-[13px] outline-none focus:border-[#ff3b3b]"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleSavePreset();
+                                            if (e.key === 'Escape') setShowSavePresetDialog(false);
+                                        }}
+                                    />
+                                    <button 
+                                        onClick={handleSavePreset}
+                                        disabled={!newPresetName.trim()}
+                                        className="px-3 py-1.5 bg-[#111111] text-white text-[12px] font-bold rounded-md hover:bg-black disabled:opacity-50"
+                                    >
+                                        Save
+                                    </button>
+                                    <button 
+                                        onClick={() => setShowSavePresetDialog(false)}
+                                        className="px-3 py-1.5 bg-white border border-[#EEEEEE] text-[#666666] text-[12px] font-bold rounded-md hover:bg-[#F7F7F7]"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="relative group">
+                            <textarea 
+                               value={footer}
+                               onChange={(e) => setFooter(e.target.value)}
+                               placeholder="Enter bank details, UPI ID, or payment terms..."
+                               className="w-full px-3 py-2 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] min-h-[100px] focus:ring-1 focus:ring-[#ff3b3b] outline-none resize-none"
+                            />
+                            {/* Manage/Delete Preset helper (only visible if content matches a preset) */}
+                            {paymentPresets.some(p => p.content === footer) && (
+                                <button 
+                                    onClick={() => handleDeletePreset(paymentPresets.find(p => p.content === footer)?.id || '')}
+                                    className="absolute bottom-2 right-2 p-1.5 bg-white border border-[#EEEEEE] rounded-md shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:border-red-200 hover:bg-red-50 text-[#666666] hover:text-red-500"
+                                    title="Delete this saved preset"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+                        </div>
                    </div>
                </section>
            </div>
