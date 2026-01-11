@@ -402,7 +402,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
 
   return (
     <>
-      <div className="bg-white rounded-full p-4 w-full">
+      <div className="bg-white rounded-full px-4 py-2 w-full">
         <div className="flex flex-row items-center justify-between w-full">
           {/* Left: Greeting text */}
           <div className="flex flex-col font-['Manrope:Regular',sans-serif] font-normal justify-center not-italic text-[#111111] text-nowrap">
@@ -420,7 +420,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
             {/* Add Button with Dropdown */}
             <Dropdown menu={{ items: addMenuItems }} placement="bottomRight" trigger={['click']}>
               <Button
-                className="!w-10 !h-10 !min-w-[40px] rounded-full !bg-[#ff3b3b] hover:!bg-[#ff6b6b] flex items-center justify-center p-0 !border-none !shadow-none"
+                className="!w-9 !h-9 !min-w-[36px] rounded-full !bg-[#ff3b3b] hover:!bg-[#ff6b6b] flex items-center justify-center p-0 !border-none !shadow-none"
                 type="primary"
                 shape="circle"
                 icon={<Add24Filled className="w-5 h-5 text-white" />}
@@ -430,7 +430,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
             {/* Feedback Toggle */}
             <button
               onClick={() => setShowFeedbackDialog(true)}
-              className="w-10 h-10 rounded-full bg-[#F7F7F7] hover:bg-[#EEEEEE] flex items-center justify-center transition-colors cursor-pointer"
+              className="w-9 h-9 rounded-full bg-[#F7F7F7] hover:bg-[#EEEEEE] flex items-center justify-center transition-colors cursor-pointer"
               title="Give Feedback"
             >
               <svg 
@@ -470,9 +470,9 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
 
             {/* Profile photo & Role Switcher */}
             <Dropdown menu={{ items: profileMenuItems }} placement="bottomRight" trigger={['click']}>
-              <div className="relative shrink-0 size-[40px] rounded-full ring-2 ring-transparent hover:ring-[#ff3b3b]/20 transition-all cursor-pointer">
+              <div className="relative shrink-0 size-[32px] rounded-full ring-2 ring-transparent hover:ring-[#ff3b3b]/20 transition-all cursor-pointer">
                 <Avatar
-                  size={40}
+                  size={32}
                   src={user?.user_profile?.profile_pic || user?.profile_pic || "https://github.com/shadcn.png"}
                   // src={user?.user_profile?.profile_pic || user?.profile_pic || "/documents/profile.png"}
                   alt={user?.name || 'User'}
