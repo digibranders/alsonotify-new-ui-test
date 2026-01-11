@@ -91,13 +91,7 @@ const NAV_ITEMS: NavItemConfig[] = [
     icon: <DocumentMultiple24Filled />,
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
-  {
-    id: 'workload',
-    path: '/dashboard/workload',
-    label: 'Workload',
-    icon: <ChartMultiple24Filled />,
-    allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
-  },
+
   {
     id: 'calendar',
     path: '/dashboard/calendar',

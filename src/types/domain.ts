@@ -280,6 +280,7 @@ export interface Employee {
   salary: number;
   currency: string;
   workingHours: number;
+  breakTime: number;
   leaves: number;
   roleId?: number;
   roleColor?: string;

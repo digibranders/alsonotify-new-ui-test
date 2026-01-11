@@ -15,6 +15,7 @@ dayjs.extend(isSameOrBefore);
 dayjs.extend(isSameOrAfter);
 import { useTasks } from '@/hooks/useTask';
 import { useWorkspaces } from '@/hooks/useWorkspace';
+import { useUserDetails } from '@/hooks/useUser';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
 import { DateRangeSelector } from '../common/DateRangeSelector';
 
@@ -158,6 +159,63 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
     return { completed, total, percentage, inProgress, delayed };
   }, [allRequirements, isLoadingRequirements, isLoadingWorkspaces, dateRange]);
 
+  // Fetch user details for filtering tasks by current user
+  const { data: userDetailsData } = useUserDetails();
+  const currentUserId = userDetailsData?.result?.user?.id || userDetailsData?.result?.id;
+
+  // Calculate Hours Capacity Data
+  const hoursData = useMemo(() => {
+    // Default zero state
+    if (!tasksData?.result || isLoadingTasks || !currentUserId) {
+        return { allotted: 0, total: 160, percentage: 0, remaining: 160 };
+    }
+
+    // 1. Calculate Allotted Hours (Sum of estimated time of fetched tasks ASSIGNED TO CURRENT USER)
+    const allotted = Math.round(tasksData.result.reduce((acc: number, task: any) => {
+        // Filter: Check if task is assigned to current user
+        // API might return 'assignedTo' as object or string, or 'assignedToUser' object, or 'taskMembers' array
+        // We check widely to be safe
+        let isAssigned = false;
+        
+        // Direct assignment check
+        if (task.assignedTo?.id === currentUserId || task.assignedToUser?.id === currentUserId) isAssigned = true;
+        
+        // Member list check (if available)
+        if (!isAssigned && Array.isArray(task.taskMembers)) {
+             isAssigned = task.taskMembers.some((m: any) => m.userId === currentUserId || m.user_id === currentUserId);
+        }
+        // Fallback: assignedTo might be string name, but we can't reliably match ID. 
+        // Assuming object existence for rigorous check as per "lggedin user" requirement.
+
+        if (isAssigned) {
+            // Handle various property casing from API
+            const est = Number(task.estimatedTime || task.estimated_time || task.estTime || 0);
+            return acc + (isNaN(est) ? 0 : est);
+        }
+        return acc;
+    }, 0));
+
+    // 2. Calculate Total Capacity based on Date Range
+    let total = 160; // Default fallback
+    if (dateRange && dateRange[0] && dateRange[1]) {
+         const days = dateRange[1].diff(dateRange[0], 'day') + 1;
+         // Use user's working hours or default to 8
+         const dailyHours = Number(userDetailsData?.result?.workingHours) || 8;
+         // Subtract break time (in minutes) converted to hours
+         const breakTimeMinutes = Number(userDetailsData?.result?.breakTime) || 0;
+         const netDailyHours = Math.max(0, dailyHours - (breakTimeMinutes / 60));
+         
+         // Assume 5 working days per week
+         const workDays = Math.max(1, Math.round(days * (5/7)));
+         total = Math.round(workDays * netDailyHours);
+    }
+
+    const percentage = total > 0 ? Math.round((allotted / total) * 100) : 0;
+    const remaining = Math.max(0, total - allotted);
+
+    return { allotted, total, percentage, remaining };
+  }, [tasksData, isLoadingTasks, dateRange, currentUserId]);
+
   const isLoading = isLoadingTasks || isLoadingWorkspaces || isLoadingRequirements;
 
   return (
@@ -220,6 +278,63 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
             }
           }}
         />
+      </div>
+
+      <div className="shrink-0">
+        <HoursBar data={hoursData} onClick={() => onNavigate && onNavigate('tasks')} />
+      </div>
+    </div>
+  );
+}
+
+interface HoursBarProps {
+  data: {
+    allotted: number;
+    total: number;
+    percentage: number;
+    remaining: number;
+  };
+  onClick?: () => void;
+}
+
+function HoursBar({ data, onClick }: HoursBarProps) {
+  return (
+    <div 
+      className="group bg-white rounded-[14px] border border-gray-100 p-3 hover:shadow-lg hover:border-[#ff3b3b]/10 transition-all duration-300 cursor-pointer mt-4"
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-3">
+        {/* Label Section */}
+        <div className="flex items-center gap-2 min-w-[110px]">
+          <h4 className="font-['Manrope',sans-serif] font-semibold text-[12px] text-[#111111]">Hours Capacity</h4>
+        </div>
+
+        {/* Progress Bar Section */}
+        <div className="flex-1 flex items-center gap-2">
+          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-[#7ccf00] to-[#6ab800] transition-all duration-500 rounded-full"
+              style={{ width: `${Math.min(data.percentage, 100)}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Stats Section */}
+        <div className="flex items-center gap-4 min-w-[170px]">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-[#666666] font-medium font-['Inter',sans-serif]">Allotted:</span>
+            <span className="text-[12px] font-bold text-[#111111] font-['Manrope',sans-serif]">{data.allotted}h</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] text-[#666666] font-medium font-['Inter',sans-serif]">Total:</span>
+            <span className="text-[12px] font-bold text-[#111111] font-['Manrope',sans-serif]">{data.total}h</span>
+          </div>
+        </div>
+
+        {/* Arrow Icon */}
+        <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-[#ff3b3b] transition-colors duration-300 shrink-0">
+          <ArrowRight className="w-3 h-3 text-gray-400 group-hover:text-white transition-colors duration-300" />
+        </div>
       </div>
     </div>
   );

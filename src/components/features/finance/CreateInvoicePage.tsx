@@ -344,7 +344,7 @@ export function CreateInvoicePage() {
   return (
     <div className="h-full bg-[#F9FAFB] flex flex-col rounded-[24px] overflow-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-[#EEEEEE] px-6 py-4 flex items-center justify-between shrink-0">
+      <div className="bg-white border-b border-[#EEEEEE] px-4 py-2 flex items-center justify-between shrink-0">
          <div className="flex items-center gap-4">
              <button 
                 onClick={() => router.back()}
@@ -390,6 +390,57 @@ export function CreateInvoicePage() {
         <div className="w-1/2 overflow-y-auto p-8 border-r border-[#EEEEEE] bg-white">
            <div className="max-w-none mx-auto space-y-10">
                
+               {/* Invoice Details */}
+               <section>
+                   <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] uppercase tracking-wider mb-4">Invoice Details</h3>
+                   <div className="grid grid-cols-2 gap-6">
+                       <div className="space-y-1.5">
+                           <label className="block text-[12px] font-medium text-[#666666]">Invoice Number</label>
+                           <input 
+                              type="text" 
+                              value={invoiceId}
+                              readOnly
+                              className="w-full px-3 py-2.5 bg-[#F9FAFB] border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#666666] font-mono"
+                           />
+                       </div>
+                       <div className="space-y-1.5">
+                           <label className="block text-[12px] font-medium text-[#666666]">Currency</label>
+                           <select
+                               value={currencyCode}
+                               onChange={(e) => setCurrencyCode(e.target.value)}
+                               className="w-full px-3 py-2.5 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] focus:ring-1 focus:ring-[#ff3b3b] outline-none appearance-none"
+                           >
+                               <option value="INR">INR - Indian Rupee</option>
+                               <option value="USD">USD - US Dollar</option>
+                               <option value="EUR">EUR - Euro</option>
+                               <option value="GBP">GBP - British Pound</option>
+                               <option value="AUD">AUD - Australian Dollar</option>
+                               <option value="CAD">CAD - Canadian Dollar</option>
+                               <option value="SGD">SGD - Singapore Dollar</option>
+                               <option value="AED">AED - UAE Dirham</option>
+                           </select>
+                       </div>
+                       <div className="space-y-1.5">
+                           <label className="block text-[12px] font-medium text-[#666666]">Issue Date</label>
+                           <input 
+                              type="date" 
+                              value={issueDate}
+                              onChange={(e) => setIssueDate(e.target.value)}
+                              className="w-full px-3 py-2.5 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] focus:ring-1 focus:ring-[#ff3b3b] outline-none transition-all"
+                           />
+                       </div>
+                       <div className="space-y-1.5">
+                           <label className="block text-[12px] font-medium text-[#666666]">Due Date</label>
+                           <input 
+                              type="date" 
+                              value={dueDate}
+                              onChange={(e) => setDueDate(e.target.value)}
+                              className="w-full px-3 py-2.5 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] focus:ring-1 focus:ring-[#ff3b3b] outline-none transition-all"
+                           />
+                       </div>
+                   </div>
+               </section>
+
                {/* Sender Section (From) */}
                <section>
                    <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] uppercase tracking-wider mb-4">From (Your Details)</h3>
@@ -461,45 +512,7 @@ export function CreateInvoicePage() {
                    </div>
                </section>
 
-               {/* Invoice Details */}
-               <section>
-                   <h3 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] uppercase tracking-wider mb-4">Invoice Details</h3>
-                   <div className="grid grid-cols-2 gap-6">
-                       <div className="space-y-1.5">
-                           <label className="block text-[12px] font-medium text-[#666666]">Invoice Number</label>
-                           <input 
-                              type="text" 
-                              value={invoiceId}
-                              readOnly
-                              className="w-full px-3 py-2.5 bg-[#F9FAFB] border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#666666] font-mono"
-                           />
-                       </div>
-                       <div className="space-y-1.5">
-                           <label className="block text-[12px] font-medium text-[#666666]">Currency</label>
-                           <div className="w-full px-3 py-2.5 bg-[#F9FAFB] border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111]">
-                               INR - Indian Rupee
-                           </div>
-                       </div>
-                       <div className="space-y-1.5">
-                           <label className="block text-[12px] font-medium text-[#666666]">Issue Date</label>
-                           <input 
-                              type="date" 
-                              value={issueDate}
-                              onChange={(e) => setIssueDate(e.target.value)}
-                              className="w-full px-3 py-2.5 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] focus:ring-1 focus:ring-[#ff3b3b] outline-none transition-all"
-                           />
-                       </div>
-                       <div className="space-y-1.5">
-                           <label className="block text-[12px] font-medium text-[#666666]">Due Date</label>
-                           <input 
-                              type="date" 
-                              value={dueDate}
-                              onChange={(e) => setDueDate(e.target.value)}
-                              className="w-full px-3 py-2.5 bg-white border border-[#EEEEEE] rounded-[8px] text-[14px] text-[#111111] focus:ring-1 focus:ring-[#ff3b3b] outline-none transition-all"
-                           />
-                       </div>
-                   </div>
-               </section>
+
 
                {/* Items Section */}
                <section>

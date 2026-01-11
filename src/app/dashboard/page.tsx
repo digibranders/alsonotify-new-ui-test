@@ -49,11 +49,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-
-      {/* Row 4: Command Centre - Fixed Height at Bottom */}
-      <div className="shrink-0">
-        <ProductivityWidget />
-      </div>
     </>
   );
 }

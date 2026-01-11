@@ -231,7 +231,7 @@ export function EmployeesPage() {
       return;
     }
 
-    Modal.confirm({
+    modal.confirm({
       title: isCurrentlyActive ? 'Deactivate Employee' : 'Activate Employee',
       content: `Are you sure you want to ${isCurrentlyActive ? 'deactivate' : 'activate'} this employee? ${isCurrentlyActive ? 'They will lose access to the system.' : ''}`,
       okText: isCurrentlyActive ? 'Deactivate' : 'Activate',
@@ -417,20 +417,46 @@ export function EmployeesPage() {
 
   // Get current user ID to prevent self-deactivation
   const currentUserId = useMemo(() => {
+    // Fallback to localStorage for ID if API data isn't ready
     try {
       if (typeof window !== 'undefined') {
-        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
-        // Check for various possible ID fields in case of different storage formats
-        const localId = localUser?.id || localUser?.user_id || localUser?.user?.id || localUser?.user?.user_id;
-        if (localId) return Number(localId);
+        const localUserStr = localStorage.getItem("user");
+        if (localUserStr) {
+          const localUser = JSON.parse(localUserStr);
+          // Check for various possible ID fields - Prioritize result wrapper
+          const localId = localUser?.result?.id || localUser?.result?.user_id || localUser?.id || localUser?.user_id || localUser?.user?.id || localUser?.user?.user_id;
+          if (localId) return Number(localId);
+        }
       }
     } catch (error) {
-      // Error reading user from localStorage
+      // Ignore localStorage errors
     }
     
-    // currentUserData.result is mapped via mapUserDtoToEmployee, so it has .id directly
-    const apiUserId = currentUserData?.result?.id || (currentUserData?.result as any)?.user_id;
+    // currentUserData via mapUserDtoToEmployee has normalized .id
+    const apiUserId = currentUserData?.result?.id;
     return apiUserId ? Number(apiUserId) : null;
+  }, [currentUserData]);
+
+  // Robustly get current user email (API -> LocalStorage)
+  const currentUserEmail = useMemo(() => {
+    // 1. Try API data
+    if (currentUserData?.result?.email) return currentUserData.result.email;
+    
+    // 2. Try localStorage
+    try {
+      if (typeof window !== 'undefined') {
+        const localUserStr = localStorage.getItem("user");
+        if (localUserStr) {
+          const localUser = JSON.parse(localUserStr);
+          // Check for various possible Email fields - Prioritize result wrapper
+          const localEmail = localUser?.result?.email || localUser?.result?.user?.email || localUser?.email || localUser?.user?.email || localUser?.user_profile?.email;
+          if (localEmail) return localEmail;
+        }
+      }
+    } catch (e) {
+      // Ignore
+    }
+    return null;
   }, [currentUserData]);
 
   // Bulk update access level
@@ -834,73 +860,107 @@ export function EmployeesPage() {
       return;
     }
 
-    // Filter out current user from selection
-    const employeesToDeactivate = selectedEmployees.filter(empId => empId !== currentUserId);
+    // Robust check for self-selection: Check by ID or Email
+    const isSelfSelected = selectedEmployees.some(empId => {
+       if (currentUserId && empId === currentUserId) return true;
+       // Fallback check by email if ID match fails (rare but safe)
+       const emp = employees.find(e => e.id === empId);
+       return emp?.email && currentUserEmail && emp.email.toLowerCase() === currentUserEmail.toLowerCase();
+    });
 
-    if (employeesToDeactivate.length !== selectedEmployees.length) {
-      message.warning('You cannot deactivate yourself. Removed from selection.');
-    }
+    // Valid employees to deactivate (filtering out self)
+    const employeesToDeactivate = selectedEmployees.filter(empId => {
+       if (currentUserId && empId === currentUserId) return false;
+       const emp = employees.find(e => e.id === empId);
+       return !((emp?.email && currentUserEmail && emp.email.toLowerCase() === currentUserEmail.toLowerCase()));
+    });
 
-    if (employeesToDeactivate.length === 0) {
-      message.warning('No employees to deactivate');
-      setSelectedEmployees([]);
+    // Case 1: Attempting to deactivate ONLY self
+    if (isSelfSelected && employeesToDeactivate.length === 0) {
+      modal.warning({
+        title: 'Cannot Deactivate Self',
+        content: 'You cannot deactivate your own account. Please contact an administrator if you need assistance.',
+        okText: 'OK',
+      });
       return;
     }
 
+    // Case 2: Self included with others
+    if (isSelfSelected && employeesToDeactivate.length > 0) {
+      modal.confirm({
+        title: 'Mixed Selection Warning',
+        icon: <div className="text-[#ff9900] mr-2"><ShieldCheck size={24} /></div>, // Use icon or standard warning
+        content: (
+          <div>
+            <p className="mb-2">You have selected your own account along with others.</p>
+            <p>Your account will be <strong>skipped</strong>. Do you want to proceed with deactivating the other <strong>{employeesToDeactivate.length}</strong> employee(s)?</p>
+          </div>
+        ),
+        okText: 'Yes, Deactivate Others',
+        okType: 'danger',
+        cancelText: 'Cancel',
+        onOk: () => performBulkDeactivation(employeesToDeactivate),
+      });
+      return;
+    }
+
+    // Case 3: Normal deactivation (No self selected)
     modal.confirm({
       title: 'Deactivate Employees',
       content: `Are you sure you want to deactivate ${employeesToDeactivate.length} employee(s)?`,
       okText: 'Yes, Deactivate',
       okType: 'danger',
       cancelText: 'Cancel',
-      onOk: async () => {
-        // Prepare all deactivation promises
-        const deactivatePromises: Promise<any>[] = [];
-        const failedEmployees: { id: number; name: string; reason: string }[] = [];
-
-        for (const empId of employeesToDeactivate) {
-          // Get employee name for error reporting
-          const employee = employees.find(e => e.id === empId);
-          const employeeName = employee?.name || 'Unknown';
-
-          // Create promise for this deactivation using mutateAsync
-          const deactivatePromise = updateEmployeeStatusMutation.mutateAsync({
-            user_id: empId,
-            is_active: false,
-          }).catch((error: any) => {
-            const errorMsg = error?.response?.data?.message || 'Deactivation failed';
-            failedEmployees.push({ id: empId, name: employeeName, reason: errorMsg });
-            throw error; // Re-throw to mark as failed in Promise.allSettled
-          });
-
-          deactivatePromises.push(deactivatePromise);
-        }
-
-        // Execute all deactivations and wait for completion
-        try {
-          const results = await Promise.allSettled(deactivatePromises);
-
-          // Count successful deactivations
-          const successfulDeactivations = results.filter(r => r.status === 'fulfilled').length;
-          const totalFailed = failedEmployees.length;
-          const totalToDeactivate = employeesToDeactivate.length;
-
-          if (totalFailed === 0 && successfulDeactivations === totalToDeactivate) {
-            message.success(`Deactivated ${totalToDeactivate} employee(s)`);
-            setSelectedEmployees([]);
-            // Query invalidation is handled in the hook's onSuccess
-          } else if (successfulDeactivations > 0) {
-            message.warning(`Deactivated ${successfulDeactivations} employee(s), ${totalFailed} failed`);
-            // Failed employees logged
-          } else {
-            message.error(`Failed to deactivate all ${totalToDeactivate} employee(s)`);
-            // Failed employees logged
-          }
-        } catch (error) {
-          message.error('An error occurred during bulk deactivation');
-        }
-      },
+      onOk: () => performBulkDeactivation(employeesToDeactivate),
     });
+  };
+
+  const performBulkDeactivation = async (idsToDeactivate: number[]) => {
+      // Prepare all deactivation promises
+      const deactivatePromises: Promise<any>[] = [];
+      const failedEmployees: { id: number; name: string; reason: string }[] = [];
+
+      for (const empId of idsToDeactivate) {
+        // Get employee name for error reporting
+        const employee = employees.find(e => e.id === empId);
+        const employeeName = employee?.name || 'Unknown';
+
+        // Create promise for this deactivation using mutateAsync
+        const deactivatePromise = updateEmployeeStatusMutation.mutateAsync({
+          user_id: empId,
+          is_active: false,
+        }).catch((error: any) => {
+          const errorMsg = error?.response?.data?.message || 'Deactivation failed';
+          failedEmployees.push({ id: empId, name: employeeName, reason: errorMsg });
+          throw error; // Re-throw to mark as failed in Promise.allSettled
+        });
+
+        deactivatePromises.push(deactivatePromise);
+      }
+
+      // Execute all deactivations and wait for completion
+      try {
+        const results = await Promise.allSettled(deactivatePromises);
+
+        // Count successful deactivations
+        const successfulDeactivations = results.filter(r => r.status === 'fulfilled').length;
+        const totalFailed = failedEmployees.length;
+        const totalToDeactivate = idsToDeactivate.length;
+
+        if (totalFailed === 0 && successfulDeactivations === totalToDeactivate) {
+          message.success(`Deactivated ${totalToDeactivate} employee(s)`);
+          setSelectedEmployees([]);
+          // Query invalidation is handled in the hook's onSuccess
+        } else if (successfulDeactivations > 0) {
+          message.warning(`Deactivated ${successfulDeactivations} employee(s), ${totalFailed} failed`);
+          // Failed employees logged
+        } else {
+          message.error(`Failed to deactivate all ${totalToDeactivate} employee(s)`);
+          // Failed employees logged
+        }
+      } catch (error) {
+        message.error('An error occurred during bulk deactivation');
+      }
   };
 
   return (
@@ -967,6 +1027,7 @@ export function EmployeesPage() {
                 onDeactivate={() => handleDeactivateEmployee(employee.id, employee.status === 'active')}
                 onViewDetails={() => handleViewDetails(employee)}
                 currentUserId={currentUserId}
+                currentUserEmail={currentUserEmail}
               />
             ))}
           </div>

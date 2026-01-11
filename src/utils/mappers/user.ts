@@ -68,6 +68,7 @@ export const mapUserDtoToEmployee = (dto: UserDto): Employee => {
     salary: dto.salary_yearly || dto.salary || dto.user_employee?.salary_yearly || dto.user_employee?.salary || 0,
     currency: dto.currency || 'USD',
     workingHours: dto.workingHours || 0,
+    breakTime: Number(dto.working_hours?.break_time) || 0,
     rawWorkingHours: dto.working_hours,
     leaves: dto.leaves || dto.no_of_leaves || 0,
     
