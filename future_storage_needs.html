@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Future Storage Needs Analysis - Alsonotify</title>
+    <style>
+        :root {
+            --primary-color: #ff3b3b;
+            --secondary-color: #111111;
+            --text-color: #444444;
+            --bg-color: #ffffff;
+            --section-bg: #f9f9f9;
+            --border-color: #eeeeee;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: var(--bg-color);
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: var(--secondary-color);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            border-bottom: 3px solid var(--primary-color);
+            padding-bottom: 20px;
+            display: inline-block;
+        }
+
+        h2 {
+            font-size: 1.75rem;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .meta-info {
+            margin-bottom: 40px;
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #fff 0%, #fff 100%);
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--primary-color);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+            margin-bottom: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 20px;
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--border-color);
+        }
+
+        thead {
+            background-color: #f4f4f4;
+        }
+
+        th,
+        td {
+            padding: 16px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--secondary-color);
+            white-space: nowrap;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: #fafafa;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 4px;
+            margin-bottom: 4px;
+        }
+
+        .tag-img {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .tag-doc {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .tag-zip {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+
+        .code-block {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            background-color: #2d2d2d;
+            color: #e0e0e0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        .path-cell {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85em;
+            color: #555;
+        }
+
+        .tech-reqs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .req-card {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            padding: 24px;
+            border-radius: 12px;
+            transition: transform 0.2s;
+        }
+
+        .req-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+            border-color: var(--primary-color);
+        }
+
+        .req-title {
+            font-weight: 700;
+            color: var(--secondary-color);
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+        }
+
+        ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        footer {
+            margin-top: 60px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #888;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Future Storage Requirements Analysis</h1>
+        <div class="meta-info">
+            Created for <strong>Alsonotify</strong> • Date: 2026-01-11 • Status: <strong>Ready for
+                Implementation</strong>
+        </div>
+    </header>
+
+    <section class="summary-card">
+        <h3>Executive Summary</h3>
+        <p>The application currently relies on local assets and placeholders. The transition to a production-ready state
+            requires robust, scalable object storage (S3) for dynamic user content. This report identifies three primary
+            categories for storage: <strong>User Identity Assets</strong>, <strong>Business Documents</strong>, and
+            <strong>Collaboration Attachments</strong>.
+        </p>
+    </section>
+
+    <section>
+        <h2>Mapped Storage Needs</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Feature Area</th>
+                    <th>Asset Type</th>
+                    <th>File Formats</th>
+                    <th>Max Size</th>
+                    <th>Proposed S3 Path Structure</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>User Profile</strong></td>
+                    <td>Profile Pictures</td>
+                    <td><span class="tag tag-img">JPG</span> <span class="tag tag-img">PNG</span> <span
+                            class="tag tag-img">WEBP</span></td>
+                    <td>5 MB</td>
+                    <td class="path-cell">s3://bucket/users/{userId}/avatar/</td>
+                </tr>
+                <tr>
+                    <td><strong>Employees</strong></td>
+                    <td>ID Proofs</td>
+                    <td><span class="tag tag-doc">PDF</span> <span class="tag tag-img">JPG</span></td>
+                    <td>10 MB</td>
+                    <td class="path-cell">s3://bucket/employees/{empId}/docs/id-proof/</td>
+                </tr>
+                <tr>
+                    <td><strong>Employees</strong></td>
+                    <td>Resumes / CVs</td>
+                    <td><span class="tag tag-doc">PDF</span> <span class="tag tag-doc">DOCX</span></td>
+                    <td>10 MB</td>
+                    <td class="path-cell">s3://bucket/employees/{empId}/docs/resume/</td>
+                </tr>
+                <tr>
+                    <td><strong>Employees</strong></td>
+                    <td>Contracts</td>
+                    <td><span class="tag tag-doc">PDF</span></td>
+                    <td>20 MB</td>
+                    <td class="path-cell">s3://bucket/employees/{empId}/docs/contract/</td>
+                </tr>
+                <tr>
+                    <td><strong>Company Settings</strong></td>
+                    <td>Company Logo *</td>
+                    <td><span class="tag tag-img">JPG</span> <span class="tag tag-img">PNG</span> <span
+                            class="tag tag-img">SVG</span></td>
+                    <td>5 MB</td>
+                    <td class="path-cell">s3://bucket/companies/{coId}/branding/logo/</td>
+                </tr>
+                <tr>
+                    <td><strong>Tasks</strong></td>
+                    <td>Chat Attachments</td>
+                    <td><span class="tag tag-img">IMG</span> <span class="tag tag-doc">PDF</span> <span
+                            class="tag tag-zip">ZIP</span></td>
+                    <td>100 MB</td>
+                    <td class="path-cell">s3://bucket/workspaces/{wsId}/tasks/{taskId}/</td>
+                </tr>
+                <tr>
+                    <td><strong>Requirements</strong></td>
+                    <td>Spec Documents</td>
+                    <td><span class="tag tag-doc">PDF</span> <span class="tag tag-doc">DOCX</span> <span
+                            class="tag tag-zip">ZIP</span></td>
+                    <td>50 MB</td>
+                    <td class="path-cell">s3://bucket/workspaces/{wsId}/requirements/{reqId}/docs/</td>
+                </tr>
+                <tr>
+                    <td><strong>Requirements</strong></td>
+                    <td>Activity/Chat</td>
+                    <td><span class="tag tag-img">IMG</span> <span class="tag tag-doc">DOC</span> <span
+                            class="tag tag-zip">ZIP</span></td>
+                    <td>100 MB</td>
+                    <td class="path-cell">s3://bucket/workspaces/{wsId}/requirements/{reqId}/activity/</td>
+                </tr>
+                <tr>
+                    <td><strong>Finance</strong></td>
+                    <td>Client Invoices</td>
+                    <td><span class="tag tag-doc">PDF</span></td>
+                    <td>5 MB</td>
+                    <td class="path-cell">s3://bucket/companies/{coId}/finance/invoices/</td>
+                </tr>
+                <tr>
+                    <td><strong>Platform Billing</strong></td>
+                    <td>Subscription Receipts</td>
+                    <td><span class="tag tag-doc">PDF</span></td>
+                    <td>2 MB</td>
+                    <td class="path-cell">s3://bucket/billing/users/{userId}/invoices/</td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="font-size: 0.9rem; color: #666; margin-top: 15px;">
+            <p>* <strong>Client Invoices:</strong> Currently generated client-side (JS-PDF). Storing a copy in S3 is
+                recommended for immutable history and shareable links.</p>
+            <p>* <strong>Company Logo:</strong> Upload feature to be added to Settings page.</p>
+        </div>
+    </section>
+
+    <section>
+        <h2>Technical Requirements</h2>
+        <div class="tech-reqs">
+            <div class="req-card">
+                <div class="req-title">🔒 Security & Access</div>
+                <ul>
+                    <li><strong>Presigned URLs:</strong> Frontend uploads directly to S3 using short-lived,
+                        backend-generated URLs.</li>
+                    <li><strong>ACLs:</strong> Private by default. Public read only for Avatars/Logos if needed,
+                        otherwise signed GET URLs.</li>
+                    <li><strong>Validation:</strong> Content-Type checking on generation.</li>
+                </ul>
+            </div>
+            <div class="req-card">
+                <div class="req-title">✅ Validation Rules</div>
+                <ul>
+                    <li><strong>Images:</strong> <code>image/jpeg</code>, <code>image/png</code>,
+                        <code>image/webp</code>
+                    </li>
+                    <li><strong>Documents:</strong> <code>application/pdf</code>, <code>.docx</code>,
+                        <code>.xlsx</code>, <code>text/csv</code>, <code>application/zip</code>
+                    </li>
+                    <li><strong>Strict Size Limits:</strong> Applied at presigned URL generation time (Max 100MB).</li>
+                </ul>
+            </div>
+            <div class="req-card">
+                <div class="req-title">🔌 Code Integration</div>
+                <ul>
+                    <li><code>ProfilePage.tsx</code> - User documents, Profile Picture</li>
+                    <li><code>SettingsPage.tsx</code> - Company branding (Logo)</li>
+                    <li><code>TaskDetailsPage.tsx</code> - Chat uploads</li>
+                    <li><code>RequirementsForm.tsx</code> - Drag & drop zone</li>
+                    <li><code>RequirementDetailsPage.tsx</code> - Activity & Chat uploads</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        Generated by Antigravity AI • Alsonotify Development Team
+    </footer>
+
+</body>
+
+</html>

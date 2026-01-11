@@ -679,7 +679,7 @@ export function PartnersPageContent() {
                 const total = activeTab === 'requests' ? allRequests.length : filteredPartners.length;
 
                 return (
-                    <div className="shrink-0 bg-white border-t border-[#EEEEEE] px-6 z-10 w-full">
+                    <div className="shrink-0 bg-white z-10 w-full">
                         <PaginationBar
                             currentPage={pagination.current}
                             totalItems={total}
@@ -687,7 +687,7 @@ export function PartnersPageContent() {
                             onPageChange={(page) => setPagination(prev => ({ ...prev, current: page }))}
                             onPageSizeChange={(size) => setPagination(prev => ({ ...prev, pageSize: size, current: 1 }))}
                             itemLabel={activeTab === 'requests' ? "requests" : "partners"}
-                            className="!border-none !mt-0 !pt-3 !pb-3"
+                            className="px-6"
                         />
                     </div>
                 );

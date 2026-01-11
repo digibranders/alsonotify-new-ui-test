@@ -109,7 +109,8 @@
         <ul>
             <li><strong>Total Requirements:</strong> Count of requirements matching the current filters.</li>
             <li><strong>On Time Completed:</strong> Count of requirements with status 'Completed' where
-                <code>EndDate &le; DueDate</code>.</li>
+                <code>EndDate &le; DueDate</code>.
+            </li>
             <li><strong>In Progress:</strong> Count of currently active requirements.</li>
             <li><strong>Delayed:</strong> Count of requirements that are past their due date or explicitly marked as
                 'Delayed'.
@@ -180,7 +181,10 @@
             <strong>Total Investment</strong> = &sum; (Employee Investment)<br>
             <strong>Total Revenue</strong> = &sum; (Employee Revenue)<br>
             <strong>Net Profit</strong> = Total Revenue - Total Investment<br>
-            <strong>Avg. Rate/Hr</strong> = Total Revenue / Total Engaged Hours
+            <strong>Avg. Rate/Hr</strong> = Total Revenue / Total Engaged Hours<br>
+            <strong>Avg. Utilization</strong> = ( &sum; Employee Utilization ) / Employee Count<br>
+            <span class="note" style="font-size: 0.8em; margin-top: 5px; display: inline-block;">(Green if &ge; 70%, Red
+                if &lt; 70%)</span>
         </div>
 
         <h3>Detailed Column Formulas</h3>
@@ -221,7 +225,8 @@
             <strong>Employee Revenue = $5,000 * 0.25 = $1,250</strong>
         </div>
         <p class="note"><strong>Fallback:</strong> For T&M projects or missing fixed price data:
-            <code>Revenue = Engaged Hours &times; Billable Rate</code>.</p>
+            <code>Revenue = Engaged Hours &times; Billable Rate</code>.
+        </p>
 
         <h4>4. Profit</h4>
         <div class="formula-box">

@@ -33,8 +33,12 @@ import { searchEmployees } from '@/services/user';
 import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
 import { useCreateTask } from '@/hooks/useTask';
 import { useCreateRequirement } from '@/hooks/useWorkspace';
+import { useCreateNote } from '@/hooks/useNotes';
 import { useLogout } from '@/hooks/useAuth';
 import { formatDistanceToNow } from 'date-fns';
+import { NoteComposerModal } from './NoteComposerModal';
+import { AIAssistantDrawer } from '../features/ai/AIAssistantDrawer';
+import { Sparkle24Filled } from '@fluentui/react-icons';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -80,15 +84,19 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
   const [requirementsDropdown, setRequirementsDropdown] = useState<Array<{ id: number; name: string }>>([]);
 
   // Dialogs state
-  const [showWorkspaceDialog, setShowWorkspaceDialog] = useState(false);
-  const [showTaskDialog, setShowTaskDialog] = useState(false);
-  const [showRequirementDialog, setShowRequirementDialog] = useState(false);
-  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
-  const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
-
   // Mutations
   const createTaskMutation = useCreateTask();
   const createRequirementMutation = useCreateRequirement();
+  const createNoteMutation = useCreateNote();
+
+  // Dialogs state
+  const [showWorkspaceDialog, setShowWorkspaceDialog] = useState(false);
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [showRequirementDialog, setShowRequirementDialog] = useState(false);
+  const [showNoteDialog, setShowNoteDialog] = useState(false);
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 
   // Form States
 
@@ -259,6 +267,18 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
     );
   };
 
+  // Handle Note Creation
+  const handleCreateNote = async (noteData: any) => {
+    try {
+      await createNoteMutation.mutateAsync(noteData);
+      message.success("Note created successfully");
+      setShowNoteDialog(false);
+    } catch (error) {
+      // Error handling is managed by the mutation or global handler usually, but here distinct
+      message.error("Failed to create note");
+    }
+  };
+
   // Dropdown Items Configuration
   const addMenuItems: MenuProps['items'] = [
     {
@@ -287,51 +307,6 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
           onClick: () => setShowTaskDialog(true),
           className: "font-['Manrope:Medium',sans-serif]"
         },
-      ],
-    },
-    { type: 'divider' },
-    {
-      key: 'people',
-      type: 'group',
-      label: <span className="text-[11px] text-[#999999] uppercase tracking-wider font-['Manrope:Medium',sans-serif]">People</span>,
-      children: [
-        {
-          key: 'employee',
-          label: 'Employee',
-          icon: <People24Filled className="w-4 h-4" />,
-          onClick: () => router.push('/dashboard/employees'),
-          className: "font-['Manrope:Medium',sans-serif]"
-        },
-        {
-          key: 'client',
-          label: 'Client',
-          icon: <Handshake24Filled className="w-4 h-4" />,
-          onClick: () => router.push('/dashboard/clients'),
-          className: "font-['Manrope:Medium',sans-serif]"
-        },
-      ],
-    },
-    { type: 'divider' },
-    {
-      key: 'finance',
-      type: 'group',
-      label: <span className="text-[11px] text-[#999999] uppercase tracking-wider font-['Manrope:Medium',sans-serif]">Finance</span>,
-      children: [
-        {
-          key: 'invoice',
-          label: 'Finance',
-          icon: <Receipt24Filled className="w-4 h-4" />,
-          onClick: () => router.push('/dashboard/finance'),
-          className: "font-['Manrope:Medium',sans-serif]"
-        },
-      ],
-    },
-    { type: 'divider' },
-    {
-      key: 'quick',
-      type: 'group',
-      label: <span className="text-[11px] text-[#999999] uppercase tracking-wider font-['Manrope:Medium',sans-serif]">Quick Actions</span>,
-      children: [
         {
           key: 'calendar',
           label: 'Schedule Meeting',
@@ -343,11 +318,11 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
           key: 'notes',
           label: 'Add Note',
           icon: <Notepad24Filled className="w-4 h-4" />,
-          onClick: () => router.push('/dashboard/notes'),
+          onClick: () => setShowNoteDialog(true),
           className: "font-['Manrope:Medium',sans-serif]"
         },
       ],
-    },
+    }
   ];
 
   const accountType = user?.company?.account_type || 'ORGANIZATION';
@@ -426,6 +401,15 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
                 icon={<Add24Filled className="w-5 h-5 text-white" />}
               />
             </Dropdown>
+
+            {/* AI Assistant Toggle */}
+            <button
+              onClick={() => setAiDrawerOpen(true)}
+              className="w-9 h-9 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#cc2f2f] hover:shadow-lg flex items-center justify-center transition-all cursor-pointer border border-transparent hover:scale-105 active:scale-95"
+              title="AI Assistant"
+            >
+              <Sparkle24Filled className="w-5 h-5 text-white" />
+            </button>
 
             {/* Feedback Toggle */}
             <button
@@ -556,10 +540,22 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         />
       </Modal>
 
+      {/* Note Composer Modal */}
+      <NoteComposerModal
+        open={showNoteDialog}
+        onClose={() => setShowNoteDialog(false)}
+        onSave={handleCreateNote}
+      />
+
       {/* Feedback Modal */}
       <FeedbackWidget
         open={showFeedbackDialog}
         onClose={() => setShowFeedbackDialog(false)}
+      />
+
+      <AIAssistantDrawer 
+        open={aiDrawerOpen} 
+        onClose={() => setAiDrawerOpen(false)} 
       />
       <style jsx global>{`
         /* Gray background for all Select dropdowns (default) */

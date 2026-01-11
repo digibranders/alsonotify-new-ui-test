@@ -7,7 +7,7 @@ import { ProfileCompletionBanner } from '../components/common/ProfileCompletionB
 import { useUserDetails } from '@/hooks/useUser';
 import { getRoleFromUser, UserRole } from '@/utils/roleUtils';
 import { TimerProvider } from '../context/TimerContext';
-import { GlobalTimerPlayer } from '../components/layout/GlobalTimerPlayer';
+import { FloatingProductivityWidget } from '../components/widgets/FloatingProductivityWidget';
 import { usePathname } from 'next/navigation';
 import { navPermissionMap } from '@/utils/navUtils';
 import { Shield24Regular } from '@fluentui/react-icons';
@@ -147,7 +147,7 @@ function AlsonotifyLayoutContent({ children }: Readonly<AlsonotifyLayoutWrapperP
           </div>
         </div>
       </div>
-      <GlobalTimerPlayer />
+      <FloatingProductivityWidget />
       <InvitationPopup />
     </TimerProvider>
   );

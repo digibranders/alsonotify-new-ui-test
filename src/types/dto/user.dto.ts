@@ -29,7 +29,8 @@ export interface UserDto {
   salary_yearly?: number;
   salary?: number;
   hourly_rates?: number;
-  working_hours?: { start_time: string; end_time: string };
+  working_hours?: { start_time: string; end_time: string; 
+    break_time?: string | number };
   no_of_leaves?: number;
   joining_date?: string;
   experience?: string | number;
@@ -107,6 +108,7 @@ export interface CreateEmployeeRequestDto {
   working_hours?: {
     start_time: string;
     end_time: string;
+    break_time?: string | number;
   };
   no_of_leaves?: number;
   experience?: string | number;

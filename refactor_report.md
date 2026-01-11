@@ -955,3 +955,304 @@ Provide a robust system for managing multiple payment details (Footer text) on i
 
 -   **`npm run build`:** ✅ Passed (Exit code: 0)
 -   **Functionality:** Verified saving, loading, and deleting presets works smoothly.
+
+---
+
+## Update: Invoice Creation UI Polish
+
+**Timestamp:** 2026-01-11T14:50:00+05:30
+
+### Changes
+
+-   **Structure:** Moved "Invoice Details" section (Invoice #, Dates, Currency) to the top of the form for better visibility.
+-   **Feature:** Converted `Currency` field from static text to an editable dropdown (supporting INR, USD, EUR, etc.).
+-   **Style:** Reduced "New Invoice" header padding to `px-4 py-2` to match the main application Topbar height.
+
+---
+
+## Update: Employee Reports KPI
+
+**Timestamp:** 2026-01-11T14:55:00+05:30
+
+### Changes
+
+-   **New KPI:** Added "Avg. Utilization" card to the Employee Reports tab.
+-   **Logic:** Calculates the average `utilization` percentage across all visible employees.
+-   **UI:** Matches existing KPI card style, with conditional coloring (Green for >= 70%, Red for < 70%).
+
+---
+
+## Update: Refine Navigation and Add Button
+
+**Timestamp:** 2026-01-11T16:20:00+05:30
+
+### Objective
+
+Simplify the primary navigation and action menus based on user feedback.
+
+1.  **Add Button (Topbar):** Consolidate all creation actions into a single menu, removing segregated "Finance" and "People" sections. Move "Schedule Meeting" and "Add Note" to the main list.
+2.  **Add Note Interaction:** Change "Add Note" from a page navigation to a modal popup for quick entry.
+3.  **Sidebar:** Remove the "Workload" navigation item while keeping the page route active.
+
+### Changes
+
+#### 1. `Topbar.tsx`
+
+-   **Menu Structure:** Flattened the Dropdown menu.
+    -   Removed `Create New`, `People`, `Finance`, `Quick Actions` groups.
+    -   Created a single `Create New` group containing: Requirement, Workspace, Task, Schedule Meeting, Add Note.
+-   **Add Note Logic:**
+    -   Integrated `NoteComposerModal` directly into the Topbar.
+    -   Wired up `useCreateNote` hook to handle note creation via API.
+    -   Changed "Add Note" click handler to open the modal (`setShowNoteDialog(true)`).
+
+#### 2. `Sidebar.tsx`
+
+-   **Navigation:** Removed the `workload` item from the `NAV_ITEMS` array.
+-   **Route:** The `/dashboard/workload` route remains accessible, just removed from the sidebar menu.
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Visual Check:**
+    -   Add Button menu is now a clean, single list.
+    -   "Add Note" opens the modal as expected.
+    -   "Workload" is gone from the sidebar.
+
+---
+
+## Update: Employee Deactivation UX
+
+**Timestamp:** 2026-01-11T16:25:00+05:30
+
+### Objective
+
+Improve the user experience when bulk deactivating employees, specifically handling the edge case where the current user selects their own account.
+
+### Changes
+
+#### `EmployeesPage.tsx`
+
+-   **Enhanced Logic:** Replaced simple toast warning with explicit Modal dialogs.
+-   **Robost Self-Check:** Added validation against both `id` and `email` to robustly identify the current user in the selection.
+-   **Scenarios:**
+    1.  **Only Self Selected:** Shows a Warning Modal explaining that self-deactivation is not allowed. Blocks the action.
+    2.  **Self + Others Selected:** Shows a Warning Confirmation Modal explaining that the self-account will be skipped, but asks for confirmation to proceed with the others.
+    3.  **Others Selected:** Shows standard confirmation modal.
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Behavior:** Users can no longer accidentally try to deactivate themselves without clear feedback. Mixed selections are handled gracefully.
+
+---
+
+## Update: Disable Self-Deactivation Button Styling
+
+**Timestamp:** 2026-01-11T16:30:00+05:30
+
+### Objective
+
+Visually indicate that the "Deactivate" option is disabled for the current user in the employee row dropdown menu, changing it from a "disabled danger" (pale red) to a "grayed out" state.
+
+### Changes
+
+#### `EmployeeRow.tsx`
+
+-   **Menu Item Styling:**
+    -   Removed `danger: true` from the `deactivate-self` item to eliminate red coloring.
+    -   Added `text-gray-400` class for explicit gray text.
+    -   Added `!cursor-not-allowed` and hover overrides to ensure the disabled state is visually consistent and non-interactive.
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Visual Check:** The "Deactivate" button for the logged-in user is now gray and clearly visibly disabled.
+
+---
+
+## Bug Fix: Modal Context Error
+
+**Timestamp:** 2026-01-11T16:35:00+05:30
+
+### Issue
+
+Runtime error `Warning: [antd: Modal] Static function can not consume context like dynamic theme` when triggering deactivation modals. This occurred because static `Modal.confirm` and `Modal.warning` methods were used, which do not inherit the app's context providers.
+
+### Fix
+
+#### `EmployeesPage.tsx`
+
+-   **Refactor:** Replaced all static `Modal.confirm({...})` and `Modal.warning({...})` calls with the hook-based instance `modal.confirm({...})` and `modal.warning({...})` obtained from `App.useApp()`.
+-   **Impact:** Ensures modals are rendered within the correct React context, inheriting themes and other global providers properly.
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Validation:** Resolves the console warning and crash behavior.
+
+---
+
+## Update: Robust Self-Deactivation Check
+
+**Timestamp:** 2026-01-11T16:40:00+05:30
+
+### Issue
+
+The "Deactivate" button for the self account was still active (red) in some cases, and the bulk action warning was not triggering. This was caused by unreliable ID matching (e.g., mismatch between `currentUserId` source and `employee.id` source).
+
+### Fix
+
+#### `EmployeesPage.tsx` & `EmployeeRow.tsx`
+
+-   **Email-Based Fallback:** Implemented a secondary check using `email` address in addition to `id`.
+    -   Extracted `currentUserEmail` from the user details hook.
+    -   Passed `currentUserEmail` to `EmployeeRow`.
+-   **Case-Insensitive Matching:** ensured all email comparisons (`employee.email` vs `currentUserEmail`) are lower-cased to prevent false negatives.
+-   **Logic:** `isCurrentUser = (idMatch) || (emailMatch)`.
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Behavior:**
+    -   Row Action: The "Deactivate" option is reliably gray/disabled for the logged-in user.
+    -   Bulk Action: Selecting the logged-in user (alone or mixed) correctly triggers the warning modals.
+
+---
+
+## Update: LocalStorage Fallback for Identity Check
+
+**Timestamp:** 2026-01-11T16:45:00+05:30
+
+### Issue
+
+The self-deactivation check was still failing in some scenarios (user reported "Failed to deactivate" error instead of warning), likely because `currentUserData` from the API was loading or undefined when the check ran, causing `firstName` to appear in Topbar (which has better fallback logic) but failing in `EmployeesPage`.
+
+### Fix
+
+#### `EmployeesPage.tsx`
+
+-   **Robust Data Retrieval:** Updated `currentUserId` and `currentUserEmail` logic to explicitly fallback to `localStorage` ("user" key) if the API hook (`useUserDetails`) hasn't provided data yet.
+-   **Email Extraction:** Added specific logic to parse `localStorage` JSON and extract email from various common paths (`email`, `user.email`, `user_profile.email`).
+-   **Impact:** Ensures the "Deactivate" button and bulk action warnings work immediately on page load, even if the user details API call is pending or cached.
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Behavior:** Should provide instant and reliable feedback for the logged-in user regardless of network state.
+
+---
+
+## Update: Enhanced LocalStorage Parsing for Identity Check
+
+**Timestamp:** 2026-01-11T17:00:00+05:30
+
+### Issue
+
+The `localStorage` fallback was failing because it didn't account for the API response wrapper (`result` object) stored in `localStorage` under the "user" key.
+
+### Fix
+
+#### `EmployeesPage.tsx`
+
+-   **Deep Parsing:** Updated the `localStorage` extraction logic to specifically look for `localUser.result.id` and `localUser.result.email`.
+-   **Priority:** The logic now prioritizes the nested `result` object (standard API structure) before falling back to flat properties, ensuring correct ID extraction.
+
+### Verification
+
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Behavior:** The self-deactivation button is now reliably disabled, as the check correctly identifies the logged-in user from the stored session data.
+
+## Update: Dashboard Redesign & Hours Capacity
+
+**Timestamp:** 2026-01-11T19:05:00+05:30
+
+### Objective
+Redesign the dashboard to modernize the UX and implement a new "Hours Capacity" tracking feature.
+
+1.  **Remove Productivity Widget:** Replaced the legacy dashboard widget with a cleaner layout.
+2.  **Floating Widget:** Added a persistent floating timer/task widget available across the app.
+3.  **AI Drawer:** Moved AI assistant to a dedicated right-side drawer toggled from the Topbar.
+4.  **Hours Capacity:** Added a capacity tracking bar to the Progress Widget.
+
+### Changes
+
+#### 1. Hours Capacity Logic (`ProgressWidget.tsx`)
+-   **Allotted Hours:** Calculated by summing the `estimatedTime` of tasks that are:
+    -   Within the selected date range (filtered by API query).
+    -   Assigned to the **current logged-in user** (filtered explicitly in client-side loop).
+-   **Total Capacity:** Calculated dynamically based on the user's profile:
+    -   Formula: `Working Days in Range * User's Daily Working Hours`.
+    -   Falls back to 8 hours/day if not set in profile.
+    -   Accurately reflects capacity for "This Week", "This Month", custom ranges, etc.
+
+#### 2. Architecture & UI
+-   **Floating Productivity Widget:** Implemented in `src/components/widgets/FloatingProductivityWidget.tsx`, replacing `GlobalTimerPlayer`.
+-   **AI Assistant Drawer:** Implemented in `src/components/features/ai/AIAssistantDrawer.tsx` using Ant Design Drawer.
+-   **AntD Warning Fix:** Resolved deprecated `width` prop on Drawer component by using `style={{ width: 400 }}`.
+
+### Files Modified
+
+| File                                                               | Change                                                                 |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `src/components/dashboard/ProgressWidget.tsx`                      | Added `HoursBar` and user-specific capacity logic                      |
+| `src/app/dashboard/page.tsx`                                       | Removed old Productivity Widget                                        |
+| `src/components/widgets/FloatingProductivityWidget.tsx`            | New component                                                          |
+| `src/components/features/ai/AIAssistantDrawer.tsx`                 | New component                                                          |
+| `src/app/AlsonotifyLayoutWrapper.tsx`                              | Integrated floating widget                                             |
+
+### Verification
+
+-   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
+-   **`npm run build`:** ✅ Passed (Exit code: 0)
+-   **Logic Check:**
+    -   Capacity accurately scales with the date range (e.g., ~40h for a week vs ~160h for a month).
+    -   Allotted hours only count tasks for the logged-in user.
+
+### Update: Refine Hours Capacity Logic
+
+**Timestamp:** 2026-01-11T19:25:00+05:30
+
+#### Objective
+Refine the "Total Capacity" calculation in the Dashboard's Progress Widget to account for employee break times.
+
+#### Changes
+1.  **Backend DTO & Domain Types:**
+    -   Updated `UserDto` (`src/types/dto/user.dto.ts`) to include `break_time` in `working_hours`.
+    -   Updated `Employee` domain interface (`src/types/domain.ts`) to include `breakTime` (number).
+    -   Updated user mapper (`src/utils/mappers/user.ts`) to extract `break_time` from the DTO.
+
+2.  **Calculation Logic (`ProgressWidget.tsx`):**
+    -   Revised the "Total Capacity" formula:
+        `Net Daily Hours = Working Hours - (Break Time / 60)`
+        `Total Capacity = Net Daily Hours * Working Days in Range`
+    -   This ensures that non-productive break time is excluded from the capacity planning metrics.
+
+3.  **Correction:**
+    -   Fixed an accidental interface corruption in `EmployeesForm.tsx` introduced during the DTO update process. Restored the correct form data types.
+
+#### Verification
+-   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
+-   **Logic:** The capacity calculation now dynamically adjusts based on the user's specific working hours and break time profile settings.
+
+### Update: Pushed to Development
+
+**Timestamp:** 2026-01-11T19:50:00+05:30
+
+#### Objective
+Push all verified changes to the remote `development` branch.
+
+#### Actions
+1.  **Git Commit:** "feat(dashboard): Redesign dashboard with Floating Widget and AI Drawer, Refine Hours Capacity, and Align Partners Pagination"
+2.  **Git Push:** Successfully pushed to `origin development`.
+
+#### Summary of Session Changes
+-   **Dashboard Redesign:** Removed old `ProductivityWidget`, added `FloatingProductivityWidget` (global), and `AIAssistantDrawer` (topbar).
+-   **Logic Refinements:** Updated `ProgressWidget` to subtract break time from capacity.
+-   **UI Alignment:** Matched `PartnersPage` pagination style to `EmployeesPage`.
+-   **Bug Fix:** Repaired `EmployeeFormData` interface corruption.
+
+#### Verification Status
+-   All features verified locally.
+-   `npm run typecheck` passed.
+-   Codebase successfully synced with `development` branch.

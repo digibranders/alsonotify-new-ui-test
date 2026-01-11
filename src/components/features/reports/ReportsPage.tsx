@@ -328,7 +328,6 @@ export function ReportsPage() {
 
   // Client-side KPI Calculation for Employees
   const employeeKPI = useMemo(() => {
-    // Start with zero
     const totals = filteredEmployees.reduce(
       (acc, employee) => {
         const inv = employee.engagedHrs * employee.hourlyCost;
@@ -336,10 +335,11 @@ export function ReportsPage() {
         return {
           totalInvestment: acc.totalInvestment + inv,
           totalRevenue: acc.totalRevenue + rev,
-          totalEngagedHrs: acc.totalEngagedHrs + employee.engagedHrs
+          totalEngagedHrs: acc.totalEngagedHrs + employee.engagedHrs,
+          totalUtilization: acc.totalUtilization + (employee.utilization || 0)
         };
       },
-      { totalInvestment: 0, totalRevenue: 0, totalEngagedHrs: 0 }
+      { totalInvestment: 0, totalRevenue: 0, totalEngagedHrs: 0, totalUtilization: 0 }
     );
 
     return {
@@ -348,6 +348,9 @@ export function ReportsPage() {
       netProfit: totals.totalRevenue - totals.totalInvestment,
       avgRatePerHr: totals.totalEngagedHrs > 0 
         ? totals.totalRevenue / totals.totalEngagedHrs 
+        : 0,
+      avgUtilization: filteredEmployees.length > 0 
+        ? Math.round(totals.totalUtilization / filteredEmployees.length)
         : 0
     };
   }, [filteredEmployees]);
@@ -536,6 +539,12 @@ export function ReportsPage() {
               <span className="text-[12px] font-medium text-[#666666]">Avg. Rate/Hr</span>
               <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">
                 ${employeeKPI.avgRatePerHr.toLocaleString()}
+              </span>
+            </div>
+            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center" style={{ display: activeTab === 'member' ? 'flex' : 'none' }}>
+              <span className="text-[12px] font-medium text-[#666666]">Avg. Utilization</span>
+              <span className={`text-xl font-['Manrope:Bold',sans-serif] ${employeeKPI.avgUtilization >= 70 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
+                {employeeKPI.avgUtilization}%
               </span>
             </div>
           </div>

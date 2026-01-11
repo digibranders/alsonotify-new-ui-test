@@ -12,6 +12,7 @@ interface EmployeeRowProps {
   onDeactivate?: () => void;
   onViewDetails?: () => void;
   currentUserId?: number | null;
+  currentUserEmail?: string | null;
 }
 
 export function EmployeeRow({
@@ -21,8 +22,13 @@ export function EmployeeRow({
   onEdit,
   onDeactivate,
   onViewDetails,
-  currentUserId
+  currentUserId,
+  currentUserEmail
 }: EmployeeRowProps) {
+
+  // Robust check for current user (ID or Email match)
+  const isCurrentUser = (currentUserId && Number(employee.id) === Number(currentUserId)) || 
+                        (currentUserEmail && employee.email && employee.email.toLowerCase() === currentUserEmail.toLowerCase());
 
   const items: MenuProps['items'] = [
     {
@@ -40,19 +46,18 @@ export function EmployeeRow({
       danger: true,
       className: "text-[13px] font-['Manrope:Medium',sans-serif]"
     }] : []),
-    ...(onDeactivate && Number(employee.id) === Number(currentUserId) && employee.status === 'active' ? [{
+    ...(onDeactivate && isCurrentUser && employee.status === 'active' ? [{
       key: 'deactivate-self',
       label: 'Deactivate',
       icon: <Trash2 className="w-3.5 h-3.5" />,
       disabled: true,
-      danger: true,
       title: "You cannot deactivate your own account",
-      className: "text-[13px] font-['Manrope:Medium',sans-serif] opacity-50 cursor-not-allowed"
+      className: "text-[13px] font-['Manrope:Medium',sans-serif] text-gray-400 !cursor-not-allowed hover:!bg-transparent hover:!text-gray-400"
     }] : [])
   ].filter(item => {
     // If it's the current user and we are showing 'deactivate', we want to show the disabled one instead
     // Check key to avoid filtering out 'deactivate-self'
-    if (Number(employee.id) === Number(currentUserId) && employee.status === 'active' && item.key === 'deactivate') {
+    if (isCurrentUser && employee.status === 'active' && item.key === 'deactivate') {
       return false;
     }
     return true;
