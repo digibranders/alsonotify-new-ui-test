@@ -1060,14 +1060,47 @@ Visually indicate that the "Deactivate" option is disabled for the current user 
 #### `EmployeeRow.tsx`
 
 -   **Menu Item Styling:**
+
     -   Removed `danger: true` from the `deactivate-self` item to eliminate red coloring.
     -   Added `text-gray-400` class for explicit gray text.
     -   Added `!cursor-not-allowed` and hover overrides to ensure the disabled state is visually consistent and non-interactive.
 
+-   **Visual Check:** The "Deactivate" button for the logged-in user is now gray and clearly visibly disabled.
+
+---
+
+## Update: Sidebar Icon Refactor
+
+**Timestamp:** 2026-01-11T21:55:00+05:30
+
+### Objective
+
+Modernize the sidebar aesthetic and improve semantic clarity by replacing FluentUI icons with Lucide React icons.
+
+### Changes
+
+#### 1. `src/components/common/Sidebar.tsx`
+
+-   **Replaced Library:** Removed `@fluentui/react-icons` and installed `lucide-react` icons.
+-   **Icon Mapping Update:**
+    -   **Dashboard:** `LayoutDashboard`
+    -   **Employees:** `Users`
+    -   **Partners:** `Handshake`
+    -   **Workspace:** `Briefcase`
+    -   **Requirements:** `ScrollText` (Changed from `FileCheck`)
+    -   **Tasks:** `ListTodo`
+    -   **Reports:** `BarChart3`
+    -   **Calendar:** `CalendarDays`
+    -   **Leaves:** `Palmtree` (Changed from `Palmtree` for broader "Time Off" context)
+    -   **Finance:** `CircleDollarSign` (Changed from `Banknote` for clarity)
+    -   **Notes:** `NotebookPen`
+-   **Toggle Button:** Replaced `PanelLeft...` icons with `ChevronsLeft` / `ChevronsRight`.
+
 ### Verification
 
--   **`npm run build`:** ✅ Passed (Exit code: 0)
--   **Visual Check:** The "Deactivate" button for the logged-in user is now gray and clearly visibly disabled.
+-   **`npm run typecheck`:** ✅ Passed
+-   **`npm run lint`:** ✅ Passed
+-   **Visual Check:** Icons are consistent in size (`20px`), style (line icons), and color behavior (gray vs brand red when active).
 
 ---
 
@@ -1168,6 +1201,7 @@ The `localStorage` fallback was failing because it didn't account for the API re
 **Timestamp:** 2026-01-11T19:05:00+05:30
 
 ### Objective
+
 Redesign the dashboard to modernize the UX and implement a new "Hours Capacity" tracking feature.
 
 1.  **Remove Productivity Widget:** Replaced the legacy dashboard widget with a cleaner layout.
@@ -1178,6 +1212,7 @@ Redesign the dashboard to modernize the UX and implement a new "Hours Capacity" 
 ### Changes
 
 #### 1. Hours Capacity Logic (`ProgressWidget.tsx`)
+
 -   **Allotted Hours:** Calculated by summing the `estimatedTime` of tasks that are:
     -   Within the selected date range (filtered by API query).
     -   Assigned to the **current logged-in user** (filtered explicitly in client-side loop).
@@ -1187,19 +1222,20 @@ Redesign the dashboard to modernize the UX and implement a new "Hours Capacity" 
     -   Accurately reflects capacity for "This Week", "This Month", custom ranges, etc.
 
 #### 2. Architecture & UI
+
 -   **Floating Productivity Widget:** Implemented in `src/components/widgets/FloatingProductivityWidget.tsx`, replacing `GlobalTimerPlayer`.
 -   **AI Assistant Drawer:** Implemented in `src/components/features/ai/AIAssistantDrawer.tsx` using Ant Design Drawer.
 -   **AntD Warning Fix:** Resolved deprecated `width` prop on Drawer component by using `style={{ width: 400 }}`.
 
 ### Files Modified
 
-| File                                                               | Change                                                                 |
-| ------------------------------------------------------------------ | ---------------------------------------------------------------------- |
-| `src/components/dashboard/ProgressWidget.tsx`                      | Added `HoursBar` and user-specific capacity logic                      |
-| `src/app/dashboard/page.tsx`                                       | Removed old Productivity Widget                                        |
-| `src/components/widgets/FloatingProductivityWidget.tsx`            | New component                                                          |
-| `src/components/features/ai/AIAssistantDrawer.tsx`                 | New component                                                          |
-| `src/app/AlsonotifyLayoutWrapper.tsx`                              | Integrated floating widget                                             |
+| File                                                    | Change                                            |
+| ------------------------------------------------------- | ------------------------------------------------- |
+| `src/components/dashboard/ProgressWidget.tsx`           | Added `HoursBar` and user-specific capacity logic |
+| `src/app/dashboard/page.tsx`                            | Removed old Productivity Widget                   |
+| `src/components/widgets/FloatingProductivityWidget.tsx` | New component                                     |
+| `src/components/features/ai/AIAssistantDrawer.tsx`      | New component                                     |
+| `src/app/AlsonotifyLayoutWrapper.tsx`                   | Integrated floating widget                        |
 
 ### Verification
 
@@ -1214,15 +1250,19 @@ Redesign the dashboard to modernize the UX and implement a new "Hours Capacity" 
 **Timestamp:** 2026-01-11T19:25:00+05:30
 
 #### Objective
+
 Refine the "Total Capacity" calculation in the Dashboard's Progress Widget to account for employee break times.
 
 #### Changes
+
 1.  **Backend DTO & Domain Types:**
+
     -   Updated `UserDto` (`src/types/dto/user.dto.ts`) to include `break_time` in `working_hours`.
     -   Updated `Employee` domain interface (`src/types/domain.ts`) to include `breakTime` (number).
     -   Updated user mapper (`src/utils/mappers/user.ts`) to extract `break_time` from the DTO.
 
 2.  **Calculation Logic (`ProgressWidget.tsx`):**
+
     -   Revised the "Total Capacity" formula:
         `Net Daily Hours = Working Hours - (Break Time / 60)`
         `Total Capacity = Net Daily Hours * Working Days in Range`
@@ -1232,6 +1272,7 @@ Refine the "Total Capacity" calculation in the Dashboard's Progress Widget to ac
     -   Fixed an accidental interface corruption in `EmployeesForm.tsx` introduced during the DTO update process. Restored the correct form data types.
 
 #### Verification
+
 -   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
 -   **Logic:** The capacity calculation now dynamically adjusts based on the user's specific working hours and break time profile settings.
 
@@ -1240,19 +1281,278 @@ Refine the "Total Capacity" calculation in the Dashboard's Progress Widget to ac
 **Timestamp:** 2026-01-11T19:50:00+05:30
 
 #### Objective
+
 Push all verified changes to the remote `development` branch.
 
 #### Actions
+
 1.  **Git Commit:** "feat(dashboard): Redesign dashboard with Floating Widget and AI Drawer, Refine Hours Capacity, and Align Partners Pagination"
 2.  **Git Push:** Successfully pushed to `origin development`.
 
 #### Summary of Session Changes
+
 -   **Dashboard Redesign:** Removed old `ProductivityWidget`, added `FloatingProductivityWidget` (global), and `AIAssistantDrawer` (topbar).
 -   **Logic Refinements:** Updated `ProgressWidget` to subtract break time from capacity.
 -   **UI Alignment:** Matched `PartnersPage` pagination style to `EmployeesPage`.
 -   **Bug Fix:** Repaired `EmployeeFormData` interface corruption.
 
 #### Verification Status
+
 -   All features verified locally.
 -   `npm run typecheck` passed.
 -   Codebase successfully synced with `development` branch.
+
+---
+
+## Update: Implement Company Logo Upload
+
+**Timestamp:** 2026-01-11T20:20:00+05:30
+
+### Objective
+
+Add functionality to upload and manage the company logo in the Settings page, surfacing it for use in other parts of the application (like Invoices).
+
+### Changes
+
+#### 1. `src/types/genericTypes.ts`
+
+-   Added `logo?: string` optional property to `CompanyUpdateInput` interface.
+
+#### 2. `src/components/features/settings/SettingsPage.tsx`
+
+-   **UI:** Added an "Upload Company Logo" section in the "Company Information" tab.
+    -   Implemented using Ant Design `Upload` component with logic to limit to JPG/PNG < 2MB.
+    -   Added preview display of the uploaded logo.
+-   **State Management:** Added `companyLogo` state initialized from `companyData.logo`.
+-   **Logic:** Updated `handleSaveChanges` to include `logo` in the mutation payload.
+
+### Verification
+
+-   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
+-   **`npm run lint`:** ✅ Passed (467 warnings, 0 errors)
+-   **Functional Check:**
+    -   Logo upload logic validates file type and size.
+    -   Preview updates immediately upon selection.
+    -   Save operation includes the logo string (base64/url) in the payload.
+
+---
+
+## Update: Settings Layout & UI Fixes
+
+**Timestamp:** 2026-01-11T20:25:00+05:30
+
+### Objective
+
+Align the Company Settings "Company Information" layout with the User Profile page design (logo on the left) and resolve deprecated component warnings in the Profile page.
+
+### Changes
+
+#### 1. `src/components/features/settings/SettingsPage.tsx`
+
+-   **Layout Refactor:** Restructured the "Company Information" section.
+    -   Moved Company Logo to the left column (`flex-none`).
+    -   Placed inputs (Company Name, Tax ID) in the right column (`flex-1`) using a responsive flex layout.
+    -   Matches the visual hierarchy of the Profile page.
+
+#### 2. `src/components/features/profile/ProfilePage.tsx`
+
+-   **Ant Design Fixes:** Replaced deprecated `Progress` props:
+    -   `strokeWidth` -> `size={{ height: 6 }}`
+    -   `trailColor` -> `railColor`
+
+### Verification
+
+-   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
+-   **`npm run lint`:** ✅ Passed
+-   **UI Check:**
+-   Validated that the Settings page layout now mirrors the Profile page.
+-   Validated that Profile page warnings are resolved.
+
+---
+
+## Update: Logo Position & Layout Refinement
+
+**Timestamp:** 2026-01-11T20:42:00+05:30
+
+### Objective
+
+Further refine the "Company Information" layout to strictly match the "Profile Page" design pattern as requested ("fix logo position").
+
+### Changes
+
+#### 1. `src/components/features/settings/SettingsPage.tsx`
+
+-   **Moved Section Header:** Moved the `<h2>Company Information</h2>` into the left column of the flex container to anchor the visual hierarchy.
+-   **Logo Positioning:** Placed the Company Logo immediately below the header in the left column.
+-   **Removed Redundant Label:** Removed the "Company Logo" text label to reduce clutter and improve top-alignment with input fields.
+-   **Column Sizing:** Increased left column width to `w-48` and used `items-start` for robust alignment.
+-   **Cleaned Duplicates:** Confirmed removal of duplicate "Address" fields and broken grid rows.
+
+### Verification
+
+-   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
+-   **`npm run lint`:** ✅ Passed
+-   **Visual Structure:**
+    -   Left Col: Header -> Logo
+    -   Right Col: Inputs (aligned with top of left col)
+
+---
+
+## Update: Field Reordering
+
+**Timestamp:** 2026-01-11T20:55:00+05:30
+
+### Objective
+
+Reorder "Company Information" inputs as requested ("move time zone and currency above address").
+
+### Changes
+
+#### 1. `src/components/features/settings/SettingsPage.tsx`
+
+-   **Reordering:** Swapped the "Address" row with the "Time Zone & Currency" row.
+-   **New Order:**
+    1. Company Name & Tax ID
+    2. Time Zone & Currency
+    3. Address
+    4. Country
+
+### Verification
+
+-   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
+-   **`npm run lint`:** ✅ Passed
+-   **Visual Check:** Inputs flowing in the requested logical order.
+
+---
+
+## Update: Full Width Layout
+
+**Timestamp:** 2026-01-11T20:58:00+05:30
+
+### Objective
+
+Maximize the width of "Address" and "Country" fields (as requested: "make Address and country full width").
+
+### Changes
+
+#### 1. `src/components/features/settings/SettingsPage.tsx`
+
+-   **Full Width Containers:** Moved "Address" and "Country" sections _out_ of the shared flex container (which was split 50/50 with the logo column).
+-   **Structure:**
+    -   **Top Section (Flex):** Logo (Left) | Name, Tax, TimeZone, Currency (Right)
+    -   **Middle Section (Full):** Address (Text Area)
+    -   **Bottom Section (Full):** Country (Select)
+-   **Result:** These fields now span the full width of the content area, utilizing the available space better for larger inputs.
+
+### Verification
+
+-   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
+-   **`npm run lint`:** ✅ Passed
+-   **Visual Check:** Verified the fields break out of the 2-column layout and span full width.
+
+---
+
+## Update: Alignment Fix
+
+**Timestamp:** 2026-01-11T21:02:00+05:30
+
+### Objective
+
+Align the bottom of the Company Logo with the bottom of the "Time Zone" input field.
+
+### Changes
+
+#### 1. `src/components/features/settings/SettingsPage.tsx`
+
+-   **Flex Alignment:** Removed `items-start` from the parent flex container to allow children to stretch.
+-   **Left Column:** Added `justify-between` to the logo column.
+-   **Result:** The Logo is now pushed to the bottom of the left column. Since the right column (two rows of inputs) defines the container height, the Logo bottom aligns perfectly with the bottom of the second input row.
+
+### Verification
+
+-   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
+-   **`npm run lint`:** ✅ Passed
+-   **Visual Check:** Logo sits at the bottom of the section, aligned with the Time Zone inputs.
+
+---
+
+## Update: Spacing Adjustment
+
+**Timestamp:** 2026-01-11T21:05:00+05:30
+
+### Objective
+
+Increase the vertical space between the "Time Zone/Currency" row and the "Address" field to match the internal row spacing.
+
+### Changes
+
+#### 1. `src/components/features/settings/SettingsPage.tsx`
+
+-   **Spacing:** Added `mt-6` to the Address container `div`.
+-   **Reasoning:** The internal spacing between fields (Company Name -> Time Zone) is `space-y-6` (1.5rem/24px). Adding `mt-6` to the Address container (which is a sibling to the upper block) replicates this exact spacing, creating visual uniformity.
+
+### Verification
+
+-   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
+-   **`npm run lint`:** ✅ Passed
+-   **Visual Check:** Validated that the gap is now consistent with other field gaps.
+
+---
+
+## Update: Field Swap & UI Cleanup
+
+**Timestamp:** 2026-01-11T21:10:00+05:30
+
+### Objective
+
+Clean up the UI by removing helper text and rearrange fields (Tax ID <-> Country) as requested.
+
+### Changes
+
+#### 1. `src/components/features/settings/SettingsPage.tsx`
+
+-   **Helper Text Removal:** Removed the "JPG, PNG / Max 2MB" helper text below the logo to declutter the UI.
+-   **Field Swap:**
+    -   Moved **Country** from the bottom to the top right (next to Company Name), where "Tax ID" was.
+    -   Moved **Tax ID** from the top right to the bottom (full width), where "Country" was.
+-   **Layout Logic:** Used `multireplace` to swap the code blocks entirely, preserving their respective functionality (Select for Country, Input for Tax ID) while updating their layout contexts (grid cell vs full width container).
+
+### Verification
+
+-   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
+-   **`npm run lint`:** ✅ Passed
+-   **Visual Check:**
+    -   Top Row: Company Name | Country
+    -   Bottom Field: Tax ID (Full width)
+    -   No helper text overlapping the logo area.
+
+---
+
+## Update: Documents Tab Implementation
+
+**Timestamp:** 2026-01-11T21:19:00+05:30
+
+### Objective
+
+Add a "Documents" tab to the Requirement Details page to aggregate and display all file attachments found in the Activity & Chat feed.
+
+### Changes
+
+#### 1. `src/components/features/requirements/RequirementDetailsPage.tsx`
+
+-   **Tab Navigation:** Added a "Documents" tab button using the `Paperclip` icon.
+-   **State Management:** Updated `activeTab` type to include `'documents'`.
+-   **Content Logic:** Implemented the Documents tab view:
+    -   Aggregates attachments from `activityData` using `flatMap`.
+    -   Renders a responsive grid of document cards showing file type, name, uploader, and date.
+    -   Includes a fallback "No documents found" empty state.
+    -   Mocks file type detection based on extension.
+
+### Verification
+
+-   **`npm run typecheck`:** ✅ Passed (Exit code: 0)
+-   **`npm run lint`:** ✅ Passed
+-   **Functional Logic:**
+    -   `activityData` iteration correctly extracts `attachments` arrays.
+    -   Empty state handles cases with no attachments.
+    -   Types are safely handled (checking for string vs object structure in attachments).

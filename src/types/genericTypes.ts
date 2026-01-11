@@ -132,5 +132,6 @@ export interface CompanyUpdateInput {
   name: string;
   address?: string;
   website?: string;
+  logo?: string;
   [key: string]: unknown;
 }

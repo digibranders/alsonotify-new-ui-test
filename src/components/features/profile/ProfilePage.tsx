@@ -451,8 +451,8 @@ export function ProfilePage() {
                                         ? "#3b8eff"
                                         : "#ff3b3b"
                             }
-                            trailColor="#EEEEEE"
-                            strokeWidth={6}
+                            size={{ height: 6 }}
+                            railColor="#EEEEEE"
                             className="m-0"
                         />
                     </div>
