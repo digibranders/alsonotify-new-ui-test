@@ -1,15 +1,13 @@
-'use client';
-
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { X, ArrowRight } from 'lucide-react';
-import { useUserDetails } from '@/hooks/useUser';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export function ProfileCompletionBanner() {
   const [isVisible, setIsVisible] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-  const { data: userDetailsData } = useUserDetails();
+  const { user: currentUser } = useCurrentUser();
 
   // Check if banner was dismissed in localStorage (reset on each login session)
   useEffect(() => {
@@ -21,21 +19,8 @@ export function ProfileCompletionBanner() {
 
   // Get user data from localStorage or backend
   const user = useMemo(() => {
-    // First try localStorage (most up-to-date after login)
-    try {
-      if (typeof window !== 'undefined') {
-        const localUser = JSON.parse(localStorage.getItem('user') || '{}');
-        if (localUser && Object.keys(localUser).length > 0) {
-          return localUser;
-        }
-      }
-    } catch (error) {
-      // Ignore parse errors
-    }
-    // Fallback to API data
-    const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
-    return apiUser;
-  }, [userDetailsData]);
+    return currentUser;
+  }, [currentUser]);
 
   // Calculate profile completion percentage (same logic as ProfilePage)
   const profileCompletion = useMemo(() => {

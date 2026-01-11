@@ -23,6 +23,7 @@ import { TaskForm } from '../modals/TaskForm';
 import { RequirementsForm, RequirementFormData } from '../modals/RequirementsForm';
 import { WorkspaceForm } from '../modals/WorkspaceForm';
 import { NotificationPanel } from './NotificationPanel';
+import { Skeleton } from '../ui/Skeleton';
 import { FeedbackWidget } from './FeedbackWidget';
 import { useUserDetails } from '@/hooks/useUser';
 import { getRoleFromUser } from '@/utils/roleUtils';
@@ -119,25 +120,45 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
   const [localUser, setLocalUser] = useState<unknown>(null);
 
   useEffect(() => {
-
-      const stored = localStorage.getItem("user");
-      if (stored) {
+    // Initial load from local storage
+    const stored = localStorage.getItem("user");
+    if (stored) {
+      try {
         setLocalUser(JSON.parse(stored));
+      } catch (e) {
+        console.error("Failed to parse user from local storage", e);
       }
-
+    }
   }, []);
 
-  const user = useMemo(() => {
-    if (localUser && typeof localUser === 'object' && 'name' in localUser) return localUser as { name: string; first_name?: string; user_profile?: { first_name?: string; profile_pic?: string }; company?: { account_type?: string }; profile_pic?: string };
+  // Sync API data back to localStorage to keep it fresh
+  useEffect(() => {
+    if (userDetailsData?.result?.user) {
+      const newUser = userDetailsData.result.user;
+      setLocalUser(newUser);
+      localStorage.setItem("user", JSON.stringify(newUser));
+    } else if (userDetailsData?.result && !userDetailsData.result.user) {
+       // Handle case where result is the user object directly
+       const newUser = userDetailsData.result;
+       setLocalUser(newUser);
+       localStorage.setItem("user", JSON.stringify(newUser));
+    }
+  }, [userDetailsData]);
 
-    // Fallback to API data
-    const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {} as { name?: string; first_name?: string; user_profile?: { first_name?: string; profile_pic?: string }; company?: { account_type?: string }; profile_pic?: string };
+  const user = useMemo(() => {
+    // Prefer the most recent data (which will be setLocalUser from API if available, or initial load)
+    if (localUser && typeof localUser === 'object' && ('name' in localUser || 'first_name' in localUser || 'email' in localUser)) {
+        return localUser as { name?: string; first_name?: string; email?: string; user_profile?: { first_name?: string; profile_pic?: string }; company?: { account_type?: string }; profile_pic?: string; role?: { name: string; color?: string } };
+    }
+
+    // Fallback to API data structure directly if local state isn't ready
+    const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {} as any;
     return apiUser;
   }, [localUser, userDetailsData]);
 
   // Extract first name from user data
   const firstName = useMemo(() => {
-    const userProfile = user?.user_profile || userDetailsData?.result?.user?.user_profile;
+    const userProfile = user?.user_profile || (userDetailsData?.result?.user?.user_profile);
     if (userProfile?.first_name) {
       return userProfile.first_name;
     }
@@ -147,7 +168,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
     if (user?.name) {
       return user.name.split(' ')[0] || user.name;
     }
-    return 'User';
+    return user?.email?.split('@')[0] || 'User';
   }, [user, userDetailsData]);
 
   // Determine role for UI - prefer prop if passed from authoritative Layout
@@ -382,11 +403,20 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
           {/* Left: Greeting text */}
           <div className="flex flex-col font-['Manrope:Regular',sans-serif] font-normal justify-center not-italic text-[#111111] text-nowrap">
             <div className="flex items-center gap-3">
-              <p className="leading-[normal] text-[20px] whitespace-pre">
-                <span className="font-['Manrope:Regular',sans-serif]">{`👋 ${greeting}! `}</span>
-                <span className="font-['Manrope:Bold',sans-serif]">{firstName}</span>
-              </p>
-              <AccessBadge role={mappedRole || userRole} color={roleColor} />
+              {isLoadingUserDetails ? (
+                <>
+                  <Skeleton className="h-7 w-48 rounded-lg" />
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </>
+              ) : (
+                <>
+                  <p className="leading-[normal] text-[20px] whitespace-pre">
+                    <span className="font-['Manrope:Regular',sans-serif]">{`👋 ${greeting}! `}</span>
+                    <span className="font-['Manrope:Bold',sans-serif]">{firstName}</span>
+                  </p>
+                  <AccessBadge role={mappedRole || userRole} color={roleColor} />
+                </>
+              )}
             </div>
           </div>
 
@@ -455,12 +485,15 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
             {/* Profile photo & Role Switcher */}
             <Dropdown menu={{ items: profileMenuItems }} placement="bottomRight" trigger={['click']}>
               <div className="relative shrink-0 size-[32px] rounded-full ring-2 ring-transparent hover:ring-[#ff3b3b]/20 transition-all cursor-pointer">
-                <Avatar
-                  size={32}
-                  src={user?.user_profile?.profile_pic || user?.profile_pic || "https://github.com/shadcn.png"}
-                  // src={user?.user_profile?.profile_pic || user?.profile_pic || "/documents/profile.png"}
-                  alt={user?.name || 'User'}
-                />
+                {isLoadingUserDetails ? (
+                  <Skeleton className="w-[32px] h-[32px] rounded-full" />
+                ) : (
+                  <Avatar
+                    size={32}
+                    src={user?.user_profile?.profile_pic || user?.profile_pic || "https://github.com/shadcn.png"}
+                    alt={user?.name || 'User'}
+                  />
+                )}
               </div>
             </Dropdown>
           </div>

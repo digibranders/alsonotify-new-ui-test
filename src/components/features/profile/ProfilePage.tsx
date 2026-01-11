@@ -11,6 +11,7 @@ import {
     DEFAULT_DOCUMENT_TYPES,
     DOCUMENT_TYPES_STORAGE_KEY,
 } from "@/constants/documentTypes";
+import { useDocumentSettings } from "@/hooks/useDocumentSettings";
 import { getErrorMessage } from "@/types/api-utils";
 
 interface DocumentTypeLocal {
@@ -165,30 +166,10 @@ export function ProfilePage() {
         useState<UserDocument | null>(null);
     const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
-    // Document types configuration shared with Settings page (via localStorage)
-    const documentTypes: DocumentType[] = useMemo(() => {
-        try {
-            if (typeof window !== "undefined") {
-                const stored = window.localStorage.getItem(
-                    DOCUMENT_TYPES_STORAGE_KEY
-                );
-                if (stored) {
-                    const parsed = JSON.parse(stored);
-                    if (Array.isArray(parsed) && parsed.length > 0) {
-                        return parsed.map((doc: DocumentTypeLocal, index: number) => ({
-                            id: String(doc.id ?? index + 1),
-                            name: String(doc.name ?? ""),
-                            required: Boolean(doc.required),
-                        }));
-                    }
-                }
-            }
-        } catch (error) {
-            // Error reading document types from localStorage
-        }
 
-        return DEFAULT_DOCUMENT_TYPES;
-    }, []);
+
+    // Document settings from hook
+    const { documentTypes } = useDocumentSettings();
 
     // Mock documents data - TODO: Replace with actual API call when available
     const documents = useMemo(() => {

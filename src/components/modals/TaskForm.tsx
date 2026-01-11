@@ -50,6 +50,10 @@ const defaultFormData: TaskFormData = {
   description: "",
 };
 
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+
+// ... imports
+
 export function TaskForm({
   initialData,
   onSubmit,
@@ -61,24 +65,14 @@ export function TaskForm({
   disabledFields = {},
 }: TaskFormProps) {
   const { message } = App.useApp();
-  const { data: userDetailsData } = useUserDetails();
+  const { user: currentUser } = useCurrentUser();
   const [formData, setFormData] = useState<TaskFormData>(defaultFormData);
 
   // Get current logged-in user ID
   const currentUserId = useMemo(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
-        if (localUser && localUser.id) {
-          return String(localUser.id);
-        }
-      }
-    } catch (error) {
-      // Error reading user from localStorage
-    }
-    const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
-    return apiUser.id ? String(apiUser.id) : '';
-  }, [userDetailsData]);
+    if (currentUser?.id) return String(currentUser.id);
+    return '';
+  }, [currentUser]);
 
   useEffect(() => {
     if (initialData) {

@@ -12,11 +12,12 @@ import {
   useCreateEmployee,
   useUpdateEmployee,
   useUpdateEmployeeStatus,
-  useCompanyDepartments,
   useUserDetails,
   useRoles,
+  useCompanyDepartments,
   useCurrentUserCompany
 } from '../../../hooks/useUser';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { CompanyDepartmentType } from '../../../services/user';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTabSync } from '@/hooks/useTabSync';
@@ -33,16 +34,11 @@ export function EmployeesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { modal, message } = App.useApp();
-  // searchParams/router now handled by useTabSync, keeping searchParams if needed for other hooks or manual check
-  // actually useTabSync handles activeTab sync, but queryParams depends on activeTab, which is fine.
 
   const [activeTab, setActiveTab] = useTabSync<'active' | 'inactive'>({
     defaultTab: 'active',
     validTabs: ['active', 'inactive']
   });
-
-  // Sync activeTab with URL - handled by useTabSync
-  // useEffect(() => { ... }) removed
 
   // Build query parameters based on active tab
   const queryParams = useMemo(() => {
@@ -53,10 +49,6 @@ export function EmployeesPage() {
     return params.toString();
   }, [activeTab]);
 
-  const { data: employeesData, isLoading } = useEmployees(queryParams);
-  const { data: departmentsData } = useCompanyDepartments();
-  const { data: currentUserData } = useUserDetails();
-  const { data: companyData } = useCurrentUserCompany();
   const { data: rolesData } = useRoles();
   const createEmployeeMutation = useCreateEmployee();
   const updateEmployeeMutation = useUpdateEmployee();
@@ -78,14 +70,17 @@ export function EmployeesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-
-
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedEmployeeForDetails, setSelectedEmployeeForDetails] = useState<Employee | null>(null);
 
+  const { data: employeesData, isLoading } = useEmployees(queryParams);
+  const { data: departmentsData } = useCompanyDepartments();
+  const { user: currentUser } = useCurrentUser();
+  const { data: currentUserData } = useUserDetails();
+  const { data: companyData } = useCurrentUserCompany();
 
   // Transform backend data to UI format
   const employees = useMemo(() => {
@@ -415,49 +410,26 @@ export function EmployeesPage() {
     }
   };
 
+
   // Get current user ID to prevent self-deactivation
   const currentUserId = useMemo(() => {
-    // Fallback to localStorage for ID if API data isn't ready
-    try {
-      if (typeof window !== 'undefined') {
-        const localUserStr = localStorage.getItem("user");
-        if (localUserStr) {
-          const localUser = JSON.parse(localUserStr);
-          // Check for various possible ID fields - Prioritize result wrapper
-          const localId = localUser?.result?.id || localUser?.result?.user_id || localUser?.id || localUser?.user_id || localUser?.user?.id || localUser?.user?.user_id;
-          if (localId) return Number(localId);
-        }
-      }
-    } catch (error) {
-      // Ignore localStorage errors
+    if (currentUser?.id) {
+        return Number(currentUser.id);
     }
-    
-    // currentUserData via mapUserDtoToEmployee has normalized .id
-    const apiUserId = currentUserData?.result?.id;
-    return apiUserId ? Number(apiUserId) : null;
-  }, [currentUserData]);
+    // Fallback if ID is in a different structure
+    if (currentUser?.user_id) {
+        return Number(currentUser.user_id);
+    }
+    return null;
+  }, [currentUser]);
 
   // Robustly get current user email (API -> LocalStorage)
   const currentUserEmail = useMemo(() => {
-    // 1. Try API data
-    if (currentUserData?.result?.email) return currentUserData.result.email;
-    
-    // 2. Try localStorage
-    try {
-      if (typeof window !== 'undefined') {
-        const localUserStr = localStorage.getItem("user");
-        if (localUserStr) {
-          const localUser = JSON.parse(localUserStr);
-          // Check for various possible Email fields - Prioritize result wrapper
-          const localEmail = localUser?.result?.email || localUser?.result?.user?.email || localUser?.email || localUser?.user?.email || localUser?.user_profile?.email;
-          if (localEmail) return localEmail;
-        }
-      }
-    } catch (e) {
-      // Ignore
+    if (currentUser?.email) {
+        return currentUser.email;
     }
     return null;
-  }, [currentUserData]);
+  }, [currentUser]);
 
   // Bulk update access level
   const handleBulkUpdateAccess = async (access: string) => { // access is role name

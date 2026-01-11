@@ -19,6 +19,8 @@ import ReactMarkdown, { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { generateAgentResponse } from "@/services/assistant";
 import { Tooltip, App } from "antd";
+import { useActiveTimer } from '@/hooks/useActiveTimer';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useUserDetails } from "@/hooks/useUser";
 import { useTasks, useUpdateTaskStatus } from "@/hooks/useTask";
 import { useWorkspaces } from "@/hooks/useWorkspace";
@@ -61,6 +63,9 @@ function parseAsUTC(dateString: string): Date {
 
 export function ProductivityWidget() {
   const { message: antdMessage } = App.useApp();
+  
+  // LocalStorage Timer Hook
+  const { timerState: savedTimerState, saveTimerState, clearTimerState } = useActiveTimer();
 
   // USE SHARED TIMER CONTEXT
   const { timerState, startTimer: contextStartTimer, stopTimer: contextStopTimer, isLoading: timerLoading } = useTimer();
@@ -262,81 +267,67 @@ export function ProductivityWidget() {
         // Save to localStorage for cross-tab sync
         const task = tasks.find(t => t.id === selectedTaskId);
         if (task) {
-          localStorage.setItem(
-            "activeTimer",
-            JSON.stringify({
-              taskId: selectedTaskId,
-              taskName: task.name,
-              startTime: activeWorklog.start_datetime,
-              worklogId: activeWorklog.id || null,
-              isRunning: true,
-            })
-          );
+          saveTimerState({
+            taskId: task.id,
+            taskName: task.name,
+            startTime: activeWorklog.start_datetime,
+            worklogId: activeWorklog.id || null,
+            isRunning: true,
+          });
         }
       } else {
         // No active worklog - check if we have paused state in localStorage
-        const saved = localStorage.getItem("activeTimer");
+        const saved = savedTimerState;
         if (saved) {
-          try {
-            const savedData = JSON.parse(saved);
-            if (savedData.taskId === selectedTaskId && savedData.isPaused && savedData.pausedElapsed > 0) {
-              // Task was paused - show paused elapsed time (not running)
-              setTime(savedData.pausedElapsed);
-              setIsRunning(false);
-              setWorklogId(null);
-              setStartTime("");
-              pausedElapsedRef.current = savedData.pausedElapsed;
-              return;
-            }
-          } catch (error) {
-            // Error loading saved timer
-          }
+        if (saved.taskId === selectedTaskId && saved.isPaused && saved.pausedElapsed && saved.pausedElapsed > 0) {
+          // Task was paused - show paused elapsed time (not running)
+          setTime(saved.pausedElapsed);
+          setIsRunning(false);
+          setWorklogId(null);
+          setStartTime("");
+          pausedElapsedRef.current = saved.pausedElapsed;
+          return;
         }
-
-        // No active worklog and no paused state - clear timer completely
-        setIsRunning(false);
-        setStartTime("");
-        setWorklogId(null);
-        setTime(0);
-        pausedElapsedRef.current = 0;
       }
+
+      // No active worklog and no paused state - clear timer completely
+      setIsRunning(false);
+      setStartTime("");
+      setWorklogId(null);
+      setTime(0);
+      pausedElapsedRef.current = 0;
     }
-  }, [taskDetailData, selectedTaskId, tasks]);
+  }
+  }, [taskDetailData, selectedTaskId, tasks, savedTimerState]); // Added savedTimerState dependency
 
   // Load saved timer state from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem("activeTimer");
-    if (saved) {
-      try {
-        const savedData = JSON.parse(saved);
-        const { taskId, taskName, startTime: savedStart, worklogId: savedWorklogId, isRunning: savedIsRunning, pausedTime: savedPausedTime, resumeTime: savedResumeTime } = savedData;
-        if (taskId && taskName) {
-          // Set selected task
-          setSelectedTask(taskName);
-          setSelectedTaskId(taskId);
+    if (savedTimerState) {
+      const { taskId, taskName, startTime: savedStart, worklogId: savedWorklogId, isRunning: savedIsRunning } = savedTimerState;
+      if (taskId && taskName) {
+        // Set selected task
+        setSelectedTask(taskName);
+        setSelectedTaskId(taskId);
 
-          // If was running, set startTime and worklogId so taskDetail fetch can restore
-          if (savedIsRunning && savedStart) {
-            setStartTime(savedStart);
-            if (savedWorklogId) {
-              setWorklogId(savedWorklogId);
-            }
-          } else {
-            // No paused state to restore - timer will start fresh
-            if (savedStart) {
-              setStartTime(savedStart);
-            }
-            if (savedWorklogId) {
-              setWorklogId(savedWorklogId);
-            }
+        // If was running, set startTime and worklogId so taskDetail fetch can restore
+        if (savedIsRunning && savedStart) {
+          setStartTime(savedStart);
+          if (savedWorklogId) {
+            setWorklogId(savedWorklogId);
           }
-          // Fetch task detail to verify active worklog - this will properly restore the timer
+        } else {
+          // No paused state to restore - timer will start fresh
+          if (savedStart) {
+            setStartTime(savedStart);
+          }
+          if (savedWorklogId) {
+            setWorklogId(savedWorklogId);
+          }
         }
-      } catch (error) {
-        localStorage.removeItem("activeTimer");
+        // Fetch task detail to verify active worklog - this will properly restore the timer
       }
     }
-  }, []);
+  }, [savedTimerState]); // Added dependency to react to storage changes
 
   // Set initial selected task if available and none selected
   // Removed auto-selection to show placeholder "Select Task" as requested
@@ -384,17 +375,11 @@ export function ProductivityWidget() {
         return;
       } else {
         // Check if we have paused elapsed time to resume from
-        const savedTimer = localStorage.getItem("activeTimer");
         let previousElapsed = 0;
-        if (savedTimer) {
-          try {
-            const savedData = JSON.parse(savedTimer);
-            if (savedData.taskId === task.id && savedData.isPaused && savedData.pausedElapsed > 0) {
-              previousElapsed = savedData.pausedElapsed;
+        if (savedTimerState) {
+            if (savedTimerState.taskId === task.id && savedTimerState.isPaused && savedTimerState.pausedElapsed && savedTimerState.pausedElapsed > 0) {
+              previousElapsed = savedTimerState.pausedElapsed;
             }
-          } catch (e) {
-            // Error reading paused time
-          }
         }
 
         // If resuming from pause, also check pausedElapsedRef
@@ -423,9 +408,7 @@ export function ProductivityWidget() {
               pausedElapsedRef.current = 0;
 
               // Save to localStorage
-              localStorage.setItem(
-                "activeTimer",
-                JSON.stringify({
+              saveTimerState({
                   taskId: task.id,
                   taskName: selectedTask,
                   startTime: adjustedStart,
@@ -433,8 +416,7 @@ export function ProductivityWidget() {
                   isRunning: true,
                   isPaused: false,
                   pausedElapsed: 0,
-                })
-              );
+              });
 
               // Update selected task ID if not set
               if (!selectedTaskId) {
@@ -507,18 +489,15 @@ export function ProductivityWidget() {
 
             // CRITICAL: Save pausedElapsed to localStorage for cross-session persistence
             const task = tasks.find(t => t.id === selectedTaskId);
-            localStorage.setItem(
-              "activeTimer",
-              JSON.stringify({
-                taskId: selectedTaskId,
+            saveTimerState({
+                taskId: selectedTaskId || 0, // Fallback safe
                 taskName: task?.name || selectedTask,
                 worklogId: null,
                 startTime: "",
                 isRunning: false,
                 isPaused: true,
                 pausedElapsed: elapsed, // This is the key for resume functionality
-              })
-            );
+            });
 
             antdMessage.info(`Paused timer at ${formatDuration(elapsed)} for: ${task?.name || selectedTask}`);
           },
@@ -563,7 +542,7 @@ export function ProductivityWidget() {
     if (!task) return;
 
     // Match old frontend: get startTime from localStorage (savedIso)
-    const saved = localStorage.getItem("activeTimer");
+    const saved = savedTimerState;
     if (!saved) {
       antdMessage.error("No active worklog found");
       return;
@@ -572,9 +551,9 @@ export function ProductivityWidget() {
     let savedIso: string;
     let savedWorklogId: number | null = null;
     try {
-      const savedData = JSON.parse(saved);
-      savedIso = savedData.startTime;
-      savedWorklogId = savedData.worklogId || null;
+      // Direct access from state object
+      savedIso = saved.startTime;
+      savedWorklogId = saved.worklogId || null;
     } catch (error) {
       antdMessage.error("Error reading saved timer data");
       return;
@@ -618,7 +597,7 @@ export function ProductivityWidget() {
                     setTime(0);
                     pausedElapsedRef.current = 0;
                     setWorklogId(null);
-                    localStorage.removeItem("activeTimer");
+                    clearTimerState();
                     setSelectedTask("");
                     setSelectedTaskId(null);
                     setTaskDetail(null);
@@ -644,7 +623,7 @@ export function ProductivityWidget() {
                     setTime(0);
                     pausedElapsedRef.current = 0;
                     setWorklogId(null);
-                    localStorage.removeItem("activeTimer");
+                    clearTimerState();
                     refetchTaskDetail();
                     setShowWorklogModal(false);
                     setWorklogAction(null);
@@ -707,7 +686,7 @@ export function ProductivityWidget() {
                     setTime(0);
                     pausedElapsedRef.current = 0;
                     setWorklogId(null);
-                    localStorage.removeItem("activeTimer");
+                    clearTimerState();
                     setSelectedTask("");
                     setSelectedTaskId(null);
                     setTaskDetail(null);
@@ -731,7 +710,7 @@ export function ProductivityWidget() {
                     setTime(0);
                     pausedElapsedRef.current = 0;
                     setWorklogId(null);
-                    localStorage.removeItem("activeTimer");
+                    clearTimerState();
                     refetchTaskDetail();
                     setShowWorklogModal(false);
                     setWorklogAction(null);
@@ -773,7 +752,7 @@ export function ProductivityWidget() {
             setStartTime("");
             setSessionStartTime("");
             setWorklogId(null);
-            localStorage.removeItem("activeTimer");
+            clearTimerState();
 
             if (worklogAction === 'complete') {
               setSelectedTask("");

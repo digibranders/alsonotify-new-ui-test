@@ -2,6 +2,7 @@ import svgPaths from "../../constants/iconPaths";
 import { ChevronLeft, ChevronRight, Video, Calendar as CalendarIcon, Clock, Plus, ExternalLink, X } from "lucide-react";
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Modal, Input, Button, Select, DatePicker, Spin, Tag, Popover, App } from 'antd';
+import { Skeleton } from '../ui/Skeleton';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -323,8 +324,29 @@ export function MeetingsWidget({ onNavigate }: { onNavigate?: (page: string) => 
         {/* Meetings List */}
         <div className="flex flex-col gap-2.5 flex-1 mt-2 overflow-hidden">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Spin size="small" />
+            <div className="flex flex-col gap-2.5">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex flex-col p-3 rounded-[16px] border border-gray-100 bg-white">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex flex-col gap-2">
+                       <Skeleton className="h-4 w-32 rounded-md" />
+                       <div className="flex items-center gap-2">
+                         <Skeleton className="h-3 w-16 rounded-md" />
+                         <Skeleton className="h-3 w-12 rounded-md" />
+                       </div>
+                    </div>
+                    <Skeleton className="w-8 h-8 rounded-full" />
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <div className="flex -space-x-2">
+                      <Skeleton className="w-6 h-6 rounded-full border-2 border-white" />
+                      <Skeleton className="w-6 h-6 rounded-full border-2 border-white" />
+                      <Skeleton className="w-6 h-6 rounded-full border-2 border-white" />
+                    </div>
+                    <Skeleton className="h-5 w-16 rounded-full" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : isError && !eventsData ? (
             <div className="flex items-center justify-center py-8">

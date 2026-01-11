@@ -11,6 +11,8 @@ import { useTasks, useCreateTask, useDeleteTask, useUpdateTask } from '@/hooks/u
 import { useWorkspaces } from '@/hooks/useWorkspace';
 import { searchEmployees } from '@/services/user';
 import { getRoleFromUser } from '@/utils/roleUtils';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+
 import { useUserDetails, useCurrentUserCompany } from '@/hooks/useUser';
 import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -52,7 +54,11 @@ export function TasksPage() {
   const deleteTaskMutation = useDeleteTask();
   const updateTaskMutation = useUpdateTask();
   const { data: workspacesData } = useWorkspaces();
-  const { data: userDetailsData } = useUserDetails();
+  
+  // Use new centralized hook
+  const { user: currentUser } = useCurrentUser();
+  
+  const { data: userDetailsData } = useUserDetails(); // Keep for legacy/edge cases if needed, but prefer currentUser
   const { data: companyData } = useCurrentUserCompany();
 
   // Get current user's company name as fallback for in-house tasks
@@ -61,36 +67,23 @@ export function TasksPage() {
     if (companyData?.result?.name) {
       return companyData.result.name;
     }
-    // Fallback to user details
-    try {
-      if (typeof window !== 'undefined') {
-        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
-        if (localUser?.company?.name) {
-          return localUser.company.name;
-        }
-      }
-    } catch (error) {
-      // Error reading company from localStorage
+    // Fallback to centralized user hook
+    if (currentUser?.company?.name) {
+        return currentUser.company.name;
     }
-    const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
-    return apiUser?.company?.name || null;
-  }, [companyData, userDetailsData]);
+    return null;
+  }, [companyData, currentUser]);
 
   // Get current user name
   const currentUserName = useMemo(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const localUser = JSON.parse(localStorage.getItem("user") || "{}");
-        if (localUser && localUser.name) {
-          return localUser.name;
-        }
-      }
-    } catch (error) {
-      // Error reading user from localStorage
+    if (currentUser?.name) {
+        return currentUser.name;
     }
-    const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
-    return apiUser.name || apiUser.user_profile?.first_name || null;
-  }, [userDetailsData]);
+    if (currentUser?.user_profile?.first_name) {
+        return currentUser.user_profile.first_name;
+    }
+    return null;
+  }, [currentUser]);
 
   // Read tab from URL params
   const tabFromUrl = searchParams.get('tab');
