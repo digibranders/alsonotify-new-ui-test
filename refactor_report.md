@@ -1,3 +1,29 @@
+## [2026-01-11 - Fix User State Persistence]
+
+### Objective
+
+Resolve issue where user details (Name, Role) were missing or incorrect after re-login due to stale `localStorage` data.
+
+### Changes
+
+-   **Updated `src/hooks/useAuth.ts`**:
+    -   `useLogin` now saves user data to `localStorage`.
+    -   `useLogout` now clears user data and `profileCompletionBannerDismissed` from `localStorage`.
+    -   `useCompleteSignup` now saves user data to `localStorage`.
+-   **Updated `src/components/common/Topbar.tsx`**:
+    -   Added synchronization to update `localStorage` when fresh API user data arrives.
+    -   Improved `user` memoization to handle both local and API data robustly.
+
+### Verification
+
+-   `npm run typecheck`: **Passed** (0 errors).
+-   `npm run lint`: **Passed** (467 warnings, no new errors).
+-   `npm run build`: **Passed**.
+
+### Outcome
+
+User state is now correctly persisted and synchronized. The "missing name" and "incorrect role" issues after re-login are resolved by ensuring `localStorage` is kept in sync with the latest API data and cleared on logout.
+
 # Refactor Report: Employee KPI Calculation Update
 
 ## Objective
@@ -1556,3 +1582,111 @@ Add a "Documents" tab to the Requirement Details page to aggregate and display a
     -   `activityData` iteration correctly extracts `attachments` arrays.
     -   Empty state handles cases with no attachments.
     -   Types are safely handled (checking for string vs object structure in attachments).
+
+## [2026-01-11 - Global User Storage Refactor]
+
+### Objective
+
+Centralize user data access by refactoring scattered `localStorage` calls into a single `useCurrentUser` hook to prevent stale data and ensure type safety.
+
+### Changes
+
+#### 1. `src/hooks/useCurrentUser.ts`
+
+-   **New Hook:** Created `useCurrentUser` to wrap `useUserDetails` and handle `localStorage` fallback logic.
+-   **Type Safety:** Returns a typed `CurrentUser` object.
+
+#### 2. `src/components/features/tasks/TasksPage.tsx`
+
+-   **Refactor:** Replaced manual `localStorage` parsing with `useCurrentUser`.
+-   **Cleanup:** Removed redundant fallback logic for user name and company.
+
+#### 3. `src/components/features/employees/EmployeesPage.tsx`
+
+-   **Refactor:** Replaced complex `localStorage` parsing for `currentUserId` and `currentUserEmail`.
+-   **Fix:** Restored missing state variables and import components during refactor process.
+
+#### 4. `src/components/common/ProfileCompletionBanner.tsx`
+
+-   **Refactor:** Simplified user data retrieval using `useCurrentUser`.
+-   **Fix:** Improved null safety for user object access.
+
+### Verification
+
+-   **`npm run typecheck`:** ✅ Passed
+-   **`npm run lint`:** ✅ Passed
+-   **`npm run build`:** ✅ Passed
+-   **Logic Verification:**
+    -   Confirmed `TasksPage` resolves current user correctly.
+    -   Confirmed `EmployeesPage` correctly identifies current user for self-deactivation check.
+    -   Confirmed `ProfileCompletionBanner` handles user data safely.
+
+## [2026-01-11 - Refactor LocalStorage Usage]
+
+### Objective
+
+Eliminate inconsistent and type-unsafe `localStorage` usage across the application by centralizing logic into custom hooks. This ensures better type safety, cleaner components, and consistent state management for User Data, Active Timer, Document Settings, and Invoice Presets.
+
+### Changes
+
+-   **New Hooks**:
+
+    -   `src/hooks/useActiveTimer.ts`: Manages productivity timer state (`activeTimer`).
+    -   `src/hooks/useDocumentSettings.ts`: Manages required document types for Profile/Settings (`document_types` / `alsonotify_required_documents`).
+    -   `src/hooks/useInvoicePresets.ts`: Manages invoice payment presets (`invoice_payment_presets`).
+    -   `src/hooks/useCurrentUser.ts`: (From Phase 1) Manages user identity (`user` key).
+
+-   **Refactored Components**:
+    -   **`src/components/dashboard/ProductivityWidget.tsx`**:
+        -   Replaced all `localStorage.getItem/setItem/removeItem` with `useActiveTimer` hook.
+        -   Simplified timer restoration and cleanup logic.
+    -   **`src/components/features/settings/SettingsPage.tsx`**:
+        -   Replaced manual `localStorage` sync with `useDocumentSettings`.
+        -   Ensured consistent key usage with `ProfilePage`.
+    -   **`src/components/features/profile/ProfilePage.tsx`**:
+        -   Replaced manual read-only access with `useDocumentSettings`.
+    -   **`src/components/features/finance/CreateInvoicePage.tsx`**:
+        -   Replaced manual preset management with `useInvoicePresets`.
+    -   **`src/components/modals/TaskForm.tsx`**:
+        -   Updated to use `useCurrentUser` for safe user ID access.
+
+### Verification
+
+-   `npm run typecheck`: **Passed** (0 errors).
+-   `npm run lint`: **Passed** (warnings only).
+-   `npm run build`: **Passed**.
+
+### Outcome
+
+The application now has a unified strategy for client-side persistence. Direct usage of `localStorage` has been removed from feature components, reducing the risk of key typos, parsing errors, and inconsistent state handling.
+
+## [2026-01-12 - Skeleton Loading UI]
+
+### Objective
+
+Improve the perceived performance and professionalism of the application by replacing generic "Loading..." text and spinners with animated skeleton loaders. This addresses the request to make the UI look more premium and less like a prototype during data fetching.
+
+### Changes
+
+-   **New Components**:
+
+    -   `src/components/ui/Skeleton.tsx`: A reusable primitive component using Tailwind's `animate-pulse` for creating loading placeholders.
+    -   `src/lib/utils.ts`: Added `cn` utility for robust class merging (shadcn-style).
+
+-   **Refactored Components**:
+    -   **`src/components/common/Topbar.tsx`**:
+        -   Replaced conditional text rendering for User Name, Greeting, and Avatar with skeletons.
+        -   Prevents layout shifts and "User" text appearing before data load.
+    -   **`src/components/dashboard/ProgressWidget.tsx`**:
+        -   Replaced centered "Loading..." text with a custom skeleton layout mirroring the Chart + Legend structure.
+    -   **`src/components/dashboard/MeetingsWidget.tsx`**:
+        -   Replaced `Spin` loader with a list of `MeetingItem`-shaped skeletons.
+
+### Verification
+
+-   `npm run typecheck`: **Passed**
+-   `npm run build`: **Passed**
+
+### Outcome
+
+The dashboard and topbar now exhibit a smooth, high-quality loading state that matches modern web standards (e.g., YouTube, Linear), significantly enhancing the user experience during initial load and data refreshment.

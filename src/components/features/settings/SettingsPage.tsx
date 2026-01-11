@@ -6,6 +6,7 @@ import { useUpdateCompany, useCurrentUserCompany, useRoles, useRolePermissions, 
 import { usePublicHolidays, useCreateHoliday, useUpdateHoliday, useDeleteHoliday } from '@/hooks/useHoliday';
 import { getErrorMessage } from '@/types/api-utils';
 import { DEFAULT_DOCUMENT_TYPES, DOCUMENT_TYPES_STORAGE_KEY } from '@/constants/documentTypes';
+import { useDocumentSettings } from '@/hooks/useDocumentSettings';
 import { getRoleFromUser } from '@/utils/roleUtils';
 import { People24Filled } from "@fluentui/react-icons";
 import { commonCountries } from '@/data/defaultData';
@@ -294,42 +295,12 @@ export function SettingsPage() {
   const [isAddingDept, setIsAddingDept] = useState(false);
   const [newDeptName, setNewDeptName] = useState('');
 
-  // Required Documents State - initialized from localStorage (saved settings) or defaults
-  const [requiredDocuments, setRequiredDocuments] = useState<DocumentTypeLocal[]>(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const stored = window.localStorage.getItem(DOCUMENT_TYPES_STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed.map((doc: DocumentTypeLocal, index: number) => ({
-              id: String(doc.id ?? index + 1),
-              name: String(doc.name ?? ''),
-              required: Boolean(doc.required),
-            }));
-          }
-        }
-      }
-    } catch (error) {
-      // Error reading document types from localStorage
-    }
-
-    // Fallback to shared defaults
-    return DEFAULT_DOCUMENT_TYPES;
-  });
+  const { documentTypes: requiredDocuments, updateDocumentTypes: setRequiredDocuments } = useDocumentSettings();
   const [isAddingDoc, setIsAddingDoc] = useState(false);
   const [newDocName, setNewDocName] = useState('');
 
-  // Persist required documents configuration so Profile page can read it
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(DOCUMENT_TYPES_STORAGE_KEY, JSON.stringify(requiredDocuments));
-      }
-    } catch (error) {
-      // Error saving document types to localStorage
-    }
-  }, [requiredDocuments]);
+  // Persist done via hook
+
 
   // Leaves State
   const [leaves, setLeaves] = useState<CompanyLeaveSetting[]>([

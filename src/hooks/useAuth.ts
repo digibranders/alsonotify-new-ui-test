@@ -16,7 +16,10 @@ export const useLogin = () => {
       if (data.success && data.result.token) {
         setToken(data.result.token);
         setAuthToken(data.result.token);
-        queryClient.setQueryData(queryKeys.users.me(), data.result.user);
+        if (data.result.user) {
+          queryClient.setQueryData(queryKeys.users.me(), data.result.user);
+          localStorage.setItem("user", JSON.stringify(data.result.user));
+        }
 
         const redirect = variables.redirect || "/dashboard";
         router.push(redirect);
@@ -49,6 +52,7 @@ export const useLogout = () => {
     // Clear profile completion banner dismissal so it shows again on next login
     if (typeof window !== 'undefined') {
       localStorage.removeItem('profileCompletionBannerDismissed');
+      localStorage.removeItem('user');
     }
     router.push("/login");
   };

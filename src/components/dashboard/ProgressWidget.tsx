@@ -18,6 +18,7 @@ import { useWorkspaces } from '@/hooks/useWorkspace';
 import { useUserDetails } from '@/hooks/useUser';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
 import { DateRangeSelector } from '../common/DateRangeSelector';
+import { Skeleton } from '../ui/Skeleton';
 
 export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(() => {
@@ -372,12 +373,28 @@ function ProgressCard({ title, data, isLoading = false, dateRangeLabel = 'this p
 
   if (isLoading) {
     return (
-      <div className="group relative flex flex-col bg-white rounded-[20px] border border-gray-100 p-5 h-full overflow-hidden">
-        <div className="flex items-center justify-between mb-4 z-10 shrink-0">
-          <h4 className="font-['Manrope',sans-serif] font-semibold text-[16px] text-[#111111]">{title}</h4>
+      <div className="group relative flex flex-col bg-white rounded-[20px] border border-gray-100 p-4 h-full overflow-hidden">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between mb-3 z-10 shrink-0">
+          <Skeleton className="h-6 w-24 rounded-md" />
+          <Skeleton className="w-8 h-8 rounded-full" />
         </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-[13px] text-[#666666] font-['Manrope',sans-serif]">Loading...</div>
+        {/* Content Skeleton */}
+        <div className="flex-1 flex items-center gap-5 min-h-[140px] px-2">
+          {/* Chart Skeleton */}
+          <Skeleton className="w-[130px] h-[130px] rounded-full shrink-0" />
+          {/* Legend Skeleton */}
+          <div className="flex-1 flex flex-col justify-center gap-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="w-2 h-2 rounded-full" />
+                  <Skeleton className="h-4 w-20 rounded-md" />
+                </div>
+                <Skeleton className="h-5 w-8 rounded-md" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );

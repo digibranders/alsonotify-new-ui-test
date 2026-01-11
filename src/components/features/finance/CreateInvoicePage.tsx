@@ -30,6 +30,7 @@ import { useCurrentUserCompany, usePartners } from '@/hooks/useUser';
 import { commonCountries } from '@/data/defaultData';
 import { Select } from 'antd';
 import { InvoicePreview } from './InvoicePreview';
+import { useInvoicePresets, InvoicePaymentPreset } from '@/hooks/useInvoicePresets';
 
 const { Option } = Select;
 
@@ -140,53 +141,21 @@ export function CreateInvoicePage() {
     }
   }, [partnerData, clientId]);
 
-  // Payment Presets State
-  const [paymentPresets, setPaymentPresets] = useState<PaymentPreset[]>([]);
+  // Payment Presets State using Hook
+  const { presets: paymentPresets, addPreset, deletePreset } = useInvoicePresets();
   const [showSavePresetDialog, setShowSavePresetDialog] = useState(false);
   const [newPresetName, setNewPresetName] = useState('');
-
-  // Load presets on mount
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('invoice_payment_presets');
-        if (saved) {
-          setPaymentPresets(JSON.parse(saved));
-        } else {
-          // Default presets for new users
-          const defaults: PaymentPreset[] = [
-             { 
-               id: 'bank_transfer', 
-               name: 'Bank Transfer', 
-               content: "Bank: HDFC Bank\nA/C Name: Fynix Digital Pvt Ltd\nA/C No: 50200012345678\nIFSC: HDFC0001234\nBranch: Mumbai" 
-             },
-             { 
-               id: 'upi', 
-               name: 'UPI', 
-               content: "UPI ID: fynix@hdfcbank\nGPay/PhonePe: 9876543210" 
-             }
-          ];
-          setPaymentPresets(defaults);
-          localStorage.setItem('invoice_payment_presets', JSON.stringify(defaults));
-        }
-      }
-    } catch (e) {
-      console.error("Failed to load presets", e);
-    }
-  }, []);
 
   const handleSavePreset = () => {
       if (!newPresetName.trim() || !footer.trim()) return;
       
-      const newPreset: PaymentPreset = {
+      const newPreset: InvoicePaymentPreset = {
           id: Date.now().toString(),
           name: newPresetName.trim(),
           content: footer
       };
       
-      const updated = [...paymentPresets, newPreset];
-      setPaymentPresets(updated);
-      localStorage.setItem('invoice_payment_presets', JSON.stringify(updated));
+      addPreset(newPreset);
       
       setNewPresetName('');
       setShowSavePresetDialog(false);
@@ -194,9 +163,7 @@ export function CreateInvoicePage() {
   };
 
   const handleDeletePreset = (id: string) => {
-      const updated = paymentPresets.filter(p => p.id !== id);
-      setPaymentPresets(updated);
-      localStorage.setItem('invoice_payment_presets', JSON.stringify(updated));
+      deletePreset(id);
       toast.success("Preset deleted");
   };
 
