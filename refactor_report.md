@@ -1091,7 +1091,7 @@ Modernize the sidebar aesthetic and improve semantic clarity by replacing Fluent
     -   **Tasks:** `ListTodo`
     -   **Reports:** `BarChart3`
     -   **Calendar:** `CalendarDays`
-    -   **Leaves:** `Palmtree` (Changed from `Palmtree` for broader "Time Off" context)
+    -   **Leaves:** `CalendarOff` (Changed from `Palmtree` to represent "Absence/Time Off")
     -   **Finance:** `CircleDollarSign` (Changed from `Banknote` for clarity)
     -   **Notes:** `NotebookPen`
 -   **Toggle Button:** Replaced `PanelLeft...` icons with `ChevronsLeft` / `ChevronsRight`.
