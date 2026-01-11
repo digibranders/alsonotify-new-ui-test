@@ -13,7 +13,7 @@ import {
   ListTodo,
   BarChart3,
   CalendarDays,
-  Palmtree,
+  CalendarOff,
   CircleDollarSign,
   NotebookPen,
   ChevronsLeft,
@@ -102,7 +102,7 @@ const NAV_ITEMS: NavItemConfig[] = [
     id: 'leaves',
     path: '/dashboard/leaves',
     label: 'Leaves',
-    icon: <Palmtree size={20} />,
+    icon: <CalendarOff size={20} />,
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
   {
