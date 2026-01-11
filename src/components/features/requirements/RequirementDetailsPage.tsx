@@ -7,7 +7,8 @@ import {
   Plus, RotateCcw, Clock, MoreVertical,
   Paperclip, X, Send, MessageSquare, Calendar,
   TrendingUp, TrendingDown, Briefcase,
-  CheckCircle2, AlertCircle, Loader2
+  CheckCircle2, AlertCircle, Loader2,
+  Eye, Download
 } from 'lucide-react';
 import {
   AreaChart,
@@ -43,7 +44,7 @@ export function RequirementDetailsPage() {
   const { data: tasksData } = useTasks(`workspace_id=${workspaceId}`);
   const { data: userData } = useUserDetails();
 
-  const [activeTab, setActiveTab] = useState<'details' | 'tasks' | 'gantt' | 'kanban' | 'pnl'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'tasks' | 'gantt' | 'kanban' | 'pnl' | 'documents'>('details');
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [messageText, setMessageText] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -293,6 +294,12 @@ export function RequirementDetailsPage() {
                 onClick={() => setActiveTab('pnl')}
                 icon={TrendingUp}
                 label="P&L"
+              />
+              <TabButton
+                active={activeTab === 'documents'}
+                onClick={() => setActiveTab('documents')}
+                icon={Paperclip}
+                label="Documents"
               />
             </div>
           </div>
@@ -1187,6 +1194,86 @@ export function RequirementDetailsPage() {
                 </div>
               </div>
             </div>
+          )}
+          
+          {activeTab === 'documents' && (
+             <div className="max-w-5xl mx-auto space-y-8">
+               <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
+                 <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-6 flex items-center gap-2">
+                   <Paperclip className="w-5 h-5 text-[#ff3b3b]" />
+                   Documents
+                 </h3>
+                 
+                 {(() => {
+                   // Aggregate all attachments from activityData
+                   const allDocuments = activityData.flatMap(activity => {
+                      if (!activity.attachments || activity.attachments.length === 0) return [];
+                      return activity.attachments.map(file => ({
+                         name: typeof file === 'string' ? file : (file as any).name,
+                         uploadedBy: activity.user,
+                         date: activity.date,
+                         type: String(typeof file === 'string' ? file : (file as any).name).split('.').pop()?.toUpperCase() || 'FILE',
+                         activityId: activity.id
+                      }));
+                   });
+
+                   if (allDocuments.length === 0) {
+                      return (
+                         <div className="text-center py-12">
+                            <div className="w-16 h-16 bg-[#F7F7F7] rounded-full flex items-center justify-center mx-auto mb-4">
+                               <Paperclip className="w-8 h-8 text-[#999999]" />
+                            </div>
+                            <h4 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-2">No documents found</h4>
+                            <p className="text-[14px] text-[#666666] font-['Inter:Regular',sans-serif] max-w-sm mx-auto">
+                               Files shared in the Activity & Chat section will automatically appear here.
+                            </p>
+                         </div>
+                      );
+                   }
+
+                   return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                         {allDocuments.map((doc, idx) => (
+                            <div key={`${doc.activityId}-${idx}`} className="group p-4 rounded-[12px] border border-[#EEEEEE] hover:border-[#ff3b3b]/30 hover:shadow-md transition-all bg-white flex flex-col">
+                               <div className="flex items-start justify-between mb-3">
+                                  <div className="w-10 h-10 rounded-lg bg-[#FFF5F5] flex items-center justify-center text-[#ff3b3b]">
+                                     <FileText className="w-5 h-5" />
+                                  </div>
+                                  <span className="text-[10px] font-['Manrope:Bold',sans-serif] px-2 py-1 bg-[#F7F7F7] rounded text-[#666666] uppercase">
+                                     {doc.type}
+                                  </span>
+                               </div>
+                               <h4 className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-1 truncate" title={doc.name}>
+                                  {doc.name}
+                               </h4>
+                               <div className="flex items-center justify-between text-[11px] text-[#999999] mb-4">
+                                  <span className="font-['Manrope:SemiBold',sans-serif] text-[#666666]">
+                                     {doc.uploadedBy}
+                                  </span>
+                                  <span>{doc.date}</span>
+                               </div>
+                               
+                               <div className="mt-auto pt-3 flex items-center gap-2 border-t border-[#FAFAFA]">
+                                  <button 
+                                    className="flex-1 h-8 flex items-center justify-center gap-2 rounded-lg bg-[#F7F7F7] hover:bg-[#EEEEEE] text-[#444444] text-[12px] font-['Manrope:SemiBold',sans-serif] transition-colors"
+                                    onClick={() => message.info(`Previewing ${doc.name}`)}
+                                  >
+                                    <Eye className="w-3.5 h-3.5" /> Preview
+                                  </button>
+                                  <button 
+                                    className="flex-1 h-8 flex items-center justify-center gap-2 rounded-lg bg-[#FFF5F5] hover:bg-[#FFE5E5] text-[#ff3b3b] text-[12px] font-['Manrope:SemiBold',sans-serif] transition-colors"
+                                    onClick={() => message.success(`Downloading ${doc.name}`)}
+                                  >
+                                    <Download className="w-3.5 h-3.5" /> Download
+                                  </button>
+                               </div>
+                            </div>
+                         ))}
+                      </div>
+                   );
+                 })()}
+               </div>
+             </div>
           )}
         </div>
       </div>

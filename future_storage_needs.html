@@ -207,15 +207,6 @@
         </div>
     </header>
 
-    <section class="summary-card">
-        <h3>Executive Summary</h3>
-        <p>The application currently relies on local assets and placeholders. The transition to a production-ready state
-            requires robust, scalable object storage (S3) for dynamic user content. This report identifies three primary
-            categories for storage: <strong>User Identity Assets</strong>, <strong>Business Documents</strong>, and
-            <strong>Collaboration Attachments</strong>.
-        </p>
-    </section>
-
     <section>
         <h2>Mapped Storage Needs</h2>
         <table>
@@ -338,15 +329,158 @@
                     <li><strong>Strict Size Limits:</strong> Applied at presigned URL generation time (Max 100MB).</li>
                 </ul>
             </div>
-            <div class="req-card">
-                <div class="req-title">🔌 Code Integration</div>
-                <ul>
-                    <li><code>ProfilePage.tsx</code> - User documents, Profile Picture</li>
-                    <li><code>SettingsPage.tsx</code> - Company branding (Logo)</li>
-                    <li><code>TaskDetailsPage.tsx</code> - Chat uploads</li>
-                    <li><code>RequirementsForm.tsx</code> - Drag & drop zone</li>
-                    <li><code>RequirementDetailsPage.tsx</code> - Activity & Chat uploads</li>
-                </ul>
+
+        </div>
+    </section>
+
+    <section>
+        <h2>🔌 Detailed Code Integration Plan</h2>
+        <p>The following pages and components require direct modification to support S3-backed file operations. Each
+            integration point must handle presigned URL fetching, binary upload, and backend metadata confirmation.</p>
+
+        <div style="margin-top: 25px;">
+            <!-- 1. Profile & Settings -->
+            <div class="req-card" style="margin-bottom: 20px; border-left: 4px solid #111;">
+                <div class="req-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>1. Profile & Settings</span>
+                    <span class="tag tag-img">User Assets</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 5px;"><code>ProfilePage.tsx</code></div>
+                        <ul style="font-size: 0.9em; color: #555;">
+                            <li><strong>Profile Picture:</strong> Replace static `Avatar` with interactive uploader.
+                            </li>
+                            <li><strong>Documents Tab:</strong> Implement `Upload` component for ID Proofs/Resumes.</li>
+                            <li><strong>Action:</strong> <code>useProfileUpdate</code> hook must handle file changes.
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 5px;"><code>SettingsPage.tsx</code></div>
+                        <ul style="font-size: 0.9em; color: #555;">
+                            <li><strong>Company Branding:</strong> Add "Upload Logo" area in General Settings.</li>
+                            <li><strong>Preview:</strong> Immediate client-side preview before S3 confirm.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Task Management -->
+            <div class="req-card" style="margin-bottom: 20px; border-left: 4px solid #ff3b3b;">
+                <div class="req-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>2. Task Management</span>
+                    <span class="tag tag-zip">Collaboration</span>
+                </div>
+                <div>
+                    <div style="font-weight: 600; margin-bottom: 5px;"><code>TaskDetailsPage.tsx</code></div>
+                    <ul style="font-size: 0.9em; color: #555;">
+                        <li><strong>Activity Feed / Chat:</strong> Integrate file attachment button (paperclip icon) in
+                            the comment input area.</li>
+                        <li><strong>Drag & Drop:</strong> Enable pasting images directly from clipboard into chat.</li>
+                        <li><strong>Display:</strong> Render file previews (thumbnails for images, icons for docs) in
+                            the message stream.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 3. Requirements Module -->
+            <div class="req-card" style="margin-bottom: 20px; border-left: 4px solid #1565c0;">
+                <div class="req-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>3. Requirements Module</span>
+                    <span class="tag tag-doc">Documents</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 5px;"><code>RequirementsForm.tsx</code></div>
+                        <ul style="font-size: 0.9em; color: #555;">
+                            <li><strong>Spec Upload:</strong> Add a dedicated Dragger zone for PDF/DOCX specifications
+                                during creation.</li>
+                            <li><strong>Validation:</strong> Enforce 50MB limit and document-only types here.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 5px;"><code>RequirementDetailsPage.tsx</code></div>
+                        <ul style="font-size: 0.9em; color: #555;">
+                            <li><strong>Attachments Tab:</strong> List view of all linked spec documents with
+                                Download/Preview actions.</li>
+                            <li><strong>Discussion Info:</strong> Allow attaching supplementary files to requirement
+                                comments.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. HR & Employees -->
+            <div class="req-card" style="margin-bottom: 20px; border-left: 4px solid #F59E0B;">
+                <div class="req-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>4. HR & Employees</span>
+                    <span class="tag tag-doc">Sensitive Docs</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 5px;"><code>EmployeesForm.tsx</code></div>
+                        <ul style="font-size: 0.9em; color: #555;">
+                            <li><strong>Onboarding Docs:</strong> Add `Dragger` upload for Resume, Aadhar/PAN, and
+                                Signed Contracts.</li>
+                            <li><strong>Validation:</strong> Enforce strict PDF-only policy for contracts.</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 5px;"><code>EmployeeDetailsPage.tsx</code></div>
+                        <ul style="font-size: 0.9em; color: #555;">
+                            <li><strong>Documents Tab:</strong> Implement secure (presigned) view/download for sensitive
+                                files.</li>
+                            <li><strong>Missing UI:</strong> Replace current "No documents uploaded" placeholder with
+                                actual file list.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Finance & Invoices -->
+            <div class="req-card" style="margin-bottom: 20px; border-left: 4px solid #0F9D58;">
+                <div class="req-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>5. Finance & Invoices</span>
+                    <span class="tag tag-doc">Records</span>
+                </div>
+                <div>
+                    <div style="font-weight: 600; margin-bottom: 5px;"><code>CreateInvoicePage.tsx</code> &
+                        <code>FinancePage.tsx</code></div>
+                    <ul style="font-size: 0.9em; color: #555;">
+                        <li><strong>PDF Generation:</strong> Currently client-side. Upload logic required to save the
+                            generated blob to S3 immediately upon creation.</li>
+                        <li><strong>Immutable History:</strong> <code>handleSaveInvoice</code> must upload before saving
+                            metadata to DB.</li>
+                        <li><strong>Verification:</strong> Ensure the stored PDF matches the client-preview exactly.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 6. Leaves & Notes -->
+            <div class="req-card" style="margin-bottom: 20px; border-left: 4px solid #9C27B0;">
+                <div class="req-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>6. Leaves & Notes</span>
+                    <span class="tag tag-img">Support Files</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 5px;"><code>LeavesPage.tsx</code></div>
+                        <ul style="font-size: 0.9em; color: #555;">
+                            <li><strong>Medical Certs:</strong> Add file upload field to "Apply Leave" modal for "Sick
+                                Leave" types.</li>
+                            <li><strong>Approvals:</strong> Reviewers (Managers) need 'View Attachment' action in rows.
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 5px;"><code>NotesPage.tsx</code></div>
+                        <ul style="font-size: 0.9em; color: #555;">
+                            <li><strong>Enhancement:</strong> Allow image attachments in text notes (future scope).</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </section>

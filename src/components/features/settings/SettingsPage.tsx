@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { Plus, Edit, Trash2, X, Pencil, CreditCard, Bell, Lock, Database, AlertTriangle, Eye, EyeOff, Shield, ChevronDown, ChevronRight, Check } from 'lucide-react';
-import { Button, Input, Select, Switch, Divider, App, Modal, DatePicker, Collapse, Checkbox } from "antd";
+import { Plus, Edit, Trash2, X, Pencil, CreditCard, Bell, Lock, Database, AlertTriangle, Eye, EyeOff, Shield, ChevronDown, ChevronRight, Check, Building2 } from 'lucide-react';
+import { Button, Input, Select, Switch, Divider, App, Modal, DatePicker, Collapse, Checkbox, Upload } from "antd";
 import { useUpdateCompany, useCurrentUserCompany, useRoles, useRolePermissions, useUpsertRole, useUpdateRolePermissions, useUserDetails } from '@/hooks/useUser';
 import { usePublicHolidays, useCreateHoliday, useUpdateHoliday, useDeleteHoliday } from '@/hooks/useHoliday';
 import { getErrorMessage } from '@/types/api-utils';
@@ -254,6 +254,7 @@ export function SettingsPage() {
 
   // Company Details State - initialize from backend data
   const [companyName, setCompanyName] = useState(companyData?.result?.name || '');
+  const [companyLogo, setCompanyLogo] = useState(companyData?.result?.logo || '');
   const [taxId, setTaxId] = useState(companyData?.result?.tax_id || '');
   const [timeZone, setTimeZone] = useState(companyData?.result?.timezone || 'Asia/Kolkata');
   const [currency, setCurrency] = useState(companyData?.result?.currency || 'USD');
@@ -265,6 +266,7 @@ export function SettingsPage() {
   useEffect(() => {
     if (companyData?.result) {
       setCompanyName(companyData.result.name || '');
+      setCompanyLogo(companyData.result.logo || '');
       setTaxId(companyData.result.tax_id || '');
       setTimeZone(companyData.result.timezone || 'Asia/Kolkata');
       setCurrency(companyData.result.currency || 'USD');
@@ -535,6 +537,7 @@ export function SettingsPage() {
 
       if (activeTab === 'company') {
         payload.name = companyName;
+        payload.logo = companyLogo;
         payload.tax_id = taxId;
         payload.timezone = timeZone;
         payload.currency = currency;
@@ -694,18 +697,171 @@ export function SettingsPage() {
         {activeTab === 'company' && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <section className="mb-10">
-              <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-6">Company Information</h2>
+              <div className="flex flex-col md:flex-row gap-10">
+                {/* Left Column: Header & Logo */}
+                <div className="flex-none w-48 flex flex-col justify-between">
+                  <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Company Information</h2>
+                  
+                  <div className="relative group self-start">
+                    <div className="w-32 h-32 rounded-full border border-[#EEEEEE] bg-[#FAFAFA] flex items-center justify-center overflow-hidden">
+                      {companyLogo ? (
+                        <img src={companyLogo} alt="Company Logo" className="w-full h-full object-cover" />
+                      ) : (
+                        <Building2 className="w-8 h-8 text-[#999999]" />
+                      )}
+                    </div>
+                    {isEditing && (
+                      <div className="absolute -bottom-1 -right-1">
+                        <Upload
+                          name="logo"
+                          showUploadList={false}
+                          beforeUpload={(file) => {
+                            const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
+                            if (!isJpgOrPng) {
+                              message.error('You can only upload JPG/PNG file!');
+                              return Upload.LIST_IGNORE;
+                            }
+                            const isLt2M = file.size / 1024 / 1024 < 2;
+                            if (!isLt2M) {
+                              message.error('Image must smaller than 2MB!');
+                              return Upload.LIST_IGNORE;
+                            }
+                            
+                            // Create preview
+                            const reader = new FileReader();
+                            reader.readAsDataURL(file);
+                            reader.onload = () => {
+                              setCompanyLogo(reader.result as string);
+                            };
+                            return false; // Prevent auto upload
+                          }}
+                        >
+                          <Button 
+                            icon={<Pencil className="w-3.5 h-3.5" />} 
+                            className="flex items-center justify-center w-8 h-8 rounded-full bg-[#111111] text-white border-white border-2 hover:bg-black hover:text-white p-0 shadow-sm"
+                          />
+                        </Upload>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-2 gap-6 mb-6">
+                {/* Right Column: Inputs */}
+                <div className="flex-1 w-full space-y-6">
+                  {/* Row 1: Name & Tax ID */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Company Name</span>
+                      <Input
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        disabled={!isEditing}
+                        className={`h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px] ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Country</span>
+                      <Select
+                        value={country || undefined}
+                        onChange={(v) => setCountry(String(v))}
+                        disabled={!isEditing}
+                        className="w-full h-11"
+                        showSearch={{
+                          filterOption: (input, option) => {
+                            const searchText = input.toLowerCase().trim();
+                            const label = String(option?.children ?? '').toLowerCase();
+                            return label.includes(searchText);
+                          }
+                        }}
+                        placeholder="Select country"
+                        optionFilterProp="label"
+                      >
+                        {commonCountries.map((c) => (
+                          <Option key={c.code} value={c.name} label={c.name}>
+                            {c.name}
+                          </Option>
+                        ))}
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Row 2: TimeZone & Currency */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Time Zone</span>
+                      <Select
+                        value={timeZone}
+                        onChange={(v) => setTimeZone(String(v))}
+                        disabled={!isEditing}
+                        className="w-full h-11"
+                        showSearch={{
+                          filterOption: (input, option) => {
+                            const searchText = input.toLowerCase().trim();
+                            if (!searchText) return true;
+                            const label = String(option?.label ?? option?.children ?? '').toLowerCase();
+                            const value = String(option?.value ?? '').toLowerCase();
+                            if (label.includes(searchText) || value.includes(searchText)) return true;
+                            if (label.includes('kolkata')) {
+                              if (['kol', 'cal', 'calcutta', 'india', 'ist'].some(term => searchText.includes(term))) {
+                                return true;
+                              }
+                            }
+                            return false;
+                          }
+                        }}
+                        placeholder="Select timezone"
+                        optionFilterProp="label"
+                        notFoundContent="No timezone found"
+                        popupMatchSelectWidth={true}
+                        virtual={false}
+                        listHeight={400}
+                      >
+                        {timezones.map((tz) => (
+                          <Option key={tz.value} value={tz.value} label={tz.label}>
+                            {tz.label}
+                          </Option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Currency</span>
+                      <Select
+                        value={currency}
+                        onChange={(v) => setCurrency(String(v))}
+                        disabled={!isEditing}
+                        className="w-full h-11"
+                      >
+                        <Option value="USD">USD</Option>
+                        <Option value="EUR">EUR</Option>
+                        <Option value="INR">INR</Option>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Full Width: Address */}
+              <div className="mb-6 relative mt-6">
                 <div className="space-y-2">
-                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Company Name</span>
-                  <Input
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
+                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Address</span>
+                  <TextArea
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Enter company address"
                     disabled={!isEditing}
-                    className={`h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px] ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}
+                    rows={3}
+                    className={`rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Regular',sans-serif] text-[13px] resize-none p-3 ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}
                   />
                 </div>
+                {isEditing && (
+                  <div className="absolute bottom-3 right-3 p-1.5 bg-[#F7F7F7] rounded-md border border-[#EEEEEE] pointer-events-none">
+                    <span className="text-[14px]">📍</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Full Width: Tax ID */}
+              <div className="mb-6">
                 <div className="space-y-2">
                   <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Tax ID</span>
                   <Input
@@ -716,109 +872,6 @@ export function SettingsPage() {
                     className={`h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px] ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}
                   />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-6 mb-6">
-                <div className="space-y-2">
-                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Time Zone</span>
-                  <Select
-                    value={timeZone}
-                    onChange={(v) => setTimeZone(String(v))}
-                    disabled={!isEditing}
-                    className="w-full h-11"
-                    showSearch={{
-                      filterOption: (input, option) => {
-                        const searchText = input.toLowerCase().trim();
-                        if (!searchText) return true;
-
-                        const label = String(option?.label ?? option?.children ?? '').toLowerCase();
-                        const value = String(option?.value ?? '').toLowerCase();
-
-                        if (label.includes(searchText) || value.includes(searchText)) return true;
-
-                        // Indian timezone handling
-                        if (label.includes('kolkata')) {
-                          if (['kol', 'cal', 'calcutta', 'india', 'ist'].some(term => searchText.includes(term))) {
-                            return true;
-                          }
-                        }
-                        return false;
-                      }
-                    }}
-                    placeholder="Select timezone"
-                    optionFilterProp="label"
-                    notFoundContent="No timezone found"
-                    popupMatchSelectWidth={true}
-                    virtual={false}
-                    listHeight={400}
-                  >
-                    {timezones.map((tz) => (
-                      <Option key={tz.value} value={tz.value} label={tz.label}>
-                        {tz.label}
-                      </Option>
-                    ))}
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Currency</span>
-                  <Select
-                    value={currency}
-                    onChange={(v) => setCurrency(String(v))}
-                    disabled={!isEditing}
-                    className="w-full h-11"
-                  >
-                    <Option value="USD">USD</Option>
-                    <Option value="EUR">EUR</Option>
-                    <Option value="INR">INR</Option>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-6 mb-6">
-                <div className="space-y-2">
-                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Country</span>
-                  <Select
-                    value={country || undefined}
-                    onChange={(v) => setCountry(String(v))}
-                    disabled={!isEditing}
-                    className="w-full h-11"
-                    showSearch={{
-                      filterOption: (input, option) => {
-                        const searchText = input.toLowerCase().trim();
-                        const label = String(option?.children ?? '').toLowerCase();
-                        return label.includes(searchText);
-                      }
-                    }}
-                    placeholder="Select country"
-                    optionFilterProp="label"
-                  >
-                    {commonCountries.map((c) => (
-                      <Option key={c.code} value={c.name} label={c.name}>
-                        {c.name}
-                      </Option>
-                    ))}
-                  </Select>
-                </div>
-              </div>
-
-              <div className="mb-6 relative">
-                <div className="space-y-2">
-                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Address</span>
-                  <TextArea
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Enter company address"
-                    disabled={!isEditing}
-                    className={`min-h-[100px] rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Regular',sans-serif] text-[13px] resize-none p-3 pr-10 ${!isEditing ? 'bg-[#FAFAFA] text-[#666666]' : 'bg-white'}`}
-                  />
-                </div>
-                {isEditing && (
-                  <button className="absolute bottom-3 right-3 p-1.5 bg-[#F7F7F7] hover:bg-[#eeeeee] rounded-md transition-colors border border-[#EEEEEE]">
-                    <div className="w-5 h-5 flex items-center justify-center">
-                      <span className="text-[14px]">📍</span>
-                    </div>
-                  </button>
-                )}
               </div>
             </section>
 
