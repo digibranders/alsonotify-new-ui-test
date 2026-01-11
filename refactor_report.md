@@ -1069,6 +1069,41 @@ Visually indicate that the "Deactivate" option is disabled for the current user 
 
 ---
 
+## Update: Sidebar Icon Refactor
+
+**Timestamp:** 2026-01-11T21:55:00+05:30
+
+### Objective
+
+Modernize the sidebar aesthetic and improve semantic clarity by replacing FluentUI icons with Lucide React icons.
+
+### Changes
+
+#### 1. `src/components/common/Sidebar.tsx`
+
+-   **Replaced Library:** Removed `@fluentui/react-icons` and installed `lucide-react` icons.
+-   **Icon Mapping Update:**
+    -   **Dashboard:** `LayoutDashboard`
+    -   **Employees:** `Users`
+    -   **Partners:** `Handshake`
+    -   **Workspace:** `Briefcase`
+    -   **Requirements:** `ScrollText` (Changed from `FileCheck`)
+    -   **Tasks:** `ListTodo`
+    -   **Reports:** `BarChart3`
+    -   **Calendar:** `CalendarDays`
+    -   **Leaves:** `Palmtree` (Changed from `Palmtree` for broader "Time Off" context)
+    -   **Finance:** `CircleDollarSign` (Changed from `Banknote` for clarity)
+    -   **Notes:** `NotebookPen`
+-   **Toggle Button:** Replaced `PanelLeft...` icons with `ChevronsLeft` / `ChevronsRight`.
+
+### Verification
+
+-   **`npm run typecheck`:** ✅ Passed
+-   **`npm run lint`:** ✅ Passed
+-   **Visual Check:** Icons are consistent in size (`20px`), style (line icons), and color behavior (gray vs brand red when active).
+
+---
+
 ## Bug Fix: Modal Context Error
 
 **Timestamp:** 2026-01-11T16:35:00+05:30

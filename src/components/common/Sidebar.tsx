@@ -5,21 +5,20 @@ import Link from 'next/link';
 import Image from 'next/image';
 import BrandLogo from '@/assets/images/logo.png';
 import {
-  Home24Filled,
-  People24Filled,
-  Handshake24Filled,
-  PeopleTeam24Filled,
-  Apps24Filled,
-  ClipboardTaskListLtr24Filled,
-  DocumentMultiple24Filled,
-  ChartMultiple24Filled,
-  Calendar24Filled,
-  WeatherRainShowersDay24Filled,
-  Receipt24Filled,
-  Notepad24Filled,
-  Video24Filled,
-  Settings24Filled
-} from "@fluentui/react-icons";
+  LayoutDashboard,
+  Users,
+  Handshake,
+  Briefcase,
+  ScrollText,
+  ListTodo,
+  BarChart3,
+  CalendarDays,
+  Palmtree,
+  CircleDollarSign,
+  NotebookPen,
+  ChevronsLeft,
+  ChevronsRight
+} from 'lucide-react';
 import React from "react";
 
 type UserRole = 'Admin' | 'Manager' | 'Leader' | 'Employee';
@@ -46,49 +45,49 @@ const NAV_ITEMS: NavItemConfig[] = [
     id: 'dashboard',
     path: '/dashboard',
     label: 'Dashboard',
-    icon: <Home24Filled />,
+    icon: <LayoutDashboard size={20} />,
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
   {
     id: 'employees',
     path: '/dashboard/employees',
     label: 'Employees',
-    icon: <People24Filled />,
+    icon: <Users size={20} />,
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
   {
     id: 'partners',
     path: '/dashboard/partners',
     label: 'Partners',
-    icon: <Handshake24Filled />,
+    icon: <Handshake size={20} />,
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
   {
     id: 'workspace',
     path: '/dashboard/workspace',
     label: 'Workspace',
-    icon: <Apps24Filled />,
+    icon: <Briefcase size={20} />,
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
   {
     id: 'requirements',
     path: '/dashboard/requirements',
     label: 'Requirements',
-    icon: <PeopleTeam24Filled />,
+    icon: <ScrollText size={20} />,
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
   {
     id: 'tasks',
     path: '/dashboard/tasks',
     label: 'Tasks',
-    icon: <ClipboardTaskListLtr24Filled />,
+    icon: <ListTodo size={20} />,
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
   {
     id: 'reports',
     path: '/dashboard/reports',
     label: 'Reports',
-    icon: <DocumentMultiple24Filled />,
+    icon: <BarChart3 size={20} />,
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
 
@@ -96,37 +95,33 @@ const NAV_ITEMS: NavItemConfig[] = [
     id: 'calendar',
     path: '/dashboard/calendar',
     label: 'Calendar',
-    icon: <Calendar24Filled />,
+    icon: <CalendarDays size={20} />,
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
   {
     id: 'leaves',
     path: '/dashboard/leaves',
     label: 'Leaves',
-    icon: <WeatherRainShowersDay24Filled />,
+    icon: <Palmtree size={20} />,
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
   {
     id: 'finance',
     path: '/dashboard/finance',
     label: 'Finance',
-    icon: <Receipt24Filled />,
+    icon: <CircleDollarSign size={20} />,
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
   {
     id: 'notes',
     path: '/dashboard/notes',
     label: 'Notes',
-    icon: <Notepad24Filled />,
+    icon: <NotebookPen size={20} />,
     allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
   },
 ];
 
 import { useSidebar } from '@/context/SidebarContext';
-import { 
-    PanelLeftContract24Regular,
-    PanelLeftExpand24Regular
-} from "@fluentui/react-icons";
 
 // ... existing imports ...
 
@@ -173,7 +168,7 @@ export const Sidebar = React.memo(function Sidebar({ userRole, permissions }: Si
           `}
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
       >
-          {isCollapsed ? <PanelLeftExpand24Regular /> : <PanelLeftContract24Regular />}
+          {isCollapsed ? <ChevronsRight size={20} /> : <ChevronsLeft size={20} />}
       </button>
 
       {/* Logo */}
