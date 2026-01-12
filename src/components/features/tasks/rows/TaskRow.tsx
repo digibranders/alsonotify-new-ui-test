@@ -396,7 +396,7 @@ const TaskRowComponent = memo(function TaskRow({
                 },
                 {
                   key: 'revision',
-                  label: 'Request Revision',
+                  label: 'Revision',
                   icon: <RotateCcw className="w-3.5 h-3.5" />,
                   onClick: () => onRequestRevision?.(),
                   disabled: task.status !== 'Review', // Typical threshold for revision

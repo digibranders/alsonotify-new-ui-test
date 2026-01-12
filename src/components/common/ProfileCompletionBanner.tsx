@@ -4,16 +4,23 @@ import { X, ArrowRight } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export function ProfileCompletionBanner() {
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const { user: currentUser } = useCurrentUser();
 
-  // Check if banner was dismissed in localStorage (reset on each login session)
+  // Handle visibility and session-based persistence
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const dismissed = localStorage.getItem('profileCompletionBannerDismissed');
-      setIsVisible(dismissed !== 'true');
+      const isPersistentDismissed = localStorage.getItem('profileCompletionBannerDismissed') === 'true';
+      const isSessionSeen = sessionStorage.getItem('profileCompletionBannerSeen') === 'true';
+      
+      // If not permanently dismissed and not seen in this session yet
+      if (!isPersistentDismissed && !isSessionSeen) {
+        setIsVisible(true);
+        // Mark as seen immediately so it won't show on next interaction/reload
+        sessionStorage.setItem('profileCompletionBannerSeen', 'true');
+      }
     }
   }, []);
 

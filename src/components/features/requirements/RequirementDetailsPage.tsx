@@ -21,6 +21,7 @@ import {
   Legend,
 } from 'recharts';
 import { Breadcrumb, Checkbox, Button, Tooltip, App, Input, Select, Modal } from 'antd';
+import { Skeleton } from '../../ui/Skeleton';
 import { sanitizeRichText } from '@/utils/sanitizeHtml';
 import { useWorkspace, useRequirements, useUpdateRequirement, useWorkspaces } from '@/hooks/useWorkspace';
 import { useTasks, useRequestRevision } from '@/hooks/useTask';
@@ -119,7 +120,56 @@ export function RequirementDetailsPage() {
   }, [tasksData, requirement, reqId]);
 
   if (isLoadingWorkspace || isLoadingRequirements) {
-    return <div className="p-8">Loading...</div>;
+    return (
+      <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] flex overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="p-8 pb-0">
+            <div className="flex items-center justify-between mb-8">
+              <Skeleton className="h-8 w-64" />
+              <div className="flex items-center gap-4">
+                <Skeleton className="h-10 w-32 rounded-full" />
+                <Skeleton className="h-10 w-24 rounded-full" />
+                <div className="flex -space-x-2">
+                  {[1, 2, 3].map(i => (
+                    <Skeleton key={i} className="w-8 h-8 rounded-full border-2 border-white" />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="border-b border-[#EEEEEE]">
+              <div className="flex items-center gap-8">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <Skeleton key={i} className="h-10 w-24 mb-[-1px]" />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto p-8 bg-[#FAFAFA]">
+            <div className="max-w-5xl mx-auto space-y-8">
+              <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
+                <Skeleton className="h-6 w-32 mb-4" />
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+              </div>
+              <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
+                <Skeleton className="h-6 w-48 mb-6" />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <div key={i}>
+                      <Skeleton className="h-3 w-16 mb-2" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!workspace || !requirement) {
