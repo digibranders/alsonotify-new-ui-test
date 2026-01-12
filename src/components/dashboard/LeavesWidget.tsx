@@ -5,8 +5,9 @@ import { Modal, Input, Button, Select, Spin, Form, DatePicker } from 'antd';
 import Image from "next/image";
 import dayjs from "dayjs";
 import type { Dayjs } from 'dayjs';
-import { useCompanyLeaves, useApplyForLeave } from "../../hooks/useLeave";
+import { useCompanyLeaves } from "../../hooks/useLeave";
 import { LeaveType } from "../../services/leave";
+import { LeaveApplyModal } from "../modals/LeaveApplyModal";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -55,16 +56,11 @@ const formatDuration = (days: number): string => {
 interface ApplyLeaveFormValues {
   start_date: Dayjs;
   end_date: Dayjs;
-  day_type: string;
-  leave_type: string;
-  reason: string;
 }
 
 export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const [showDialog, setShowDialog] = useState(false);
-  const [form] = Form.useForm<ApplyLeaveFormValues>();
-  const { data, isLoading, error } = useCompanyLeaves();
-  const applyLeaveMutation = useApplyForLeave();
+  const { data, isLoading, error, refetch } = useCompanyLeaves();
 
   // Process and filter leaves
   const processedLeaves = useMemo(() => {
@@ -112,29 +108,6 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
       : ['Sick Leave', 'Casual Leave', 'Vacation'];
   }, [data]);
 
-  const DAY_TYPES = ['Full Day', 'First Half', 'Second Half'];
-
-  const handleApplyLeave = async (values: ApplyLeaveFormValues) => {
-    try {
-      await applyLeaveMutation.mutateAsync({
-        start_date: values.start_date.format('YYYY-MM-DD'),
-        end_date: values.end_date.format('YYYY-MM-DD'),
-        day_type: values.day_type,
-        leave_type: values.leave_type,
-        reason: values.reason,
-      });
-      form.resetFields();
-      setShowDialog(false);
-    } catch (error) {
-      // Error handled by mutation
-    }
-  };
-
-  const handleCancel = () => {
-    form.resetFields();
-    setShowDialog(false);
-  };
-
   return (
     <>
       <div className="bg-white rounded-[24px] p-5 w-full h-full flex flex-col">
@@ -180,113 +153,14 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
         </div>
       </div>
 
-      {/* Apply Leave Modal */}
-      <Modal
-        title="Apply Leave"
+      <LeaveApplyModal
         open={showDialog}
-        onCancel={handleCancel}
-        footer={null}
-        width={600}
-        centered
-        className="rounded-[16px] overflow-hidden"
-        destroyOnHidden
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleApplyLeave}
-          className="mt-6"
-        >
-          <div className="grid grid-cols-2 gap-4">
-            <Form.Item
-              name="start_date"
-              label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]">Start Date</span>}
-              rules={[{ required: true, message: 'Please select start date' }]}
-            >
-              <DatePicker
-                className="w-full h-10 rounded-lg font-['Manrope:Medium',sans-serif]"
-                placeholder="Select date"
-                format="YYYY-MM-DD"
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="end_date"
-              label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]">End Date</span>}
-              rules={[{ required: true, message: 'Please select end date' }]}
-            >
-              <DatePicker
-                className="w-full h-10 rounded-lg font-['Manrope:Medium',sans-serif]"
-                placeholder="Select date"
-                format="YYYY-MM-DD"
-              />
-            </Form.Item>
-          </div>
-
-          <Form.Item
-            name="day_type"
-            label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]">Day Type</span>}
-            rules={[{ required: true, message: 'Please select day type' }]}
-          >
-            <Select
-              className="w-full h-10 rounded-lg font-['Manrope:Medium',sans-serif]"
-              placeholder="Select day type"
-            >
-              {DAY_TYPES.map((dayType) => (
-                <Option key={dayType} value={dayType}>
-                  {dayType}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="leave_type"
-            label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]">Leave Type</span>}
-            rules={[{ required: true, message: 'Please select leave type' }]}
-          >
-            <Select
-              className="w-full h-10 rounded-lg font-['Manrope:Medium',sans-serif]"
-              placeholder="Select leave type"
-            >
-              {availableLeaveTypes.map((leaveType) => (
-                <Option key={leaveType} value={leaveType}>
-                  {leaveType}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item
-            name="reason"
-            label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]">Reason</span>}
-            rules={[{ required: true, message: 'Please enter reason' }]}
-          >
-            <Input
-              className="rounded-lg h-10 font-['Manrope:Medium',sans-serif]"
-              placeholder="Type or select a reason"
-            />
-          </Form.Item>
-
-          <div className="flex items-center justify-end gap-4 pt-4 mt-6 border-t border-[#EEEEEE]">
-            <Button
-              type="text"
-              onClick={handleCancel}
-              className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={applyLeaveMutation.isPending}
-              className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
-            >
-              Save
-            </Button>
-          </div>
-        </Form>
-      </Modal>
+        onCancel={() => setShowDialog(false)}
+        onSuccess={async () => {
+          await refetch();
+        }}
+        availableLeaveTypes={availableLeaveTypes}
+      />
     </>
   );
 }

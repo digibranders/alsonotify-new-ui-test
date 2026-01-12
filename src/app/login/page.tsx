@@ -80,6 +80,7 @@ function LoginForm() {
                   className="w-full h-12 pl-11 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  tabIndex={1}
                   required
                 />
                 <Mail className="w-5 h-5 text-[#999999] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -89,7 +90,11 @@ function LoginForm() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">Password</label>
-                <Link href="/forgot-password" className="text-[12px] font-semibold text-[#ff3b3b] hover:text-[#E63535]">
+                <Link 
+                  href="/forgot-password" 
+                  className="text-[12px] font-semibold text-[#ff3b3b] hover:text-[#E63535]"
+                  tabIndex={4}
+                >
                   Forgot password?
                 </Link>
               </div>
@@ -100,6 +105,7 @@ function LoginForm() {
                   className="w-full h-12 pl-11 pr-11 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  tabIndex={2}
                   required
                 />
                 <Lock className="w-5 h-5 text-[#999999] absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -107,6 +113,7 @@ function LoginForm() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#999999] hover:text-[#111111] p-1 transition-colors"
+                  tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -119,6 +126,7 @@ function LoginForm() {
               type="submit"
               disabled={loginMutation.isPending}
               className="w-full h-12 bg-[#ff3b3b] hover:bg-[#E63535] text-white rounded-[16px] font-bold text-[15px] shadow-lg shadow-[#ff3b3b]/25 transition-all hover:shadow-[#ff3b3b]/40 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              tabIndex={3}
             >
               {loginMutation.isPending ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -138,6 +146,7 @@ function LoginForm() {
             <Link
               href="/register"
               className="text-[#111111] font-bold hover:text-[#ff3b3b] transition-colors"
+              tabIndex={5}
             >
               Sign Up
             </Link>

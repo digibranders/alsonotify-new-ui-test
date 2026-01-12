@@ -1699,6 +1699,13 @@ Improve the perceived performance and professionalism of the application by repl
 -   **Sidebar UX**: Switched active navigation icons to solid (filled) versions using the `fill` prop, enhancing visual hierarchy and accessibility.
 -   **Verification**: All routes verified via `npm run build`; verified persistence and icon states manually in layout.
 
+### Phase 8: Topbar Menu Enhancements (2026-01-12)
+
+-   **Modular Form**: Extracted calendar and leave form logic into a reusable `CalendarEventForm` component.
+-   **Topbar Integration**: Added "Add Leave" and updated "Schedule Meeting" in the Topbar dropdown to trigger high-fidelity popups instead of page navigation.
+-   **Duplication Removal**: Refactored `CalendarPage.tsx` to utilize the new shared component, improving maintainability.
+-   **Verification**: Successfully completed full production build (`npm run build`) and verified type safety across hooks and components.
+
 ## Update: Skeleton Loading Expansion (Feature Pages)
 
 **Timestamp:** 2026-01-12T00:35:00+05:30
@@ -1723,3 +1730,18 @@ Expand the Skeleton Loading System to the main feature pages (`Tasks`, `Employee
 ### Outcome
 
 Consistency and perceived performance have been significantly improved. The application now uses high-fidelity skeletons instead of generic spinners or text placeholders for all major landing pages.
+
+### Phase 9: Modal Synchronization & Multi-Context UI (2026-01-12)
+
+**Objective**: Synchronize creation modals between Dashboard widgets and Topbar while maintaining a specialized combined experience on the Calendar page.
+
+-   **Component Extraction**:
+    -   [NEW] `MeetingCreateModal.tsx`: Standalone meeting creation modal.
+    -   [NEW] `LeaveApplyModal.tsx`: Standalone leave application modal.
+-   **Context-Aware Implementation**:
+    -   **Widgets & Topbar**: Now use separate specialized modals for clearer intent and consistent behavior.
+    -   **Calendar Page**: Retains the combined `CalendarEventForm` for its "Add" button and time-slot clicks, providing a unified creation experience.
+-   **Enhancements**: Added `initialDate` prop support across all modals to enable seamless pre-filling from calendar interactions.
+-   **Visual Refinement**: Reverted active sidebar icons to their standard outline style (removed solid fill) based on user feedback.
+-   **UX Optimization**: Adjusted login page tab order (Email -> Password -> Sign In) and disabled tabbing for password visibility toggle for better accessibility.
+-   **Verification**: All changes verified via successful production build (`npm run build`) and manual cross-component validation.

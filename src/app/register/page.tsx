@@ -95,9 +95,6 @@ function RegisterForm() {
           <h2 className="text-3xl font-bold text-[#111111] tracking-tight">
             Create Account
           </h2>
-          <p className="text-[#666666]">
-            Get started with your 14-day free trial
-          </p>
         </motion.div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

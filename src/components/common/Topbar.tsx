@@ -39,7 +39,9 @@ import { useLogout } from '@/hooks/useAuth';
 import { formatDistanceToNow } from 'date-fns';
 import { NoteComposerModal } from './NoteComposerModal';
 import { AIAssistantDrawer } from '../features/ai/AIAssistantDrawer';
-import { Sparkle24Filled } from '@fluentui/react-icons';
+import { Sparkle24Filled, CalendarAdd24Filled } from '@fluentui/react-icons';
+import { MeetingCreateModal } from '../modals/MeetingCreateModal';
+import { LeaveApplyModal } from '../modals/LeaveApplyModal';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -96,6 +98,8 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
   const [showRequirementDialog, setShowRequirementDialog] = useState(false);
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [showMeetingDialog, setShowMeetingDialog] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 
@@ -217,6 +221,11 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
     fetchRequirements();
   }, [workspacesData, message]);
 
+  // Handle Calendar Success
+  const handleCalendarSuccess = () => {
+    // Optionally refetch global dashboard data if needed, but usually calendar data is local to calendar page
+  };
+
   // Transform notifications
   const notifications = useMemo(() => {
     if (!notificationsData?.result) return [];
@@ -332,7 +341,18 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
           key: 'calendar',
           label: 'Schedule Meeting',
           icon: <Calendar24Filled className="w-4 h-4" />,
-          onClick: () => router.push('/dashboard/calendar'),
+          onClick: () => {
+            setShowMeetingDialog(true);
+          },
+          className: "font-['Manrope:Medium',sans-serif]"
+        },
+        {
+          key: 'leave',
+          label: 'Apply Leave',
+          icon: <CalendarAdd24Filled className="w-4 h-4" />,
+          onClick: () => {
+            setShowLeaveDialog(true);
+          },
           className: "font-['Manrope:Medium',sans-serif]"
         },
         {
@@ -584,6 +604,20 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
       <FeedbackWidget
         open={showFeedbackDialog}
         onClose={() => setShowFeedbackDialog(false)}
+      />
+
+      {/* Meeting Modal */}
+      <MeetingCreateModal
+        open={showMeetingDialog}
+        onCancel={() => setShowMeetingDialog(false)}
+        companyTimeZone={userDetailsData?.result?.timezone || 'UTC'}
+      />
+
+      {/* Leave Modal */}
+      <LeaveApplyModal
+        open={showLeaveDialog}
+        onCancel={() => setShowLeaveDialog(false)}
+        availableLeaveTypes={['Sick Leave', 'Casual Leave', 'Vacation']} // We can fetch this if needed
       />
 
       <AIAssistantDrawer 

@@ -226,14 +226,14 @@ const NavItem = React.memo(function NavItem({ href, icon, label, active = false,
   const iconWithColor = React.isValidElement(icon)
     ? React.cloneElement(icon as React.ReactElement<any>, { 
         color: iconColor,
-        fill: active ? iconColor : 'none'
+        fill: 'none'
       })
     : icon;
 
   return (
     <Link
       href={href}
-      className={`
+      className={`  
         relative h-[40px] rounded-full transition-all group shrink-0
         flex items-center 
         ${collapsed ? 'justify-center w-[40px] px-0' : 'w-full gap-4 px-6'}
