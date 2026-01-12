@@ -224,7 +224,10 @@ export const Sidebar = React.memo(function Sidebar({ userRole, permissions }: Si
 const NavItem = React.memo(function NavItem({ href, icon, label, active = false, collapsed = false }: { href: string; icon: React.ReactNode; label: string; active?: boolean; collapsed?: boolean }) {
   const iconColor = active ? '#ff3b3b' : '#434343';
   const iconWithColor = React.isValidElement(icon)
-    ? React.cloneElement(icon as React.ReactElement<any>, { color: iconColor })
+    ? React.cloneElement(icon as React.ReactElement<any>, { 
+        color: iconColor,
+        fill: active ? iconColor : 'none'
+      })
     : icon;
 
   return (

@@ -1696,7 +1696,8 @@ Improve the perceived performance and professionalism of the application by repl
 -   **Transition Quality**: Eliminated industrial "Loading..." text from layout routes and replaced with transparent fallbacks.
 -   **Detail Page Skeletons**: Upgraded `RequirementDetailsPage` and `TaskDetailsPage` with high-fidelity skeletons matching the complex layouts.
 -   **Banner Engineering**: Implemented `sessionStorage` guard for `ProfileCompletionBanner` to enforce "once per session" visibility and "hidden on reload" behavior, optimizing the first-login UX.
--   **Verification**: All routes verified via `npm run build`; verified persistence logic manually in layout.
+-   **Sidebar UX**: Switched active navigation icons to solid (filled) versions using the `fill` prop, enhancing visual hierarchy and accessibility.
+-   **Verification**: All routes verified via `npm run build`; verified persistence and icon states manually in layout.
 
 ## Update: Skeleton Loading Expansion (Feature Pages)
 
