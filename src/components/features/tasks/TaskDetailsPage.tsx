@@ -12,6 +12,7 @@ import { useTask, useTaskTimer } from '@/hooks/useTask';
 import { useWorkspaces, useRequirements } from '@/hooks/useWorkspace';
 import { useEmployees } from '@/hooks/useUser';
 import { format } from 'date-fns';
+import { Skeleton } from '../../ui/Skeleton';
 import { PageLayout } from '../../layout/PageLayout';
 
 export function TaskDetailsPage() {
@@ -52,7 +53,62 @@ export function TaskDetailsPage() {
   const [attachments, setAttachments] = useState<File[]>([]);
 
   if (isLoading) {
-    return <div className="p-8">Loading...</div>;
+    return (
+      <PageLayout
+        title={<Skeleton className="h-8 w-64" />}
+        action={<div className="flex items-center gap-4"><Skeleton className="h-8 w-24 rounded-full" /><Skeleton className="h-8 w-24 rounded-full" /></div>}
+        tabs={[{ id: 'details', label: 'Details' }, { id: 'steps', label: 'Steps' }]}
+        activeTab="details"
+        sideContent={
+          <div className="w-[400px] border-l border-[#EEEEEE] flex flex-col bg-white rounded-tr-[24px] rounded-br-[24px] p-6 space-y-6">
+            <Skeleton className="h-6 w-32" />
+            <div className="space-y-6">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="flex gap-3">
+                  <Skeleton className="w-8 h-8 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-10 w-full rounded-xl" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        }
+      >
+        <div className="h-full overflow-y-auto p-8 bg-[#FAFAFA] space-y-8">
+          <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
+            <Skeleton className="h-6 w-32 mb-4" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+          <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
+            <Skeleton className="h-6 w-48 mb-6" />
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="bg-[#FAFAFA] rounded-xl p-4 border border-[#F5F5F5]">
+                  <Skeleton className="h-3 w-16 mb-3" />
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="w-10 h-10 rounded-full" />
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 w-12" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-[#EEEEEE]">
+              {[1, 2].map(i => (
+                <div key={i}>
+                  <Skeleton className="h-4 w-32 mb-4" />
+                  <Skeleton className="h-24 w-full rounded-xl" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </PageLayout>
+    );
   }
 
   if (!task) {

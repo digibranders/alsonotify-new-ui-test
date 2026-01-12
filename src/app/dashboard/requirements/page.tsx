@@ -8,7 +8,7 @@ export default function RequirementsPageRoute() {
   return (
 
       <div className="flex-1 overflow-hidden">
-        <Suspense fallback={<div className="flex items-center justify-center h-full"><p className="text-[#999999]">Loading...</p></div>}>
+        <Suspense fallback={<div className="flex-1" />}>
           <RequirementsPage />
         </Suspense>
       </div>
