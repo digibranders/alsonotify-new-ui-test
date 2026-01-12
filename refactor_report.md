@@ -1689,4 +1689,29 @@ Improve the perceived performance and professionalism of the application by repl
 
 ### Outcome
 
-The dashboard and topbar now exhibit a smooth, high-quality loading state that matches modern web standards (e.g., YouTube, Linear), significantly enhancing the user experience during initial load and data refreshment.
+## The dashboard and topbar now exhibit a smooth, high-quality loading state that matches modern web standards (e.g., YouTube, Linear), significantly enhancing the user experience during initial load and data refreshment.
+
+## Update: Skeleton Loading Expansion (Feature Pages)
+
+**Timestamp:** 2026-01-12T00:35:00+05:30
+
+### Objective
+
+Expand the Skeleton Loading System to the main feature pages (`Tasks`, `Employees`, `Requirements`) to eliminate layout shifts and provide a premium, YouTube-like loading experience across the application.
+
+### Changes
+
+-   **`TasksPage.tsx`**: Replaced "Loading tasks..." text with a structured skeleton table matching the grid layout (9 columns).
+-   **`EmployeesPage.tsx`**: Replaced "Loading employees..." text with a structured skeleton table matching the employee grid (8 columns), including avatar and badge placeholders.
+-   **`RequirementsPage.tsx`**: Replaced "Loading requirements..." text with a grid of skeleton cards matching the `RequirementCard` structure.
+-   **Generic `Skeleton` Component**: Integrated the reusable `Skeleton` component into all new loading states.
+
+### Verification
+
+-   **`npm run typecheck`**: ✅ Passed
+-   **`npm run build`**: ✅ Passed
+-   **Manual Validation**: Code structure verified to match original grid layouts to minimize layout shifts during transitions.
+
+### Outcome
+
+Consistency and perceived performance have been significantly improved. The application now uses high-fidelity skeletons instead of generic spinners or text placeholders for all major landing pages.

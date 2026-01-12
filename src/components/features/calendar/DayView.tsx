@@ -3,6 +3,7 @@
 import { useMemo, useEffect, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import { Popover, Spin } from 'antd';
+import { Skeleton } from '../../ui/Skeleton';
 import { CalendarEventPopup } from './CalendarEventPopup';
 import { CalendarEvent } from './types';
 
@@ -76,8 +77,25 @@ export function DayView({ currentDate, events, isLoading, onTimeSlotClick }: Day
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-full">
-                <Spin size="large" />
+            <div className="flex flex-col h-full bg-white border border-[#EEEEEE] rounded-[16px] overflow-hidden animate-pulse">
+                <div className="flex border-b border-[#EEEEEE] bg-white">
+                    <div className="w-16 flex-shrink-0 border-r border-[#EEEEEE]"></div>
+                    <div className="flex-1 px-4 py-2 flex flex-col items-center">
+                        <Skeleton className="h-3 w-16 mb-2" />
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                    </div>
+                </div>
+                <div className="flex-1 overflow-hidden flex">
+                    <div className="w-16 flex-shrink-0 border-r border-[#EEEEEE] space-y-12 py-4">
+                        {Array.from({ length: 12 }).map((_, i) => (
+                            <Skeleton key={i} className="h-3 w-8 mx-auto" />
+                        ))}
+                    </div>
+                    <div className="flex-1 p-4 space-y-4">
+                        <Skeleton className="h-20 w-3/4 rounded-lg" />
+                        <Skeleton className="h-16 w-1/2 rounded-lg" />
+                    </div>
+                </div>
             </div>
         );
     }

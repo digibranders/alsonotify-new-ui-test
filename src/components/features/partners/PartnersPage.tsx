@@ -12,6 +12,7 @@ import {
     App,
     Dropdown
 } from 'antd';
+import { UserOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
 import { PageLayout } from '../../layout/PageLayout';
 import {
     Plus,
@@ -36,7 +37,7 @@ import axiosApi from '../../../config/axios';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { PartnerRow, Partner, PartnerStatus } from './rows/PartnerRow';
 import { acceptInvitation, updatePartnerStatus, getReceivedInvites, acceptInviteById, declineInviteById, getPartners, deletePartner } from '@/services/user';
-import { BankOutlined, UserOutlined, MailOutlined, PhoneOutlined, CalendarOutlined } from '@ant-design/icons';
+import { Skeleton } from '../../ui/Skeleton';
 import { UserDto } from '@/types/dto/user.dto';
 import { getErrorMessage } from '@/types/api-utils';
 
@@ -486,7 +487,34 @@ export function PartnersPageContent() {
 
                     {/* Content */}
                     <div className="px-4 space-y-2">
-                        {allRequests.length === 0 ? (
+                        {loading ? (
+                            Array.from({ length: 5 }).map((_, i) => (
+                                <div key={i} className="bg-white border border-[#EEEEEE] rounded-[16px] px-4 py-3 animate-pulse">
+                                    <div className="grid grid-cols-[40px_1.5fr_2fr_1fr_100px] gap-4 items-center">
+                                        <div className="flex justify-center">
+                                            <Skeleton className="h-2 w-2 rounded-full" />
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <Skeleton className="h-8 w-8 rounded-full" />
+                                            <div className="space-y-1">
+                                                <Skeleton className="h-4 w-24" />
+                                                <Skeleton className="h-3 w-16" />
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Skeleton className="h-4 w-32" />
+                                        </div>
+                                        <div>
+                                            <Skeleton className="h-5 w-20 rounded-full" />
+                                        </div>
+                                        <div className="flex justify-end gap-2 pr-5">
+                                            <Skeleton className="h-8 w-8 rounded-full" />
+                                            <Skeleton className="h-8 w-8 rounded-full" />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : allRequests.length === 0 ? (
                             <div className="text-center py-20 bg-[#FAFAFA] rounded-2xl border border-dashed border-[#EEEEEE] mx-4">
                                 <Users className="w-10 h-10 text-[#CCCCCC] mx-auto mb-3" />
                                 <p className="text-[#999999] font-['Manrope:Medium',sans-serif]">
@@ -627,25 +655,67 @@ export function PartnersPageContent() {
 
                     {/* Content */}
                     <div className="space-y-2">
-                        {paginatedPartners.map(partner => (
-                            <PartnerRow
-                                key={partner.id}
-                                partner={partner}
-                                selected={selectedPartners.includes(partner.id)}
-                                onSelect={() => toggleSelect(partner.id)}
-                                onEdit={() => handleEdit(partner)}
-                                onStatusUpdate={(isActive) => handleStatusUpdate(partner, isActive)}
-                            />
-                        ))}
-                    </div>
+                        {loading ? (
+                            Array.from({ length: 10 }).map((_, i) => (
+                                <div key={i} className="bg-white border border-[#EEEEEE] rounded-[16px] px-4 py-3 animate-pulse">
+                                    <div className="grid grid-cols-[40px_2fr_1fr_0.8fr_1.5fr_0.8fr_0.7fr_0.7fr_40px] gap-4 items-center">
+                                        <div className="flex justify-center">
+                                            <Skeleton className="h-4 w-4 rounded" />
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <Skeleton className="h-9 w-9 rounded-full" />
+                                            <div className="space-y-1">
+                                                <Skeleton className="h-4 w-32" />
+                                                <Skeleton className="h-3 w-20" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <Skeleton className="h-4 w-24" />
+                                        </div>
+                                        <div>
+                                            <Skeleton className="h-5 w-20 rounded-full" />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Skeleton className="h-4 w-32" />
+                                        </div>
+                                        <div>
+                                            <Skeleton className="h-4 w-20" />
+                                        </div>
+                                        <div>
+                                            <Skeleton className="h-6 w-16 rounded" />
+                                        </div>
+                                        <div>
+                                            <Skeleton className="h-4 w-16" />
+                                        </div>
+                                        <div className="flex justify-end">
+                                            <Skeleton className="h-7 w-7 rounded-full" />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <>
+                                {paginatedPartners.map(partner => (
+                                    <PartnerRow
+                                        key={partner.id}
+                                        partner={partner}
+                                        selected={selectedPartners.includes(partner.id)}
+                                        onSelect={() => toggleSelect(partner.id)}
+                                        onEdit={() => handleEdit(partner)}
+                                        onStatusUpdate={(isActive) => handleStatusUpdate(partner, isActive)}
+                                    />
+                                ))}
 
-                    {filteredPartners.length === 0 && (
-                        <div className="text-center py-12">
-                            <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">
-                                No partners found
-                            </p>
-                        </div>
-                    )}
+                                {filteredPartners.length === 0 && (
+                                    <div className="text-center py-12">
+                                        <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">
+                                            No partners found
+                                        </p>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
 
                     {/* Bulk Action Bar */}
                     {selectedPartners.length > 0 && (

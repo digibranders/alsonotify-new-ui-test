@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTabSync } from '@/hooks/useTabSync';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Video, X } from 'lucide-react';
+import { Skeleton } from '../../ui/Skeleton';
 import { PageLayout } from '../../layout/PageLayout';
 import { Popover, Spin, Tag, Button, Modal, Input, Select, DatePicker, App, Avatar, Tooltip, Segmented, Radio } from 'antd';
 import dayjs from 'dayjs';
@@ -472,7 +473,19 @@ export function CalendarPage() {
                 Today&apos;s Events
               </h4>
               <div className="space-y-3">
-                {todayEvents.length > 0 ? (
+                {isLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="bg-white rounded-[12px] p-4 border border-[#EEEEEE] animate-pulse">
+                      <div className="flex items-start gap-3">
+                        <Skeleton className="w-1 h-12 rounded-full mt-1" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-3 w-1/2" />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : todayEvents.length > 0 ? (
                   todayEvents.map((event) => (
                     <Popover key={event.id} content={<CalendarEventPopup event={event} />} title="" trigger="click" placement="left">
                       <div className="bg-white rounded-[12px] p-4 border border-[#EEEEEE] cursor-pointer hover:shadow-md transition-shadow">
@@ -507,7 +520,19 @@ export function CalendarPage() {
             <div className="bg-[#F7F7F7] rounded-[16px] p-5 min-h-[300px]">
               <h4 className="font-['Manrope:SemiBold',sans-serif] text-[14px] text-[#111111] mb-4">Upcoming</h4>
               <div className="space-y-3">
-                {upcomingEvents.length > 0 ? (upcomingEvents.map((event) => (
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="bg-white rounded-[12px] p-4 border border-[#EEEEEE] animate-pulse">
+                      <div className="flex items-start gap-3">
+                        <Skeleton className="w-1 h-10 rounded-full mt-1" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton className="h-4 w-3/4" />
+                          <Skeleton className="h-3 w-1/2" />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : upcomingEvents.length > 0 ? (upcomingEvents.map((event) => (
                    <Popover key={event.id} content={<CalendarEventPopup event={event} />} title="" trigger="click" placement="left">
                     <div key={event.id} className="bg-white rounded-[12px] p-4 border border-[#EEEEEE] cursor-pointer hover:shadow-md transition-shadow">
                       <div className="flex items-start gap-3">

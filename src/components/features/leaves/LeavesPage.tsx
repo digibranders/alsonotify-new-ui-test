@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { PageLayout } from '../../layout/PageLayout';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { Spin, Modal, Form, DatePicker, Select, Input, Button, App, Checkbox } from 'antd';
+import { Skeleton } from '../../ui/Skeleton';
 import { useCompanyLeaves, useUpdateLeaveStatus, useApplyForLeave } from '../../../hooks/useLeave';
 import { LeaveType } from '../../../services/leave';
 import { LeaveRow, Leave } from './rows/LeaveRow';
@@ -206,8 +207,25 @@ export function LeavesPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Spin size="large" />
+          <div className="space-y-2 animate-pulse">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="group bg-white border border-[#EEEEEE] rounded-[16px] px-4 py-3 flex items-center">
+                <div className="grid grid-cols-[40px_48px_1.5fr_1fr_1.5fr_0.8fr_1fr_120px_40px] gap-4 items-center w-full">
+                  <div className="flex justify-center"><Skeleton className="h-5 w-5 rounded" /></div>
+                  <div className="flex justify-center"><Skeleton className="w-10 h-10 rounded-full" /></div>
+                  <div className="flex flex-col space-y-1">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-2 w-20" />
+                  </div>
+                  <div className="flex justify-center"><Skeleton className="h-5 w-20 rounded-full" /></div>
+                  <div className="flex flex-col space-y-1"><Skeleton className="h-4 w-40" /></div>
+                  <div className="flex justify-center"><Skeleton className="h-4 w-12" /></div>
+                  <div className="flex justify-center"><Skeleton className="h-6 w-20 rounded-full" /></div>
+                  <div className="flex justify-end gap-2"><Skeleton className="h-8 w-8 rounded-lg" /><Skeleton className="h-8 w-8 rounded-lg" /></div>
+                  <div className="flex justify-end"><Skeleton className="h-8 w-8 rounded-full" /></div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : error ? (
           <div className="flex items-center justify-center py-12 text-[#666666]">

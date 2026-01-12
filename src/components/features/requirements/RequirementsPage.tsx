@@ -13,6 +13,7 @@ import { PaginationBar } from '../../ui/PaginationBar';
 import { Modal, Button, Input, Select, Tooltip, Popover, Checkbox, App } from 'antd';
 import { useWorkspaces, useCreateRequirement, useUpdateRequirement, useDeleteRequirement, useApproveRequirement, useCollaborativeRequirements } from '@/hooks/useWorkspace';
 import { useEmployees, useUserDetails } from '@/hooks/useUser';
+import { Skeleton } from '../../ui/Skeleton';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { format, isPast, isToday, differenceInDays } from 'date-fns';
@@ -1074,69 +1075,91 @@ export function RequirementsPage() {
       <div className="flex-1 min-h-0 relative flex flex-col">
         <div className="flex-1 overflow-y-auto pb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {finalFilteredReqs.slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize).map((requirement) => (
-              <RequirementCard
-                key={requirement.id}
-                requirement={requirement as any}
-                selected={selectedReqs.includes(requirement.id)}
-                onSelect={() => toggleSelect(requirement.id)}
-                onAccept={() => {
-                  console.log('onAccept Triggered', {
-                    id: requirement.id,
-                    type: requirement.type,
-                    isSender: requirement.isSender,
-                    rawStatus: requirement.rawStatus
-                  });
-                  const req = requirement;
-                  if (req.type === 'outsourced') {
-                    if (req.isReceiver) {
-                      const status = req.rawStatus?.toLowerCase();
-                      if (status === 'waiting' || status === 'rejected') {
-                        setPendingReqId(requirement.id);
-                        setIsQuotationOpen(true);
-                      } else if (status === 'assigned' && !req.receiver_workspace_id) {
-                        setPendingReqId(requirement.id);
-                        setIsMappingOpen(true);
+            {isLoading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-white border border-[#EEEEEE] rounded-[20px] p-5 flex flex-col gap-4 animate-pulse">
+                  <div className="flex justify-between items-start">
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-4 w-4 rounded" />
+                  </div>
+                  <Skeleton className="h-16 w-full rounded-lg" />
+                  <div className="mt-auto pt-4 border-t border-[#EEEEEE] flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <div className="space-y-1">
+                        <Skeleton className="h-3 w-20" />
+                        <Skeleton className="h-2 w-16" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-6 w-20 rounded-full" />
+                  </div>
+                </div>
+              ))
+            ) : (
+              finalFilteredReqs.slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize).map((requirement) => (
+                <RequirementCard
+                  key={requirement.id}
+                  requirement={requirement as any}
+                  selected={selectedReqs.includes(requirement.id)}
+                  onSelect={() => toggleSelect(requirement.id)}
+                  onAccept={() => {
+                    console.log('onAccept Triggered', {
+                      id: requirement.id,
+                      type: requirement.type,
+                      isSender: requirement.isSender,
+                      rawStatus: requirement.rawStatus
+                    });
+                    const req = requirement;
+                    if (req.type === 'outsourced') {
+                      if (req.isReceiver) {
+                        const status = req.rawStatus?.toLowerCase();
+                        if (status === 'waiting' || status === 'rejected') {
+                          setPendingReqId(requirement.id);
+                          setIsQuotationOpen(true);
+                        } else if (status === 'assigned' && !req.receiver_workspace_id) {
+                          setPendingReqId(requirement.id);
+                          setIsMappingOpen(true);
+                        }
+                      } else if (req.isSender) {
+                        const status = req.rawStatus?.toLowerCase();
+                        if (status === 'review') {
+                          console.log('Attempting to approve requirement...', requirement.id);
+                          approveRequirementMutation.mutate({
+                            requirement_id: requirement.id,
+                            status: 'Assigned'
+                          });
+                        } else if (status === 'rejected') {
+                          handleEditDraft(requirement as any);
+                        }
                       }
-                    } else if (req.isSender) {
-                      const status = req.rawStatus?.toLowerCase();
-                      if (status === 'review') {
-                        console.log('Attempting to approve requirement...', requirement.id);
-                        approveRequirementMutation.mutate({
-                          requirement_id: requirement.id,
-                          status: 'Assigned'
-                        });
-                      } else if (status === 'rejected') {
-                        handleEditDraft(requirement as any);
-                      }
+                    } else {
+                      handleReqAccept(requirement.id)
                     }
-                  } else {
-                    handleReqAccept(requirement.id)
+                  }}
+                  onReject={() => {
+                    const req = requirement;
+                    if (req.type === 'outsourced') {
+                      setPendingReqId(requirement.id);
+                      setIsRejectOpen(true);
+                    } else {
+                      handleReqReject(requirement.id);
+                    }
+                  }}
+                  onEdit={() => handleEditDraft({
+                    ...requirement,
+                  } as any)}
+                  onNavigate={() =>
+                    router.push(`/dashboard/workspace/${requirement.workspaceId}/requirements/${requirement.id}`)
                   }
-                }}
-                onReject={() => {
-                  const req = requirement;
-                  if (req.type === 'outsourced') {
-                    setPendingReqId(requirement.id);
-                    setIsRejectOpen(true);
-                  } else {
-                    handleReqReject(requirement.id);
-                  }
-                }}
-                onEdit={() => handleEditDraft({
-                  ...requirement,
-                } as any)}
-                onNavigate={() =>
-                  router.push(`/dashboard/workspace/${requirement.workspaceId}/requirements/${requirement.id}`)
-                }
-              />
-            ))}
+                />
+              ))
+            )}
           </div>
 
-          {finalFilteredReqs.length === 0 && (
+          {!isLoading && finalFilteredReqs.length === 0 && (
             <div className="text-center py-12">
               <p className="text-[#999999] font-['Inter:Regular',sans-serif]">
-                {isLoading ? "Loading requirements..." : "No requirements found"}
+                No requirements found
               </p>
             </div>
           )}

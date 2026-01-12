@@ -15,6 +15,7 @@ import { Modal, Button } from 'antd';
 import { useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
+import { Skeleton } from '../../ui/Skeleton';
 
 import { PageLayout } from '../../layout/PageLayout';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
@@ -39,8 +40,19 @@ export function FinancePage() {
   const router = useRouter();
   
   // Local State for Data (Simulating Backend)
-  const [requirements, setRequirements] = useState<Requirement[]>(MOCK_REQUIREMENTS);
-  const [invoices, setInvoices] = useState<Invoice[]>(MOCK_INVOICES);
+  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate API fetch delay
+    const timer = setTimeout(() => {
+        setRequirements(MOCK_REQUIREMENTS);
+        setInvoices(MOCK_INVOICES);
+        setLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Download State
   const [downloadPreviewData, setDownloadPreviewData] = useState<any>(null);
@@ -368,50 +380,103 @@ export function FinancePage() {
 
           {/* KPI Cards - Double-width first card, single-width others */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {/* Card 1: Amount Invoiced (Double Width) */}
-            <div className="md:col-span-2 p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex items-center justify-between">
-              <div className="w-1/2 border-r border-[#EEEEEE] pr-4 flex flex-col gap-0.5">
-                <span className="text-[12px] font-medium text-[#666666]">Amount Invoiced</span>
-                <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111]">${kpiInvoiced.total.toLocaleString()}</span>
-              </div>
-              <div className="w-1/2 pl-6 flex items-center gap-8">
-                <div className="flex flex-col">
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-[#999999]">Received</span>
-                  <span className="text-[15px] font-['Manrope:Bold',sans-serif] text-[#0F9D58]">${kpiInvoiced.received.toLocaleString()}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-[#999999]">Due</span>
-                  <span className="text-[15px] font-['Manrope:Bold',sans-serif] text-[#FF3B3B]">${kpiInvoiced.due.toLocaleString()}</span>
-                </div>
-              </div>
-            </div>
+            {loading ? (
+                <>
+                    <div className="md:col-span-2 p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex items-center justify-between animate-pulse">
+                        <div className="w-1/2 border-r border-[#EEEEEE] pr-4 space-y-2">
+                            <Skeleton className="h-3 w-1/3" />
+                            <Skeleton className="h-6 w-1/2" />
+                        </div>
+                        <div className="w-1/2 pl-6 flex items-center gap-8">
+                            <div className="space-y-2">
+                                <Skeleton className="h-2 w-12" />
+                                <Skeleton className="h-4 w-16" />
+                            </div>
+                            <div className="space-y-2">
+                                <Skeleton className="h-2 w-12" />
+                                <Skeleton className="h-4 w-16" />
+                            </div>
+                        </div>
+                    </div>
+                    {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-2 justify-center animate-pulse">
+                            <Skeleton className="h-3 w-2/3" />
+                            <Skeleton className="h-6 w-1/2" />
+                        </div>
+                    ))}
+                </>
+            ) : (
+                <>
+                    {/* Card 1: Amount Invoiced (Double Width) */}
+                    <div className="md:col-span-2 p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex items-center justify-between">
+                    <div className="w-1/2 border-r border-[#EEEEEE] pr-4 flex flex-col gap-0.5">
+                        <span className="text-[12px] font-medium text-[#666666]">Amount Invoiced</span>
+                        <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111]">${kpiInvoiced.total.toLocaleString()}</span>
+                    </div>
+                    <div className="w-1/2 pl-6 flex items-center gap-8">
+                        <div className="flex flex-col">
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-[#999999]">Received</span>
+                        <span className="text-[15px] font-['Manrope:Bold',sans-serif] text-[#0F9D58]">${kpiInvoiced.received.toLocaleString()}</span>
+                        </div>
+                        <div className="flex flex-col">
+                        <span className="text-[10px] uppercase tracking-wider font-bold text-[#999999]">Due</span>
+                        <span className="text-[15px] font-['Manrope:Bold',sans-serif] text-[#FF3B3B]">${kpiInvoiced.due.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    </div>
 
-            {/* Card 2: Amount to be Invoiced (Single Width) */}
-            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center">
-              <span className="text-[12px] font-medium text-[#666666]">Amount to be Invoiced</span>
-              <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">${kpiToBeInvoiced.toLocaleString()}</span>
-            </div>
+                    {/* Card 2: Amount to be Invoiced (Single Width) */}
+                    <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center">
+                    <span className="text-[12px] font-medium text-[#666666]">Amount to be Invoiced</span>
+                    <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#2196F3]">${kpiToBeInvoiced.toLocaleString()}</span>
+                    </div>
 
-            {/* Card 3: Total Expenses (Single Width) */}
-            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center">
-              <span className="text-[12px] font-medium text-[#666666]">Total Expenses</span>
-              <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111]">${kpiTotalExpenses.toLocaleString()}</span>
-            </div>
+                    {/* Card 3: Total Expenses (Single Width) */}
+                    <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center">
+                    <span className="text-[12px] font-medium text-[#666666]">Total Expenses</span>
+                    <span className="text-xl font-['Manrope:Bold',sans-serif] text-[#111111]">${kpiTotalExpenses.toLocaleString()}</span>
+                    </div>
 
-            {/* Card 4: Profit / Loss (Single Width) */}
-            <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center">
-              <span className="text-[12px] font-medium text-[#666666]">Profit / Loss</span>
-              <span className={`text-xl font-['Manrope:Bold',sans-serif] ${kpiProfit >= 0 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
-                ${kpiProfit.toLocaleString()}
-              </span>
-            </div>
+                    {/* Card 4: Profit / Loss (Single Width) */}
+                    <div className="p-3 rounded-xl border border-[#EEEEEE] bg-[#FAFAFA] flex flex-col gap-0.5 justify-center">
+                    <span className="text-[12px] font-medium text-[#666666]">Profit / Loss</span>
+                    <span className={`text-xl font-['Manrope:Bold',sans-serif] ${kpiProfit >= 0 ? 'text-[#0F9D58]' : 'text-[#FF3B3B]'}`}>
+                        ${kpiProfit.toLocaleString()}
+                    </span>
+                    </div>
+                </>
+            )}
           </div>
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto pb-24">
           {activeTab === 'unbilled' ? (
-             Object.keys(unbilledByClient).length === 0 ? (
+             loading ? (
+                <div className="space-y-4">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="bg-white border border-[#EEEEEE] rounded-[16px] overflow-hidden animate-pulse">
+                            <div className="bg-[#F9FAFB] border-b border-[#EEEEEE] p-4 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <Skeleton className="h-5 w-5 rounded" />
+                                    <Skeleton className="h-10 w-10 rounded-full" />
+                                    <div className="space-y-1">
+                                        <Skeleton className="h-4 w-32" />
+                                        <Skeleton className="h-3 w-20" />
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-6">
+                                    <div className="space-y-1 text-right">
+                                        <Skeleton className="h-6 w-24" />
+                                        <Skeleton className="h-2 w-16" />
+                                    </div>
+                                    <Skeleton className="h-9 w-32 rounded-full" />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+             ) : Object.keys(unbilledByClient).length === 0 ? (
                 <EmptyState 
                     icon={<CheckCircle className="w-8 h-8 text-[#666666]" />}
                     title="All caught up!"
@@ -446,7 +511,18 @@ export function FinancePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#EEEEEE]">
-                    {filteredInvoices.length === 0 ? (
+                    {loading ? (
+                        Array.from({ length: 10 }).map((_, i) => (
+                            <tr key={i} className="animate-pulse">
+                                <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                                <td className="px-6 py-4"><Skeleton className="h-4 w-32" /></td>
+                                <td className="px-6 py-4"><Skeleton className="h-4 w-24" /></td>
+                                <td className="px-6 py-4"><Skeleton className="h-4 w-16" /></td>
+                                <td className="px-6 py-4"><Skeleton className="h-6 w-16 rounded" /></td>
+                                <td className="px-6 py-4 text-right"><Skeleton className="h-6 w-6 rounded-full ml-auto" /></td>
+                            </tr>
+                        ))
+                    ) : filteredInvoices.length === 0 ? (
                         <tr>
                             <td colSpan={6} className="px-6 py-12 text-center text-[#999999] font-['Manrope:Regular',sans-serif]">
                                 No invoices found

@@ -12,6 +12,7 @@ import { useWorkspaces } from '@/hooks/useWorkspace';
 import { searchEmployees } from '@/services/user';
 import { getRoleFromUser } from '@/utils/roleUtils';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { Skeleton } from '../../ui/Skeleton';
 
 import { useUserDetails, useCurrentUserCompany } from '@/hooks/useUser';
 import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
@@ -894,7 +895,24 @@ export function TasksPage() {
         </div>
 
         <div className="space-y-2">
-          {tasks.map((task) => (
+          {isLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="bg-white border border-[#EEEEEE] rounded-[16px] grid grid-cols-[40px_2.5fr_1.2fr_1.1fr_1fr_0.8fr_1.5fr_0.6fr_40px] gap-4 px-4 py-4 items-center">
+                <div className="flex justify-center"><Skeleton className="h-4 w-4 rounded" /></div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/4" />
+                </div>
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-24" />
+                <div className="flex justify-center"><Skeleton className="h-8 w-8 rounded-full" /></div>
+                <div className="flex justify-center"><Skeleton className="h-4 w-12" /></div>
+                <Skeleton className="h-2 w-full rounded-full" />
+                <div className="flex justify-center"><Skeleton className="h-6 w-16 rounded-full" /></div>
+                <div className="flex justify-center"><Skeleton className="h-4 w-4 rounded" /></div>
+              </div>
+            ))
+          ) : tasks.map((task) => (
             <TaskRow
               key={task.id}
               task={{
@@ -913,11 +931,7 @@ export function TasksPage() {
           ))}
         </div>
 
-        {isLoading ? (
-          <div className="text-center py-12">
-            <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">Loading tasks...</p>
-          </div>
-        ) : filteredTasks.length === 0 ? (
+        {!isLoading && filteredTasks.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-[#999999] font-['Manrope:Regular',sans-serif]">
               No tasks found

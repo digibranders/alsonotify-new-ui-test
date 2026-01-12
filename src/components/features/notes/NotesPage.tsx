@@ -6,6 +6,7 @@ import { useNotes, useCreateNote, useUpdateNote, useDeleteNote, useArchiveNote, 
 import { sanitizeRichText } from '../../../utils/sanitizeHtml';
 import { Plus, Archive, Trash2, FileText, ArchiveRestore } from 'lucide-react';
 import { Checkbox, App } from 'antd';
+import { Skeleton } from '../../ui/Skeleton';
 import { NoteComposerModal } from '../../common/NoteComposerModal';
 import { NoteViewModal } from '../../common/NoteViewModal';
 // Removed direct services as we use hooks now, or keep them for types if needed? 
@@ -331,8 +332,34 @@ export function NotesPage() {
           }}
         >
           {isLoading ? (
-            <div className="h-full flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff3b3b]"></div>
+            <div className="grid grid-cols-4 gap-6 pb-6" style={{ gridAutoRows: `${cardHeight}px` }}>
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-xl border border-[#EEEEEE] p-4 flex flex-col animate-pulse">
+                  <div className="flex items-start justify-between mb-3 gap-2">
+                    <Skeleton className="h-5 w-3/4" />
+                    <div className="flex gap-1">
+                      <Skeleton className="h-7 w-7 rounded-md" />
+                      <Skeleton className="h-7 w-7 rounded-md" />
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-4/5" />
+                    <div className="pt-4 space-y-2">
+                      <Skeleton className="h-2 w-16" />
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-4 w-4 rounded" />
+                        <Skeleton className="h-3 w-1/2" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Skeleton className="h-4 w-4 rounded" />
+                        <Skeleton className="h-3 w-3/4" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : filteredNotes.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center py-12">
