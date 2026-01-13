@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEmployee, useUpdateEmployee, useCompanyDepartments } from '@/hooks/useUser';
+import { fileService } from '@/services/file.service';
+import { queryKeys } from '@/lib/queryKeys';
 import { PageLayout } from '../../layout/PageLayout';
 import { AccessBadge } from '../../ui/AccessBadge';
 import { Button, Tag, Divider, Modal, App } from 'antd';
@@ -69,61 +72,9 @@ export function EmployeeDetailsPage() {
 
   const backendEmp = employeeData?.result;
 
-  // Mock documents data - TODO: Replace with actual API call when available
   const documents = useMemo(() => {
     // Check if employee data has documents
-    const employeeDocs = (backendEmp as BackendEmployee)?.documents || [];
-    if (Array.isArray(employeeDocs) && employeeDocs.length > 0) {
-      return employeeDocs;
-    }
-    // Mock documents from docs folder - all 4 types
-    const mockDocuments: UserDocument[] = [
-      {
-        id: '1',
-        documentTypeId: '1',
-        documentTypeName: 'Resume',
-        fileName: 'Resume_Updated.pdf',
-        fileSize: 2400000, // 2.4 MB
-        fileUrl: '/documents/Jayendra_Jadhav_Resume.pdf',
-        uploadedDate: '2024-10-24T00:00:00Z',
-        fileType: 'pdf',
-        isRequired: true,
-      },
-      {
-        id: '2',
-        documentTypeId: '2',
-        documentTypeName: 'ID Proof',
-        fileName: 'Identity_Proof.webp',
-        fileSize: 1000000, // 1 MB
-        fileUrl: '/documents/profile.jpeg',
-        uploadedDate: '2024-01-15T00:00:00Z',
-        fileType: 'image',
-        isRequired: true,
-      },
-      {
-        id: '3',
-        documentTypeId: '3',
-        documentTypeName: 'Contract',
-        fileName: 'Employment_Contract.docx',
-        fileSize: 206000, // 206 KB
-        fileUrl: '/documents/AI Agent Documentation.docx',
-        uploadedDate: '2024-01-20T00:00:00Z',
-        fileType: 'docx',
-        isRequired: true,
-      },
-      {
-        id: '4',
-        documentTypeId: '4',
-        documentTypeName: 'Supporting Docs',
-        fileName: 'ollama_data.csv',
-        fileSize: 50000, // 50 KB
-        fileUrl: '/documents/ollama_filtered_json_support.csv',
-        uploadedDate: '2024-12-17T00:00:00Z',
-        fileType: 'csv',
-        isRequired: false,
-      },
-    ];
-    return mockDocuments;
+    return (backendEmp as BackendEmployee)?.documents || [];
   }, [backendEmp]);
 
   const handleUpdateEmployee = (data: EmployeeFormData) => {
@@ -248,9 +199,49 @@ export function EmployeeDetailsPage() {
     }
   };
 
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingDocType, setUploadingDocType] = useState<string | null>(null);
+
   const handleDocumentUpload = (documentTypeId: string) => {
-    message.info(`Upload functionality for document type ${documentTypeId} - To be implemented`);
-    // TODO: Implement upload functionality
+    setUploadingDocType(documentTypeId);
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !uploadingDocType) return;
+
+    try {
+      message.loading({ content: 'Uploading document...', key: 'doc-upload' });
+      
+      // Find the document type name from the list
+      const doc = documents.find(d => d.documentTypeId === uploadingDocType);
+      const docTypeName = doc?.documentTypeName || 'Supporting Docs'; // Fallback
+
+      await fileService.uploadEmployeeDocument(
+        file,
+        parseInt(employeeId),
+        docTypeName
+      );
+      
+      message.success({ content: 'Document uploaded successfully!', key: 'doc-upload' });
+      
+      // Refresh employee data
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(parseInt(employeeId)) });
+      
+    } catch (error) {
+       console.error(error);
+       message.error({ content: 'Failed to upload document.', key: 'doc-upload' });
+    } finally {
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      setUploadingDocType(null);
+    }
   };
 
   return (
@@ -475,6 +466,13 @@ export function EmployeeDetailsPage() {
           />
         </div>
       </Modal>
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        onChange={handleFileChange}
+        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.csv,.xls,.xlsx" // Broad acceptance based on allowed types
+      />
     </PageLayout>
   );
 }

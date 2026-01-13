@@ -24,61 +24,9 @@ export function EmployeeDetailsModal({
   const [selectedDocument, setSelectedDocument] = useState<UserDocument | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
-  // Mock documents data - TODO: Replace with actual API call when available
   const documents = useMemo(() => {
     // Check if employee data has documents
-    const employeeDocs = (employee as any)?.documents || [];
-    if (Array.isArray(employeeDocs) && employeeDocs.length > 0) {
-      return employeeDocs;
-    }
-    // Mock documents from docs folder - all 4 types
-    const mockDocuments: UserDocument[] = [
-      {
-        id: '1',
-        documentTypeId: '1',
-        documentTypeName: 'Resume',
-        fileName: 'Resume_Updated.pdf',
-        fileSize: 2400000, // 2.4 MB
-        fileUrl: '/documents/Jayendra_Jadhav_Resume.pdf',
-        uploadedDate: '2024-10-24T00:00:00Z',
-        fileType: 'pdf',
-        isRequired: true,
-      },
-      {
-        id: '2',
-        documentTypeId: '2',
-        documentTypeName: 'ID Proof',
-        fileName: 'Identity_Proof.jpeg',
-        fileSize: 1000000, // 1 MB
-        fileUrl: '/documents/profile.jpeg',
-        uploadedDate: '2024-01-15T00:00:00Z',
-        fileType: 'image',
-        isRequired: true,
-      },
-      {
-        id: '3',
-        documentTypeId: '3',
-        documentTypeName: 'Contract',
-        fileName: 'Employment_Contract.docx',
-        fileSize: 206000, // 206 KB
-        fileUrl: '/documents/AI Agent Documentation.docx',
-        uploadedDate: '2024-01-20T00:00:00Z',
-        fileType: 'docx',
-        isRequired: true,
-      },
-      {
-        id: '4',
-        documentTypeId: '4',
-        documentTypeName: 'Supporting Docs',
-        fileName: 'ollama_data.csv',
-        fileSize: 50000, // 50 KB
-        fileUrl: '/documents/ollama_filtered_json_support.csv',
-        uploadedDate: '2024-12-17T00:00:00Z',
-        fileType: 'csv',
-        isRequired: false,
-      },
-    ];
-    return mockDocuments;
+    return (employee as any)?.documents || [];
   }, [employee]);
 
   if (!employee) return null;

@@ -146,6 +146,14 @@ export const Sidebar = React.memo(function Sidebar({ userRole, permissions }: Si
     if (path === '/dashboard') {
       return pathname === '/dashboard' || pathname === '/';
     }
+    // Special handling for Requirements inside Workspace context
+    if (path === '/dashboard/requirements' && pathname.includes('/requirements/')) {
+      return true;
+    }
+    if (path === '/dashboard/workspace' && pathname.includes('/requirements/')) {
+      return false;
+    }
+
     // For nested routes, check if pathname starts with the path
     return pathname.startsWith(path);
   }, [pathname]);
@@ -224,13 +232,16 @@ export const Sidebar = React.memo(function Sidebar({ userRole, permissions }: Si
 const NavItem = React.memo(function NavItem({ href, icon, label, active = false, collapsed = false }: { href: string; icon: React.ReactNode; label: string; active?: boolean; collapsed?: boolean }) {
   const iconColor = active ? '#ff3b3b' : '#434343';
   const iconWithColor = React.isValidElement(icon)
-    ? React.cloneElement(icon as React.ReactElement<any>, { color: iconColor })
+    ? React.cloneElement(icon as React.ReactElement<any>, { 
+        color: iconColor,
+        fill: 'none'
+      })
     : icon;
 
   return (
     <Link
       href={href}
-      className={`
+      className={`  
         relative h-[40px] rounded-full transition-all group shrink-0
         flex items-center 
         ${collapsed ? 'justify-center w-[40px] px-0' : 'w-full gap-4 px-6'}

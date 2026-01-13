@@ -105,7 +105,7 @@ export function AIAssistantDrawer({ open, onClose }: AIAssistantDrawerProps) {
       placement="right"
       onClose={onClose}
       open={open}
-      style={{ width: 400 }}
+      style={{ width: 500 }}
       styles={{
         body: { padding: 0, display: 'flex', flexDirection: 'column' },
         header: { borderBottom: '1px solid #f0f0f0' }

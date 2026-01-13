@@ -1,5 +1,7 @@
 import { PageLayout } from '../../layout/PageLayout';
+
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { useFloatingMenu } from '../../../context/FloatingMenuContext';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 
 import { ShieldCheck, Briefcase, Download, Trash2, User as UserIcon, Users } from 'lucide-react';
@@ -936,6 +938,154 @@ export function EmployeesPage() {
       }
   };
 
+
+
+  const { setExpandedContent } = useFloatingMenu();
+
+  // Update floating menu with bulk actions
+  useEffect(() => {
+    if (selectedEmployees.length > 0) {
+      setExpandedContent(
+        <>
+            <div className="flex items-center gap-2 border-r border-white/20 pr-6">
+              <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
+                {selectedEmployees.length}
+              </div>
+              <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Update Access Level Button with Dropdown */}
+              <div className="relative" ref={accessDropdownRef}>
+                <Tooltip
+                  title="Update Access Level"
+                  placement="top"
+                  styles={{ root: { marginBottom: '8px' } }}
+                >
+                  <button
+                    onClick={() => setShowAccessDropdown(!showAccessDropdown)}
+                    className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                  </button>
+                </Tooltip>
+                {showAccessDropdown && (
+                  <div className="absolute bottom-full left-0 mb-6 z-30">
+                    {/* Arrow */}
+                    <div className="absolute -bottom-2 left-4 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-white"></div>
+                    <div className="absolute -bottom-2.5 left-4 w-0 h-0 border-l-[7px] border-r-[7px] border-t-[7px] border-l-transparent border-r-transparent border-t-[#EEEEEE]"></div>
+                    {/* Dropdown content */}
+                    <div className="bg-white rounded-lg shadow-lg border border-[#EEEEEE] overflow-hidden min-w-[200px]">
+                      {[
+                        { value: 'Admin', icon: ShieldCheck, color: '#ff3b3b', bgColor: '#FFF5F5' },
+                        { value: 'Manager', icon: Briefcase, color: '#2E90FA', bgColor: '#EFF8FF' },
+                        { value: 'Leader', icon: Users, color: '#7F56D9', bgColor: '#F9F5FF' },
+                        { value: 'Employee', icon: UserIcon, color: '#12B76A', bgColor: '#ECFDF3' },
+                      ].map((access) => {
+                        const IconComponent = access.icon;
+                        return (
+                          <button
+                            key={access.value}
+                            onClick={() => handleBulkUpdateAccess(access.value as 'Admin' | 'Manager' | 'Leader' | 'Employee')}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F7F7F7] transition-colors text-left"
+                          >
+                            <div className="p-2 rounded-full" style={{ backgroundColor: access.bgColor }}>
+                              <IconComponent className="w-4 h-4" style={{ color: access.color }} />
+                            </div>
+                            <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">
+                              {access.value}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Change Department Button with Dropdown */}
+              <div className="relative" ref={departmentDropdownRef}>
+                <Tooltip
+                  title="Change Department"
+                  placement="top"
+                  styles={{ root: { marginBottom: '8px' } }}
+                >
+                  <button
+                    onClick={() => setShowDepartmentDropdown(!showDepartmentDropdown)}
+                    className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  >
+                    <Briefcase className="w-4 h-4" />
+                  </button>
+                </Tooltip>
+                {showDepartmentDropdown && (
+                  <div className="absolute bottom-full left-0 mb-6 z-30">
+                    {/* Arrow */}
+                    <div className="absolute -bottom-2 left-4 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-white"></div>
+                    <div className="absolute -bottom-2.5 left-4 w-0 h-0 border-l-[7px] border-r-[7px] border-t-[7px] border-l-transparent border-r-transparent border-t-[#EEEEEE]"></div>
+                    {/* Dropdown content */}
+                    <div className="bg-white rounded-lg shadow-lg border border-[#EEEEEE] overflow-hidden min-w-[200px] max-h-[300px] overflow-y-auto">
+                      {uniqueDepts.filter(dept => dept !== 'All').map((dept) => (
+                        <button
+                          key={dept}
+                          onClick={() => handleBulkUpdateDepartment(dept)}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F7F7F7] transition-colors text-left"
+                        >
+                          <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">
+                            {dept}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Export Data Button */}
+              <Tooltip
+                title="Export Data"
+                placement="top"
+                styles={{ root: { marginBottom: '8px' } }}
+              >
+                <button
+                  onClick={handleExportToCSV}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              </Tooltip>
+
+              {/* Delete Button */}
+              <Tooltip
+                title="Delete"
+                placement="top"
+                styles={{ root: { marginBottom: '8px' } }}
+              >
+                <button
+                  onClick={handleBulkDelete}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </Tooltip>
+            </div>
+
+            <button
+              onClick={() => setSelectedEmployees([])}
+              className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors"
+            >
+              Cancel
+            </button>
+        </>
+      );
+    } else {
+      setExpandedContent(null);
+    }
+
+    return () => {
+      setExpandedContent(null);
+    };
+  }, [selectedEmployees, showAccessDropdown, showDepartmentDropdown, uniqueDepts]);
+
   return (
     <PageLayout
       title="Employees"
@@ -1046,143 +1196,7 @@ export function EmployeesPage() {
           />
         </div>
 
-        {/* Bulk Action Bar */}
-        {selectedEmployees.length > 0 && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#111111] text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-4 z-20 animate-in slide-in-from-bottom-4 duration-200">
-            <div className="flex items-center gap-2">
-              <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
-                {selectedEmployees.length}
-              </div>
-              <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
-            </div>
 
-            <div className="h-6 w-px bg-white/20" />
-
-            <div className="flex items-center gap-0">
-              {/* Update Access Level Button with Dropdown */}
-              <div className="relative" ref={accessDropdownRef}>
-                <Tooltip
-                  title="Update Access Level"
-                  placement="top"
-                  styles={{ root: { marginBottom: '8px' } }}
-                >
-                  <button
-                    onClick={() => setShowAccessDropdown(!showAccessDropdown)}
-                    className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                  </button>
-                </Tooltip>
-                {showAccessDropdown && (
-                  <div className="absolute bottom-full left-0 mb-6 z-30">
-                    {/* Arrow pointing down to the button */}
-                    <div className="absolute -bottom-2 left-4 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-white"></div>
-                    <div className="absolute -bottom-2.5 left-4 w-0 h-0 border-l-[7px] border-r-[7px] border-t-[7px] border-l-transparent border-r-transparent border-t-[#EEEEEE]"></div>
-                    {/* Dropdown content */}
-                    <div className="bg-white rounded-lg shadow-lg border border-[#EEEEEE] overflow-hidden min-w-[200px]">
-                      {[
-                        { value: 'Admin', icon: ShieldCheck, color: '#ff3b3b', bgColor: '#FFF5F5' },
-                        { value: 'Manager', icon: Briefcase, color: '#2E90FA', bgColor: '#EFF8FF' },
-                        { value: 'Leader', icon: Users, color: '#7F56D9', bgColor: '#F9F5FF' },
-                        { value: 'Employee', icon: UserIcon, color: '#12B76A', bgColor: '#ECFDF3' },
-                      ].map((access) => {
-                        const IconComponent = access.icon;
-                        return (
-                          <button
-                            key={access.value}
-                            onClick={() => handleBulkUpdateAccess(access.value as 'Admin' | 'Manager' | 'Leader' | 'Employee')}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F7F7F7] transition-colors text-left"
-                          >
-                            <div className="p-2 rounded-full" style={{ backgroundColor: access.bgColor }}>
-                              <IconComponent className="w-4 h-4" style={{ color: access.color }} />
-                            </div>
-                            <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">
-                              {access.value}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Change Department Button with Dropdown */}
-              <div className="relative" ref={departmentDropdownRef}>
-                <Tooltip
-                  title="Change Department"
-                  placement="top"
-                  styles={{ root: { marginBottom: '8px' } }}
-                >
-                  <button
-                    onClick={() => setShowDepartmentDropdown(!showDepartmentDropdown)}
-                    className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                  >
-                    <Briefcase className="w-4 h-4" />
-                  </button>
-                </Tooltip>
-                {showDepartmentDropdown && (
-                  <div className="absolute bottom-full left-0 mb-6 z-30">
-                    {/* Arrow pointing down to the button */}
-                    <div className="absolute -bottom-2 left-4 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-white"></div>
-                    <div className="absolute -bottom-2.5 left-4 w-0 h-0 border-l-[7px] border-r-[7px] border-t-[7px] border-l-transparent border-r-transparent border-t-[#EEEEEE]"></div>
-                    {/* Dropdown content */}
-                    <div className="bg-white rounded-lg shadow-lg border border-[#EEEEEE] overflow-hidden min-w-[200px] max-h-[300px] overflow-y-auto">
-                      {uniqueDepts.filter(dept => dept !== 'All').map((dept) => (
-                        <button
-                          key={dept}
-                          onClick={() => handleBulkUpdateDepartment(dept)}
-                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#F7F7F7] transition-colors text-left"
-                        >
-                          <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#111111]">
-                            {dept}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Export Data Button */}
-              <Tooltip
-                title="Export Data"
-                placement="top"
-                styles={{ root: { marginBottom: '8px' } }}
-              >
-                <button
-                  onClick={handleExportToCSV}
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-              </Tooltip>
-
-              {/* Delete Button */}
-              <Tooltip
-                title="Delete"
-                placement="top"
-                styles={{ root: { marginBottom: '8px' } }}
-              >
-                <button
-                  onClick={handleBulkDelete}
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </Tooltip>
-            </div>
-
-            <div className="h-6 w-px bg-white/20" />
-
-            <button
-              onClick={() => setSelectedEmployees([])}
-              className="text-[14px] font-['Manrope:Medium',sans-serif] text-white hover:text-white/80 transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
       </div>
 
       <Modal

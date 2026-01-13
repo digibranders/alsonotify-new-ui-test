@@ -4,7 +4,8 @@ import { Requirement } from '../../types/domain';
 export function mapRequirementToDomain(dto: RequirementDto): Requirement {
   return {
     id: dto.id,
-    title: dto.title,
+    title: dto.title || dto.name || 'Untitled Requirement',
+    name: dto.name || dto.title,
     description: dto.description || '',
     workspaceId: dto.workspace_id || dto.workspaceId || 0,
     workspace_id: dto.workspace_id, // keep compatibility

@@ -42,3 +42,5 @@ next-env.d.ts
 *.njsproj
 *.sln
 *.sw?
+
+alsonotify-new-ui/refactor_report.md

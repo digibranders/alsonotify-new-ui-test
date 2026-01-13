@@ -25,6 +25,7 @@ export function WorkspaceRequirementsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({
     priority: 'All',
+    partner: 'All',
   });
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -110,8 +111,9 @@ export function WorkspaceRequirementsPage() {
         priority,
         department,
         client,
-        budgetValue,
         budgetFormatted,
+        budgetValue,
+        partnerName: req.sender_company?.name || req.receiver_company?.name || null,
       };
     });
   }, [requirementsData, workspace]);
@@ -137,8 +139,10 @@ export function WorkspaceRequirementsPage() {
         req.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesPriority =
         filters.priority === 'All' || req.priority === filters.priority.toLowerCase();
+      const matchesPartner =
+        filters.partner === 'All' || req.partnerName === filters.partner;
 
-      return matchesTab && matchesSearch && matchesPriority;
+      return matchesTab && matchesSearch && matchesPriority && matchesPartner;
     });
 
     if (sortColumn) {
@@ -203,12 +207,23 @@ export function WorkspaceRequirementsPage() {
 
 
 
+  const allPartners = useMemo(() => {
+    const partners = Array.from(new Set(requirements.map(r => r.partnerName).filter(Boolean)));
+    return ['All', ...partners];
+  }, [requirements]);
+
   const filterOptions: FilterOption[] = [
     {
       id: 'priority',
       label: 'Priority',
-      options: ['All', 'High', 'Medium', 'Low'],
+      options: ['All', 'High', 'Normal'],
       placeholder: 'Priority',
+    },
+    {
+      id: 'partner',
+      label: 'Partner',
+      options: allPartners,
+      placeholder: 'Partner',
     },
   ];
 
@@ -274,7 +289,7 @@ export function WorkspaceRequirementsPage() {
           filters={filterOptions}
           selectedFilters={filters}
           onFilterChange={(id, val) => setFilters((prev) => ({ ...prev, [id]: val }))}
-          onClearFilters={() => setFilters({ priority: 'All' })}
+          onClearFilters={() => setFilters({ priority: 'All', partner: 'All' })}
           searchPlaceholder="Search requirements..."
           searchValue={searchQuery}
           onSearchChange={setSearchQuery}

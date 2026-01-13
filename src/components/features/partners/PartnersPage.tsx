@@ -10,8 +10,10 @@ import {
     Checkbox,
     Tag,
     App,
-    Dropdown
+    Dropdown,
+    Tooltip
 } from 'antd';
+import { useFloatingMenu } from '../../../context/FloatingMenuContext';
 import { UserOutlined, MailOutlined, PhoneOutlined } from '@ant-design/icons';
 import { PageLayout } from '../../layout/PageLayout';
 import {
@@ -70,7 +72,7 @@ const countryCodes = [
 ];
 
 export function PartnersPageContent() {
-    const { message } = App.useApp();
+    const { message, modal } = App.useApp();
     const [partners, setPartners] = useState<Partner[]>([]);
     const [pendingInvites, setPendingInvites] = useState<ReceivedInvite[]>([]); // New state
     const [loading, setLoading] = useState(true);
@@ -252,12 +254,8 @@ export function PartnersPageContent() {
 
     const handleEdit = (record: Partner) => {
         setEditingPartner(record);
-        const nameParts = (record.name || "").split(" ");
-        form.setFieldsValue({
-            ...record,
-            firstName: nameParts[0] || "",
-            lastName: nameParts.slice(1).join(" ") || ""
-        });
+        // Form is not rendered when editingPartner is set (View Mode only),
+        // so we avoid calling form.setFieldsValue to prevent console warnings.
         setIsModalOpen(true);
     };
 
@@ -270,7 +268,7 @@ export function PartnersPageContent() {
         const isActive = newStatus === 'active';
         const action = isActive ? 'activate' : 'deactivate';
 
-        Modal.confirm({
+        modal.confirm({
             title: `${isActive ? 'Activate' : 'Deactivate'} Partner`,
             content: `Are you sure you want to ${action} this partner?`,
             okText: isActive ? 'Activate' : 'Deactivate',
@@ -331,7 +329,7 @@ export function PartnersPageContent() {
     };
 
     const handleCancelRequest = async (inviteId: number) => {
-        Modal.confirm({
+        modal.confirm({
             title: 'Cancel Request',
             content: 'Are you sure you want to cancel this request? The invitation link will no longer be valid.',
             okText: 'Yes, Cancel',
@@ -429,6 +427,50 @@ export function PartnersPageContent() {
         { id: 'type', label: 'Type', options: ['All', 'Individual', 'Organization'], defaultValue: 'All' },
         { id: 'country', label: 'Country', options: countries, defaultValue: 'All' }
     ];
+
+
+
+    const { setExpandedContent } = useFloatingMenu();
+
+    // Update floating menu with bulk actions
+    useEffect(() => {
+        if (selectedPartners.length > 0) {
+            setExpandedContent(
+                <>
+                        <div className="flex items-center gap-2 border-r border-white/20 pr-6">
+                            <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
+                                {selectedPartners.length}
+                            </div>
+                            <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <Tooltip title="Export" placement="top" styles={{ root: { marginBottom: '8px' } }}>
+                                <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                    <Download className="w-4 h-4" />
+                                </button>
+                            </Tooltip>
+                            
+                            <Tooltip title="Deactivate" placement="top" styles={{ root: { marginBottom: '8px' } }}>
+                                <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]">
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </Tooltip>
+                        </div>
+
+                        <button onClick={() => setSelectedPartners([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
+                            Cancel
+                        </button>
+                </>
+            );
+        } else {
+            setExpandedContent(null);
+        }
+
+        return () => {
+             setExpandedContent(null);
+        };
+    }, [selectedPartners]);
 
     return (
         <PageLayout
@@ -717,30 +759,7 @@ export function PartnersPageContent() {
                         )}
                     </div>
 
-                    {/* Bulk Action Bar */}
-                    {selectedPartners.length > 0 && (
-                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#111111] text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-6 z-20 animate-in slide-in-from-bottom-4 duration-200">
-                            <div className="flex items-center gap-2 border-r border-white/20 pr-6">
-                                <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
-                                    {selectedPartners.length}
-                                </div>
-                                <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
-                            </div>
 
-                            <div className="flex items-center gap-2">
-                                <button className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Export">
-                                    <Download className="w-4 h-4" />
-                                </button>
-                                <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]" title="Deactivate">
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
-                            </div>
-
-                            <button onClick={() => setSelectedPartners([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
-                                Cancel
-                            </button>
-                        </div>
-                    )}
                 </div>
             </div>
 

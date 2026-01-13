@@ -12,6 +12,7 @@ export const useNotifications = () => {
     queryKey: queryKeys.notifications.all(),
     queryFn: () => fetchNotifications(),
     staleTime: 30_000, // 30 seconds
+    refetchInterval: 5000, // Poll every 5 seconds for real-time feel
   });
 };
 
