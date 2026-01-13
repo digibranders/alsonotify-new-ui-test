@@ -1,37 +1,38 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   FileText, ListTodo, BarChart2, Columns,
   Plus, RotateCcw, Clock, MoreVertical,
-  Paperclip, X, Send, MessageSquare, Calendar,
-  TrendingUp, TrendingDown, Briefcase,
-  CheckCircle2, AlertCircle, Loader2,
-  Eye, Download
+  Paperclip, TrendingUp, Briefcase,
+  CheckCircle2, AlertCircle,
+  MessageSquare,
+  Loader2,
+  X,
+  Send
 } from 'lucide-react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts';
-import { Breadcrumb, Checkbox, Button, Tooltip, App, Input, Select, Modal } from 'antd';
+import { Breadcrumb, Checkbox, Button, Tooltip, App, Input, Select, Modal, Mentions } from 'antd';
 import { Skeleton } from '../../ui/Skeleton';
 import { sanitizeRichText } from '@/utils/sanitizeHtml';
 import { useWorkspace, useRequirements, useUpdateRequirement, useWorkspaces } from '@/hooks/useWorkspace';
-import { useTasks, useRequestRevision } from '@/hooks/useTask';
-import { useUserDetails } from '@/hooks/useUser';
-import { SubTask } from '@/types/genericTypes';
+import { useTasks, useRequestRevision, useCreateTask } from '@/hooks/useTask';
+import { TaskForm } from '../../modals/TaskForm';
+import { CreateTaskRequestDto } from '@/types/dto/task.dto';
+import { getErrorMessage } from '@/types/api-utils';
+import { useEmployees, useUserDetails, usePartners } from '@/hooks/useUser';
+import { useRequirementActivities, useCreateRequirementActivity } from '@/hooks/useRequirementActivity';
+import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { TaskRow } from '@/components/features/tasks/rows/TaskRow';
 import { Requirement, Task } from '@/types/domain';
-import { RequirementDto } from '@/types/dto/requirement.dto';
+
+// Extracted components
+import { ChatPanel, GanttChartTab, PnLTab, DocumentsTab, KanbanBoardTab } from './components';
+import { fileService } from '@/services/file.service';
+
 const { Option } = Select;
+
 
 export function RequirementDetailsPage() {
   const { message } = App.useApp();
@@ -43,19 +44,32 @@ export function RequirementDetailsPage() {
   const { data: workspaceData, isLoading: isLoadingWorkspace } = useWorkspace(workspaceId);
   const { data: requirementsData, isLoading: isLoadingRequirements } = useRequirements(workspaceId);
   const { data: tasksData } = useTasks(`workspace_id=${workspaceId}`);
+  const createTaskMutation = useCreateTask();
+
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+
+
   const { data: userData } = useUserDetails();
+  const { data: employeesData } = useEmployees();
+  const { user } = useAuth();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { data: activityResponse, isLoading: isLoadingActivities } = useRequirementActivities(reqId);
+  const createActivity = useCreateRequirementActivity();
 
   const [activeTab, setActiveTab] = useState<'details' | 'tasks' | 'gantt' | 'kanban' | 'pnl' | 'documents'>('details');
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [messageText, setMessageText] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const [ganttView, setGanttView] = useState<'day' | 'week' | 'month'>('week');
+  const [activeMentionOptions, setActiveMentionOptions] = useState<{ value: string; label: string; key: string }[]>([]);
 
   // Partner / Receiver Logic
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
   const [selectedReceiverWorkspace, setSelectedReceiverWorkspace] = useState<string | undefined>(undefined);
   const { mutate: updateRequirement } = useUpdateRequirement();
-  const { data: myWorkspacesData } = useWorkspaces();
+    const { data: myWorkspacesData } = useWorkspaces();
+  const { data: partnersData } = usePartners();
   const { mutate: requestRevision } = useRequestRevision();
 
   const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
@@ -119,16 +133,156 @@ export function RequirementDetailsPage() {
     return tasksData.result.filter((t: Task & { type?: string }) => t.requirement_id === reqId && t.type === 'revision');
   }, [tasksData, requirement, reqId]);
 
+  const formatActivityMessage = (msg: string) => {
+    if (!msg) return '';
+    const allNames = mentionOptions.map(o => o.value);
+    const taskNames = taskOptions.map(o => o.value);
+    
+    if (allNames.length === 0 && taskNames.length === 0) return msg;
+
+    // Simpler approach for React grouping
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    
+    // Combine both prefixes into one regex for systematic parsing
+    const mentionRegex = new RegExp(`(@(?:${allNames.map(escapeRegExp).join('|')}))|(#(?:${taskNames.map(escapeRegExp).join('|')}))`, 'g');
+    let match;
+
+    while ((match = mentionRegex.exec(msg)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(msg.substring(lastIndex, match.index));
+      }
+      
+      const isTask = match[0].startsWith('#');
+      if (isTask) {
+        parts.push(
+          <span key={match.index} className="task-token-highlight cursor-pointer hover:underline text-[#2F80ED] bg-[#EBF3FF] px-1.5 py-0.5 rounded-md text-[12px] font-['Inter:Medium',sans-serif]">
+            {match[0]}
+          </span>
+        );
+      } else {
+        parts.push(
+          <span key={match.index} className="mention-token-highlight cursor-pointer hover:underline">
+            {match[0]}
+          </span>
+        );
+      }
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < msg.length) {
+      parts.push(msg.substring(lastIndex));
+    }
+    
+    return parts;
+  };
+
+  const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const taskOptions = useMemo(() => {
+    return tasks.map(t => ({
+      value: t.name || t.title || 'Untitled',
+      label: t.name || t.title || 'Untitled',
+      key: `task-${t.id}`
+    }));
+  }, [tasks]);
+
+  const mentionOptions = useMemo(() => {
+    const options: { value: string; label: string; key: string }[] = [];
+    
+    // Internal Employees
+    if (employeesData?.result) {
+      employeesData.result.forEach(emp => {
+        options.push({
+          value: emp.name,
+          label: emp.name,
+          key: `emp-${emp.id}`
+        });
+      });
+    }
+
+    // Partners
+    if (partnersData?.result) {
+      partnersData.result.forEach(partner => {
+        options.push({
+          value: partner.name,
+          label: partner.name,
+          key: `partner-${partner.id}`
+        });
+      });
+    }
+
+    // Deduplicate by value (name) to avoid UI confusion if a user is in both lists
+    const seen = new Set();
+    return options.filter(opt => {
+      if (seen.has(opt.value)) return false;
+      seen.add(opt.value);
+      return true;
+    });
+  }, [employeesData, partnersData]);
+
+  // Initialize active options when mentionOptions are ready
+  useEffect(() => {
+    if (mentionOptions.length > 0 && activeMentionOptions.length === 0) {
+      setActiveMentionOptions(mentionOptions);
+    }
+  }, [mentionOptions]);
+
+  const activityData = useMemo(() => {
+    if (!activityResponse?.result) return [];
+    return activityResponse.result.map(act => ({
+      id: act.id,
+      type: act.type.toLowerCase(),
+      user: act.user.name,
+      avatar: act.user.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2),
+      date: format(new Date(act.created_at), 'MMM d, h:mm a'),
+      message: formatActivityMessage(act.message),
+      isSystem: act.type === 'SYSTEM',
+      attachments: act.attachments.map(a => a.file_name),
+      time: act.metadata && typeof act.metadata === 'object' && 'time' in act.metadata ? String((act.metadata as Record<string, unknown>).time) : undefined,
+      category: act.metadata && typeof act.metadata === 'object' && 'category' in act.metadata ? String((act.metadata as Record<string, unknown>).category) : undefined,
+      task: act.metadata && typeof act.metadata === 'object' && 'task' in act.metadata ? String((act.metadata as Record<string, unknown>).task) : undefined,
+      raw: act
+    }));
+  }, [activityResponse, mentionOptions, taskOptions]);
+
+  const handleMentionSearch = (text: string, prefix: string) => {
+    if (prefix === '@') {
+      setActiveMentionOptions(mentionOptions.filter(opt => 
+        opt.value.toLowerCase().includes(text.toLowerCase())
+      ));
+    } else if (prefix === '#') {
+      setActiveMentionOptions(taskOptions.filter(opt => 
+        opt.value.toLowerCase().includes(text.toLowerCase())
+      ));
+    }
+  };
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [activityResponse]);
+
   if (isLoadingWorkspace || isLoadingRequirements) {
     return (
       <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] flex overflow-hidden">
+        {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Header Section */}
           <div className="p-8 pb-0">
-            <div className="flex items-center justify-between mb-8">
-              <Skeleton className="h-8 w-64" />
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-2 mb-4">
+              <Skeleton className="h-4 w-24 rounded" />
+              <span className="text-[#CCCCCC]">/</span>
+              <Skeleton className="h-4 w-48 rounded" />
+            </div>
+            
+            {/* Title Row with Status & Priority */}
+            <div className="flex items-center justify-between mb-6">
+              <Skeleton className="h-7 w-80 rounded" />
               <div className="flex items-center gap-4">
-                <Skeleton className="h-10 w-32 rounded-full" />
-                <Skeleton className="h-10 w-24 rounded-full" />
+                <Skeleton className="h-8 w-28 rounded-full" />
+                <Skeleton className="h-8 w-32 rounded-full" />
                 <div className="flex -space-x-2">
                   {[1, 2, 3].map(i => (
                     <Skeleton key={i} className="w-8 h-8 rounded-full border-2 border-white" />
@@ -136,36 +290,103 @@ export function RequirementDetailsPage() {
                 </div>
               </div>
             </div>
+
+            {/* Tab Navigation */}
             <div className="border-b border-[#EEEEEE]">
-              <div className="flex items-center gap-8">
-                {[1, 2, 3, 4, 5, 6].map(i => (
-                  <Skeleton key={i} className="h-10 w-24 mb-[-1px]" />
+              <div className="flex items-center gap-1">
+                {['Details', 'Tasks & Revisions', 'Gantt Chart', 'Kanban Board', 'P&L', 'Documents'].map((tab, i) => (
+                  <div key={i} className="px-4 py-3">
+                    <Skeleton className={`h-4 rounded ${i === 0 ? 'w-16 bg-[#ff3b3b]/20' : i < 3 ? 'w-28' : 'w-24'}`} />
+                  </div>
                 ))}
               </div>
             </div>
           </div>
+
+          {/* Content Area */}
           <div className="flex-1 overflow-y-auto p-8 bg-[#FAFAFA]">
             <div className="max-w-5xl mx-auto space-y-8">
-              <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
-                <Skeleton className="h-6 w-32 mb-4" />
-                <div className="space-y-4">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-3/4" />
+              {/* Description Card */}
+              <div className="bg-white rounded-[16px] p-6 border border-[#EEEEEE] shadow-sm">
+                <div className="flex items-center gap-2 mb-4">
+                  <Skeleton className="w-5 h-5 rounded" />
+                  <Skeleton className="h-5 w-28 rounded" />
+                </div>
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-5/6 rounded" />
+                  <Skeleton className="h-4 w-3/4 rounded" />
                 </div>
               </div>
-              <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
-                <Skeleton className="h-6 w-48 mb-6" />
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  {Array.from({ length: 12 }).map((_, i) => (
+
+              {/* Requirement Details Card */}
+              <div className="bg-white rounded-[16px] p-6 border border-[#EEEEEE] shadow-sm">
+                <div className="flex items-center gap-2 mb-6">
+                  <Skeleton className="w-5 h-5 rounded" />
+                  <Skeleton className="h-5 w-44 rounded" />
+                </div>
+                
+                {/* Details Grid - 4 columns, 3 rows */}
+                <div className="grid grid-cols-4 gap-x-8 gap-y-6">
+                  {[
+                    { label: 'TYPE', value: 'w-24' },
+                    { label: 'PRICING MODEL', value: 'w-36' },
+                    { label: 'PARTNER / COMPANY', value: 'w-28' },
+                    { label: 'REQUIREMENT BUDGET', value: 'w-20' },
+                    { label: 'START DATE', value: 'w-20' },
+                    { label: 'DUE DATE', value: 'w-20' },
+                    { label: 'CONTACT PERSON', value: 'w-28' },
+                    { label: 'QUOTED PRICE', value: 'w-16' },
+                    { label: 'TOTAL TASKS', value: 'w-8' },
+                    { label: 'PRIORITY', value: 'w-24' },
+                    { label: '', value: '' },
+                    { label: '', value: '' },
+                  ].map((item, i) => (
                     <div key={i}>
-                      <Skeleton className="h-3 w-16 mb-2" />
-                      <Skeleton className="h-4 w-24" />
+                      {item.label && (
+                        <>
+                          <Skeleton className="h-3 w-24 mb-2 rounded" />
+                          <Skeleton className={`h-4 ${item.value} rounded`} />
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Right Sidebar - Chat Panel Skeleton */}
+        <div className="w-[400px] border-l border-[#EEEEEE] flex flex-col bg-white">
+          {/* Sidebar Header */}
+          <div className="p-6 border-b border-[#EEEEEE]">
+            <div className="flex items-center gap-2 mb-1">
+              <Skeleton className="w-5 h-5 rounded" />
+              <Skeleton className="h-5 w-32 rounded" />
+            </div>
+            <Skeleton className="h-3 w-48 rounded mt-2" />
+          </div>
+
+          {/* Activity Feed Skeleton */}
+          <div className="flex-1 p-6 space-y-6 overflow-hidden">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="flex gap-3">
+                <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Skeleton className="h-4 w-20 rounded" />
+                    <Skeleton className="h-3 w-16 rounded" />
+                  </div>
+                  <Skeleton className={`h-16 w-full rounded-xl ${i % 2 === 0 ? 'bg-gray-100' : ''}`} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Message Input Skeleton */}
+          <div className="p-4 border-t border-[#EEEEEE]">
+            <Skeleton className="h-20 w-full rounded-xl" />
           </div>
         </div>
       </div>
@@ -178,10 +399,39 @@ export function RequirementDetailsPage() {
 
 
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (messageText.trim() || attachments.length > 0) {
-      setMessageText('');
-      setAttachments([]);
+      try {
+        let uploadedAttachmentIds: number[] = [];
+
+        // Upload files if any
+        if (attachments.length > 0) {
+          message.loading({ content: 'Uploading attachments...', key: 'chat-upload' });
+          
+          const uploadPromises = attachments.map(file => 
+            fileService.uploadFile(file, 'REQUIREMENT', reqId)
+          );
+          
+          const uploadedFiles = await Promise.all(uploadPromises);
+          uploadedAttachmentIds = uploadedFiles.map(f => f.id);
+          
+          message.success({ content: 'Attachments uploaded!', key: 'chat-upload' });
+        }
+
+        await createActivity.mutateAsync({
+          requirement_id: reqId,
+          message: messageText,
+          type: attachments.length > 0 ? 'FILE' : 'CHAT',
+          attachment_ids: uploadedAttachmentIds.length > 0 ? uploadedAttachmentIds : undefined
+        });
+        
+        setMessageText('');
+        setAttachments([]);
+      } catch (err: unknown) {
+        console.error(err);
+        const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
+        message.error({ content: errorMessage, key: 'chat-upload' });
+      }
     }
   };
 
@@ -191,22 +441,75 @@ export function RequirementDetailsPage() {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    } else if (e.key === 'Backspace') {
+      const { selectionStart, selectionEnd } = e.currentTarget;
+      
+      // Atomic deletion of mentions like WhatsApp
+      if (selectionStart === selectionEnd && selectionStart > 0) {
+        const text = messageText;
+        const textBefore = text.slice(0, selectionStart);
+        
+        // Find if the cursor is at the end of a mention or task tag
+        const lastAtIndex = textBefore.lastIndexOf('@');
+        const lastHashIndex = textBefore.lastIndexOf('#');
+        const lastTriggerIndex = Math.max(lastAtIndex, lastHashIndex);
+        
+        if (lastTriggerIndex !== -1) {
+          const prefix = text[lastTriggerIndex];
+          const namePart = textBefore.slice(lastTriggerIndex + 1);
+          
+          let matchedOption;
+          if (prefix === '@') {
+            matchedOption = mentionOptions.find(opt => 
+              namePart === opt.value + ' ' || namePart === opt.value
+            );
+          } else if (prefix === '#') {
+            matchedOption = taskOptions.find(opt => 
+              namePart === opt.value + ' ' || namePart === opt.value
+            );
+          }
+          
+          if (matchedOption) {
+            e.preventDefault();
+            const newText = text.slice(0, lastTriggerIndex) + text.slice(selectionStart);
+            setMessageText(newText);
+          }
+        }
+      }
     }
   };
 
-  // Mock activity data
-  const activityData = [
-    { id: 1, type: 'comment', user: 'Siddique Ahmed', avatar: 'SA', date: '2 hours ago', message: 'The homepage design looks great! Just a few minor tweaks needed on the spacing.', attachments: [] },
-    { id: 2, type: 'file', user: 'Appurva Panchabhai', avatar: 'AP', date: '5 hours ago', message: 'Uploaded design mockups', attachments: ['homepage-v2.fig', 'assets-bundle.zip'] },
-    { id: 3, type: 'worklog', user: 'Siddique Ahmed', avatar: 'SA', date: 'Yesterday', message: 'Logged 4h 30m on Homepage UI Design', time: '4h 30m', task: 'Homepage UI Design' },
-    { id: 4, type: 'comment', user: 'Manager', avatar: 'M', date: '2 days ago', message: 'Great progress team! Let\'s aim to complete this by end of week.', attachments: [] },
-    { id: 5, type: 'status', user: 'System', avatar: 'S', date: '3 days ago', message: 'Status changed from "Todo" to "In Progress"', isSystem: true },
-    { id: 6, type: 'worklog', user: 'Appurva Panchabhai', avatar: 'AP', date: '3 days ago', message: 'Logged 3h 00m on Login Flow Integration', time: '3h', task: 'Login Flow Integration' },
-  ];
+  const handleEditorSelectionJump = (e: React.SyntheticEvent<HTMLTextAreaElement> | React.KeyboardEvent<HTMLTextAreaElement> | React.MouseEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget as HTMLTextAreaElement;
+    const { selectionStart, selectionEnd } = textarea;
+    
+    if (selectionStart !== selectionEnd) return; 
+
+    const text = messageText;
+    const allMentions = [
+      ...mentionOptions.map(opt => `@${opt.value}`),
+      ...taskOptions.map(opt => `#${opt.value}`)
+    ];
+
+    for (const mentionStr of allMentions) {
+      let pos = text.indexOf(mentionStr);
+      while (pos !== -1) {
+        const end = pos + mentionStr.length;
+        if (selectionStart > pos && selectionStart < end) {
+          const mid = pos + (mentionStr.length / 2);
+          const newPos = selectionStart < mid ? pos : end;
+          textarea.setSelectionRange(newPos, newPos);
+          return;
+        }
+        pos = text.indexOf(mentionStr, pos + 1);
+      }
+    }
+  };
+
 
   const requirementStatus = mapRequirementStatus(requirement.status || 'in-progress');
   const assignedTo = requirement.assignedTo || [];
@@ -216,8 +519,8 @@ export function RequirementDetailsPage() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="p-8 pb-0">
-          <div className="flex items-center justify-between mb-8">
+        <div className="px-6 pt-6 pb-0">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Breadcrumb
                 separator={<span className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#999999]">/</span>}
@@ -225,17 +528,7 @@ export function RequirementDetailsPage() {
                   {
                     title: (
                       <span
-                        onClick={() => router.push('/dashboard/workspace')}
-                        className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors"
-                      >
-                        Workspaces
-                      </span>
-                    ),
-                  },
-                  {
-                    title: (
-                      <span
-                        onClick={() => router.push(`/dashboard/workspace/${workspace.id}`)}
+                        onClick={() => router.push(`/dashboard/workspace/${workspace.id}/requirements`)}
                         className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors"
                       >
                         {workspace.name}
@@ -245,7 +538,7 @@ export function RequirementDetailsPage() {
                   {
                     title: (
                       <span className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111] line-clamp-1 max-w-[300px]">
-                        {requirement.title}
+                        {requirement.title || requirement.name || 'Untitled Requirement'}
                       </span>
                     ),
                   },
@@ -503,6 +796,14 @@ export function RequirementDetailsPage() {
                     </p>
                   </div>
 
+                  {/* Contact Person */}
+                  <div>
+                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Contact Person</p>
+                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
+                      {requirement.contact_person?.name || 'Unknown'}
+                    </p>
+                  </div>
+
                   {/* Quoted Price */}
                   <div>
                     <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Quoted Price</p>
@@ -577,7 +878,12 @@ export function RequirementDetailsPage() {
                     <ListTodo className="w-5 h-5 text-[#ff3b3b]" />
                     Tasks Breakdown
                   </h3>
-                  <Button type="default" size="small" className="h-8 text-[12px] border-[#EEEEEE]">
+                  <Button 
+                    type="default" 
+                    size="small" 
+                    className="h-8 text-[12px] border-[#EEEEEE]"
+                    onClick={() => setIsTaskModalOpen(true)}
+                  >
                     <Plus className="w-4 h-4 mr-2" /> Add Task
                   </Button>
                 </div>
@@ -730,728 +1036,121 @@ export function RequirementDetailsPage() {
             </div>
           )}
 
-          {activeTab === 'gantt' && (() => {
-            // Calculate timeline from actual task dates
-            const allTasks = [...tasks, ...revisions];
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+          {activeTab === 'gantt' && (
+            <GanttChartTab
+              tasks={tasks}
+              revisions={revisions}
+              ganttView={ganttView}
+              setGanttView={setGanttView}
+            />
+          )}
 
-            // Find earliest start and latest end dates
-            let minDate = new Date();
-            let maxDate = new Date();
-            let hasValidDates = false;
-
-            allTasks.forEach((task: Task) => {
-              if (task.start_date) {
-                const start = new Date(task.start_date);
-                if (!hasValidDates || start < minDate) minDate = new Date(start);
-                hasValidDates = true;
-              }
-              if (task.end_date) {
-                const end = new Date(task.end_date);
-                if (!hasValidDates || end > maxDate) maxDate = new Date(end);
-                hasValidDates = true;
-              }
-            });
-
-            // If no valid dates, use today +/- 2 weeks
-            if (!hasValidDates) {
-              minDate = new Date(today);
-              minDate.setDate(minDate.getDate() - 7);
-              maxDate = new Date(today);
-              maxDate.setDate(maxDate.getDate() + 14);
-            } else {
-              // Add buffer days
-              minDate.setDate(minDate.getDate() - 3);
-              maxDate.setDate(maxDate.getDate() + 7);
-            }
-
-            minDate.setHours(0, 0, 0, 0);
-            maxDate.setHours(0, 0, 0, 0);
-
-            // Calculate columns based on view mode
-            const columnDates: Date[] = [];
-            const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-            if (ganttView === 'day') {
-              // Show individual days (max 21 days)
-              const daysToShow = Math.min(totalDays, 21);
-              for (let i = 0; i < daysToShow; i++) {
-                const d = new Date(minDate);
-                d.setDate(d.getDate() + i);
-                columnDates.push(d);
-              }
-            } else if (ganttView === 'week') {
-              // Show days grouped by week (14 days)
-              const daysToShow = Math.min(totalDays, 14);
-              for (let i = 0; i < daysToShow; i++) {
-                const d = new Date(minDate);
-                d.setDate(d.getDate() + i);
-                columnDates.push(d);
-              }
-            } else {
-              // Month view - show weeks (28 days)
-              const daysToShow = Math.min(totalDays, 28);
-              for (let i = 0; i < daysToShow; i++) {
-                const d = new Date(minDate);
-                d.setDate(d.getDate() + i);
-                columnDates.push(d);
-              }
-            }
-
-            const timelineStart = columnDates[0];
-            const timelineEnd = columnDates[columnDates.length - 1];
-            const timelineDays = Math.ceil((timelineEnd.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-            // Calculate today position
-            const todayPosition = today >= timelineStart && today <= timelineEnd
-              ? ((today.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)) / timelineDays * 100
-              : -1;
-
-            // Calculate bar position for a task
-            const getBarPosition = (task: Task) => {
-              const startDate = task.start_date ? new Date(task.start_date) : today;
-              const endDate = task.end_date ? new Date(task.end_date) : new Date(startDate.getTime() + 3 * 24 * 60 * 60 * 1000);
-              startDate.setHours(0, 0, 0, 0);
-              endDate.setHours(0, 0, 0, 0);
-
-              const startDiff = (startDate.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24);
-              const duration = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24) + 1;
-
-              const left = Math.max(0, (startDiff / timelineDays) * 100);
-              const width = Math.min(100 - left, (duration / timelineDays) * 100);
-
-              return { left, width };
-            };
-
-            // Get status color
-            const getStatusColor = (task: Task) => {
-              const status = (task.status || '').toLowerCase();
-              if (status === 'completed' || status === 'done') return 'bg-[#E8F5E9] border-[#0F9D58] text-[#0F9D58]';
-              if (status === 'delayed' || status === 'stuck' || status === 'impediment') return 'bg-[#FFF5F5] border-[#ff3b3b] text-[#ff3b3b]';
-              if (status === 'in_progress') return 'bg-[#E3F2FD] border-[#2F80ED] text-[#2F80ED]';
-              return 'bg-[#FFF8E1] border-[#F59E0B] text-[#F59E0B]';
-            };
-
-            // Get assigned name
-            const getAssignedName = (task: Task) => {
-              if (task.member_user?.name) return task.member_user.name;
-              if (task.task_members?.[0]?.user?.name) return task.task_members[0].user.name;
-              return 'Unassigned';
-            };
-
-            return (
-              <div className="bg-white rounded-[16px] border border-[#EEEEEE] shadow-sm overflow-hidden flex flex-col h-[600px]">
-                <div className="p-6 border-b border-[#EEEEEE] flex justify-between items-center shrink-0">
-                  <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] flex items-center gap-2">
-                    <BarChart2 className="w-5 h-5 text-[#ff3b3b]" />
-                    Gantt Chart
-                  </h3>
-                  <div className="flex gap-2">
-                    <Button
-                      type={ganttView === 'day' ? 'primary' : 'default'}
-                      size="small"
-                      className="h-8 text-[12px] !rounded-lg"
-                      style={ganttView === 'day' ? { backgroundColor: '#ff3b3b', borderColor: '#ff3b3b' } : { borderColor: '#EEEEEE' }}
-                      onClick={() => setGanttView('day')}
-                    >
-                      Day
-                    </Button>
-                    <Button
-                      type={ganttView === 'week' ? 'primary' : 'default'}
-                      size="small"
-                      className="h-8 text-[12px] !rounded-lg"
-                      style={ganttView === 'week' ? { backgroundColor: '#ff3b3b', borderColor: '#ff3b3b' } : { borderColor: '#EEEEEE' }}
-                      onClick={() => setGanttView('week')}
-                    >
-                      Week
-                    </Button>
-                    <Button
-                      type={ganttView === 'month' ? 'primary' : 'default'}
-                      size="small"
-                      className="h-8 text-[12px] !rounded-lg"
-                      style={ganttView === 'month' ? { backgroundColor: '#ff3b3b', borderColor: '#ff3b3b' } : { borderColor: '#EEEEEE' }}
-                      onClick={() => setGanttView('month')}
-                    >
-                      Month
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex-1 overflow-auto">
-                  {/* Gantt Header */}
-                  <div className="flex border-b border-[#EEEEEE] min-w-[800px] sticky top-0 bg-white z-20">
-                    <div className="w-[250px] p-4 font-['Manrope:Bold',sans-serif] text-[13px] text-[#111111] border-r border-[#EEEEEE] sticky left-0 bg-white z-30 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                      Task Name
-                    </div>
-                    <div className="flex-1 flex relative">
-                      {columnDates.map((date, i) => {
-                        const isToday = date.toDateString() === today.toDateString();
-                        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                        return (
-                          <div
-                            key={i}
-                            className={`flex-1 border-r border-[#EEEEEE] p-2 text-center min-w-[60px] ${isWeekend ? 'bg-[#FAFAFA]' : ''} ${isToday ? 'bg-[#FFF5F5]' : ''}`}
-                          >
-                            <div className="text-[10px] text-[#999999] font-['Inter:SemiBold',sans-serif] uppercase">
-                              {date.toLocaleDateString('en-US', { weekday: 'short' })}
-                            </div>
-                            <div className={`text-[12px] font-['Manrope:Bold',sans-serif] ${isToday ? 'text-[#ff3b3b]' : 'text-[#111111]'}`}>
-                              {date.getDate()}
-                            </div>
-                            {ganttView !== 'day' && i === 0 && (
-                              <div className="text-[9px] text-[#999999] mt-0.5">
-                                {date.toLocaleDateString('en-US', { month: 'short' })}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Gantt Body */}
-                  <div className="min-w-[800px] relative">
-                    {/* Today Marker */}
-                    {todayPosition >= 0 && todayPosition <= 100 && (
-                      <div
-                        className="absolute top-0 bottom-0 w-0.5 bg-[#ff3b3b] z-10 pointer-events-none"
-                        style={{ left: `calc(250px + ${todayPosition}% * (100% - 250px) / 100)` }}
-                      />
-                    )}
-
-                    {allTasks.length > 0 ? allTasks.map((task: any) => {
-                      const { left, width } = getBarPosition(task);
-                      const statusColor = getStatusColor(task);
-                      const assignedName = getAssignedName(task);
-                      const isRevision = task.type === 'revision';
-
-                      return (
-                        <div key={task.id} className="flex border-b border-[#FAFAFA] hover:bg-[#FAFAFA] transition-colors group">
-                          <div className="w-[250px] p-3 border-r border-[#EEEEEE] flex items-center gap-3 sticky left-0 bg-white group-hover:bg-[#FAFAFA] z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${isRevision ? 'bg-[#FFF5F5] text-[#ff3b3b]' : 'bg-[#F7F7F7] text-[#999999]'}`}>
-                              #{task.id}
-                            </span>
-                            <span className="text-[13px] text-[#111111] font-['Inter:Medium',sans-serif] truncate">
-                              {task.name || task.title}
-                            </span>
-                          </div>
-                          <div className="flex-1 relative py-3" style={{ minHeight: '44px' }}>
-                            {/* Grid Lines */}
-                            {columnDates.map((date, i) => {
-                              const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-                              return (
-                                <div
-                                  key={i}
-                                  className={`absolute inset-y-0 ${isWeekend ? 'bg-[#FAFAFA]' : ''}`}
-                                  style={{ left: `${(i / columnDates.length) * 100}%`, width: `${100 / columnDates.length}%`, borderRight: '1px solid #FAFAFA' }}
-                                />
-                              );
-                            })}
-
-                            {/* Task Bar */}
-                            <Tooltip title={
-                              <div className="text-xs">
-                                <div className="font-bold">{task.name || task.title}</div>
-                                <div>Start: {task.start_date ? format(new Date(task.start_date), 'MMM d, yyyy') : 'Not set'}</div>
-                                <div>End: {task.end_date ? format(new Date(task.end_date), 'MMM d, yyyy') : 'Not set'}</div>
-                                <div>Assigned: {assignedName}</div>
-                                <div>Status: {task.status || 'Pending'}</div>
-                              </div>
-                            }>
-                              <div
-                                className={`absolute h-6 rounded-[4px] top-1/2 -translate-y-1/2 flex items-center px-2 shadow-sm border cursor-pointer hover:shadow-md transition-shadow ${statusColor}`}
-                                style={{
-                                  left: `${left}%`,
-                                  width: `${Math.max(width, 5)}%`,
-                                  minWidth: '40px'
-                                }}
-                              >
-                                <span className="text-[10px] font-['Manrope:Bold',sans-serif] truncate w-full">
-                                  {assignedName.split(' ')[0]}
-                                </span>
-                              </div>
-                            </Tooltip>
-                          </div>
-                        </div>
-                      );
-                    }) : (
-                      <div className="text-center py-12 text-[#999999] text-[13px]">No tasks to display</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
-          {activeTab === 'kanban' && (() => {
-            // Map actual statuses to Kanban columns
-            const allTasks = [...tasks, ...revisions];
-
-            const getColumnTasks = (column: string) => {
-              return allTasks.filter((t: any) => {
-                const status = (t.status || '').toLowerCase().replace(' ', '_');
-                switch (column) {
-                  case 'todo':
-                    return status === 'assigned' || status === 'pending' || status === 'todo' || !t.status;
-                  case 'in-progress':
-                    return status === 'in_progress' || status === 'inprogress';
-                  case 'impediment':
-                    return status === 'stuck' || status === 'impediment' || status === 'delayed' || status === 'blocked';
-                  case 'completed':
-                    return status === 'completed' || status === 'done' || status === 'review';
-                  default:
-                    return false;
-                }
-              });
-            };
-
-            const getAssignedInfo = (task: any) => {
-              if (task.member_user?.name) return { name: task.member_user.name, pic: task.member_user.profile_pic };
-              if (task.task_members?.[0]?.user?.name) return { name: task.task_members[0].user.name, pic: task.task_members[0].user.profile_pic };
-              return { name: 'Unassigned', pic: null };
-            };
-
-            return (
-              <div className="h-full overflow-x-auto">
-                <div className="flex gap-6 min-w-[1000px] h-full pb-4">
-                  {['todo', 'in-progress', 'impediment', 'completed'].map((status) => {
-                    const columnTasks = getColumnTasks(status);
-
-                    const getStatusStyle = (s: string) => {
-                      switch (s) {
-                        case 'todo': return { color: 'text-[#666666]', bg: 'bg-[#F7F7F7]', dotBg: 'bg-[#666666]', label: 'To Do' };
-                        case 'in-progress': return { color: 'text-[#2F80ED]', bg: 'bg-[#E3F2FD]', dotBg: 'bg-[#2F80ED]', label: 'In Progress' };
-                        case 'impediment': return { color: 'text-[#ff3b3b]', bg: 'bg-[#FFF5F5]', dotBg: 'bg-[#ff3b3b]', label: 'Blocked / Delayed' };
-                        case 'completed': return { color: 'text-[#0F9D58]', bg: 'bg-[#E8F5E9]', dotBg: 'bg-[#0F9D58]', label: 'Completed' };
-                        default: return { color: 'text-[#666666]', bg: 'bg-[#F5F5F5]', dotBg: 'bg-[#666666]', label: 'Unknown' };
-                      }
-                    };
-
-                    const style = getStatusStyle(status);
-
-                    return (
-                      <div key={status} className="flex-1 min-w-[280px] flex flex-col bg-[#F7F7F7] rounded-[16px] p-4 border border-[#EEEEEE]">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${style.bg} w-fit`}>
-                            <div className={`w-2 h-2 rounded-full ${style.dotBg}`} />
-                            <span className={`text-[12px] font-['Manrope:Bold',sans-serif] ${style.color}`}>{style.label}</span>
-                          </div>
-                          <span className="text-[12px] font-['Inter:SemiBold',sans-serif] text-[#999999]">{columnTasks.length}</span>
-                        </div>
-
-                        <div className="flex-1 space-y-3 overflow-y-auto pr-1">
-                          {columnTasks.map((task: any) => {
-                            const assigned = getAssignedInfo(task);
-                            const initials = assigned.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
-                            const isRevision = task.type === 'revision';
-                            return (
-                              <div key={task.id} className="bg-white p-4 rounded-[12px] border border-[#EEEEEE] shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-                                <div className="flex items-center justify-between mb-3">
-                                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${isRevision ? 'bg-[#FFF5F5] text-[#ff3b3b]' : 'bg-[#F7F7F7] text-[#999999]'}`}>
-                                    {isRevision ? '#REV-' : '#'}{task.id}
-                                  </span>
-                                  {isRevision && (
-                                    <Tooltip title="Revision">
-                                      <RotateCcw className="w-3.5 h-3.5 text-[#ff3b3b]" />
-                                    </Tooltip>
-                                  )}
-                                </div>
-                                <h4 className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-3 leading-snug">
-                                  {task.name || task.title}
-                                </h4>
-                                <div className="flex items-center justify-between pt-3 border-t border-[#FAFAFA]">
-                                  <div className="flex items-center gap-2">
-                                    {assigned.pic ? (
-                                      <img src={assigned.pic} alt={assigned.name} className="w-6 h-6 rounded-full object-cover" />
-                                    ) : (
-                                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center">
-                                        <span className="text-[9px] text-white font-['Manrope:Bold',sans-serif]">
-                                          {initials}
-                                        </span>
-                                      </div>
-                                    )}
-                                    <span className="text-[11px] text-[#666666] truncate max-w-[80px]">{assigned.name.split(' ')[0]}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1 text-[#999999]">
-                                    <Calendar className="w-3 h-3" />
-                                    <span className="text-[10px]">{task.end_date ? format(new Date(task.end_date), 'dd-MMM') : 'N/A'}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        <button className="mt-3 flex items-center justify-center gap-2 py-2 rounded-[8px] hover:bg-[#EAEAEA] transition-colors text-[#666666] text-[12px] font-['Manrope:SemiBold',sans-serif] border border-dashed border-[#DDDDDD]">
-                          <Plus className="w-4 h-4" /> Add Task
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
+          {activeTab === 'kanban' && (
+            <KanbanBoardTab tasks={tasks} revisions={revisions} />
+          )}
 
           {activeTab === 'pnl' && (
-            <div className="max-w-5xl mx-auto space-y-8">
-              <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
-                <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-6 flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-[#ff3b3b]" />
-                  Profit & Loss Analysis
-                </h3>
-
-                {/* Summary Cards */}
-                <div className="grid grid-cols-3 gap-6 mb-8">
-                  <div className="p-4 rounded-xl bg-[#F7F7F7] border border-[#EEEEEE]">
-                    <p className="text-[12px] text-[#666666] font-['Inter:Medium',sans-serif] mb-1">Total Requirement Price</p>
-                    <p className="text-[24px] text-[#111111] font-['Manrope:Bold',sans-serif]">$12,500</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-[#F7F7F7] border border-[#EEEEEE]">
-                    <p className="text-[12px] text-[#666666] font-['Inter:Medium',sans-serif] mb-1">Resource Investment</p>
-                    <p className="text-[24px] text-[#111111] font-['Manrope:Bold',sans-serif]">$8,200</p>
-                  </div>
-                  <div className="p-4 rounded-xl bg-[#ECFDF3] border border-[#D1FADF]">
-                    <p className="text-[12px] text-[#027A48] font-['Inter:Medium',sans-serif] mb-1">Net Profit</p>
-                    <p className="text-[24px] text-[#027A48] font-['Manrope:Bold',sans-serif]">+$4,300</p>
-                  </div>
-                </div>
-
-                {/* Chart */}
-                <div className="h-[400px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={[
-                      { name: 'Week 1', price: 2500, invested: 1200 },
-                      { name: 'Week 2', price: 4000, invested: 2500 },
-                      { name: 'Week 3', price: 6500, invested: 4000 },
-                      { name: 'Week 4', price: 8500, invested: 5800 },
-                      { name: 'Week 5', price: 10500, invested: 7200 },
-                      { name: 'Week 6', price: 12500, invested: 8200 },
-                    ]} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ff3b3b" stopOpacity={0.2} />
-                          <stop offset="95%" stopColor="#ff3b3b" stopOpacity={0} />
-                        </linearGradient>
-                        <linearGradient id="colorInvested" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#111111" stopOpacity={0.2} />
-                          <stop offset="95%" stopColor="#111111" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F0F0F0" />
-                      <XAxis
-                        dataKey="name"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#999999', fontSize: 12 }}
-                        dy={10}
-                      />
-                      <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#999999', fontSize: 12 }}
-                        tickFormatter={(value) => `$${value}`}
-                      />
-                      <RechartsTooltip
-                        contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #EEEEEE', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                        itemStyle={{ fontSize: '12px', fontWeight: '500' }}
-                      />
-                      <Legend wrapperStyle={{ paddingTop: '20px' }} />
-                      <Area
-                        type="monotone"
-                        dataKey="price"
-                        name="Total Requirement Price"
-                        stroke="#ff3b3b"
-                        strokeWidth={2}
-                        fillOpacity={1}
-                        fill="url(#colorPrice)"
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="invested"
-                        name="Amount Invested"
-                        stroke="#111111"
-                        strokeWidth={2}
-                        fillOpacity={1}
-                        fill="url(#colorInvested)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Analysis Section */}
-              <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
-                <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-6 flex items-center gap-2">
-                  <BarChart2 className="w-5 h-5 text-[#ff3b3b]" />
-                  Cost Analysis Breakdown
-                </h3>
-
-                <div className="overflow-x-auto rounded-xl border border-[#EEEEEE]">
-                  <table className="w-full min-w-[900px]">
-                    <thead className="bg-[#F7F7F7] border-b border-[#EEEEEE]">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-[12px] font-['Manrope:Bold',sans-serif] text-[#666666] uppercase tracking-wider">Task</th>
-                        <th className="px-6 py-4 text-left text-[12px] font-['Manrope:Bold',sans-serif] text-[#666666] uppercase tracking-wider">Employee</th>
-                        <th className="px-6 py-4 text-right text-[12px] font-['Manrope:Bold',sans-serif] text-[#666666] uppercase tracking-wider">Allotted Hrs</th>
-                        <th className="px-6 py-4 text-right text-[12px] font-['Manrope:Bold',sans-serif] text-[#666666] uppercase tracking-wider">Engaged Hrs</th>
-                        <th className="px-6 py-4 text-right text-[12px] font-['Manrope:Bold',sans-serif] text-[#666666] uppercase tracking-wider">Extra Hrs</th>
-                        <th className="px-6 py-4 text-right text-[12px] font-['Manrope:Bold',sans-serif] text-[#666666] uppercase tracking-wider">
-                          Resource Invested
-                          <span className="block text-[10px] normal-case text-[#999999] font-normal">(Engaged × Rate)</span>
-                        </th>
-                        <th className="px-6 py-4 text-right text-[12px] font-['Manrope:Bold',sans-serif] text-[#666666] uppercase tracking-wider">Profit/Loss</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#EEEEEE]">
-                      {/* Mock data rows */}
-                      <tr className="bg-white hover:bg-[#FAFAFA] transition-colors">
-                        <td className="px-6 py-4 align-middle">
-                          <span className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Backend API Integration</span>
-                        </td>
-                        <td className="px-6 py-4 align-middle">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm shrink-0">
-                              <span className="text-[10px] text-white font-['Manrope:Bold',sans-serif]">SA</span>
-                            </div>
-                            <div>
-                              <p className="text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Sharifudeen</p>
-                              <p className="text-[11px] text-[#999999] font-['Inter:Medium',sans-serif]">Developer ($40/hr)</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 align-middle text-right">
-                          <span className="text-[13px] font-['Inter:Medium',sans-serif] text-[#666666]">40</span>
-                        </td>
-                        <td className="px-6 py-4 align-middle text-right">
-                          <span className="text-[13px] font-['Inter:Medium',sans-serif] text-[#111111]">55</span>
-                        </td>
-                        <td className="px-6 py-4 align-middle text-right">
-                          <span className="text-[13px] font-['Inter:Bold',sans-serif] text-[#DC2626]">+15</span>
-                        </td>
-                        <td className="px-6 py-4 align-middle text-right">
-                          <span className="text-[13px] font-['Inter:Medium',sans-serif] text-[#111111]">$2,200</span>
-                        </td>
-                        <td className="px-6 py-4 align-middle text-right">
-                          <div className="flex items-center justify-end gap-1 text-[#DC2626]">
-                            <TrendingDown className="w-4 h-4" />
-                            <span className="text-[13px] font-['Manrope:Bold',sans-serif]">-$600</span>
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+            <PnLTab requirement={requirement} tasks={tasks} isSender={isSender} />
           )}
           
           {activeTab === 'documents' && (
-             <div className="max-w-5xl mx-auto space-y-8">
-               <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
-                 <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-6 flex items-center gap-2">
-                   <Paperclip className="w-5 h-5 text-[#ff3b3b]" />
-                   Documents
-                 </h3>
-                 
-                 {(() => {
-                   // Aggregate all attachments from activityData
-                   const allDocuments = activityData.flatMap(activity => {
-                      if (!activity.attachments || activity.attachments.length === 0) return [];
-                      return activity.attachments.map(file => ({
-                         name: typeof file === 'string' ? file : (file as any).name,
-                         uploadedBy: activity.user,
-                         date: activity.date,
-                         type: String(typeof file === 'string' ? file : (file as any).name).split('.').pop()?.toUpperCase() || 'FILE',
-                         activityId: activity.id
-                      }));
-                   });
-
-                   if (allDocuments.length === 0) {
-                      return (
-                         <div className="text-center py-12">
-                            <div className="w-16 h-16 bg-[#F7F7F7] rounded-full flex items-center justify-center mx-auto mb-4">
-                               <Paperclip className="w-8 h-8 text-[#999999]" />
-                            </div>
-                            <h4 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-2">No documents found</h4>
-                            <p className="text-[14px] text-[#666666] font-['Inter:Regular',sans-serif] max-w-sm mx-auto">
-                               Files shared in the Activity & Chat section will automatically appear here.
-                            </p>
-                         </div>
-                      );
-                   }
-
-                   return (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                         {allDocuments.map((doc, idx) => (
-                            <div key={`${doc.activityId}-${idx}`} className="group p-4 rounded-[12px] border border-[#EEEEEE] hover:border-[#ff3b3b]/30 hover:shadow-md transition-all bg-white flex flex-col">
-                               <div className="flex items-start justify-between mb-3">
-                                  <div className="w-10 h-10 rounded-lg bg-[#FFF5F5] flex items-center justify-center text-[#ff3b3b]">
-                                     <FileText className="w-5 h-5" />
-                                  </div>
-                                  <span className="text-[10px] font-['Manrope:Bold',sans-serif] px-2 py-1 bg-[#F7F7F7] rounded text-[#666666] uppercase">
-                                     {doc.type}
-                                  </span>
-                               </div>
-                               <h4 className="text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#111111] mb-1 truncate" title={doc.name}>
-                                  {doc.name}
-                               </h4>
-                               <div className="flex items-center justify-between text-[11px] text-[#999999] mb-4">
-                                  <span className="font-['Manrope:SemiBold',sans-serif] text-[#666666]">
-                                     {doc.uploadedBy}
-                                  </span>
-                                  <span>{doc.date}</span>
-                               </div>
-                               
-                               <div className="mt-auto pt-3 flex items-center gap-2 border-t border-[#FAFAFA]">
-                                  <button 
-                                    className="flex-1 h-8 flex items-center justify-center gap-2 rounded-lg bg-[#F7F7F7] hover:bg-[#EEEEEE] text-[#444444] text-[12px] font-['Manrope:SemiBold',sans-serif] transition-colors"
-                                    onClick={() => message.info(`Previewing ${doc.name}`)}
-                                  >
-                                    <Eye className="w-3.5 h-3.5" /> Preview
-                                  </button>
-                                  <button 
-                                    className="flex-1 h-8 flex items-center justify-center gap-2 rounded-lg bg-[#FFF5F5] hover:bg-[#FFE5E5] text-[#ff3b3b] text-[12px] font-['Manrope:SemiBold',sans-serif] transition-colors"
-                                    onClick={() => message.success(`Downloading ${doc.name}`)}
-                                  >
-                                    <Download className="w-3.5 h-3.5" /> Download
-                                  </button>
-                               </div>
-                            </div>
-                         ))}
-                      </div>
-                   );
-                 })()}
-               </div>
-             </div>
+            <DocumentsTab activityData={activityData} />
           )}
         </div>
       </div>
 
       {/* Right Drawer - Activity & Chat */}
-      <div className="w-[400px] border-l border-[#EEEEEE] flex flex-col bg-white rounded-tr-[24px] rounded-br-[24px]">
-        {/* Drawer Header */}
-        <div className="p-6 border-b border-[#EEEEEE]">
-          <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-[#ff3b3b]" />
-            Activity & Chat
-          </h3>
-          <p className="text-[12px] text-[#666666] font-['Inter:Regular',sans-serif] mt-1">
-            Team collaboration and updates
-          </p>
-        </div>
+      <ChatPanel
+        activityData={activityData}
+        isLoadingActivities={isLoadingActivities}
+        messageText={messageText}
+        setMessageText={setMessageText}
+        attachments={attachments}
+        setAttachments={setAttachments}
+        mentionOptions={mentionOptions}
+        taskOptions={taskOptions}
+        activeMentionOptions={activeMentionOptions}
+        onMentionSearch={handleMentionSearch}
+        onSendMessage={handleSendMessage}
+        onFileSelect={handleFileSelect}
+        onEditorKeyDown={handleEditorKeyDown}
+        onEditorSelectionJump={handleEditorSelectionJump}
+      />
+      <Modal
+        open={isTaskModalOpen}
+        onCancel={() => setIsTaskModalOpen(false)}
+        footer={null}
+        width={600}
+        centered
+        className="rounded-[16px] overflow-hidden"
+        styles={{
+          body: {
+            padding: 0,
+            maxHeight: 'calc(100vh - 100px)',
+            display: 'flex',
+            flexDirection: 'column',
+          },
+        }}
+      >
+        <TaskForm
+          isEditing={false}
+          initialData={{
+            name: '',
+            workspace_id: String(workspaceId),
+            requirement_id: String(reqId),
+            assigned_members: [],
+            execution_mode: 'parallel',
+            member_id: '',
+            leader_id: '',
+            end_date: '',
+            estimated_time: '',
+            is_high_priority: false,
+            description: '',
+          }}
+          disabledFields={{
+            workspace: true,
+            requirement: true
+          }}
+          workspaces={workspaceData?.result ? [{ id: workspaceData.result.id, name: workspaceData.result.name }] : []}
+          requirements={requirementsData?.result ? requirementsData.result.map(r => ({ id: r.id, name: r.title || r.name || `Requirement ${r.id}` })) : []}
+          users={employeesData?.result ? employeesData.result.map(u => ({ 
+              id: u.user_id || u.id || 0, 
+              name: u.name || 'Unknown User',
+              profile_pic: u.profile_pic || undefined 
+          })) : []}
+          onCancel={() => setIsTaskModalOpen(false)}
+          onSubmit={(data) => {
+              const payload: CreateTaskRequestDto = {
+                name: data.name,
+                workspace_id: data.workspace_id,
+                requirement_id: data.requirement_id,
+                start_date: data.start_date || new Date().toISOString(),
+                end_date: data.end_date,
+                assigned_to: data.assigned_members.length > 0 ? data.assigned_members[0] : undefined,
+                member_id: data.member_id ? Number(data.member_id) : undefined,
+                leader_id: data.leader_id,
+                description: data.description,
+                is_high_priority: data.is_high_priority,
+                estimated_time: data.estimated_time,
+                priority: data.is_high_priority ? 'High' : 'Normal',
+                status: 'Assigned',
+                assigned_members: data.assigned_members,
+                execution_mode: data.execution_mode
+              };
 
-        {/* Activity Feed */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {activityData.map((activity) => (
-            <div key={activity.id} className="flex gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activity.isSystem
-                ? 'bg-[#F0F0F0]'
-                : 'bg-gradient-to-br from-[#666666] to-[#999999]'
-                }`}>
-                <span className={`text-[11px] font-['Manrope:Bold',sans-serif] ${activity.isSystem ? 'text-[#999999]' : 'text-white'
-                  }`}>
-                  {activity.avatar}
-                </span>
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className={`text-[13px] font-['Manrope:SemiBold',sans-serif] ${activity.isSystem ? 'text-[#999999]' : 'text-[#111111]'
-                    }`}>
-                    {activity.user}
-                  </span>
-                  <span className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">
-                    {activity.date}
-                  </span>
-                </div>
-
-                <div className={`${activity.type === 'comment'
-                  ? 'bg-[#F7F7F7] p-3 rounded-[12px] rounded-tl-none'
-                  : ''
-                  }`}>
-                  <p className="text-[13px] text-[#444444] font-['Inter:Regular',sans-serif]">
-                    {activity.message}
-                  </p>
-
-                  {activity.type === 'worklog' && activity.time && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="px-2 py-1 rounded bg-white text-[#666666] text-[11px] font-mono border border-[#EEEEEE]">
-                        {activity.time}
-                      </span>
-                      <span className="text-[11px] text-[#ff3b3b] font-['Inter:Medium',sans-serif]">
-                        {activity.task}
-                      </span>
-                    </div>
-                  )}
-
-                  {activity.attachments && activity.attachments.length > 0 && (
-                    <div className="mt-2 space-y-1">
-                      {activity.attachments.map((file, idx) => (
-                        <div key={idx} className="flex items-center gap-2 p-2 bg-white rounded border border-[#EEEEEE]">
-                          <Paperclip className="w-3.5 h-3.5 text-[#666666]" />
-                          <span className="text-[11px] text-[#444444] truncate">{file}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Message Input */}
-        <div className="p-4 border-t border-[#EEEEEE] bg-white">
-          {attachments.length > 0 && (
-            <div className="mb-3 space-y-1">
-              {attachments.map((file, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-white rounded border border-[#EEEEEE]">
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <Paperclip className="w-3.5 h-3.5 text-[#666666] shrink-0" />
-                    <span className="text-[11px] text-[#444444] truncate">{file.name}</span>
-                  </div>
-                  <button
-                    onClick={() => setAttachments(attachments.filter((_, i) => i !== index))}
-                    className="p-1 hover:bg-[#FAFAFA] rounded transition-colors shrink-0"
-                  >
-                    <X className="w-3.5 h-3.5 text-[#999999]" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="relative">
-            <textarea
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type a message or comment..."
-              className="w-full min-h-[80px] p-3 pr-10 rounded-[12px] border border-[#DDDDDD] bg-[#FAFAFA] text-[13px] focus:outline-none focus:border-[#ff3b3b]/30 resize-none font-['Inter:Medium',sans-serif]"
-            />
-            <div className="absolute bottom-3 right-3 flex gap-2">
-              <label htmlFor="file-upload" className="cursor-pointer text-[#999999] hover:text-[#666666] transition-colors">
-                <Paperclip className="w-4 h-4" />
-                <input
-                  id="file-upload"
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileSelect}
-                />
-              </label>
-              <button
-                onClick={handleSendMessage}
-                disabled={!messageText.trim() && attachments.length === 0}
-                className="text-[#ff3b3b] hover:text-[#E03131] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+              createTaskMutation.mutate(payload, {
+                onSuccess: () => {
+                    message.success("Task created successfully!");
+                    setIsTaskModalOpen(false);
+                },
+                onError: (error) => {
+                    const errorMessage = getErrorMessage(error, "Failed to create task");
+                    message.error(errorMessage);
+                }
+              });
+          }}
+        />
+      </Modal>
     </div>
   );
 }
@@ -1461,7 +1160,7 @@ function TabButton({ active, onClick, icon: Icon, label }: { active: boolean; on
     <button
       onClick={onClick}
       className={`
-        flex items-center gap-2 pb-4 relative transition-colors
+        flex items-center gap-2 pb-3 relative transition-colors
         ${active ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'}
       `}
     >
@@ -1477,12 +1176,12 @@ function SubTaskRow({
   isRevision,
   selected = false,
   onSelect
-}: {
+}: Readonly<{
   task: any;
   isRevision?: boolean;
   selected?: boolean;
   onSelect?: () => void;
-}) {
+}>) {
   const assignedName = task.assigned_to ? `User ${task.assigned_to}` : 'Unassigned';
   const initials = assignedName.split(' ').map((n: string) => n[0]).join('').toUpperCase();
 
@@ -1598,4 +1297,3 @@ function StatusBadge({ status, showLabel }: { status: string; showLabel?: boolea
     </Tooltip>
   );
 }
-

@@ -8,21 +8,24 @@ import { Button, Dropdown, Modal, Input, Select, Popover, Avatar, Badge, Typogra
 import type { MenuProps } from 'antd';
 import {
   Alert24Filled,
-  Add24Filled,
-  PeopleTeam24Filled,
-  Apps24Filled,
-  ClipboardTaskListLtr24Filled,
-  People24Filled,
-  Handshake24Filled,
-  Receipt24Filled,
-  Calendar24Filled,
-  Notepad24Filled
+  Add24Filled
 } from '@fluentui/react-icons';
-import { UserCog, Settings, LogOut, MessageCircle } from 'lucide-react';
+import { 
+  UserCog, 
+  Settings, 
+  LogOut, 
+  MessageCircle,
+  ScrollText,
+  Briefcase,
+  ListTodo,
+  CalendarDays,
+  CalendarOff,
+  NotebookPen
+} from 'lucide-react';
 import { TaskForm } from '../modals/TaskForm';
 import { RequirementsForm, RequirementFormData } from '../modals/RequirementsForm';
 import { WorkspaceForm } from '../modals/WorkspaceForm';
-import { NotificationPanel } from './NotificationPanel';
+import { NotificationPanel, NotificationItem } from './NotificationPanel';
 import { Skeleton } from '../ui/Skeleton';
 import { FeedbackWidget } from './FeedbackWidget';
 import { useUserDetails } from '@/hooks/useUser';
@@ -229,7 +232,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
   // Transform notifications
   const notifications = useMemo(() => {
     if (!notificationsData?.result) return [];
-    return notificationsData.result.map((n: { id: number; title?: string; message?: string; created_at?: string; is_read?: boolean; type?: string }): { id: number; title: string; message: string; time: string; unread: boolean; type: 'general' | 'task' | 'requirement' | 'delivery' | 'partner_invite' | 'workspace' | 'alert' } => ({
+    return notificationsData.result.map((n: { id: number; title?: string; message?: string; created_at?: string; is_read?: boolean; type?: string; icon?: string; link?: string; metadata?: { requirement_id?: number; actions?: string[]; sender_company_id?: number } }) => ({
       id: n.id,
       title: n.title || n.message || 'Notification',
       message: n.message || n.title || '',
@@ -237,7 +240,10 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true })
         : 'Just now',
       unread: !n.is_read,
-      type: (n.type || 'general') as 'general' | 'task' | 'requirement' | 'delivery' | 'partner_invite' | 'workspace' | 'alert',
+      type: (n.type || 'general') as NotificationItem['type'],
+      icon: n.icon || undefined,
+      actionLink: n.link || undefined,
+      metadata: n.metadata || undefined,
     }));
   }, [notificationsData]);
 
@@ -319,28 +325,28 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         {
           key: 'req',
           label: 'Requirement',
-          icon: <PeopleTeam24Filled className="w-4 h-4" />,
+          icon: <ScrollText className="w-4 h-4" />,
           onClick: () => setShowRequirementDialog(true),
           className: "font-['Manrope:Medium',sans-serif]"
         },
         {
           key: 'workspace',
           label: 'Workspace',
-          icon: <Apps24Filled className="w-4 h-4" />,
+          icon: <Briefcase className="w-4 h-4" />,
           onClick: () => setShowWorkspaceDialog(true),
           className: "font-['Manrope:Medium',sans-serif]"
         },
         {
           key: 'task',
           label: 'Task',
-          icon: <ClipboardTaskListLtr24Filled className="w-4 h-4" />,
+          icon: <ListTodo className="w-4 h-4" />,
           onClick: () => setShowTaskDialog(true),
           className: "font-['Manrope:Medium',sans-serif]"
         },
         {
           key: 'calendar',
           label: 'Schedule Meeting',
-          icon: <Calendar24Filled className="w-4 h-4" />,
+          icon: <CalendarDays className="w-4 h-4" />,
           onClick: () => {
             setShowMeetingDialog(true);
           },
@@ -349,7 +355,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         {
           key: 'leave',
           label: 'Apply Leave',
-          icon: <CalendarAdd24Filled className="w-4 h-4" />,
+          icon: <CalendarOff className="w-4 h-4" />,
           onClick: () => {
             setShowLeaveDialog(true);
           },
@@ -358,7 +364,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         {
           key: 'notes',
           label: 'Add Note',
-          icon: <Notepad24Filled className="w-4 h-4" />,
+          icon: <NotebookPen className="w-4 h-4" />,
           onClick: () => setShowNoteDialog(true),
           className: "font-['Manrope:Medium',sans-serif]"
         },
@@ -510,9 +516,11 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
                 ) : (
                   <Avatar
                     size={32}
-                    src={user?.user_profile?.profile_pic || user?.profile_pic || "https://github.com/shadcn.png"}
+                    src={user?.user_profile?.profile_pic || user?.profile_pic}
                     alt={user?.name || 'User'}
-                  />
+                  >
+                    {!user?.user_profile?.profile_pic && !user?.profile_pic && (user?.name?.[0] || 'U')}
+                  </Avatar>
                 )}
               </div>
             </Dropdown>

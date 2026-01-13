@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNotes } from "@/hooks/useNotes";
+import { Skeleton } from "../ui/Skeleton";
 import { sanitizeRichText } from "@/utils/sanitizeHtml";
 import { Archive, Plus, Trash2 } from "lucide-react";
 import { queryKeys } from "../../lib/queryKeys";
@@ -93,9 +94,23 @@ export function NotesWidget({ onNavigate }: { onNavigate?: (page: string) => voi
     let notesContent;
     if (isLoading) {
         notesContent = (
-            <div className="col-span-4 flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#ff3b3b]"></div>
-            </div>
+            <>
+                {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="relative aspect-square">
+                        <div className="h-full w-full bg-white rounded-xl border border-[#EEEEEE] p-4 flex flex-col">
+                            <div className="flex items-start justify-between mb-2 gap-2 flex-shrink-0 w-full">
+                                <Skeleton className="h-4 w-3/4 rounded-md" />
+                                <Skeleton className="w-[56px] h-6 rounded-md" />
+                            </div>
+                            <div className="flex-1 flex flex-col gap-2">
+                                <Skeleton className="h-3 w-full rounded-md" />
+                                <Skeleton className="h-3 w-5/6 rounded-md" />
+                                <Skeleton className="h-3 w-4/6 rounded-md" />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </>
         );
     } else if (notesList.length === 0) {
         notesContent = (

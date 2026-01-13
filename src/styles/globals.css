@@ -578,3 +578,43 @@
     display: flex;
     align-items: center;
 }
+
+/* Atomic Mentions Styling */
+.mentions-textarea-custom {
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+.mentions-textarea-custom .rc-textarea,
+.mentions-textarea-custom textarea {
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+    caret-color: #111111 !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    z-index: 2 !important;
+    padding: 12px !important; /* Single source of truth for padding */
+    line-height: inherit !important;
+    font-family: inherit !important;
+    font-size: inherit !important;
+    box-shadow: none !important;
+    letter-spacing: normal !important;
+    margin: 0 !important;
+}
+
+.mentions-textarea-custom textarea::selection {
+    background: rgba(47, 128, 237, 0.2);
+}
+
+.mention-token-highlight {
+    color: #2F80ED !important;
+    background-color: transparent !important;
+    border-radius: 0 !important;
+    padding: 0 !important;  
+    font-weight: 400 !important; /* Normal weight */
+    display: inline-block !important;
+    box-decoration-break: clone !important;
+    -webkit-box-decoration-break: clone !important;
+}

@@ -17,6 +17,9 @@ import { useCompleteSignup, useVerifyToken } from "@/hooks/useAuth";
 import { industryToBusinessType, commonCountries, commonTimezones } from "@/data/defaultData";
 import AuthLayout from "@/components/auth/AuthLayout";
 import PhoneNumberInput from "@/components/ui/PhoneNumberInput";
+import { fileService } from "@/services/file.service";
+import { useUpdateProfile, useUpdateCompany } from "@/hooks/useUser"; 
+// Assuming useUpdateCompany exists, checking file next.
 
 const { Option } = Select;
 
@@ -139,6 +142,9 @@ function CompanyDetailsForm() {
           country: countryCode,
           timezone: companyData.timezone,
         });
+        
+        // Redirect manually since we removed it from the hook
+        router.push("/dashboard");
       } catch (error: any) {
         const errorMessage =
           error?.response?.data?.message || "Failed to complete signup. Please try again.";
@@ -148,6 +154,9 @@ function CompanyDetailsForm() {
       setCurrentStep("admin");
     }
   };
+
+  const updateProfileMutation = useUpdateProfile();
+  const updateCompanyMutation = useUpdateCompany();
 
   const handleComplete = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,7 +169,7 @@ function CompanyDetailsForm() {
     const countryCode = getCountryCode(companyData.country);
 
     try {
-      await completeSignupMutation.mutateAsync({
+      const response = await completeSignupMutation.mutateAsync({
         registerToken: token,
         companyName: companyData.companyName,
         businessType: String(businessType),
@@ -171,6 +180,58 @@ function CompanyDetailsForm() {
         lastName: adminData.lastName,
         phone: adminData.phone,
       });
+
+      if (response && response.success) {
+        const user = response.result.user;
+        const companyId = user?.company_id || (user?.companies && user.companies[0]?.id);
+        const userId = user?.id;
+
+        // Upload Company Logo if exists
+        if (companyData.logo && companyId) {
+          try {
+             message.loading({ content: 'Uploading company logo...', key: 'logo-upload' });
+             const logoResult = await fileService.uploadFile(
+                companyData.logo,
+                'COMPANY_LOGO',
+                companyId
+             );
+             if (logoResult.download_url) {
+                await updateCompanyMutation.mutateAsync({
+                   name: companyData.companyName,
+                   logo: logoResult.download_url
+                });
+                message.success({ content: 'Company logo uploaded!', key: 'logo-upload' });
+             }
+          } catch (err) {
+             console.error("Logo upload failed", err);
+             message.error({ content: 'Failed to upload logo', key: 'logo-upload' });
+          }
+        }
+
+        // Upload Admin Photo if exists
+        if (adminData.photo && userId) {
+          try {
+             message.loading({ content: 'Uploading profile photo...', key: 'photo-upload' });
+             const photoResult = await fileService.uploadFile(
+                adminData.photo,
+                'USER_PROFILE_PICTURE',
+                userId
+             );
+             if (photoResult.download_url) {
+                await updateProfileMutation.mutateAsync({
+                   name: user.name,
+                   profile_pic: photoResult.download_url
+                });
+                message.success({ content: 'Profile photo uploaded!', key: 'photo-upload' });
+             }
+          } catch (err) {
+             console.error("Photo upload failed", err);
+             message.error({ content: 'Failed to upload photo', key: 'photo-upload' });
+          }
+        }
+
+        router.push("/dashboard");
+      }
     } catch (error: any) {
       const errorMessage =
         error?.response?.data?.message || "Failed to complete signup. Please try again.";

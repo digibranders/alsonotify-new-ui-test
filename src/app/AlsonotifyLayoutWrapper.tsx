@@ -14,6 +14,8 @@ import { Shield24Regular } from '@fluentui/react-icons';
 import { Button } from 'antd';
 import Link from 'next/link';
 import { InvitationPopup } from '../components/common/InvitationPopup';
+import { FloatingMenuProvider } from '../context/FloatingMenuContext';
+import { FloatingTimerBar } from '../components/common/FloatingTimerBar';
 
 interface AlsonotifyLayoutWrapperProps {
   children: ReactNode;
@@ -24,9 +26,11 @@ import { SidebarProvider, useSidebar } from '../context/SidebarContext';
 export function AlsonotifyLayoutWrapper({ children }: Readonly<AlsonotifyLayoutWrapperProps>) {
   return (
     <SidebarProvider>
-      <AlsonotifyLayoutContent>
-        {children}
-      </AlsonotifyLayoutContent>
+      <FloatingMenuProvider>
+        <AlsonotifyLayoutContent>
+          {children}
+        </AlsonotifyLayoutContent>
+      </FloatingMenuProvider>
     </SidebarProvider>
   );
 }
@@ -120,6 +124,8 @@ function AlsonotifyLayoutContent({ children }: Readonly<AlsonotifyLayoutWrapperP
     return children;
   };
 
+
+
   return (
     <TimerProvider>
       <div className="w-full h-screen bg-[#F7F7F7] p-5 flex overflow-hidden">
@@ -148,6 +154,7 @@ function AlsonotifyLayoutContent({ children }: Readonly<AlsonotifyLayoutWrapperP
         </div>
       </div>
       <FloatingProductivityWidget />
+      <FloatingTimerBar />
       <InvitationPopup />
     </TimerProvider>
   );

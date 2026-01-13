@@ -8,6 +8,7 @@
 export interface Requirement {
   id: number;
   title: string;
+  name?: string;
   description: string;
   company: string;
   client: string;
@@ -220,6 +221,8 @@ export interface Task {
   requirementName?: string;
   requirement_name?: string;
   requirement?: { name: string; id: number };
+  subtasks?: Task[];
+  steps?: any[];
 }
 
 export interface Workspace {

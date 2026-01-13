@@ -1,0 +1,42 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useCallback } from "react";
+import { 
+  getRequirementActivities, 
+  createRequirementActivity, 
+  type CreateRequirementActivityRequest 
+} from "../services/requirement-activity";
+import { queryKeys } from "../lib/queryKeys";
+import { useAuth } from "./useAuth";
+
+
+
+export const useRequirementActivities = (requirementId: number) => {
+  const queryClient = useQueryClient();
+  const { token } = useAuth();
+
+  const query = useQuery({
+    queryKey: queryKeys.requirements.activities(requirementId),
+    queryFn: () => getRequirementActivities(requirementId),
+    enabled: !!requirementId,
+    refetchInterval: 3000, // Poll every 3 seconds for near real-time chat with simple architecture
+    refetchIntervalInBackground: false, // Pause polling when tab is inactive to save resources
+  });
+
+  // WebSocket logic removed in favor of simple REST polling - Senior Engineering Decision
+  // This avoids complex connection state management for a simple timeline view.
+
+  return query;
+};
+
+export const useCreateRequirementActivity = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: CreateRequirementActivityRequest) => createRequirementActivity(params),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ 
+        queryKey: queryKeys.requirements.activities(variables.requirement_id) 
+      });
+    },
+  });
+};

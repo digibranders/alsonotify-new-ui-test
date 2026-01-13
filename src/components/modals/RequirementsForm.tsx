@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
-import { Input, Select, Button, Upload, DatePicker, Checkbox } from 'antd';
+import { Input, Select, Button, DatePicker, Checkbox } from 'antd';
 import { Upload as UploadIcon, FileText, ChevronDown, User } from 'lucide-react';
 import { useOutsourcePartners, useEmployees } from '@/hooks/useUser';
 
@@ -27,7 +27,7 @@ export interface RequirementFormData {
 
 interface RequirementsFormProps {
     initialData?: RequirementFormData;
-    onSubmit: (data: CreateRequirementRequestDto) => void;
+    onSubmit: (data: CreateRequirementRequestDto, files?: File[]) => void;
     onCancel: () => void;
     workspaces: { id: number | string; name: string }[];
     isLoading?: boolean;
@@ -91,6 +91,8 @@ export function RequirementsForm({
         ...initialData,
     });
 
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    
     // Reset form when initialData changes (for editing mode switching)
     useEffect(() => {
         if (initialData) {
@@ -100,8 +102,15 @@ export function RequirementsForm({
                 contact_person_id: initialData.contact_person_id ?? undefined,
                 workspace: initialData.workspace ?? undefined
             }));
+            setSelectedFiles([]); // Reset files on edit mode change or reopen
         }
     }, [initialData]);
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            setSelectedFiles(Array.from(e.target.files));
+        }
+    };
 
     const handleSubmit = () => {
         // Find the selected partner to extract receiver_company_id
@@ -118,7 +127,8 @@ export function RequirementsForm({
 
         // Build payload with workspace_id
         const payload: CreateRequirementRequestDto = {
-            title: formData.title,
+            name: formData.title,
+            title: formData.title, // Keep title for DTO compatibility if needed, but 'name' is what backend reads
             workspace_id: formData.workspace ? Number(formData.workspace) : 0, // Ensure valid ID
             description: formData.description,
             type: formData.type,
@@ -133,7 +143,7 @@ export function RequirementsForm({
             priority: formData.is_high_priority ? 'High' : 'Medium', // Map boolean to string expected by DTO/Backend
         };
 
-        onSubmit(payload);
+        onSubmit(payload, selectedFiles);
     };
 
     return (
@@ -179,7 +189,7 @@ export function RequirementsForm({
                             onChange={(v) => setFormData({ ...formData, workspace: v })}
                             popupStyle={{ zIndex: 2000 }}
                             suffixIcon={<ChevronDown className="w-4 h-4 text-gray-400" />}
-                            disabled={formData.type === 'outsourced'}
+                            disabled={false}
                         >
                             {workspaces && workspaces.length > 0 ? (
                                 workspaces.map((w) => (
@@ -209,8 +219,8 @@ export function RequirementsForm({
                                 type: v, 
                                 contact_person_id: undefined, 
                                 contactPerson: undefined,
-                                // If outsourced, clear workspace (Receiver assigns it)
-                                workspace: v === 'outsourced' ? undefined : formData.workspace 
+                                // Keep workspace even if outsourced
+                                workspace: formData.workspace 
                             })}
                             suffixIcon={<ChevronDown className="w-4 h-4 text-gray-400" />}
                         >
@@ -314,20 +324,39 @@ export function RequirementsForm({
                 {/* Upload Documents */}
                 <div className="space-y-1.5">
                     <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Upload Documents</span>
-                    <div className="border-2 border-dashed border-[#EEEEEE] rounded-xl p-3 flex flex-col items-center justify-center text-center hover:border-[#ff3b3b]/30 hover:bg-[#FFFAFA] transition-colors cursor-pointer bg-white group">
+                    <label 
+                        className="border-2 border-dashed border-[#EEEEEE] rounded-xl p-3 flex flex-col items-center justify-center text-center hover:border-[#ff3b3b]/30 hover:bg-[#FFFAFA] transition-colors cursor-pointer bg-white group"
+                    >
+                        <input 
+                            type="file" 
+                            multiple 
+                            className="hidden" 
+                            onChange={handleFileSelect}
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpeg,.jpg,.png"
+                        />
                         <div className="w-8 h-8 rounded-full bg-[#F7F7F7] group-hover:bg-white flex items-center justify-center mb-1.5 transition-colors">
                             <UploadIcon className="w-4 h-4 text-[#999999] group-hover:text-[#ff3b3b] transition-colors" />
                         </div>
-                        <p className="text-[12px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-0.5">
-                            Choose a file or drag & drop it here
-                        </p>
-                        <p className="text-[10px] text-[#999999] font-['Inter:Regular',sans-serif]">
-                            txt, docx, pdf, jpeg, xlsx - Up to 50MB
-                        </p>
-                        <Button className="mt-2.5 h-7 px-4 bg-white border border-[#EEEEEE] text-[11px] font-['Manrope:SemiBold',sans-serif] text-[#111111] hover:bg-[#F7F7F7] hover:text-[#ff3b3b] hover:border-[#ff3b3b]/20 rounded-md">
-                            Browse files
-                        </Button>
-                    </div>
+                        {selectedFiles.length > 0 ? (
+                            <div className="space-y-1">
+                                <p className="text-[12px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-0.5">
+                                    {selectedFiles.length} file(s) selected
+                                </p>
+                                <div className="text-[10px] text-[#666666] font-['Inter:Regular',sans-serif]">
+                                    {selectedFiles.map(f => f.name).join(', ')}
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <p className="text-[12px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-0.5">
+                                    Choose files or drop them here
+                                </p>
+                                <p className="text-[10px] text-[#999999] font-['Inter:Regular',sans-serif]">
+                                    pdf, docx, xlsx - Up to 50MB
+                                </p>
+                            </>
+                        )}
+                    </label>
                 </div>
             </div>
 
@@ -347,7 +376,7 @@ export function RequirementsForm({
                     disabled={isLoading}
                     className="h-[40px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {isEditing ? 'Update Requirement' : 'Save Requirement'}
+                    {isEditing ? 'Update Requirement' : 'Send Requirement'}
                 </Button>
             </div>
         </div>

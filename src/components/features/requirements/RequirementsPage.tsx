@@ -4,9 +4,11 @@ import { useState, useMemo, useEffect } from 'react';
 import { PageLayout } from '../../layout/PageLayout';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { DateRangeSelector } from '../../common/DateRangeSelector';
+import { useFloatingMenu } from '../../../context/FloatingMenuContext';
 import {
   X, Calendar as CalendarIcon, Clock, CheckCircle, CheckSquare, Users, Trash2,
-  FilePlus, Receipt, MoreHorizontal, Play, XCircle, RotateCcw, ChevronDown, AlertCircle
+  FilePlus, Receipt, MoreHorizontal, Play, XCircle, RotateCcw, ChevronDown, AlertCircle,
+  ArrowDown, ArrowUp
 } from 'lucide-react';
 
 import { PaginationBar } from '../../ui/PaginationBar';
@@ -15,10 +17,12 @@ import { useWorkspaces, useCreateRequirement, useUpdateRequirement, useDeleteReq
 import { useEmployees, useUserDetails } from '@/hooks/useUser';
 import { Skeleton } from '../../ui/Skeleton';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
+import { fileService } from '@/services/file.service';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { format, isPast, isToday, differenceInDays } from 'date-fns';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dayjs, { Dayjs } from 'dayjs';
+import Masonry, { ResponsiveMasonry } from "react-responsive-masonry";
 
 
 const { TextArea } = Input;
@@ -26,8 +30,7 @@ const { Option } = Select;
 
 import { RequirementsForm } from '../../modals/RequirementsForm';
 import { WorkspaceForm } from '../../modals/WorkspaceForm';
-
-
+import { RequirementCard } from './components/RequirementCard';
 
 import { Requirement, Workspace } from '@/types/domain';
 import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDto } from '@/types/dto/requirement.dto';
@@ -342,11 +345,37 @@ export function RequirementsPage() {
   }, []);
 
   const mapRequirementStatus = (status: string): 'in-progress' | 'completed' | 'delayed' | 'draft' => {
-    const statusLower = status?.toLowerCase() || '';
-    if (statusLower.includes('completed') || statusLower === 'done') return 'completed';
-    if (statusLower.includes('delayed')) return 'delayed';
-    if (statusLower.includes('draft')) return 'draft';
-    return 'in-progress';
+    // Backend sends Prisma enum values: Assigned, In_Progress, Waiting, Review, Completed, etc.
+    // Map to frontend display statuses
+    
+    switch (status) {
+      case 'Completed':
+        return 'completed';
+      
+      case 'On_Hold':
+      case 'Delayed':
+        return 'delayed';
+      
+      case 'draft':
+        return 'draft';
+      
+      // Active work states - show as in-progress
+      case 'Assigned':
+      case 'In_Progress':
+      case 'Waiting':
+      case 'Review':
+      case 'Submitted':
+      case 'Revision':
+      case 'Impediment':
+      case 'Stuck':
+        return 'in-progress';
+      
+      case 'Rejected':
+        return 'draft';
+      
+      default:
+        return 'in-progress';
+    }
   };
 
   const allRequirements = useMemo(() => {
@@ -481,16 +510,17 @@ export function RequirementsPage() {
           headerCompany = undefined;
         }
       } else {
-        // Inhouse requirements - use client/default
-        headerContact = clientName || 'Unknown Contact';
+        // Inhouse requirements
+        // Prefer contact_person if selected (e.g. Employee), otherwise fall back to Client Name
+        headerContact = req.contact_person?.name || clientName || 'Unknown Contact';
         headerCompany = undefined;
       }
 
       const mappedReq: Requirement = {
         id: req.id,
-        title: req.title || 'Untitled Requirement',
+        title: req.title || req.name || 'Untitled Requirement',
         description: stripHtmlTags(req.description || 'No description provided'),
-        company: companyName,
+        company: req.type === 'outsourced' ? (headerCompany || companyName) : companyName,
         client: clientName || (workspace ? 'N/A' : 'N/A'),
         assignedTo: req.manager ? [req.manager.name] : req.leader ? [req.leader.name] : [],
         dueDate: req.end_date ? format(new Date(req.end_date), 'dd-MMM-yyyy') : 'TBD',
@@ -498,7 +528,7 @@ export function RequirementsPage() {
         createdDate: req.start_date ? format(new Date(req.start_date), 'dd-MMM-yyyy') : 'TBD',
         is_high_priority: req.is_high_priority ?? false,
         type: (req.type || 'inhouse') as 'inhouse' | 'outsourced' | 'client',
-        status: mapRequirementStatus(req.status || 'in-progress'),
+        status: mapRequirementStatus(req.status || 'Assigned'),
         category: departmentName || 'General',
         departments: departmentName ? [departmentName] : [],
         progress: req.progress || 0,
@@ -593,10 +623,15 @@ export function RequirementsPage() {
     billing: 'All',
     category: 'All',
     priority: 'All',
-
     client: 'All',
+    partner: 'All',
     assignee: 'All'
   });
+
+  const { mutate: deleteRequirement } = useDeleteRequirement();
+
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -612,6 +647,17 @@ export function RequirementsPage() {
   const handleEditDraft = (req: Requirement) => {
     setEditingReq(req);
 
+    setIsDialogOpen(true);
+  };
+
+  const handleDuplicateRequirement = (req: Requirement) => {
+    // Create a copy of the requirement data for duplication
+    // Set editingReq to undefined so it creates a new requirement instead of updating
+    setEditingReq({
+      ...req,
+      id: undefined as any, // Remove ID so it creates new
+      title: `${req.title} (Copy)`, // Add (Copy) suffix to title
+    });
     setIsDialogOpen(true);
   };
 
@@ -679,7 +725,7 @@ export function RequirementsPage() {
     });
   };
 
-  const handleCreateRequirement = (data: CreateRequirementRequestDto) => {
+  const handleCreateRequirement = (data: CreateRequirementRequestDto, files?: File[]) => {
     if (!data.title && !data.name) {
       messageApi.error("Requirement title is required");
       return;
@@ -690,9 +736,26 @@ export function RequirementsPage() {
     }
 
     createRequirementMutation.mutate(data, {
-      onSuccess: () => {
+      onSuccess: async (response: any) => {
         messageApi.success("Requirement created successfully");
         setIsDialogOpen(false);
+
+        // Handle file uploads if any
+        if (files && files.length > 0 && response?.result?.id) {
+           const reqId = response.result.id;
+           messageApi.loading({ content: 'Uploading documents...', key: 'req-upload' });
+           try {
+             // Upload files sequentially or parallel
+             const uploadPromises = files.map(file => 
+               fileService.uploadFile(file, 'REQUIREMENT', reqId)
+             );
+             await Promise.all(uploadPromises);
+             messageApi.success({ content: 'Documents uploaded successfully', key: 'req-upload' });
+           } catch (err) {
+             console.error(err);
+             messageApi.error({ content: 'Failed to upload documents', key: 'req-upload' });
+           }
+        }
       },
       onError: (error: unknown) => {
         messageApi.error(getErrorMessage(error, "Failed to create requirement"));
@@ -700,7 +763,7 @@ export function RequirementsPage() {
     });
   };
 
-  const handleUpdateRequirement = (data: CreateRequirementRequestDto) => {
+  const handleUpdateRequirement = (data: CreateRequirementRequestDto, files?: File[]) => {
     if (!editingReq) return;
 
     // We need to construct UpdateRequirementRequestDto which includes id.
@@ -726,6 +789,7 @@ export function RequirementsPage() {
 
   // Filter Logic:
   // 1. First apply all filters EXCEPT the Status Tab
+  const { setExpandedContent } = useFloatingMenu();
   const baseFilteredReqs = requirements.filter(req => {
     // Type
     const typeMatch = filters.type === 'All' ||
@@ -791,16 +855,39 @@ export function RequirementsPage() {
       return false;
     }
 
-    // Pending Tab: Waiting/Review status for either side
+    // Pending Tab: Waiting for action (quote submission, review, or workspace mapping)
     if (activeStatusTab === 'pending') {
-      const isPendingWorkflow = req.rawStatus === 'Waiting' || req.rawStatus === ('Review' as string);
+      // For outsourced requirements, use explicit logic
+      if (req.type === 'outsourced') {
+        // Waiting for B to submit quote
+        if (req.rawStatus === 'Waiting') return true;
+        // Waiting for A to review quote
+        if (req.rawStatus === 'Review') return true;
+        // Waiting for B to map workspace (quote accepted but not mapped)
+        if (req.rawStatus === 'Assigned' && !req.receiver_workspace_id) return true;
+        return false;
+      }
+      
+      // For non-outsourced requirements
+      const isPendingWorkflow = req.rawStatus === 'Waiting' || req.rawStatus === 'Review';
       return isPendingWorkflow || req.approvalStatus === 'pending';
     }
 
-    // Active Tab: Assigned status (and not review/waiting), excluding delayed
+
+    // Active Tab: Workspace mapped and work in progress
     if (activeStatusTab === 'active') {
-      const isActiveState = ((req.rawStatus as any) === 'Assigned' || req.status === 'in-progress') && req.status !== 'delayed';
-      const isPendingWorkflow = req.rawStatus === 'Waiting' || (req.rawStatus as any) === 'Review';
+      // For outsourced requirements, use explicit logic
+      if (req.type === 'outsourced') {
+        // Workspace mapped - ready to work
+        if (req.rawStatus === 'Assigned' && req.receiver_workspace_id) return true;
+        // Actively being worked on
+        if (req.rawStatus === 'In_Progress') return true;
+        return false;
+      }
+      
+      // For non-outsourced requirements
+      const isActiveState = (req.rawStatus === 'Assigned' || req.rawStatus === 'In_Progress') && req.status !== 'delayed';
+      const isPendingWorkflow = req.rawStatus === 'Waiting' || req.rawStatus === 'Review';
       return isActiveState && !isPendingWorkflow && req.approvalStatus !== 'pending';
     }
 
@@ -809,19 +896,90 @@ export function RequirementsPage() {
       return req.status === 'delayed';
     }
 
-    // Completed Tab
-    if (activeStatusTab === 'completed') return req.status === 'completed';
-
     return true;
   });
 
+  // 3. Apply Sorting
+  const sortedRequirements = useMemo(() => {
+    const sorted = [...finalFilteredReqs];
+
+    if (sortColumn) {
+      sorted.sort((a, b) => {
+        let aVal: any;
+        let bVal: any;
+
+        switch (sortColumn) {
+          case 'title':
+            aVal = (a.title || '').toLowerCase();
+            bVal = (b.title || '').toLowerCase();
+            break;
+          case 'timeline':
+            // Use end_date/dueDate for sorting timeline
+            aVal = a.dueDate && a.dueDate !== 'TBD' ? new Date(a.dueDate).getTime() : 0;
+            bVal = b.dueDate && b.dueDate !== 'TBD' ? new Date(b.dueDate).getTime() : 0;
+            break;
+          case 'budget':
+            aVal = a.quotedPrice || a.estimatedCost || a.budget || 0;
+            bVal = b.quotedPrice || b.estimatedCost || b.budget || 0;
+            break;
+          case 'progress':
+            aVal = a.progress || 0;
+            bVal = b.progress || 0;
+            break;
+          case 'status':
+            aVal = a.status || '';
+            bVal = b.status || '';
+            break;
+          default:
+            aVal = (a as any)[sortColumn];
+            bVal = (b as any)[sortColumn];
+        }
+
+        if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return sorted;
+  }, [finalFilteredReqs, sortColumn, sortDirection]);
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+    setCurrentPage(1);
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) return null;
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="w-3 h-3 inline ml-1" />
+    ) : (
+      <ArrowDown className="w-3 h-3 inline ml-1" />
+    );
+  };
+
+  // Get unique partners for filter options
+  const allPartners = useMemo(() => {
+    const partners = Array.from(new Set(requirements.map(r => r.sender_company?.name || r.receiver_company?.name))).filter((x): x is string => Boolean(x));
+    return ['All', ...partners];
+  }, [requirements]);
+
   // Get unique clients for filter options
-  const allClients = ['All', ...Array.from(new Set(requirements.map(r => r.client).filter(Boolean)))];
-  const priorities = ['All', 'High Priority', 'Normal Priority'];
+  const allClients = useMemo(() => {
+    const clients = Array.from(new Set(requirements.map(r => r.client))).filter((x): x is string => Boolean(x));
+    return ['All', ...clients];
+  }, [requirements]);
+
+  const priorities = ['All', 'High', 'Normal'];
 
   // Get unique departments/categories - only include actual department names from requirements
   const allCategories = useMemo(() => {
-    const depts = Array.from(new Set(requirements.flatMap(r => r.departments || []).filter(Boolean)));
+    const depts = Array.from(new Set(requirements.flatMap(r => r.departments || []))).filter((x): x is string => Boolean(x));
     // Return 'All' plus actual department names (no 'General' placeholder)
     return ['All', ...depts];
   }, [requirements]);
@@ -829,7 +987,7 @@ export function RequirementsPage() {
   // Get unique assignees - add placeholder if no assignees available
   // PLACEHOLDER DATA: If no assignees exist, show "Unassigned" option
   const allAssignees = useMemo(() => {
-    const assignees = Array.from(new Set(requirements.flatMap(r => r.assignedTo || [])));
+    const assignees = Array.from(new Set(requirements.flatMap(r => r.assignedTo || []))).filter((x): x is string => Boolean(x));
     // Add placeholder if no assignees found
     if (assignees.length === 0) {
       return ['All', 'Unassigned'];
@@ -841,6 +999,7 @@ export function RequirementsPage() {
     { id: 'type', label: 'Type', options: ['All', 'In-house', 'Outsourced', 'Client Work'], placeholder: 'Type' },
     { id: 'priority', label: 'Priority', options: priorities, placeholder: 'Priority' },
     { id: 'client', label: 'Client', options: allClients, placeholder: 'Client' },
+    { id: 'partner', label: 'Partner', options: allPartners, placeholder: 'Partner' },
     { id: 'category', label: 'Department', options: allCategories, placeholder: 'Department' },
     { id: 'assignee', label: 'Assigned To', options: allAssignees, placeholder: 'Assignee' },
     // Only show Billing filter when on Completed tab - moved to last position to prevent layout shift
@@ -859,7 +1018,8 @@ export function RequirementsPage() {
       priority: 'All',
       client: 'All',
       category: 'All',
-      assignee: 'All'
+      assignee: 'All',
+      partner: 'All'
     });
     setSearchQuery('');
     setDateRange(null);
@@ -1033,157 +1193,11 @@ export function RequirementsPage() {
 
 
 
-  return (
-    <PageLayout
-      title="Requirements"
-      titleAction={{
-        onClick: handleOpenCreate
-      }}
-      tabs={tabs}
-      activeTab={activeStatusTab}
-      onTabChange={(tabId) => {
-        setActiveStatusTab(tabId);
-        const params = new URLSearchParams(searchParams.toString());
-        if (tabId === 'active') {
-          params.delete('tab');
-        } else {
-          params.set('tab', tabId);
-        }
-        router.push(`?${params.toString()}`);
-      }}
-      titleExtra={
-        <DateRangeSelector
-          value={dateRange}
-          onChange={setDateRange}
-          availablePresets={['this_week', 'this_month', 'last_month', 'this_year', 'all_time', 'custom']}
-        />
-      }
-    >
-      {/* Filters Bar */}
-      <div className="mb-6">
-        <FilterBar
-          filters={filterOptions}
-          selectedFilters={filters}
-          onFilterChange={handleFilterChange}
-          onClearFilters={clearFilters}
-          searchPlaceholder="Search requirements..."
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-        />
-      </div>
-
-      <div className="flex-1 min-h-0 relative flex flex-col">
-        <div className="flex-1 overflow-y-auto pb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {isLoading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="bg-white border border-[#EEEEEE] rounded-[20px] p-5 flex flex-col gap-4 animate-pulse">
-                  <div className="flex justify-between items-start">
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-4 rounded" />
-                  </div>
-                  <Skeleton className="h-16 w-full rounded-lg" />
-                  <div className="mt-auto pt-4 border-t border-[#EEEEEE] flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                      <Skeleton className="h-8 w-8 rounded-full" />
-                      <div className="space-y-1">
-                        <Skeleton className="h-3 w-20" />
-                        <Skeleton className="h-2 w-16" />
-                      </div>
-                    </div>
-                    <Skeleton className="h-6 w-20 rounded-full" />
-                  </div>
-                </div>
-              ))
-            ) : (
-              finalFilteredReqs.slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize).map((requirement) => (
-                <RequirementCard
-                  key={requirement.id}
-                  requirement={requirement as any}
-                  selected={selectedReqs.includes(requirement.id)}
-                  onSelect={() => toggleSelect(requirement.id)}
-                  onAccept={() => {
-                    console.log('onAccept Triggered', {
-                      id: requirement.id,
-                      type: requirement.type,
-                      isSender: requirement.isSender,
-                      rawStatus: requirement.rawStatus
-                    });
-                    const req = requirement;
-                    if (req.type === 'outsourced') {
-                      if (req.isReceiver) {
-                        const status = req.rawStatus?.toLowerCase();
-                        if (status === 'waiting' || status === 'rejected') {
-                          setPendingReqId(requirement.id);
-                          setIsQuotationOpen(true);
-                        } else if (status === 'assigned' && !req.receiver_workspace_id) {
-                          setPendingReqId(requirement.id);
-                          setIsMappingOpen(true);
-                        }
-                      } else if (req.isSender) {
-                        const status = req.rawStatus?.toLowerCase();
-                        if (status === 'review') {
-                          console.log('Attempting to approve requirement...', requirement.id);
-                          approveRequirementMutation.mutate({
-                            requirement_id: requirement.id,
-                            status: 'Assigned'
-                          });
-                        } else if (status === 'rejected') {
-                          handleEditDraft(requirement as any);
-                        }
-                      }
-                    } else {
-                      handleReqAccept(requirement.id)
-                    }
-                  }}
-                  onReject={() => {
-                    const req = requirement;
-                    if (req.type === 'outsourced') {
-                      setPendingReqId(requirement.id);
-                      setIsRejectOpen(true);
-                    } else {
-                      handleReqReject(requirement.id);
-                    }
-                  }}
-                  onEdit={() => handleEditDraft({
-                    ...requirement,
-                  } as any)}
-                  onNavigate={() =>
-                    router.push(`/dashboard/workspace/${requirement.workspaceId}/requirements/${requirement.id}`)
-                  }
-                />
-              ))
-            )}
-          </div>
-
-          {!isLoading && finalFilteredReqs.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-[#999999] font-['Inter:Regular',sans-serif]">
-                No requirements found
-              </p>
-            </div>
-          )}
-        </div>
-
-        {finalFilteredReqs.length > 0 && (
-          <div className="bg-white">
-            <PaginationBar
-              currentPage={currentPage}
-              totalItems={finalFilteredReqs.length}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={(size) => {
-                setPageSize(size);
-                setCurrentPage(1);
-              }}
-              itemLabel="requirements"
-            />
-          </div>
-        )}
-
-        {/* Bulk Action Bar */}
-        {selectedReqs.length > 0 && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#111111] text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-6 z-50 animate-in slide-in-from-bottom-4 duration-200">
+  // Update floating menu with bulk actions
+  useEffect(() => {
+    if (selectedReqs.length > 0) {
+      setExpandedContent(
+        <>
             <div className="flex items-center gap-2 border-r border-white/20 pr-6">
               <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
                 {selectedReqs.length}
@@ -1268,13 +1282,194 @@ export function RequirementsPage() {
                   <Trash2 className="w-4 h-4" />
                 </button>
               </Tooltip>
-            </div>
 
-            <button onClick={() => setSelectedReqs([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
-              Cancel
-            </button>
+              <button onClick={() => setSelectedReqs([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
+                Cancel
+              </button>
+            </div>
+        </>
+      );
+    } else {
+      setExpandedContent(null);
+    }
+
+    return () => {
+      setExpandedContent(null);
+    };
+  }, [selectedReqs, activeStatusTab, employeesData]);
+
+  return (
+    <PageLayout
+      title="Requirements"
+      titleAction={{
+        onClick: handleOpenCreate
+      }}
+      tabs={tabs}
+      activeTab={activeStatusTab}
+      onTabChange={(tabId) => {
+        setActiveStatusTab(tabId);
+        const params = new URLSearchParams(searchParams.toString());
+        if (tabId === 'active') {
+          params.delete('tab');
+        } else {
+          params.set('tab', tabId);
+        }
+        router.push(`?${params.toString()}`);
+      }}
+      titleExtra={
+        <DateRangeSelector
+          value={dateRange}
+          onChange={setDateRange}
+          availablePresets={['this_week', 'this_month', 'last_month', 'this_year', 'all_time', 'custom']}
+        />
+      }
+    >
+      {/* Filters Bar */}
+      <div className="mb-6">
+        <FilterBar
+          filters={filterOptions}
+          selectedFilters={filters}
+          onFilterChange={handleFilterChange}
+          onClearFilters={clearFilters}
+          searchPlaceholder="Search requirements..."
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+        />
+      </div>
+
+      <div className="flex-1 min-h-0 relative flex flex-col">
+        <div className="flex-1 overflow-y-auto pb-6">
+          <div className="flex items-center justify-between mb-4">
+             <div className="flex items-center gap-2">
+                <Checkbox 
+                  checked={sortedRequirements.length > 0 && selectedReqs.length === sortedRequirements.length}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedReqs(sortedRequirements.map(r => r.id));
+                    } else {
+                      setSelectedReqs([]);
+                    }
+                  }}
+                  className="red-checkbox"
+                />
+                <span className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif]">Select All</span>
+             </div>
+             
+             <div className="flex items-center gap-4">
+                <span className="text-[12px] text-[#999999] font-['Manrope:Medium',sans-serif]">Sort by:</span>
+                <Select 
+                  value={sortColumn || undefined} 
+                  placeholder="Sort by"
+                  onChange={handleSort} 
+                  className="w-40 h-8"
+                  variant="borderless"
+                >
+                  <Option value="title">Requirement</Option>
+                  <Option value="timeline">Timeline</Option>
+                  <Option value="budget">Budget</Option>
+                  <Option value="progress">Progress</Option>
+                  <Option value="status">Status</Option>
+                </Select>
+             </div>
+          </div>
+
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="bg-white border border-[#EEEEEE] rounded-[24px] p-6 animate-pulse">
+                  <div className="flex justify-between mb-4">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-4" />
+                  </div>
+                  <Skeleton className="h-6 w-3/4 mb-4" />
+                  <Skeleton className="h-4 w-full mb-2" />
+                  <Skeleton className="h-4 w-2/3 mb-6" />
+                  <div className="h-2 w-full bg-[#F0F0F0] rounded-full mb-6" />
+                  <div className="flex justify-between">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <Skeleton className="h-8 w-24 rounded-lg" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : sortedRequirements.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-[#999999] font-['Inter:Regular',sans-serif]">
+                No requirements found
+              </p>
+            </div>
+          ) : (
+            <div className="pb-6">
+              <ResponsiveMasonry
+                  columnsCountBreakPoints={{350: 1, 750: 2, 1200: 3}}
+              >
+                  <Masonry gutter="16px">
+                  {sortedRequirements.slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize).map((requirement) => (
+                    <RequirementCard
+                      key={requirement.id}
+                      requirement={requirement}
+                      selected={selectedReqs.includes(requirement.id)}
+                      onSelect={() => toggleSelect(requirement.id)}
+                      onAccept={() => handleReqAccept(requirement.id)}
+                      onReject={() => {
+                        const req = requirement;
+                        if (req.type === 'outsourced') {
+                          setPendingReqId(requirement.id);
+                          setIsRejectOpen(true);
+                        } else {
+                          handleReqReject(requirement.id);
+                        }
+                      }}
+                      onEdit={() => handleEditDraft({
+                        ...requirement,
+                      } as any)}
+                      onDelete={() => {
+                         Modal.confirm({
+                           title: 'Delete Requirement',
+                           content: 'Are you sure you want to delete this requirement? This action cannot be undone.',
+                           okText: 'Delete',
+                           cancelText: 'Cancel',
+                           okButtonProps: { danger: true },
+                           onOk: () => {
+                             deleteRequirement({ id: requirement.id, workspace_id: requirement.workspaceId });
+                           },
+                         });
+                       }}
+                      onDuplicate={() => {
+                          handleDuplicateRequirement({
+                            ...requirement,
+                            workspaceId: requirement.workspaceId,
+                          });
+                      }}
+                      onNavigate={() =>
+                        router.push(`/dashboard/workspace/${requirement.workspaceId}/requirements/${requirement.id}`)
+                      }
+                    />
+                  ))}
+                  </Masonry>
+              </ResponsiveMasonry>
+            </div>
+          )}
+
+        </div>
+
+        {finalFilteredReqs.length > 0 && (
+          <div className="bg-white">
+            <PaginationBar
+              currentPage={currentPage}
+              totalItems={finalFilteredReqs.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setCurrentPage(1);
+              }}
+              itemLabel="requirements"
+            />
           </div>
         )}
+
+
       </div>
 
       {/* Create/Edit Requirement Modal - Using existing modal structure */}
@@ -1354,477 +1549,3 @@ export function RequirementsPage() {
   );
 }
 
-function RequirementCard({
-  requirement,
-  selected,
-  onSelect,
-  onAccept,
-  onReject,
-  onEdit,
-  onNavigate
-}: {
-  requirement: Requirement,
-  selected: boolean,
-  onSelect: () => void,
-  onAccept?: () => void,
-  onReject?: () => void,
-  onEdit?: () => void,
-  onNavigate?: () => void
-}) {
-  const isPending = useMemo(() => {
-    // Special case for Receiver Mapping (Post-Approval)
-    if (requirement.type === 'outsourced' && requirement.isReceiver) {
-       const s = requirement.rawStatus?.toLowerCase();
-       if (s === 'assigned' && !requirement.receiver_workspace_id) return true;
-    }
-
-    if (requirement.approvalStatus !== 'pending') return false;
-    
-    const status = requirement.rawStatus?.toLowerCase();
-    
-    if (requirement.type === 'outsourced') {
-      if (requirement.isSender) {
-         // Client acts only on 'review'
-         return status === 'review';
-      }
-      if (requirement.isReceiver) {
-         // Vendor acts on 'waiting' (new) or 'rejected' (resubmit)
-         return status === 'waiting' || status === 'rejected';
-      }
-    }
-    return true;
-  }, [requirement]);
-
-
-
-  const getUnifiedStatusConfig = () => {
-    // 1. Billing / Financial Status (Highest Priority)
-    if (requirement.invoiceStatus === 'paid') {
-      return {
-        label: requirement.type === 'outsourced' ? 'Payment Cleared' : 'Payment Received',
-        icon: <CheckCircle className="w-3 h-3" />,
-        className: 'bg-[#E8F5E9] text-[#0F9D58] border-[#A5D6A7]',
-        onClick: null
-      };
-    }
-    if (requirement.invoiceStatus === 'billed') {
-      return {
-        label: requirement.type === 'outsourced' ? 'Invoice Received' : 'Invoice Sent',
-        icon: <CheckCircle className="w-3 h-3" />,
-        className: 'bg-[#E3F2FD] text-[#2196F3] border-[#90CAF9]',
-        onClick: null
-      };
-    }
-
-    // 2. Pending Actions (Workflow)
-    if (requirement.approvalStatus === 'pending') {
-      // Determine label based on role and precise status
-      let label = 'Pending';
-      let isActionNeeded = false;
-
-      if (requirement.type === 'outsourced') {
-        if (requirement.isSender) {
-          // I am Client (Gaurav)
-          // Status 'Review' means Vendor (Jayendra) submitted quote -> Action Needed
-          if (requirement.rawStatus === 'Review' || requirement.rawStatus?.toLowerCase() === 'review') {
-             label = 'Action Needed'; // Vendor submitted quote, I need to approve
-             isActionNeeded = true;
-          } else {
-             label = 'Pending'; // Waiting for vendor (Waiting or Rejected)
-          }
-        } else if (requirement.isReceiver) {
-          // I am Vendor (Jayendra)
-          // Status 'Waiting' means Client created req -> Action Needed
-          // Status 'Rejected' means Client rejected quote -> Action Needed (Resubmit)
-          if (requirement.rawStatus === 'Waiting' || requirement.rawStatus?.toLowerCase() === 'waiting' || 
-              requirement.rawStatus === 'Rejected' || requirement.rawStatus?.toLowerCase() === 'rejected') {
-             label = 'Action Needed'; // Need to submit/resubmit quote
-             isActionNeeded = true;
-          } else {
-             label = 'Pending'; // Waiting for client approval (Review)
-          }
-        }
-      }
-
-      if (isActionNeeded) {
-        return {
-          label: label,
-          icon: <AlertCircle className="w-3 h-3" />,
-          className: 'bg-[#FEFCE8] text-[#D97706] border-[#FEF08A] cursor-pointer hover:bg-[#FEF08A]',
-          onClick: null
-        };
-      } else {
-        return {
-          label: label,
-          icon: <Clock className="w-3 h-3" />,
-          className: 'bg-[#F3F4F6] text-[#6B7280] border-[#D1D5DB]',
-          onClick: null
-        };
-      }
-    }
-
-    // 3. Project Status
-    switch (requirement.status) {
-      case 'completed':
-        if (requirement.type === 'outsourced') {
-          return {
-            label: 'Invoice Received',
-            icon: <Receipt className="w-3 h-3" />,
-            className: 'bg-[#F3E5F5] text-[#9C27B0] border-[#E1BEE7]',
-            onClick: null
-          };
-        }
-        return {
-          label: 'Ready to Bill',
-          icon: <Receipt className="w-3 h-3" />,
-          className: 'bg-[#FFF3E0] text-[#EF6C00] border-[#FFE0B2] cursor-pointer hover:bg-[#FFE0B2]',
-          onClick: (e: React.MouseEvent) => {
-            e.stopPropagation();
-            // Navigate to invoices
-          }
-        };
-      case 'in-progress':
-        return {
-          label: 'In Progress',
-          icon: <Clock className="w-3 h-3" />,
-          className: 'bg-[#E3F2FD] text-[#2F80ED] border-[#90CAF9]',
-          onClick: null
-        };
-      case 'delayed':
-        return {
-          label: 'Delayed',
-          icon: <Clock className="w-3 h-3" />,
-          className: 'bg-[#FEE2E2] text-[#EB5757] border-[#FCA5A5]',
-          onClick: null
-        };
-      case 'draft':
-        return {
-          label: 'Draft',
-          icon: <FilePlus className="w-3 h-3" />,
-          className: 'bg-[#F3F4F6] text-[#666666] border-[#D1D5DB]',
-          onClick: null
-        };
-      default:
-        return {
-          label: 'To Do',
-          icon: <Clock className="w-3 h-3" />,
-          className: 'bg-[#F3F4F6] text-[#6B7280] border-[#D1D5DB]',
-          onClick: null
-        };
-    }
-  };
-
-  const statusConfig = getUnifiedStatusConfig();
-
-  const handleApproveClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onAccept?.();
-  };
-
-  const handleRejectClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onReject?.();
-  };
-
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onEdit?.();
-  };
-
-  const getTimelineStatus = (dueDate?: string) => {
-    if (!dueDate || dueDate === 'TBD') return null;
-    try {
-      const due = new Date(dueDate);
-      if (isPast(due) && !isToday(due)) {
-        const daysOverdue = differenceInDays(new Date(), due);
-        return { text: `Overdue by ${daysOverdue} days`, color: 'text-[#DC2626]' };
-      }
-      if (isToday(due)) return { text: 'Deadline today', color: 'text-[#F59E0B]' };
-      const daysLeft = differenceInDays(due, new Date());
-      return { text: `${daysLeft} days to deadline`, color: 'text-[#666666]' };
-    } catch {
-      return null;
-    }
-  };
-
-  const timelineStatus = getTimelineStatus(requirement.dueDate);
-
-  const getPendingStatusText = () => {
-    if (requirement.type === 'outsourced') {
-      if (requirement.rawStatus === 'Waiting') {
-        return requirement.isReceiver ? 'New outsourced requirement. Needs a quote.' : 'Awaiting quote from vendor...';
-      }
-      if (requirement.rawStatus === 'Review') {
-        return requirement.isSender ? 'Vendor submitted quote. Needs review.' : 'Quote submitted. Awaiting client decision...';
-      }
-      if (requirement.rawStatus === 'Rejected' && requirement.isSender) {
-        return 'Requirement declined by vendor. Please review and resubmit.';
-      }
-      return `Collaborative interaction pending...`;
-    }
-    if (requirement.type === 'client') {
-      return `Client Request. Awaiting review...`;
-    }
-    return 'Waiting for approval...';
-  };
-
-  const getApproveButtonText = () => {
-    if (requirement.type === 'outsourced') {
-      if (requirement.isReceiver) {
-        if (requirement.rawStatus === 'Waiting' || requirement.rawStatus?.toLowerCase() === 'waiting') return 'Submit Quote';
-        if (requirement.rawStatus === 'Rejected' || requirement.rawStatus?.toLowerCase() === 'rejected') return 'Resubmit Quote';
-        if (requirement.rawStatus === 'Assigned' && !requirement.receiver_workspace_id) return 'Map Workspace';
-        return 'Action Needed';
-      }
-      if (requirement.isSender) {
-        if (requirement.rawStatus === 'Review') return 'Accept Quote';
-        if (requirement.rawStatus === 'Rejected') return 'Edit & Resubmit';
-        return 'Action Needed';
-      }
-      return 'Pending';
-    }
-    if (requirement.type === 'client') return 'Accept Job';
-    return 'Approve';
-  };
-
-  const getCostDisplay = () => {
-    // Priority: quotedPrice (vendor quote) > estimatedCost > budget
-    if (requirement.quotedPrice) {
-      return `$${requirement.quotedPrice.toLocaleString()}`;
-    }
-    if (requirement.estimatedCost) {
-      return `$${requirement.estimatedCost.toLocaleString()}`;
-    }
-    if (requirement.budget) {
-      return `$${requirement.budget.toLocaleString()}`;
-    }
-    return null;
-  };
-
-
-  const costDisplay = getCostDisplay();
-
-  return (
-    <div
-      onClick={onNavigate}
-      className={`
-        group border rounded-[20px] p-5 hover:border-[#ff3b3b]/20 hover:shadow-lg transition-all duration-300 cursor-pointer flex flex-col relative
-        ${selected
-          ? 'border-[#ff3b3b] shadow-[0_0_0_1px_#ff3b3b] bg-[#FFF5F5]'
-          : isPending
-            ? 'border-dashed border-[#E5E7EB] bg-[#F9FAFB]'
-            : 'border-[#EEEEEE] bg-white'
-        }
-`}
-    >
-      {/* Top Right Controls: Checkbox & More Options */}
-      <div className="absolute top-4 right-4 z-20 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-        {/* Checkbox (Visible on hover or selected) */}
-        <div className={`transition-opacity duration-200 ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} `} onClick={(e) => e.stopPropagation()}>
-          <Checkbox
-            checked={selected}
-            onChange={() => onSelect()}
-            onClick={(e) => e.stopPropagation()}
-            className="red-checkbox"
-          />
-        </div>
-
-        {/* More Options Menu */}
-        <Popover
-          content={
-            <div className="w-40">
-              <button onClick={handleEditClick} className="w-full text-left px-3 py-2 text-[13px] hover:bg-gray-50 rounded">
-                Edit Details
-              </button>
-              <button className="w-full text-left px-3 py-2 text-[13px] hover:bg-gray-50 rounded">
-                Duplicate
-              </button>
-              <button className="w-full text-left px-3 py-2 text-[13px] text-[#ff3b3b] hover:bg-gray-50 rounded">
-                Delete
-              </button>
-            </div>
-          }
-          trigger="click"
-          placement="bottomRight"
-        >
-          <button className={`h-6 w-6 flex items-center justify-center rounded-full hover:bg-[#F7F7F7] text-[#999999] hover:text-[#111111] transition-all ${selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} `}>
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-        </Popover>
-      </div>
-
-      {/* Header */}
-      <div className="mb-3">
-        {/* Context Row: Badge | Contact | Company */}
-        <div className="flex items-center gap-1.5 mb-2.5 flex-wrap">
-          {/* Badge */}
-          <span className="px-1.5 py-0.5 rounded text-[9px] font-['Inter:Medium',sans-serif] bg-[#F5F5F5] text-[#666666] uppercase border border-[#EEEEEE]">
-            {requirement.isSender && requirement.type === 'outsourced' ? 'OUTSOURCED' : 'INHOUSE'}
-          </span>
-
-          {/* Separator */}
-          <span className="text-[#EEEEEE]">|</span>
-
-          {/* Contact Person */}
-          <span className="text-[10px] font-['Manrope:Medium',sans-serif] text-[#111111]">
-            {requirement.headerContact}
-          </span>
-
-          {/* Company Name (only if exists) */}
-          {requirement.headerCompany && (
-            <>
-              {/* Separator */}
-              <span className="text-[#EEEEEE]">|</span>
-
-              <span className="text-[10px] font-['Manrope:Medium',sans-serif] text-[#999999] uppercase">
-                {requirement.headerCompany}
-              </span>
-            </>
-          )}
-        </div>
-
-        {/* Title */}
-        <div className="flex justify-between items-start gap-2 pr-16">
-          <h3 className="font-['Manrope:Bold',sans-serif] text-[15px] leading-snug text-[#111111] group-hover:text-[#ff3b3b] transition-colors line-clamp-2">
-            {requirement.title}
-          </h3>
-        </div>
-      </div>
-
-      {/* Tags - Only show if department exists (not empty array) */}
-      {requirement.departments && requirement.departments.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {requirement.departments.slice(0, 3).map((dept, i) => (
-            <span key={i} className="px-1.5 py-0.5 rounded-md bg-white border border-[#E5E5E5] text-[10px] text-[#666666] font-['Inter:Medium',sans-serif]">
-              {dept}
-            </span>
-          ))}
-          {requirement.departments.length > 3 && (
-            <span className="px-1.5 py-0.5 text-[10px] text-[#999999]">+{requirement.departments.length - 3}</span>
-          )}
-        </div>
-      )}
-
-      {/* Date & Description */}
-      <div className="mb-4">
-        {(requirement.startDate || requirement.dueDate) && requirement.dueDate !== 'TBD' && (
-          <div className="flex items-center gap-2 text-[11px] text-[#666666] font-['Inter:Medium',sans-serif] mb-2 bg-[#F9FAFB] p-1.5 rounded-md w-fit">
-            <CalendarIcon className="w-3 h-3 text-[#999999]" />
-            <span>
-              {requirement.startDate ? format(new Date(requirement.startDate), 'MMM d') : ''}
-              {requirement.startDate && requirement.dueDate ? ' - ' : ''}
-              {requirement.dueDate && requirement.dueDate !== 'TBD' ? format(new Date(requirement.dueDate), 'MMM d') : ''}
-            </span>
-            {timelineStatus && (
-              <span className={`pl-1 border-l border-[#E5E5E5] ${timelineStatus.color} `}>
-                {timelineStatus.text}
-              </span>
-            )}
-          </div>
-        )}
-        <p className="text-[13px] text-[#666666] font-['Inter:Regular',sans-serif] line-clamp-3 leading-relaxed">
-          {requirement.description}
-        </p>
-      </div>
-
-      {/* Progress Section */}
-      {!isPending && (
-        <div className="mb-4 mt-auto">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] text-[#999999] font-['Inter:Medium',sans-serif]">
-              Progress
-            </span>
-            <span className="text-[10px] text-[#111111] font-['Inter:Bold',sans-serif]">
-              {requirement.progress}%
-            </span>
-          </div>
-          <div className="w-full h-1.5 bg-[#F0F0F0] rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-500 ${requirement.status === 'completed'
-                ? 'bg-[#0F9D58]'
-                : requirement.status === 'delayed'
-                  ? 'bg-[#ff3b3b]'
-                  : 'bg-[#2F80ED]'
-                } `}
-              style={{ width: `${requirement.progress}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Pending Message */}
-      {isPending && (
-        <div className="mt-auto mb-4 min-h-[40px] flex items-center justify-center text-[12px] text-[#999999] italic bg-[#F9FAFB] rounded-lg border border-dashed border-[#E5E7EB] mx-1">
-          {getPendingStatusText()}
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="pt-3 border-t border-[#EEEEEE] flex items-center justify-between mt-auto">
-
-        {/* Left: Priority & Assignees */}
-        <div className="flex items-center gap-2">
-          {/* Priority Badge */}
-          {requirement.is_high_priority && (
-            <div className="w-2 h-2 rounded-full bg-[#ff3b3b]" title="High Priority" />
-          )}
-
-          {/* Assignees */}
-          <div className="flex -space-x-1.5">
-            {(requirement.assignedTo && requirement.assignedTo.length > 0 ? requirement.assignedTo : ['Unassigned']).slice(0, 3).map((person, i) => (
-              <div
-                key={i}
-                className="w-5 h-5 rounded-full bg-[#F7F7F7] border border-white flex items-center justify-center text-[8px] font-bold text-[#666666] relative z-[3] hover:z-10 hover:scale-110 transition-all shadow-sm"
-                title={person}
-              >
-                {person.charAt(0)}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right: Cost & Status/Action */}
-        <div className="flex items-center gap-3">
-          {/* Cost Display - only show if we have actual price data */}
-          {costDisplay && (
-            <span className={`text-[12px] font-['Manrope:Bold',sans-serif] ${requirement.type === 'outsourced' ? 'text-[#ff3b3b]' : 'text-[#0F9D58]'}`}>
-              {costDisplay}
-            </span>
-          )}
-
-
-          {isPending ? (
-            <div className="flex gap-2">
-              {!(requirement.isReceiver && requirement.type === 'outsourced' && requirement.rawStatus?.toLowerCase() === 'assigned') && (
-              <button
-                onClick={handleRejectClick}
-                className="w-6 h-6 flex items-center justify-center rounded-full bg-white border border-[#ff3b3b] text-[#ff3b3b] hover:bg-[#ff3b3b] hover:text-white transition-all shadow-sm"
-                title="Reject"
-              >
-                <X className="w-3 h-3" />
-              </button>
-              )}
-              <button
-                onClick={handleApproveClick}
-                className="px-2 h-6 flex items-center justify-center rounded-full bg-[#0F9D58] text-white hover:bg-[#0B8043] transition-all shadow-sm text-[10px] font-bold whitespace-nowrap"
-                title="Approve"
-              >
-                {getApproveButtonText()}
-              </button>
-            </div>
-          ) : (
-            <div
-              onClick={statusConfig.onClick || undefined}
-              className={`
-                flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-['Manrope:Bold',sans-serif] border transition-all
-                ${statusConfig.className}
-`}
-            >
-              <span className="capitalize">{statusConfig.label}</span>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}

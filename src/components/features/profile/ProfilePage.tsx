@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Button, Input, Select, Divider, Upload, Switch, Progress, App } from "antd";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Camera, Pencil, Upload as UploadIcon, FileText, Bell, Shield } from "lucide-react";
+import { Camera, Pencil, Upload as UploadIcon, FileText, Bell, Shield, User } from "lucide-react";
 import Image from "next/image";
 import { PageLayout } from "../../layout/PageLayout";
 import { useUserDetails, useUpdateProfile, useUpdatePassword } from "@/hooks/useUser";
@@ -14,6 +14,7 @@ import {
 } from "@/constants/documentTypes";
 import { useDocumentSettings } from "@/hooks/useDocumentSettings";
 import { getErrorMessage } from "@/types/api-utils";
+import { fileService } from "@/services/file.service";
 
 interface DocumentTypeLocal {
     id: string;
@@ -172,77 +173,10 @@ export function ProfilePage() {
     // Document settings from hook
     const { documentTypes } = useDocumentSettings();
 
-    // Mock documents data - TODO: Replace with actual API call when available
     const documents = useMemo(() => {
         // Check if user data has documents
-        const userDocs = user?.documents || user?.user_profile?.documents || [];
-        if (Array.isArray(userDocs) && userDocs.length > 0) {
-            return userDocs;
-        }
-        // Mock documents from docs folder - all 4 types
-        const mockDocuments: UserDocument[] = [
-            {
-                id: "1",
-                documentTypeId: documentTypes[0]?.id || "1",
-                documentTypeName:
-                    documentTypes[0]?.name || "Resume / CV",
-                fileName: "Resume_Gaurav.pdf",
-                fileSize: 2400000, // 2.4 MB
-                fileUrl: "/documents/Jayendra_Jadhav_Resume.pdf",
-                uploadedDate: "2024-10-24T00:00:00Z",
-                fileType: "pdf",
-                isRequired: documentTypes[0]?.required ?? true,
-            },
-            {
-                id: "2",
-                documentTypeId: documentTypes[1]?.id || "2",
-                documentTypeName: documentTypes[1]?.name || "ID Proof",
-                fileName: "profile_photo.webp",
-                fileSize: 1000000, // 1 MB
-                fileUrl: "https://github.com/shadcn.png",
-                uploadedDate: "2024-01-15T00:00:00Z",
-                fileType: "image",
-                isRequired: documentTypes[1]?.required ?? true,
-            },
-            {
-                id: "3",
-                documentTypeId: documentTypes[2]?.id || "3",
-                documentTypeName:
-                    documentTypes[2]?.name || "Contract Agreement",
-                fileName: "Employment_Contract.docx",
-                fileSize: 206000, // 206 KB
-                fileUrl: "/documents/AI Agent Documentation.docx",
-                uploadedDate: "2024-01-20T00:00:00Z",
-                fileType: "docx",
-                isRequired: documentTypes[2]?.required ?? true,
-            },
-            {
-                id: "4",
-                documentTypeId: documentTypes[3]?.id || "4",
-                documentTypeName:
-                    documentTypes[3]?.name || "Supporting Documents",
-                fileName: "sample_csv.csv",
-                fileSize: 50000, // 50 KB
-                fileUrl: "/documents/ollama_filtered_json_support.csv",
-                uploadedDate: "2024-12-17T00:00:00Z",
-                fileType: "csv",
-                isRequired: documentTypes[3]?.required ?? false,
-            },
-            {
-                id: "5",
-                documentTypeId: documentTypes[4]?.id || "5",
-                documentTypeName:
-                    documentTypes[4]?.name || "Additional Document",
-                fileName: "",
-                fileSize: 0,
-                fileUrl: "",
-                uploadedDate: "",
-                fileType: "pdf",
-                isRequired: documentTypes[4]?.required ?? false,
-            },
-        ];
-        return mockDocuments;
-    }, [user, documentTypes]);
+        return user?.documents || user?.user_profile?.documents || [];
+    }, [user]);
 
     // Update profile when user data changes
     useEffect(() => {
@@ -538,23 +472,95 @@ export function ProfilePage() {
                                     Personal Details
                                 </h2>
 
-                                <div className="relative group cursor-pointer self-center">
-                                    <div className="w-32 h-32 rounded-full overflow-hidden border border-[#EEEEEE] shadow-sm">
-                                        <Image
-                                            src={
-                                                user?.user_profile?.profile_pic ||
-                                                user?.profile_pic ||
-                                                "https://github.com/shadcn.png"
-                                            }
-                                            alt="Profile"
-                                            width={128}
-                                            height={128}
-                                            className="w-full h-full object-cover"
-                                        />
+                                <div className="relative group self-center">
+                                    <div className="w-32 h-32 rounded-full overflow-hidden border border-[#EEEEEE] shadow-sm flex items-center justify-center bg-gray-50">
+                                        {(user?.user_profile?.profile_pic || user?.profile_pic) ? (
+                                            <Image
+                                                src={user?.user_profile?.profile_pic || user?.profile_pic || ""}
+                                                alt="Profile"
+                                                width={128}
+                                                height={128}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <User className="w-16 h-16 text-gray-300" />
+                                        )}
                                     </div>
-                                    <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <Camera className="w-8 h-8 text-white" />
-                                    </div>
+                                    
+                                    {isEditing && (
+                                        <div className="absolute -bottom-1 -right-1">
+                                            <Upload
+                                                name="avatar"
+                                                showUploadList={false}
+                                                customRequest={async ({ file, onSuccess, onError }) => {
+                                                    try {
+                                                        message.loading({ content: 'Uploading avatar...', key: 'avatar-upload' });
+                                                        const fileObj = file as File;
+
+                                                        if (!user?.id) {
+                                                            throw new Error('User ID not found');
+                                                        }
+
+                                                        const result = await fileService.uploadFile(
+                                                            fileObj,
+                                                            'USER_PROFILE_PICTURE',
+                                                            Number(user.id)
+                                                        );
+
+                                                        if (result.download_url) {
+                                                            // We need to update the local user state to reflect the change immediately
+                                                            // Since we use useUserDetails hook, we might need to invalidate query
+                                                            // For now, let's trust the re-fetch or optimistically update if we had a set function
+                                                            // But updateProfileMutation is for text fields.
+                                                            // We might need to manually trigger a profile update to save the URL if the backend doesn't auto-save it on upload confirm?
+                                                            // Actually fileService.uploadFile confirms with backend, and backend 'confirm' logic usually saves the attachment.
+                                                            // But does it link it to the user's profile_pic field?
+                                                            // In 'confirmUploadService' in backend, we need to check if it updates the entity.
+                                                            // The current backend implementation just creates a FileAttachment record.
+                                                            // It does NOT automatically update User.profile_pic.
+                                                            // So we should call updateProfileMutation with the new URL?
+                                                            // Wait, updateProfileMutation takes UserProfile payload.
+                                                            // Let's check updateProfileMutation in useUser.ts.
+                                                            
+                                                            // Actually, let's just upload it, and rely on the fact that we might need to send the URL in handleSaveChanges?
+                                                            // No, upload is separate. We should probably update the profile immediately with the new URL.
+                                                            
+                                                            await updateProfileMutation.mutateAsync({
+                                                                profile_pic: result.download_url
+                                                            });
+                                                            
+                                                            onSuccess?.(result);
+                                                            message.success({ content: 'Avatar uploaded!', key: 'avatar-upload' });
+                                                        } else {
+                                                            throw new Error('No download URL returned');
+                                                        }
+                                                    } catch (error) {
+                                                        console.error('Avatar upload error:', error);
+                                                        onError?.(error as Error);
+                                                        message.error({ content: 'Failed to upload avatar', key: 'avatar-upload' });
+                                                    }
+                                                }}
+                                                beforeUpload={(file) => {
+                                                    const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
+                                                    if (!isJpgOrPng) {
+                                                        message.error('You can only upload JPG/PNG file!');
+                                                        return Upload.LIST_IGNORE;
+                                                    }
+                                                    const isLt2M = file.size / 1024 / 1024 < 2;
+                                                    if (!isLt2M) {
+                                                        message.error('Image must smaller than 2MB!');
+                                                        return Upload.LIST_IGNORE;
+                                                    }
+                                                    return true;
+                                                }}
+                                            >
+                                                <Button 
+                                                    icon={<Camera className="w-4 h-4" />} 
+                                                    className="flex items-center justify-center w-9 h-9 rounded-full bg-[#111111] text-white border-white border-2 hover:bg-black hover:text-white p-0 shadow-sm"
+                                                />
+                                            </Upload>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

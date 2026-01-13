@@ -1,10 +1,12 @@
+
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Plus, CheckSquare, Trash2, Users, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, CheckSquare, Trash2, Users, ChevronDown, ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react';
 import { PageLayout } from '../../layout/PageLayout';
 import { PaginationBar } from '../../ui/PaginationBar';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
-import { Modal, Checkbox, App } from "antd";
+import { Modal, Checkbox, App, Tooltip } from "antd";
 import { DateRangeSelector } from '../../common/DateRangeSelector';
+import { useFloatingMenu } from '../../../context/FloatingMenuContext';
 import { TaskForm } from '../../modals/TaskForm';
 import { TaskRow } from './rows/TaskRow';
 import { useTasks, useCreateTask, useDeleteTask, useUpdateTask } from '@/hooks/useTask';
@@ -104,7 +106,6 @@ export function TasksPage() {
   }, [searchParams]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Initialize filters
   const [filters, setFilters] = useState<Record<string, string>>({
     user: 'All',
     company: 'All',
@@ -112,6 +113,9 @@ export function TasksPage() {
     status: 'All',
     requirement: 'All'
   });
+
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // Track if filter has been initialized to avoid resetting user's manual changes
   const [filterInitialized, setFilterInitialized] = useState(false);
@@ -484,6 +488,25 @@ export function TasksPage() {
     });
   }, [tasksData, requirementMap, currentUserCompanyName]);
 
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortIcon = (column: string) => {
+    if (sortColumn !== column) return null;
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="w-3 h-3 inline ml-1" />
+    ) : (
+      <ArrowDown className="w-3 h-3 inline ml-1" />
+    );
+  };
+
   const currentUserId = userDetailsData?.result?.id || userDetailsData?.result?.user?.id;
 
   useEffect(() => {
@@ -663,6 +686,55 @@ export function TasksPage() {
     });
   }, [tasks, filters, dateRange, activeTab]);
 
+  const sortedTasks = useMemo(() => {
+    const sorted = [...filteredTasks];
+
+    if (sortColumn) {
+      sorted.sort((a, b) => {
+        let aVal: any;
+        let bVal: any;
+
+        switch (sortColumn) {
+          case 'name':
+            aVal = (a.name || '').toLowerCase();
+            bVal = (b.name || '').toLowerCase();
+            break;
+          case 'project':
+            aVal = (a.project || '').toLowerCase();
+            bVal = (b.project || '').toLowerCase();
+            break;
+          case 'timeline':
+            aVal = a.dueDateValue || 0;
+            bVal = b.dueDateValue || 0;
+            break;
+          case 'assignedTo': {
+            const getAssigneeName = (val: any) => typeof val === 'string' ? val : (val?.name || '');
+            aVal = getAssigneeName(a.assignedTo).toLowerCase();
+            bVal = getAssigneeName(b.assignedTo).toLowerCase();
+            break;
+          }
+          case 'timeSpent':
+            aVal = a.timeSpent || 0;
+            bVal = b.timeSpent || 0;
+            break;
+          case 'status':
+            aVal = (a.status || '').toLowerCase();
+            bVal = (b.status || '').toLowerCase();
+            break;
+          default:
+            aVal = (a as any)[sortColumn];
+            bVal = (b as any)[sortColumn];
+        }
+
+        if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return sorted;
+  }, [filteredTasks, sortColumn, sortDirection]);
+
   useEffect(() => {
     // side-effects after filters, search, or date label change (currently none)
   }, [tasks.length, filteredTasks.length, activeTab, searchQuery, filters]);
@@ -715,6 +787,52 @@ export function TasksPage() {
       setSelectedTasks(filteredTasks.map(t => t.id));
     }
   };
+
+  const { setExpandedContent } = useFloatingMenu();
+
+  // Update floating menu with bulk actions
+  useEffect(() => {
+    if (selectedTasks.length > 0) {
+      setExpandedContent(
+        <>
+            <div className="flex items-center gap-2 border-r border-white/20 pr-6">
+              <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
+                {selectedTasks.length}
+              </div>
+              <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Tooltip title="Mark as Completed">
+                <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                  <CheckSquare className="w-4 h-4" />
+                </button>
+              </Tooltip>
+              <Tooltip title="Assign To">
+                <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                  <Users className="w-4 h-4" />
+                </button>
+              </Tooltip>
+              <Tooltip title="Delete">
+                <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </Tooltip>
+            </div>
+
+            <button onClick={() => setSelectedTasks([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
+              Cancel
+            </button>
+        </>
+      );
+    } else {
+      setExpandedContent(null);
+    }
+
+    return () => {
+      setExpandedContent(null);
+    };
+  }, [selectedTasks]);
 
   const toggleSelect = (id: string) => {
     if (selectedTasks.includes(id)) {
@@ -859,39 +977,77 @@ export function TasksPage() {
         <div className="sticky top-0 z-20 bg-white grid grid-cols-[40px_2.5fr_1.2fr_1.1fr_1fr_0.8fr_1.5fr_0.6fr_40px] gap-4 px-4 py-3 mb-2 items-center">
           <div className="flex justify-center">
             <Checkbox
-              checked={filteredTasks.length > 0 && selectedTasks.length === filteredTasks.length}
+              checked={sortedTasks.length > 0 && selectedTasks.length === sortedTasks.length}
               onChange={toggleSelectAll}
               className="red-checkbox"
             />
           </div>
-          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
-            Task
-          </p>
-          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
-            Requirements
-          </p>
-          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
-            Due Date
-          </p>
-          <div className="flex justify-center">
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+          
+          <button
+            className="flex items-center gap-1 group outline-none cursor-pointer"
+            onClick={() => handleSort('name')}
+          >
+            <span className={`text-[11px] font-['Manrope:Bold',sans-serif] uppercase tracking-wide transition-colors ${sortColumn === 'name' ? 'text-[#111111]' : 'text-[#999999] group-hover:text-[#666666]'}`}>
+              Task
+            </span>
+            {getSortIcon('name')}
+          </button>
+
+          <button
+            className="flex items-center gap-1 group outline-none cursor-pointer"
+            onClick={() => handleSort('project')}
+          >
+            <span className={`text-[11px] font-['Manrope:Bold',sans-serif] uppercase tracking-wide transition-colors ${sortColumn === 'project' ? 'text-[#111111]' : 'text-[#999999] group-hover:text-[#666666]'}`}>
+              Requirements
+            </span>
+            {getSortIcon('project')}
+          </button>
+
+          <button
+            className="flex items-center gap-1 group outline-none cursor-pointer"
+            onClick={() => handleSort('timeline')}
+          >
+            <span className={`text-[11px] font-['Manrope:Bold',sans-serif] uppercase tracking-wide transition-colors ${sortColumn === 'timeline' ? 'text-[#111111]' : 'text-[#999999] group-hover:text-[#666666]'}`}>
+              Due Date
+            </span>
+            {getSortIcon('timeline')}
+          </button>
+
+          <button
+            className="flex items-center gap-1 group outline-none cursor-pointer justify-center"
+            onClick={() => handleSort('assignedTo')}
+          >
+            <span className={`text-[11px] font-['Manrope:Bold',sans-serif] uppercase tracking-wide transition-colors ${sortColumn === 'assignedTo' ? 'text-[#111111]' : 'text-[#999999] group-hover:text-[#666666]'}`}>
               Assigned
-            </p>
-          </div>
-          <div className="flex justify-center">
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+            </span>
+            {getSortIcon('assignedTo')}
+          </button>
+
+          <button
+            className="flex items-center gap-1 group outline-none cursor-pointer justify-center"
+            onClick={() => handleSort('timeSpent')}
+          >
+            <span className={`text-[11px] font-['Manrope:Bold',sans-serif] uppercase tracking-wide transition-colors ${sortColumn === 'timeSpent' ? 'text-[#111111]' : 'text-[#999999] group-hover:text-[#666666]'}`}>
               Duration
-            </p>
-          </div>
-          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
+            </span>
+            {getSortIcon('timeSpent')}
+          </button>
+
+          <div className="text-center text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
             Progress
-          </p>
-          <div className="flex justify-center">
-            <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide">
-              Status
-            </p>
           </div>
-          <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wide"></p>
+
+          <button
+            className="flex items-center gap-1 group outline-none cursor-pointer justify-center"
+            onClick={() => handleSort('status')}
+          >
+            <span className={`text-[11px] font-['Manrope:Bold',sans-serif] uppercase tracking-wide transition-colors ${sortColumn === 'status' ? 'text-[#111111]' : 'text-[#999999] group-hover:text-[#666666]'}`}>
+              Status
+            </span>
+            {getSortIcon('status')}
+          </button>
+          
+          <div />
         </div>
 
         <div className="space-y-2">
@@ -912,7 +1068,7 @@ export function TasksPage() {
                 <div className="flex justify-center"><Skeleton className="h-4 w-4 rounded" /></div>
               </div>
             ))
-          ) : tasks.map((task) => (
+          ) : sortedTasks.map((task) => (
             <TaskRow
               key={task.id}
               task={{
@@ -939,33 +1095,7 @@ export function TasksPage() {
           </div>
         ) : null}
 
-        {/* Bulk Action Bar */}
-        {selectedTasks.length > 0 && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-[#111111] text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-6 z-20 animate-in slide-in-from-bottom-4 duration-200">
-            <div className="flex items-center gap-2 border-r border-white/20 pr-6">
-              <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
-                {selectedTasks.length}
-              </div>
-              <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
-            </div>
 
-            <div className="flex items-center gap-2">
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors tooltip-trigger" title="Mark as Completed">
-                <CheckSquare className="w-4 h-4" />
-              </button>
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors" title="Assign To">
-                <Users className="w-4 h-4" />
-              </button>
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]" title="Delete">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-
-            <button onClick={() => setSelectedTasks([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
-              Cancel
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Pagination - Fixed at bottom */}

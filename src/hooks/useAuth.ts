@@ -113,10 +113,14 @@ export const useCompleteSignup = () => {
           queryClient.setQueryData(queryKeys.users.me(), data.result.user);
           localStorage.setItem("user", JSON.stringify(data.result.user));
         }
-        // Redirect to dashboard after successful signup
-        router.push("/dashboard");
+        // Redirect handled by component
       }
     },
   });
 };
 
+export const useAuth = () => {
+  const token = getToken();
+  const { data: user } = useUser();
+  return { token, user: user?.result };
+};

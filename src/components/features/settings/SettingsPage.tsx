@@ -14,6 +14,7 @@ import dayjs from 'dayjs';
 import { Department, Holiday, Role } from '@/types/domain';
 import { CompanyUpdateInput } from '@/types/genericTypes';
 import { CompanyLeaveSetting } from '@/types/auth';
+import { fileService } from '@/services/file.service';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -686,6 +687,36 @@ export function SettingsPage() {
                         <Upload
                           name="logo"
                           showUploadList={false}
+                          customRequest={async ({ file, onSuccess, onError }) => {
+                            try {
+                              message.loading({ content: 'Uploading logo...', key: 'logo-upload' });
+                              const fileObj = file as File;
+                              
+                              if (!companyData?.result?.id) {
+                                throw new Error('Company ID not found');
+                              }
+
+                              const result = await fileService.uploadFile(
+                                fileObj,
+                                'COMPANY_LOGO', 
+                                companyData.result.id
+                              );
+                              
+                              // Update local state with the download URL (presigned)
+                              // Note: For long-term persistence, we might need to handle expiration or use public URLs
+                              if (result.download_url) {
+                                setCompanyLogo(result.download_url);
+                                onSuccess?.(result);
+                                message.success({ content: 'Logo uploaded successfully!', key: 'logo-upload' });
+                              } else {
+                                throw new Error('No download URL returned');
+                              }
+                            } catch (error) {
+                              console.error('Logo upload error:', error);
+                              onError?.(error as Error);
+                              message.error({ content: 'Failed to upload logo', key: 'logo-upload' });
+                            }
+                          }}
                           beforeUpload={(file) => {
                             const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png';
                             if (!isJpgOrPng) {
@@ -697,14 +728,7 @@ export function SettingsPage() {
                               message.error('Image must smaller than 2MB!');
                               return Upload.LIST_IGNORE;
                             }
-                            
-                            // Create preview
-                            const reader = new FileReader();
-                            reader.readAsDataURL(file);
-                            reader.onload = () => {
-                              setCompanyLogo(reader.result as string);
-                            };
-                            return false; // Prevent auto upload
+                            return true;
                           }}
                         >
                           <Button 

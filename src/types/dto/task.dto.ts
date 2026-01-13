@@ -116,6 +116,10 @@ export interface CreateTaskRequestDto {
   parent_task_id?: number;
   estimated_time?: number;
   is_high_priority?: boolean;
+  member_id?: number;
+  leader_id?: number;
+  assigned_members?: number[];
+  execution_mode?: 'parallel' | 'sequential';
 }
 
 export interface UpdateTaskRequestDto extends Partial<CreateTaskRequestDto> {

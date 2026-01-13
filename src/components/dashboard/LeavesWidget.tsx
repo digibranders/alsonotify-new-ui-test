@@ -1,7 +1,8 @@
 import svgPaths from "../../constants/iconPaths";
 import { Plus } from 'lucide-react';
 import { useState, useMemo } from 'react';
-import { Modal, Input, Button, Select, Spin, Form, DatePicker } from 'antd';
+import { Modal, Input, Button, Select, Form, DatePicker } from 'antd';
+import { Skeleton } from '../ui/Skeleton';
 import Image from "next/image";
 import dayjs from "dayjs";
 import type { Dayjs } from 'dayjs';
@@ -130,8 +131,28 @@ export function LeavesWidget({ onNavigate }: { onNavigate?: (page: string) => vo
         {/* Leaves List */}
         <div className="flex flex-col gap-2.5 flex-1 mt-2 overflow-y-auto scrollbar-hide">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Spin size="small" />
+            <div className="flex flex-col gap-2.5">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="p-3 rounded-xl border border-[#EEEEEE]">
+                  <div className="flex items-center gap-2.5">
+                    {/* Avatar Skeleton */}
+                    <div className="flex-shrink-0">
+                      <Skeleton className="w-[48px] h-[48px] rounded-full" />
+                    </div>
+                    {/* Leave Details Skeleton */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-col gap-1.5 min-w-0">
+                          <Skeleton className="h-4 w-32 rounded-md" />
+                          <Skeleton className="h-3 w-24 rounded-md" />
+                        </div>
+                        {/* Duration Badge Skeleton */}
+                        <Skeleton className="h-6 w-16 rounded-full" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : error ? (
             <div className="flex items-center justify-center py-8">

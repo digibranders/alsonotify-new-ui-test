@@ -78,7 +78,7 @@ export function LeaveApplyModal({
       width={600}
       centered
       className="rounded-[16px] overflow-hidden"
-      destroyOnClose
+      destroyOnHidden
       closeIcon={<X className="w-5 h-5 text-[#666666]" />}
     >
       <Form

@@ -2,8 +2,22 @@
 
 import { useMemo, useState } from 'react';
 import { Drawer } from 'antd';
-import { BellOff, FileText, AlertCircle, CheckSquare, Info, X, Check, Users } from 'lucide-react';
+import { 
+  BellOff, FileText, AlertCircle, CheckSquare, Info, X, Check, Users,
+  Inbox, CheckCircle2, XCircle, ClipboardList, BadgeCheck, RotateCcw,
+  AtSign, UserPlus, UserCheck, UserX, ListPlus, ListChecks, Trash2,
+  RefreshCw, Clock, Play, Timer, Bell, MessageCircle
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
+
+// All notification types from backend NotificationType enum + legacy types
+export type NotificationTypeValue = 
+  // Database NotificationType enum values
+  | 'GENERAL' | 'TODO_REMINDER' | 'PARTNER_INVITE'
+  | 'REQUIREMENT_RECEIVED' | 'REQUIREMENT_ACCEPTED' | 'REQUIREMENT_REJECTED'
+  | 'REQUIREMENT_REVIEW' | 'REQUIREMENT_COMPLETED' | 'REQUIREMENT_REVISION'
+  // Legacy/frontend types
+  | 'requirement' | 'task' | 'delivery' | 'workspace' | 'alert' | 'general' | 'partner_invite';
 
 export interface NotificationItem {
   id: number;
@@ -11,9 +25,15 @@ export interface NotificationItem {
   message: string;
   time: string;
   unread: boolean;
-  type?: 'requirement' | 'task' | 'delivery' | 'workspace' | 'alert' | 'general' | 'partner_invite';
+  type?: NotificationTypeValue;
+  icon?: string; // Backend icon field: 'info_icon', 'warning_icon', 'bell', 'check', 'x', 'users', etc.
   actionLink?: string;
   actionLabel?: string;
+  metadata?: {
+    requirement_id?: number;
+    actions?: string[];
+    sender_company_id?: number;
+  };
 }
 
 interface NotificationPanelProps {
@@ -50,15 +70,64 @@ function NotificationItemComponent({
   markAsRead: (id: number) => void;
   navigate: (path: string) => void;
 }) {
-  const getIcon = (type?: string) => {
+  // Get icon based on type AND backend icon field
+  const getIcon = (type?: string, iconField?: string) => {
+    // First check backend icon field for granular control
+    if (iconField) {
+      switch (iconField) {
+        case 'bell': return <Bell className="w-5 h-5" />;
+        case 'check': return <UserCheck className="w-5 h-5" />;
+        case 'x': return <UserX className="w-5 h-5" />;
+        case 'users': return <Users className="w-5 h-5" />;
+        case 'warning_icon': return <AlertCircle className="w-5 h-5" />;
+        case 'info_icon': return <Info className="w-5 h-5" />;
+        case 'inbox': return <Inbox className="w-5 h-5" />;
+      }
+    }
+    
+    // Then check type for category-based icons
     switch (type) {
+      // Requirements
       case 'requirement': return <FileText className="w-5 h-5" />;
-      case 'alert': return <AlertCircle className="w-5 h-5" />;
+      case 'REQUIREMENT_RECEIVED': return <Inbox className="w-5 h-5" />;
+      case 'REQUIREMENT_ACCEPTED': return <CheckCircle2 className="w-5 h-5" />;
+      case 'REQUIREMENT_REJECTED': return <XCircle className="w-5 h-5" />;
+      case 'REQUIREMENT_REVIEW': return <ClipboardList className="w-5 h-5" />;
+      case 'REQUIREMENT_COMPLETED': return <BadgeCheck className="w-5 h-5" />;
+      case 'REQUIREMENT_REVISION': return <RotateCcw className="w-5 h-5" />;
+      // Partners
+      case 'partner_invite':
+      case 'PARTNER_INVITE': return <UserPlus className="w-5 h-5" />;
+      // Tasks & Reminders
       case 'task': return <CheckSquare className="w-5 h-5" />;
+      case 'TODO_REMINDER': return <Bell className="w-5 h-5" />;
+      // Alerts
+      case 'alert': return <AlertCircle className="w-5 h-5" />;
+      // Others
       case 'delivery': return <Info className="w-5 h-5" />;
       case 'workspace': return <Info className="w-5 h-5" />;
-      case 'partner_invite': return <Users className="w-5 h-5" />;
+      case 'GENERAL':
+      case 'general':
       default: return <Info className="w-5 h-5" />;
+    }
+  };
+
+  // Get color based on type
+  const getColorClasses = (type?: string) => {
+    switch (type) {
+      case 'REQUIREMENT_RECEIVED': return 'bg-blue-50 border-blue-100 text-blue-600';
+      case 'REQUIREMENT_ACCEPTED': return 'bg-green-50 border-green-100 text-green-600';
+      case 'REQUIREMENT_REJECTED': return 'bg-red-50 border-red-100 text-red-600';
+      case 'REQUIREMENT_REVIEW': return 'bg-yellow-50 border-yellow-100 text-yellow-600';
+      case 'REQUIREMENT_COMPLETED': return 'bg-emerald-50 border-emerald-100 text-emerald-600';
+      case 'REQUIREMENT_REVISION': return 'bg-orange-50 border-orange-100 text-orange-600';
+      case 'requirement': return 'bg-blue-50 border-blue-100 text-blue-600';
+      case 'partner_invite':
+      case 'PARTNER_INVITE': return 'bg-purple-50 border-purple-100 text-purple-600';
+      case 'task':
+      case 'TODO_REMINDER': return 'bg-orange-50 border-orange-100 text-orange-600';
+      case 'alert': return 'bg-red-50 border-red-100 text-red-600';
+      default: return 'bg-gray-50 border-gray-100 text-gray-600';
     }
   };
 
@@ -85,13 +154,8 @@ function NotificationItemComponent({
       )}
 
       <div className="flex gap-4">
-        <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center border ${notification.type === 'requirement' ? 'bg-blue-50 border-blue-100 text-blue-600' :
-          notification.type === 'alert' ? 'bg-red-50 border-red-100 text-red-600' :
-            notification.type === 'task' ? 'bg-orange-50 border-orange-100 text-orange-600' :
-              notification.type === 'partner_invite' ? 'bg-purple-50 border-purple-100 text-purple-600' :
-                'bg-gray-50 border-gray-100 text-gray-600'
-          }`}>
-          {getIcon(notification.type)}
+        <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center border ${getColorClasses(notification.type)}`}>
+          {getIcon(notification.type, notification.icon)}
         </div>
 
         <div className="flex-1 min-w-0">
@@ -108,12 +172,23 @@ function NotificationItemComponent({
             {notification.message}
           </p>
 
-          {notification.type === 'requirement' && (
+          {/* Show action buttons for incoming requirement notifications */}
+          {(notification.type === 'REQUIREMENT_RECEIVED' && notification.metadata?.actions?.includes('accept')) && (
             <div className="flex justify-start gap-2 mt-2">
               <button
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
-                  markAsRead(notification.id);
+                  if (notification.metadata?.requirement_id) {
+                    try {
+                      const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+                      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/requirements/approve`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ requirement_id: notification.metadata.requirement_id, status: 'Rejected' })
+                      });
+                      markAsRead(notification.id);
+                    } catch (err) { console.error('Reject failed:', err); }
+                  }
                 }}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-[#ff3b3b] text-white hover:bg-[#d32f2f] transition-colors shadow-sm ring-1 ring-[#ff3b3b]/10"
                 title="Reject"
@@ -121,12 +196,23 @@ function NotificationItemComponent({
                 <X className="w-4 h-4" />
               </button>
               <button
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
-                  markAsRead(notification.id);
+                  if (notification.metadata?.requirement_id) {
+                    try {
+                      const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+                      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/requirements/approve`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ requirement_id: notification.metadata.requirement_id, status: 'Assigned' })
+                      });
+                      markAsRead(notification.id);
+                      if (notification.actionLink) navigate(notification.actionLink);
+                    } catch (err) { console.error('Accept failed:', err); }
+                  }
                 }}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-[#0F9D58] text-white hover:bg-[#0B8043] transition-colors shadow-sm ring-1 ring-[#0F9D58]/10"
-                title="Approve"
+                title="Accept"
               >
                 <Check className="w-4 h-4" />
               </button>
@@ -192,7 +278,7 @@ export function NotificationPanel({
       placement="right"
       styles={{
         wrapper: {
-          width: 400,
+          width: 500,
         },
         body: {
           padding: 0,

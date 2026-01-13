@@ -31,6 +31,7 @@ export const queryKeys = {
     all: () => ['requirements'] as const,
     byWorkspace: (workspaceId: number) => ['requirements', 'workspace', workspaceId] as const,
     collaborative: () => ['requirements', 'collaborative'] as const,
+    activities: (requirementId: number) => ['requirements', 'activities', requirementId] as const,
   },
   tasks: {
     all: () => ['tasks'] as const,
@@ -42,6 +43,7 @@ export const queryKeys = {
     worklogs: (taskId: number, limit: number = 50, skip: number = 0) => ['tasks', 'worklogs', taskId, { limit, skip }] as const,
     worklogsRoot: (taskId: number) => ['tasks', 'worklogs', taskId] as const,
     timer: (taskId: number) => ['tasks', 'timer', taskId] as const,
+    activities: (taskId: number) => ['tasks', 'activities', taskId] as const,
   },
   notes: {
     all: () => ['notes'] as const,

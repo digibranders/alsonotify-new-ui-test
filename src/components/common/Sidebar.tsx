@@ -146,6 +146,14 @@ export const Sidebar = React.memo(function Sidebar({ userRole, permissions }: Si
     if (path === '/dashboard') {
       return pathname === '/dashboard' || pathname === '/';
     }
+    // Special handling for Requirements inside Workspace context
+    if (path === '/dashboard/requirements' && pathname.includes('/requirements/')) {
+      return true;
+    }
+    if (path === '/dashboard/workspace' && pathname.includes('/requirements/')) {
+      return false;
+    }
+
     // For nested routes, check if pathname starts with the path
     return pathname.startsWith(path);
   }, [pathname]);
