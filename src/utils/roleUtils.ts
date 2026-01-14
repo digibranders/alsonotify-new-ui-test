@@ -1,4 +1,4 @@
-export type UserRole = 'Admin' | 'Manager' | 'Leader' | 'Employee';
+export type UserRole = 'Admin' | 'Department Head' | 'Finance' | 'HR' | 'Manager' | 'Employee';
 
 /**
  * Minimal type for user objects passed to getRoleFromUser.
@@ -24,15 +24,24 @@ export const getRoleFromUser = (user: UserLike | null | undefined): UserRole => 
     // 1. Try Role Name (Most reliable)
     const roleName = user?.role?.name || user?.user_employee?.role?.name;
     if (roleName) {
-        const roleLower = roleName.toLowerCase();
+        const roleLower = roleName.toLowerCase().trim();
+        if (roleLower === 'admin') return 'Admin';
+        if (roleLower === 'department head') return 'Department Head';
+        if (roleLower === 'finance') return 'Finance';
+        if (roleLower === 'hr') return 'HR';
+        if (roleLower === 'manager') return 'Manager';
+        if (roleLower === 'employee') return 'Employee';
+        
+        // Fallback fuzzy matching if exact match fails
         if (roleLower.includes('admin')) return 'Admin';
         if (roleLower.includes('manager')) return 'Manager';
-        if (roleLower.includes('leader')) return 'Leader';
-        if (roleLower.includes('hr')) return 'Employee'; // HR maps to Employee access level in current UI
-        if (roleLower.includes('finance')) return 'Employee'; // Finance maps to Employee in current UI
+        if (roleLower.includes('finance')) return 'Finance';
+        if (roleLower.includes('hr')) return 'HR';
+        if (roleLower.includes('department') || roleLower.includes('head')) return 'Department Head';
     }
 
     // 2. Try Role ID (Fallback / Legacy)
+    // Note: These IDs might change after database reset. Name matching is preferred.
     const roleId = user?.role_id ||
         user?.user_employee?.role_id ||
         user?.role?.id;
@@ -41,10 +50,10 @@ export const getRoleFromUser = (user: UserLike | null | undefined): UserRole => 
         const roleIdMapping: Record<number, UserRole> = {
             1: 'Admin',
             2: 'Employee',
-            3: 'Employee', // HR
+            3: 'HR',       // Updated from legacy mapping
             4: 'Admin',
-            5: 'Leader',
-            6: 'Employee', // Finance
+            5: 'Department Head', // Was Leader
+            6: 'Finance',  // Updated from legacy mapping
             7: 'Manager',
         };
         if (roleIdMapping[roleId]) {

@@ -53,7 +53,7 @@ const { Option } = Select;
 import { CreateTaskRequestDto } from '@/types/dto/task.dto';
 import { CreateRequirementRequestDto } from '@/types/dto/requirement.dto';
 
-type UserRole = 'Admin' | 'Manager' | 'Leader' | 'Employee';
+type UserRole = import('@/utils/roleUtils').UserRole;
 
 interface HeaderProps {
   userRole?: UserRole;

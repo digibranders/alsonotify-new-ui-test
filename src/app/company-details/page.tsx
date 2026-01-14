@@ -41,15 +41,15 @@ function CompanyDetailsForm() {
     website: "", // Optional - not sent to API
     industry: "",
     companySize: "", // Optional - not sent to API
-    country: "",
-    timezone: "",
+    country: "India",
+    timezone: "Asia/Kolkata",
     logo: null as File | null, // Optional - not sent to API
   });
 
   const [adminData, setAdminData] = useState({
     firstName: "",
     lastName: "",
-    country: "",
+    country: "India",
     countryCode: "+91",
     phone: "",
     photo: null as File | null,
@@ -83,22 +83,6 @@ function CompanyDetailsForm() {
   }, [userData]);
 
 
-  // Map country name to country code
-  const getCountryCode = (countryName: string): string => {
-    const countryMap: Record<string, string> = {
-      india: "IN",
-      usa: "US",
-      "united states": "US",
-      uk: "GB",
-      "united kingdom": "GB",
-      canada: "CA",
-      australia: "AU",
-      germany: "DE",
-      france: "FR",
-    };
-    return countryMap[countryName.toLowerCase()] || countryName.toUpperCase();
-  };
-
   const formVariants = {
     hidden: { opacity: 0, x: 20 },
     visible: { opacity: 1, x: 0, transition: { duration: 0.4 } },
@@ -131,7 +115,6 @@ function CompanyDetailsForm() {
     if (isIndividual) {
       // Map industry to businessType
       const businessType = industryToBusinessType[companyData.industry] || 21; // Default to "Others"
-      const countryCode = getCountryCode(companyData.country);
 
       try {
         await completeSignupMutation.mutateAsync({
@@ -139,7 +122,7 @@ function CompanyDetailsForm() {
           companyName: companyData.companyName,
           businessType: String(businessType),
           accountType: "INDIVIDUAL",
-          country: countryCode,
+          country: companyData.country,
           timezone: companyData.timezone,
         });
         
@@ -166,7 +149,6 @@ function CompanyDetailsForm() {
     }
 
     const businessType = industryToBusinessType[companyData.industry] || 21;
-    const countryCode = getCountryCode(companyData.country);
 
     try {
       const response = await completeSignupMutation.mutateAsync({
@@ -174,7 +156,7 @@ function CompanyDetailsForm() {
         companyName: companyData.companyName,
         businessType: String(businessType),
         accountType: "ORGANIZATION",
-        country: countryCode,
+        country: companyData.country,
         timezone: companyData.timezone,
         firstName: adminData.firstName,
         lastName: adminData.lastName,
@@ -448,7 +430,7 @@ function CompanyDetailsForm() {
                       suffixIcon={<div className="text-gray-400">⌄</div>}
                     >
                       {commonCountries.map((country) => (
-                        <Option key={country.code} value={country.name.toLowerCase()}>
+                        <Option key={country.code} value={country.name}>
                           {country.name}
                         </Option>
                       ))}

@@ -1307,7 +1307,7 @@ export function SettingsPage() {
                     {rolesData?.result
                       ?.filter((role: Role) => role.name !== 'Super Admin')
                       ?.sort((a: Role, b: Role) => {
-                        const order = ['Admin', 'Manager', 'Leader', 'Employee'];
+                        const order = ['Admin', 'Department Head', 'Finance', 'HR', 'Manager', 'Employee'];
                         const aIdx = order.indexOf(a.name);
                         const bIdx = order.indexOf(b.name);
                         if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
