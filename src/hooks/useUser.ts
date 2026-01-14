@@ -138,7 +138,7 @@ export const useUserDetails = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
     select: (data) => ({
       ...data,
-      result: data.result ? mapUserDtoToEmployee(data.result) : undefined
+      result: data.result ? mapUserDtoToEmployee({ ...data.result.user, access: data.result.access }) : undefined
     })
   });
 };

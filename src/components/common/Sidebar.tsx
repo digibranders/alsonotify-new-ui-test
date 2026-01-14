@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import React from "react";
 
-type UserRole = 'Admin' | 'Manager' | 'Leader' | 'Employee';
 
 interface SidebarProps {
   userRole: UserRole;
@@ -38,6 +37,7 @@ type NavItemConfig = {
 };
 
 import { navPermissionMap } from '@/utils/navUtils';
+import { UserRole } from '@/utils/roleUtils';
 
 // Define navItems outside component to avoid recreation
 const NAV_ITEMS: NavItemConfig[] = [
@@ -46,49 +46,49 @@ const NAV_ITEMS: NavItemConfig[] = [
     path: '/dashboard',
     label: 'Dashboard',
     icon: <LayoutDashboard size={20} />,
-    allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
+    allowedRoles: ['Admin', 'Manager', 'Department Head', 'Finance', 'HR', 'Employee']
   },
   {
     id: 'employees',
     path: '/dashboard/employees',
     label: 'Employees',
     icon: <Users size={20} />,
-    allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
+    allowedRoles: ['Admin', 'Manager', 'Department Head', 'Finance', 'HR'] // Employee excluded
   },
   {
     id: 'partners',
     path: '/dashboard/partners',
     label: 'Partners',
     icon: <Handshake size={20} />,
-    allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
+    allowedRoles: ['Admin', 'Manager', 'Department Head', 'Finance']
   },
   {
     id: 'workspace',
     path: '/dashboard/workspace',
     label: 'Workspace',
     icon: <Briefcase size={20} />,
-    allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
+    allowedRoles: ['Admin', 'Manager', 'Department Head', 'Finance', 'HR', 'Employee']
   },
   {
     id: 'requirements',
     path: '/dashboard/requirements',
     label: 'Requirements',
     icon: <ScrollText size={20} />,
-    allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
+    allowedRoles: ['Admin', 'Manager', 'Department Head', 'Finance', 'HR', 'Employee']
   },
   {
     id: 'tasks',
     path: '/dashboard/tasks',
     label: 'Tasks',
     icon: <ListTodo size={20} />,
-    allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
+    allowedRoles: ['Admin', 'Manager', 'Department Head', 'Finance', 'HR', 'Employee']
   },
   {
     id: 'reports',
     path: '/dashboard/reports',
     label: 'Reports',
     icon: <BarChart3 size={20} />,
-    allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
+    allowedRoles: ['Admin', 'Manager', 'Department Head', 'Finance', 'HR']
   },
 
   {
@@ -96,28 +96,28 @@ const NAV_ITEMS: NavItemConfig[] = [
     path: '/dashboard/calendar',
     label: 'Calendar',
     icon: <CalendarDays size={20} />,
-    allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
+    allowedRoles: ['Admin', 'Manager', 'Department Head', 'Finance', 'HR', 'Employee']
   },
   {
     id: 'leaves',
     path: '/dashboard/leaves',
     label: 'Leaves',
     icon: <CalendarOff size={20} />,
-    allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
+    allowedRoles: ['Admin', 'Manager', 'Department Head', 'Finance', 'HR', 'Employee']
   },
   {
     id: 'finance',
     path: '/dashboard/finance',
     label: 'Finance',
     icon: <CircleDollarSign size={20} />,
-    allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
+    allowedRoles: ['Admin', 'Manager', 'Department Head', 'Finance']
   },
   {
     id: 'notes',
     path: '/dashboard/notes',
     label: 'Notes',
     icon: <NotebookPen size={20} />,
-    allowedRoles: ['Admin', 'Manager', 'Leader', 'Employee']
+    allowedRoles: ['Admin', 'Manager', 'Department Head', 'Finance', 'HR', 'Employee']
   },
 ];
 

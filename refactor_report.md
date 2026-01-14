@@ -135,46 +135,59 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
 ## Tue Jan 13 17:32:30 IST 2026 - Global Floating Action Bar Integration
 
 ### Changes
-- **Core Infrastructure**:
-  - Created `FloatingMenuContext` (Context API) to manage floating bar content globally.
-  - Created `FloatingTimerBar` component (src/components/common/FloatingTimerBar.tsx) which consumes the context.
-  - Integrated `FloatingMenuProvider` and `FloatingTimerBar` into `AlsonotifyLayoutWrapper.tsx`.
 
-- **Page Refactoring**:
-  - Removed page-specific inline "Bulk Action Bars" from:
-    - `RequirementsPage.tsx`
-    - `TasksPage.tsx`
-    - `EmployeesPage.tsx`
-    - `PartnersPage.tsx`
-  - Implemented `useFloatingMenu` hook in these pages to dynamically inject bulk action buttons into the global floating bar when items are selected.
-  - Preserved existing functionality:
-    - Requirements: Status transitions, Assign, Delete.
-    - Tasks: Mark as Completed, Assign, Delete.
-    - Employees: Update Access, Change Department, Export, Delete.
-    - Partners: Export, Deactivate.
-  - Standardized UI using `antd` Tooltips and `lucide-react` icons.
+-   **Core Infrastructure**:
+
+    -   Created `FloatingMenuContext` (Context API) to manage floating bar content globally.
+    -   Created `FloatingTimerBar` component (src/components/common/FloatingTimerBar.tsx) which consumes the context.
+    -   Integrated `FloatingMenuProvider` and `FloatingTimerBar` into `AlsonotifyLayoutWrapper.tsx`.
+
+-   **Page Refactoring**:
+    -   Removed page-specific inline "Bulk Action Bars" from:
+        -   `RequirementsPage.tsx`
+        -   `TasksPage.tsx`
+        -   `EmployeesPage.tsx`
+        -   `PartnersPage.tsx`
+    -   Implemented `useFloatingMenu` hook in these pages to dynamically inject bulk action buttons into the global floating bar when items are selected.
+    -   Preserved existing functionality:
+        -   Requirements: Status transitions, Assign, Delete.
+        -   Tasks: Mark as Completed, Assign, Delete.
+        -   Employees: Update Access, Change Department, Export, Delete.
+        -   Partners: Export, Deactivate.
+    -   Standardized UI using `antd` Tooltips and `lucide-react` icons.
 
 ### Verification
-- `npm run typecheck`: Passed (fixed syntax errors in TasksPage and PartnersPage).
-- `npm run lint`: Passed (fixed prefer-const and switch-case issues).
-- `npm run build`: Pending completion.
 
-- `npm run build`: Passed.
+-   `npm run typecheck`: Passed (fixed syntax errors in TasksPage and PartnersPage).
+-   `npm run lint`: Passed (fixed prefer-const and switch-case issues).
+-   `npm run build`: Pending completion.
+
+-   `npm run build`: Passed.
 
 ## Tue Jan 13 17:38:50 IST 2026 - Floating Bar Visibility Configuration
 
 ### Changes
-- Modified `src/components/common/FloatingTimerBar.tsx`:
-  - Added 'use client' directive.
-  - Imported `usePathname` from `next/navigation`.
-  - Implemented logic to check current route against a hidden list:
-    - `/dashboard/reports`
-    - `/dashboard/finance`
-    - `/dashboard/settings`
-    - `/dashboard/profile`
-  - Applied `display: none` via inline style when on hidden routes to preserve timer state while hiding the UI.
+
+-   Modified `src/components/common/FloatingTimerBar.tsx`:
+    -   Added 'use client' directive.
+    -   Imported `usePathname` from `next/navigation`.
+    -   Implemented logic to check current route against a hidden list:
+        -   `/dashboard/reports`
+        -   `/dashboard/finance`
+        -   `/dashboard/settings`
+        -   `/dashboard/profile`
+    -   Applied `display: none` via inline style when on hidden routes to preserve timer state while hiding the UI.
 
 ### Verification
-- `npm run lint`: Pending.
-- `npm run build`: Pending.
-- Usage of logic verified via Build: Passed.
+
+-   `npm run lint`: Pending.
+-   `npm run build`: Pending.
+-   Usage of logic verified via Build: Passed.
+
+## Bug Fix: Access Management Tab Visibility
+
+-   **Date**: 2026-01-14
+-   **Issue**: Newly created Admin users could not see the "Access Management" tab in Settings.
+-   **Root Cause**: The `useUserDetails` hook was passing the API response wrapper (`{user, access, token}`) directly to the `mapUserDtoToEmployee` mapper, instead of the enclosed `user` object. This caused the `role` property to be undefined during the `isAdmin` check.
+-   **Fix**: Updated `useUserDetails` in `src/hooks/useUser.ts` to properly unwrap the user object and merge it with the access data before mapping.
+-   **Verification**: `npm run typecheck` and `npm run build` passed.
