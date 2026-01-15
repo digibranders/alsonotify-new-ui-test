@@ -1,0 +1,26 @@
+[
+    {
+        "id": "TEST-001",
+        "title": "Login with Valid Credentials",
+        "description": "Verify that a user can login with valid email and password.",
+        "steps": [
+            "Open the application login page.",
+            "Enter valid email: siddique@digibrantders.com",
+            "Enter valid password: Admin@12345",
+            "Click the Sign In button.",
+            "Verify that the user is redirected to the dashboard."
+        ]
+    },
+    {
+        "id": "TEST-002",
+        "title": "Verify Dashboard Loading",
+        "description": "Verify that the dashboard loads correctly after login and displays key elements.",
+        "steps": [
+            "Login with valid credentials (siddique@digibrantders.com / Admin@12345).",
+            "Wait for the dashboard to load.",
+            "Verify the presence of the Sidebar navigation.",
+            "Verify the presence of the Topbar.",
+            "Verify that the 'Welcome' message or basic dashboard statistics are visible."
+        ]
+    }
+]

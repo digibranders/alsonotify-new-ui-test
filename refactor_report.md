@@ -191,3 +191,35 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
 -   **Root Cause**: The `useUserDetails` hook was passing the API response wrapper (`{user, access, token}`) directly to the `mapUserDtoToEmployee` mapper, instead of the enclosed `user` object. This caused the `role` property to be undefined during the `isAdmin` check.
 -   **Fix**: Updated `useUserDetails` in `src/hooks/useUser.ts` to properly unwrap the user object and merge it with the access data before mapping.
 -   **Verification**: `npm run typecheck` and `npm run build` passed.
+
+## TestSprite MCP Integration & Database Fix
+
+-   **Date**: 2026-01-15
+-   **Objective**: Integrate `@testsprite/testsprite-mcp` to enable automated real tests, fixing any blockers.
+-   **Changes**:
+    -   **Dependencies**: Installed `@testsprite/testsprite-mcp` (v0.0.19) in `alsonotify-new-ui` and `alsonotify-backend-new`.
+    -   **Backend**:
+        -   Fixed PostgreSQL startup issue (removed stale `postmaster.pid`).
+        -   Created `scripts/seed_user.ts` (using `bcryptjs` for password hashing) to seed the required company, role, and user (`siddique@digibrantders.com`) data to resolve `User Not Exists!` errors during testing.
+    -   **Frontend**:
+        -   Manually created necessary TestSprite configuration files in `testsprite_tests/`: `config.json`, `code_summary.json`, `standard_prd.json`, `testsprite_frontend_test_plan.json` to bypass CLI limitations.
+    -   **Testing**: Executed `npx @testsprite/testsprite-mcp generateCodeAndExecute` successfully.
+-   **Verification**:
+    -   Login test (`TEST-001`) passed successfully.
+    -   Dashboard test (`TEST-002`) passed successfully.
+    -   Full report generated in `testsprite_tests/tmp/raw_report.md`.
+
+## Vitest Unit Test Implementation
+
+-   **Date**: 2026-01-15
+-   **Objective**: Implement unit tests for pure utility functions to ensure core logic stability.
+-   **Changes**:
+    -   **New Tests**:
+        -   `src/utils/validation.test.ts`: Added tests for `isNumber`, `isNonEmptyString`, `isValidHexColor`, etc.
+        -   `src/utils/colorUtils.test.ts`: Added tests for `hexToRgba`.
+        -   `src/utils/currencyUtils.test.ts`: Added tests for `getCurrencySymbol`.
+    -   **Refactors**:
+        -   Updated `src/utils/roleUtils.test.ts` to align with current role definitions (Leader->Department Head, HR/Finance as first-class roles).
+        -   Updated `src/utils/colorUtils.ts` to handle `NaN` values gracefully.
+-   **Verification**:
+    -   `npm test` (Vitest) passed: **82 tests passed** across 13 test files.

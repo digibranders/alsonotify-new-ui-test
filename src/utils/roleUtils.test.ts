@@ -27,30 +27,27 @@ describe('roleUtils', () => {
         expect(getRoleFromUser({ role: { name: 'MANAGER' } })).toBe('Manager');
       });
 
-      it('should return Leader when role name contains "leader"', () => {
-        expect(getRoleFromUser({ role: { name: 'Leader' } })).toBe('Leader');
-        expect(getRoleFromUser({ role: { name: 'Team Leader' } })).toBe('Leader');
-        expect(getRoleFromUser({ role: { name: 'LEADER' } })).toBe('Leader');
+      it('should return Department Head when role name contains "Department Head"', () => {
+          expect(getRoleFromUser({ role: { name: 'Department Head' } })).toBe('Department Head');
+          expect(getRoleFromUser({ role: { name: 'Head of Department' } })).toBe('Department Head');
       });
 
-      it('should return Employee when role name is exactly "hr" (not combined)', () => {
-        // Note: HR alone maps to Employee, but "HR Manager" will match Manager first
-        // due to the order of checks in the implementation
-        expect(getRoleFromUser({ role: { name: 'HR' } })).toBe('Employee');
+      it('should return HR when role name is exactly "hr"', () => {
+        expect(getRoleFromUser({ role: { name: 'HR' } })).toBe('HR');
       });
 
-      it('should return Employee when role name is exactly "finance" (not combined)', () => {
-        // Note: Finance alone maps to Employee
-        expect(getRoleFromUser({ role: { name: 'Finance' } })).toBe('Employee');
+      it('should return Finance when role name is exactly "finance"', () => {
+        expect(getRoleFromUser({ role: { name: 'Finance' } })).toBe('Finance');
       });
 
       it('should check admin before hr (HR Admin returns Admin)', () => {
-        // "HR Admin" contains both "admin" and "hr", admin is checked first
+        // "HR Admin" contains "admin", checked first in fuzzy match logic?
+        // Code: if (roleLower.includes('admin')) return 'Admin';
         expect(getRoleFromUser({ role: { name: 'HR Admin' } })).toBe('Admin');
       });
 
       it('should check manager before hr (HR Manager returns Manager)', () => {
-        // "HR Manager" contains both "manager" and "hr", manager is checked first
+        // "HR Manager" contains "manager", checked first
         expect(getRoleFromUser({ role: { name: 'HR Manager' } })).toBe('Manager');
       });
     });
@@ -59,7 +56,9 @@ describe('roleUtils', () => {
       it('should detect role from user_employee.role.name', () => {
         expect(getRoleFromUser({ user_employee: { role: { name: 'Admin' } } })).toBe('Admin');
         expect(getRoleFromUser({ user_employee: { role: { name: 'Manager' } } })).toBe('Manager');
-        expect(getRoleFromUser({ user_employee: { role: { name: 'Leader' } } })).toBe('Leader');
+        // 'Leader' is legacy, might default to Employee if not explicitly handled by string.
+        // Let's test valid Department Head string
+        expect(getRoleFromUser({ user_employee: { role: { name: 'Department Head' } } })).toBe('Department Head');
       });
     });
 
@@ -72,20 +71,20 @@ describe('roleUtils', () => {
         expect(getRoleFromUser({ role_id: 2 })).toBe('Employee');
       });
 
-      it('should return Employee for role_id 3 (HR)', () => {
-        expect(getRoleFromUser({ role_id: 3 })).toBe('Employee');
+      it('should return HR for role_id 3', () => {
+        expect(getRoleFromUser({ role_id: 3 })).toBe('HR');
       });
 
       it('should return Admin for role_id 4', () => {
         expect(getRoleFromUser({ role_id: 4 })).toBe('Admin');
       });
 
-      it('should return Leader for role_id 5', () => {
-        expect(getRoleFromUser({ role_id: 5 })).toBe('Leader');
+      it('should return Department Head for role_id 5', () => {
+        expect(getRoleFromUser({ role_id: 5 })).toBe('Department Head');
       });
 
-      it('should return Employee for role_id 6 (Finance)', () => {
-        expect(getRoleFromUser({ role_id: 6 })).toBe('Employee');
+      it('should return Finance for role_id 6', () => {
+        expect(getRoleFromUser({ role_id: 6 })).toBe('Finance');
       });
 
       it('should return Manager for role_id 7', () => {
@@ -99,7 +98,7 @@ describe('roleUtils', () => {
 
       it('should use role.id as fallback', () => {
         expect(getRoleFromUser({ role: { id: 1 } })).toBe('Admin');
-        expect(getRoleFromUser({ role: { id: 5 } })).toBe('Leader');
+        expect(getRoleFromUser({ role: { id: 5 } })).toBe('Department Head'); // Updated from Leader
       });
     });
 
@@ -159,8 +158,8 @@ describe('roleUtils', () => {
       });
 
       it('should prioritize role.name over user_employee.role_id', () => {
-        const user = { role: { name: 'Leader' }, user_employee: { role_id: 1 } };
-        expect(getRoleFromUser(user)).toBe('Leader');
+        const user = { role: { name: 'Department Head' }, user_employee: { role_id: 1 } };
+        expect(getRoleFromUser(user)).toBe('Department Head'); // Updated from Leader
       });
     });
   });
