@@ -1,0 +1,14 @@
+{
+    "productName": "alsonotify-new-ui",
+    "requirements": [
+        {
+            "id": "REQ-1",
+            "title": "User Authentication",
+            "userStory": "As a user, I want to login with email and password so that I can access the dashboard.",
+            "acceptanceCriteria": [
+                "Login with valid credentials redirects to dashboard",
+                "Login with invalid credentials shows error"
+            ]
+        }
+    ]
+}

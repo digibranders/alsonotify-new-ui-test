@@ -1,0 +1,16 @@
+{
+  "type": "frontend",
+  "localEndpoint": "http://localhost:3000",
+  "loginUser": "siddique@digibrantders.com",
+  "loginPassword": "Admin@12345",
+  "executionArgs": {
+    "projectName": "alsonotify-new-ui",
+    "projectPath": "/Users/apple/Desktop/Alsonotify/alsonotify-new-ui",
+    "testIds": [],
+    "additionalInstruction": "Run comprehensive integration tests for login, dashboard loading, and key user flows. Use these credentials for login tests: Email: 'siddique@digibrantders.com', Password: 'Admin@12345'. Verify successful login. IMPORTANT: Set test execution timeout to 60 seconds to fail fast if stuck.",
+    "envs": {
+      "API_KEY": "sk-user-LuXQoA5FEzp0wd-erQ_PlJxa_MfQiqS90sLe4vRPZ7DjCtrJHwT1HNfdBe1yu2vsNORJDemHZ0PjqbEi3iGehTbrM3RNh2qSrDBRV1Zt--RGfjOwTA5yiGV9l_Bzpkcel30"
+    }
+  },
+  "proxy": "http://23f8857d-4787-467a-8ee1-e107515b4bd2:U4gmA6Sr7ujH8sWCO2HFSQI487AY3XM5@tun.testsprite.com:8080"
+}

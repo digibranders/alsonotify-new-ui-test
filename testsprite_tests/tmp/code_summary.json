@@ -1,0 +1,18 @@
+{
+    "techStack": {
+        "framework": "Next.js",
+        "language": "TypeScript",
+        "styling": "Tailwind CSS",
+        "uiLibrary": "Ant Design"
+    },
+    "features": [
+        {
+            "name": "Authentication",
+            "description": "Login functionality with email and password"
+        },
+        {
+            "name": "Dashboard",
+            "description": "Main dashboard with project overview"
+        }
+    ]
+}
