@@ -5,11 +5,33 @@ import Lottie from "lottie-react";
 import Link from "next/link";
 import emailAnimation from "@/assets/email-sent-animation.json";
 
+import { App } from "antd";
+import { useResendVerificationEmail } from "@/hooks/useAuth";
+
 interface RegisterSuccessProps {
   email: string;
 }
 
 export default function RegisterSuccess({ email }: RegisterSuccessProps) {
+  const { message } = App.useApp();
+  const resendEmailMutation = useResendVerificationEmail();
+
+  const handleResend = () => {
+    resendEmailMutation.mutate(email, {
+      onSuccess: (data) => {
+        if (data.success) {
+          message.success("Verification email sent successfully!");
+        } else {
+          message.error(data.message || "Failed to resend verification email.");
+        }
+      },
+      onError: (error: any) => {
+        const errorMessage = error?.response?.data?.message || "Something went wrong. Please try again.";
+        message.error(errorMessage);
+      },
+    });
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -44,7 +66,7 @@ export default function RegisterSuccess({ email }: RegisterSuccessProps) {
             href={email.includes("@gmail.com") ? "https://mail.google.com" : "https://outlook.live.com/mail/"}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex h-12 px-8 items-center justify-center bg-[#ff3b3b] hover:bg-[#E63535] text-white rounded-[16px] font-bold text-[15px] shadow-lg shadow-[#ff3b3b]/25 transition-all hover:shadow-[#ff3b3b]/40 hover:-translate-y-0.5 active:translate-y-0 w-full"
+            className="inline-flex h-12 px-8 items-center justify-center !bg-[#ff3b3b] hover:!bg-[#E63535] !text-white rounded-[16px] font-bold text-[15px] shadow-lg shadow-[#ff3b3b]/25 transition-all hover:shadow-[#ff3b3b]/40 w-full"
           >
             Open {email.includes("@gmail.com") ? "Gmail" : "Outlook"}
           </a>
@@ -58,7 +80,7 @@ export default function RegisterSuccess({ email }: RegisterSuccessProps) {
         </div>
 
         <p className="text-[13px] text-[#999999]">
-          Didn't receive the email? <button className="text-[#ff3b3b] hover:text-[#E63535] font-semibold transition-colors">Click to resend</button>
+          Didn't receive the email? <button onClick={handleResend} disabled={resendEmailMutation.isPending} className="text-[#ff3b3b] hover:text-[#E63535] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed">{resendEmailMutation.isPending ? "Sending..." : "Click to resend"}</button>
         </p>
       </motion.div>
     </motion.div>

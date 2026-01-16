@@ -70,3 +70,10 @@ export const resetPassword = async (reset_token: string, password: string): Prom
     });
     return data;
 };
+
+export const resendVerificationEmail = async (email: string): Promise<ApiResponse<any>> => {
+    const { data } = await axiosApi.post<ApiResponse<any>>("/auth/resend-verification", {
+      email,
+    });
+    return data;
+};
