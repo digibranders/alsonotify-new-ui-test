@@ -6,14 +6,16 @@ import { App } from "antd";
 import { Lock, Eye, EyeOff, Mail, User, Building2, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
 import { useRegister } from "@/hooks/useAuth";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import AuthLayout from "@/components/auth/AuthLayout";
+import RegisterSuccess from "@/components/auth/RegisterSuccess";
 
 function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { message } = App.useApp();
   const registerMutation = useRegister();
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const inviteToken = searchParams.get("invite") ?? null;
   const inviteEmail = searchParams.get("email") ?? null;
@@ -60,8 +62,7 @@ function RegisterForm() {
               message.success("Registration successful!");
               router.push(`/company-details?t=${data.result.token}&type=${formData.accountType.toLowerCase()}`);
             } else {
-              message.success("Please check your email to verify your account");
-              router.push("/login");
+              setIsSuccess(true);
             }
           } else {
             message.error(data.message || "Registration failed");
@@ -83,6 +84,14 @@ function RegisterForm() {
       transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const }
     }
   };
+
+  if (isSuccess) {
+    return (
+      <AuthLayout>
+        <RegisterSuccess email={formData.email} />
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout>
