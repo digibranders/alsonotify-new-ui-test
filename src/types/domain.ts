@@ -103,7 +103,7 @@ export interface Requirement {
   contact_person?: { name: string; id: number };
 }
 
-export type TaskStatus = 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck' | 'In Progress' | 'Todo';
+export type TaskStatus = 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck' | 'Pending' | 'In Progress' | 'Todo';
 
 export interface Task {
   id: string;

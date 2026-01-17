@@ -323,7 +323,7 @@ export function TasksPage() {
     const normalizedStatus = status.replace(/\s+/g, '_');
 
     // Map to backend enum values
-    const validStatuses: ITaskStatus[] = ['Assigned', 'In_Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'];
+    const validStatuses: ITaskStatus[] = ['Assigned', 'In_Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck', 'Pending'];
     const matchedStatus = validStatuses.find(s => s === normalizedStatus || s.toLowerCase() === normalizedStatus.toLowerCase());
 
     return matchedStatus || 'Assigned'; // Default to Assigned
