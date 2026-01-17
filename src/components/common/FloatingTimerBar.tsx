@@ -114,8 +114,8 @@ export function FloatingTimerBar() {
   const tasks: TaskOption[] = (assignedTasksData?.result || [])
     .filter((t) => {
       const status = (t.status || '').toLowerCase();
-      return (status === 'assigned' || status.includes('in_progress') || status.includes('impediment')) 
-        && !status.includes('completed');
+      // ✅ FIX BUG #22: Include stuck, review, delayed - all workable statuses
+      return !status.includes('completed');
     })
     .map((t) => ({
       id: t.id,
@@ -161,12 +161,18 @@ export function FloatingTimerBar() {
     }
   };
 
-  const handleTaskSelect = (task: TaskOption) => {
-    // If timer is running on a different task, stop it first
+  const handleTaskSelect = async (task: TaskOption) => {
+    // ✅ FIX BUG #20: Auto-stop current timer when switching tasks
     if (timerState.isRunning && timerState.taskId !== task.id) {
-      message.warning("Please stop the current timer before switching tasks");
-      setShowTaskSelector(false);
-      return;
+      try {
+        await stopTimer();
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
+        message.info("Previous timer stopped, switching task");
+      } catch (error) {
+        message.error("Failed to stop timer");
+        setShowTaskSelector(false);
+        return;
+      }
     }
     
     setSelectedTaskId(task.id);

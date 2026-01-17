@@ -642,6 +642,42 @@ export function TasksPage() {
     });
   };
 
+  // ✅ FIX BUG #6: Bulk Delete
+  const handleBulkDelete = () => {
+    Modal.confirm({
+      title: 'Delete Tasks',
+      content: `Are you sure you want to delete ${selectedTasks.length} tasks?`,
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          await Promise.all(selectedTasks.map(id => deleteTaskMutation.mutateAsync(parseInt(id))));
+          message.success(`${selectedTasks.length} tasks deleted`);
+          setSelectedTasks([]);
+        } catch (error) {
+          message.error('Failed to delete some tasks');
+        }
+      },
+    });
+  };
+
+  // ✅ FIX BUG #6: Bulk Complete
+  const handleBulkComplete = async () => {
+    try {
+      await Promise.all(
+        selectedTasks.map(id => {
+          // Use status 'Completed' (matching backend enum)
+          return updateTaskMutation.mutateAsync({ id: parseInt(id), status: 'Completed' } as any);
+        })
+      );
+      message.success(`${selectedTasks.length} tasks marked as completed`);
+      setSelectedTasks([]);
+    } catch (error) {
+       message.error('Failed to complete some tasks');
+    }
+  };
+
   // Get total count from API response
   const totalTasks = useMemo(() => {
     const firstTask = tasksData?.result?.[0] as TaskDto | undefined;
@@ -823,17 +859,25 @@ export function TasksPage() {
 
             <div className="flex items-center gap-2">
               <Tooltip title="Mark as Completed">
-                <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <button 
+                  onClick={handleBulkComplete}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                >
                   <CheckSquare className="w-4 h-4" />
                 </button>
               </Tooltip>
+              {/* Assign To - Future implementation 
               <Tooltip title="Assign To">
                 <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
                   <Users className="w-4 h-4" />
                 </button>
               </Tooltip>
+              */}
               <Tooltip title="Delete">
-                <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]">
+                <button 
+                  onClick={handleBulkDelete}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </Tooltip>
