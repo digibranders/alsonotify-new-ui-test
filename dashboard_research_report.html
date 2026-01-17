@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alsonotify Dashboard Research & Customization Plan</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #a855f7;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            border-bottom: 2px solid #334155;
+            padding-bottom: 10px;
+            margin-top: 40px;
+            color: #e2e8f0;
+        }
+
+        h3 {
+            color: #cbd5e1;
+            margin-top: 25px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        li {
+            margin-bottom: 10px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        li::before {
+            content: "•";
+            color: var(--primary);
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .badge {
+            background: rgba(99, 102, 241, 0.2);
+            color: #818cf8;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        code {
+            background: #334155;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .visual-demo {
+            height: 100px;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Alsonotify Dashboard Research</h1>
+        <p class="subtitle">Modular Architecture & Zoho-Inspired Customization Plan</p>
+
+        <div class="card">
+            <h2>1. Executive Summary</h2>
+            <p>The current Alsonotify dashboard is a static, rigid grid. To achieve Zoho-class customizability, we need
+                to transition from hardcoded component placement to a <strong>metadata-driven Widget Registry
+                    system</strong>. This will allow users to drag, drop, resize, and configure widgets based on their
+                specific role (Admin, Manager, Employee).</p>
+        </div>
+
+        <h2>2. Existing Data Inventory</h2>
+        <p>We found rich data sources in the codebase that can be visualized immediately:</p>
+        <div class="grid-2">
+            <div class="card">
+                <h3>📊 Primary Entities</h3>
+                <ul>
+                    <li><strong>Tasks</strong>: Status, Priority, Deadlines, Assignees.</li>
+                    <li><strong>Requirements</strong>: Pipeline stages, Budgets, Client/Department filtering.</li>
+                    <li><strong>Invoices</strong>: Revenue, Pending Payments, Tax.</li>
+                    <li><strong>Workforce</strong>: Leaves, Attendance, Worklogs.</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h3>🛠 Backend Support</h3>
+                <ul>
+                    <li>Complex relations exist (e.g., <code>Company -> Project -> Task</code>).</li>
+                    <li>Status fields (<code>TaskStatus</code>, <code>RequirementStatus</code>) are ready for
+                        Kanbans/Funnel charts.</li>
+                    <li>Recurrent fields (<code>TodoItem</code>) support calendar/agenda views.</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2>3. Zoho-Inspired Features (Gap Analysis)</h2>
+        <p>Zoho excels in flexibility. Here is how we bridge the gap:</p>
+
+        <div class="card">
+            <h3>🧩 1. The "Widget Gallery" Concept</h3>
+            <p>Instead of hardcoding widgets, we create a registry of available widgets. Users "Add Widget" from a
+                drawer.</p>
+            <ul>
+                <li><strong>KPI Cards</strong>: Single number stats (e.g., "Total Active Tasks", "Monthly Revenue").
+                </li>
+                <li><strong>Chart Widgets</strong>: Configurable (Bar/Line/Pie) visualization of data arrays.</li>
+                <li><strong>List Widgets</strong>: "Top 5 Overdue Tasks", "Recent Activities".</li>
+                <li><strong>Shortcut Widgets</strong>: Quick actions like "Create Invoice" or "New Requirement".</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h3>🎛 2. Layout & Customization</h3>
+            <ul>
+                <li><strong>Drag-and-Drop Grid</strong>: Use <code>react-grid-layout</code> to allow varying widget
+                    sizes (1x1, 2x2, 4x2).</li>
+                <li><strong>Dashboard State</strong>: Store a JSON blob in the DB (e.g.,
+                    <code>User.dashboard_config</code>) preserving:
+                    <br><code>{ layout: [...], widgets: [{ id: 'w1', type: 'revenue_chart', settings: { range: '30d' } }] }</code>
+                </li>
+            </ul>
+        </div>
+
+        <h2>4. Visual Recommendations</h2>
+        <p>To match the "Senior Level/Premium" aesthetic of Alsonotify:</p>
+
+        <div class="grid-2">
+            <div class="card">
+                <h3>Glassmorphism & Depth</h3>
+                <div class="visual-demo" style="margin-bottom: 10px;">Glassy Card Demo</div>
+                <p>Use semi-transparent backgrounds with backdrop-blur for widgets. This creates a layered, modern feel
+                    over the dark app background.</p>
+            </div>
+            <div class="card">
+                <h3>Data Visualization</h3>
+                <p>Use <strong>Recharts</strong> with custom SVG gradients. Avoid flat colors; use gradient fills (e.g.,
+                    purple-to-transparent) for area charts to make them pop.</p>
+            </div>
+        </div>
+        <ul>
+            <li><strong>Lottie Animations</strong>: Use subtly looping Lottie files for empty states or "All caught up"
+                headers.</li>
+            <li><strong>Micro-Interactions</strong>: Charts should have custom tooltips (hover effects) that snap to
+                data points.</li>
+            <li><strong>Fluid Transitions</strong>: Use <strong>Framer Motion</strong> for widgets entering/leaving the
+                layout.</li>
+        </ul>
+
+        <h2>5. Recommended Implementation Roadmap</h2>
+        <ol>
+            <li><strong>Phase 1: Widget Registry</strong> - Refactor existing <code>ProgressWidget</code>,
+                <code>MeetingsWidget</code> into independent, prop-driven components.</li>
+            <li><strong>Phase 2: Layout Engine</strong> - Install <code>react-grid-layout</code> and wrap widgets in
+                draggable containers.</li>
+            <li><strong>Phase 3: Persistence</strong> - Add <code>dashboard_config</code> column to <code>User</code>
+                table (JSONB). Create API to save/load layout.</li>
+            <li><strong>Phase 4: Widget Factory</strong> - Create a generic "ChartWidget" that takes <code>metric</code>
+                and <code>chartType</code> as props, allowing users to create custom charts on the fly.</li>
+        </ol>
+
+    </div>
+</body>
+
+</html>
