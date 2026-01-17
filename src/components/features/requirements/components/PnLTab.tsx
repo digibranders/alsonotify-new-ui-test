@@ -19,7 +19,7 @@ import { Task, Requirement } from '@/types/domain';
 interface PnLTabProps {
   requirement: Requirement;
   tasks: Task[];
-  isSender: boolean;
+
 }
 
 interface TaskPnLData {
@@ -36,7 +36,7 @@ interface TaskPnLData {
   status: string;
 }
 
-export function PnLTab({ requirement, tasks, isSender }: PnLTabProps) {
+export function PnLTab({ requirement, tasks }: PnLTabProps) {
   // Calculate P&L data from real task data
   const pnlData = useMemo((): TaskPnLData[] => {
     return tasks.map((task) => {

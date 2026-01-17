@@ -111,10 +111,7 @@ export function RequirementDetailsPage() {
     return requirementsData.result.find((r: Requirement) => r.id === reqId);
   }, [requirementsData, reqId]);
 
-  const isSender = useMemo(() => {
-    if (!requirement || !userData?.result) return false;
-    return requirement.sender_company_id === userData.result.company_id;
-  }, [requirement, userData]);
+
 
   const mapRequirementStatus = (status: string): 'in-progress' | 'completed' | 'delayed' => {
     const statusLower = status?.toLowerCase() || '';
@@ -950,7 +947,7 @@ export function RequirementDetailsPage() {
                           }}
                           onStatusChange={() => {}} // Handle if needed
                           hideRequirements={true}
-                          isSender={isSender}
+
                           onRequestRevision={() => {
                             setTargetTaskId(task.id as any);
                             setIsRevisionModalOpen(true);
@@ -1050,7 +1047,7 @@ export function RequirementDetailsPage() {
           )}
 
           {activeTab === 'pnl' && (
-            <PnLTab requirement={requirement} tasks={tasks} isSender={isSender} />
+            <PnLTab requirement={requirement} tasks={tasks} />
           )}
           
           {activeTab === 'documents' && (
