@@ -186,7 +186,7 @@ export function CalendarEventForm({
                     </div>
                     <div className="space-y-2">
                       <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> Start Date & Time</span>
-                      <DatePicker showTime format="YYYY-MM-DD HH:mm" placeholder="Select start date & time" className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.startDateTime ? 'bg-white' : 'bg-[#F9FAFB]'}`} value={formData.startDateTime} onChange={(date) => setFormData({ ...formData, startDateTime: date })} suffixIcon={<CalendarIcon className="w-4 h-4 text-[#666666]" />} />
+                      <DatePicker showTime format="YYYY-MM-DD HH:mm" placeholder="Select start date & time" className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.startDateTime ? 'bg-white' : 'bg-[#F9FAFB]'}`} value={formData.startDateTime} onChange={(date) => setFormData({ ...formData, startDateTime: date })} suffixIcon={<CalendarIcon className="w-4 h-4 text-[#666666]" />} disabledDate={(current) => current && current < dayjs().startOf('day')} />
                     </div>
                     <div className="space-y-2">
                       <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> End Time</span>

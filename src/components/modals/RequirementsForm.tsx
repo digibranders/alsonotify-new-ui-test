@@ -278,6 +278,7 @@ export function RequirementsForm({
                             className="w-full h-11 rounded-lg border-[#EEEEEE]"
                             value={formData.dueDate ? dayjs(formData.dueDate) : null}
                             onChange={(date, dateString) => setFormData({ ...formData, dueDate: Array.isArray(dateString) ? dateString[0] : dateString })}
+                            disabledDate={(current) => current && current < dayjs().startOf('day')}
                         />
                     </div>
                     <div className="space-y-1.5 flex flex-col justify-center">

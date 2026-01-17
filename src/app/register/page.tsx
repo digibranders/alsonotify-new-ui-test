@@ -37,8 +37,8 @@ function RegisterForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
-      message.error("Please fill in all fields");
+    if (!formData.firstName || !formData.email || !formData.password) {
+      message.error("Please fill in all required fields");
       return;
     }
 
@@ -149,14 +149,13 @@ function RegisterForm() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">Last Name</label>
+                <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">Last Name (Optional)</label>
                 <input
                   type="text"
                   placeholder="Doe"
                   className="w-full h-12 bg-[#FAFAFA] border border-transparent focus:bg-white focus:border-[#ff3b3b] focus:ring-4 focus:ring-[#ff3b3b]/10 rounded-xl transition-all font-medium outline-none text-black px-4"
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  required
                 />
               </div>
             </div>

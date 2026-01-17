@@ -1173,7 +1173,66 @@ export function RequirementsPage() {
   };
 
   const handleReqAccept = (id: number) => {
+    const req = requirements.find(r => r.id === id);
+    if (!req) {
+      messageApi.error("Requirement not found");
+      return;
+    }
+    
     setPendingReqId(id);
+    
+    // Intelligent routing based on requirement type, status, and user role
+    if (req.type === 'outsourced') {
+      // RECEIVER ACTIONS (Company B - Vendor)
+      if (req.isReceiver) {
+        // Scenario 1: Waiting for quote submission OR resubmitting after rejection
+        if (req.rawStatus === 'Waiting' || req.rawStatus === 'Rejected') {
+          // Open quotation dialog to submit/resubmit quote
+          setIsQuotationOpen(true);
+          return;
+        }
+        
+        // Scenario 2: Quote accepted, need to map to internal workspace
+        if (req.rawStatus === 'Assigned' && !req.receiver_workspace_id) {
+          // Open workspace mapping modal
+          setIsMappingOpen(true);
+          return;
+        }
+        
+        // Scenario 3: Other receiver states - should not show accept button
+        messageApi.info("No action required at this stage");
+        return;
+      }
+      
+      // SENDER ACTIONS (Company A - Client)
+      if (req.isSender) {
+        // Scenario 1: Reviewing quote submission
+        if (req.rawStatus === 'Review') {
+          // Accept quote directly - update status to Assigned
+          updateRequirementMutation.mutate({
+            id: req.id,
+            workspace_id: req.workspaceId,
+            status: 'Assigned'
+          }, {
+            onSuccess: () => {
+              messageApi.success("Quote accepted! Vendor can now map workspace and start work.");
+              setPendingReqId(null);
+            },
+            onError: (err: Error) => {
+              messageApi.error(getErrorMessage(err, "Failed to accept quote"));
+            }
+          });
+          return;
+        }
+        
+        // Scenario 2: Other sender states
+        messageApi.info("No action required at this stage");
+        return;
+      }
+    }
+    
+    // Fallback for non-outsourced requirements or unclear states
+    // For in-house requirements, approval might still use quotation dialog for budget confirmation
     setIsQuotationOpen(true);
   };
 

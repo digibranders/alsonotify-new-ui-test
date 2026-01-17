@@ -81,27 +81,24 @@ export function FloatingTimerBar() {
   const [selectedTaskName, setSelectedTaskName] = useState("Select Task");
   const [localTime, setLocalTime] = useState(0);
 
-  // Sync with TimerContext on load
+  // ✅ FIX BUG #21: Sync with TimerContext on load (once)
   useEffect(() => {
-    if (!timerLoading) {
-      if (timerState.taskId) {
-        setSelectedTaskId(timerState.taskId);
-        setSelectedTaskName(timerState.taskName || "Unknown Task");
-      }
+    if (!timerLoading && timerState.taskId) {
+      setSelectedTaskId(timerState.taskId);
+      setSelectedTaskName(timerState.taskName || "Unknown Task");
       setLocalTime(timerState.elapsedSeconds);
     }
-  }, [timerState, timerLoading]);
+  }, [timerLoading]); // Only run on load
 
-  // Local timer increment for smooth UI
+  // ✅ FIX BUG #21: Update local time ONLY when timer stops
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (timerState.isRunning) {
-      interval = setInterval(() => {
-        setLocalTime((prev) => prev + 1);
-      }, 1000);
+    if (!timerState.isRunning) {
+      setLocalTime(timerState.elapsedSeconds);
     }
-    return () => clearInterval(interval);
-  }, [timerState.isRunning]);
+  }, [timerState.isRunning, timerState.elapsedSeconds]);
+
+  // ✅ FIX BUG #21: Use context as single source of truth
+  const displayTime = timerState.isRunning ? timerState.elapsedSeconds : localTime;
 
   // Fetch assigned tasks
   const { data: userDetailsData } = useUserDetails();
@@ -177,9 +174,17 @@ export function FloatingTimerBar() {
     setShowTaskSelector(false);
   };
 
+  // ✅ FIX BUG #19: Improved complete button behavior
   const handleComplete = async () => {
-    if (timerState.isRunning) {
+    if (!timerState.isRunning || !selectedTaskId) {
+      message.warning("No active timer to complete");
+      return;
+    }
+
+    try {
+      // Stop timer (this closes the worklog in TimerContext)
       await stopTimer();
+      
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.assigned() });
@@ -187,10 +192,12 @@ export function FloatingTimerBar() {
         queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(selectedTaskId) });
         queryClient.invalidateQueries({ queryKey: queryKeys.tasks.worklogsRoot(selectedTaskId) });
       }
+
+      message.success("Worklog saved! Don't forget to update task status if complete.");
+      setLocalTime(0);
+    } catch (error) {
+      message.error("Failed to save worklog");
     }
-    message.success("Timer stopped. Don't forget to submit your worklog!");
-    // Reset local state but keep task selected
-    setLocalTime(0);
   };
 
   if (isHidden) return null;
@@ -325,7 +332,7 @@ export function FloatingTimerBar() {
 
         {/* Timer Display */}
         <div className="font-['Manrope:Bold',sans-serif] text-white leading-none tracking-tight text-[20px] tabular-nums">
-          {formatTime(localTime)}
+          {formatTime(displayTime)}
         </div>
       </div>
     </div>

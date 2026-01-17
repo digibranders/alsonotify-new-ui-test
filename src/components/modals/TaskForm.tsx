@@ -280,6 +280,7 @@ export function TaskForm({
                 setFormData({ ...formData, end_date: date ? date.toISOString() : '' });
               }}
               suffixIcon={<Calendar className="w-4 h-4 text-[#999999]" />}
+              disabledDate={(current) => current && current < dayjs().startOf('day')}
             />
           </div>
 

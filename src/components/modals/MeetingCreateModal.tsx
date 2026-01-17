@@ -194,6 +194,7 @@ export function MeetingCreateModal({
                 value={formData.startDateTime}
                 onChange={(date) => setFormData({ ...formData, startDateTime: date })}
                 suffixIcon={<CalendarIcon className="w-4 h-4 text-[#666666]" />}
+                disabledDate={(current) => current && current < dayjs().startOf('day')}
               />
             </div>
 
