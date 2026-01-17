@@ -17,5 +17,5 @@ export interface ApiListResponse<T> extends ApiResponse<T[]> {
 export interface ApiErrorShape {
   success: false;
   message: string;
-  error?: any;    
+  error?: unknown;
 }

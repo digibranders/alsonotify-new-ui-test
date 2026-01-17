@@ -1,7 +1,7 @@
 
 import axiosApi from "../config/axios";
 import { ApiResponse } from "../types/api";
-import { ProfileUpdateInput, CompanyUpdateInput } from "../types/genericTypes";
+import { CompanyUpdateInput } from "../types/genericTypes";
 import { CompanyProfile } from "../types/auth";
 import { UserDto, RoleDto, ModuleActionGroupDto, CreateEmployeeRequestDto, UpdateEmployeeRequestDto, UpdateUserProfileRequestDto } from "../types/dto/user.dto";
 
@@ -81,7 +81,7 @@ export const updateCurrentUserProfile = async (
 
 // Update user password
 export const updateCurrentUserPassword = async (params: { password: string, currentPassword?: string }): Promise<ApiResponse<unknown>> => {
-  const { data } = await axiosApi.post<ApiResponse<any>>(`/user/password`, params);
+  const { data } = await axiosApi.post<ApiResponse<unknown>>(`/user/password`, params);
   return data;
 };
 

@@ -23,6 +23,7 @@ interface TaskOption {
   id: number;
   name: string;
   project: string;
+  estimatedTime: number;
 }
 
 export function FloatingTimerBar() {
@@ -122,7 +123,8 @@ export function FloatingTimerBar() {
       name: t.name || t.title || "Untitled Task",
       project: t.task_workspace?.name || 
                t.task_project?.company?.name || 
-               "Unknown Project"
+               "Unknown Project",
+      estimatedTime: t.estimated_time || 0
     }));
 
   const formatTime = (seconds: number) => {
@@ -223,10 +225,20 @@ export function FloatingTimerBar() {
         `}
       >
         {/* Progress Bar at Bottom */}
-        <div 
-          className="absolute bottom-0 left-0 h-[4px] bg-[#ff3b3b] transition-all duration-1000 ease-linear"
-          style={{ width: timerState.isRunning ? `${(localTime % 60) * (100/60)}%` : '0%' }}
-        />
+        {(() => {
+          const currentTask = tasks.find(t => t.id === (timerState.taskId || selectedTaskId));
+          const estimatedSeconds = (currentTask?.estimatedTime || 0) * 3600;
+          const progress = (timerState.isRunning && estimatedSeconds > 0) 
+            ? Math.min((displayTime / estimatedSeconds) * 100, 100) 
+            : (timerState.isRunning ? (displayTime % 60) * (100/60) : 0);
+          
+          return (
+            <div 
+              className="absolute bottom-0 left-0 h-[4px] bg-[#ff3b3b] transition-all duration-1000 ease-linear"
+              style={{ width: `${progress}%` }}
+            />
+          );
+        })()}
 
         {/* Expanded Content (Bulk Actions) */}
         {expandedContent && (
@@ -330,7 +342,7 @@ export function FloatingTimerBar() {
           </button>
           <button
             className="text-white hover:text-white/80 transition-all active:scale-90 disabled:opacity-50"
-            title="Mark as Complete (Stop Timer)"
+            title="Stop Timer & Save Worklog"
             onClick={handleComplete}
             disabled={timerLoading}
           >
