@@ -41,15 +41,15 @@ function CompanyDetailsForm() {
     website: "", // Optional - not sent to API
     industry: "",
     companySize: "", // Optional - not sent to API
-    country: "India",
-    timezone: "Asia/Kolkata",
+    country: "",
+    timezone: "",
     logo: null as File | null, // Optional - not sent to API
   });
 
   const [adminData, setAdminData] = useState({
     firstName: "",
     lastName: "",
-    country: "India",
+    country: "",
     countryCode: "+91",
     phone: "",
     photo: null as File | null,
@@ -421,7 +421,7 @@ function CompanyDetailsForm() {
                         filterOption: (input, option) =>
                           (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
                       }}
-                      value={companyData.country}
+                      value={companyData.country || undefined}
                       onChange={(v) =>
                         setCompanyData({ ...companyData, country: String(v) })
                       }
@@ -445,7 +445,7 @@ function CompanyDetailsForm() {
                         filterOption: (input, option) =>
                           (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
                       }}
-                      value={companyData.timezone}
+                      value={companyData.timezone || undefined}
                       onChange={(v) =>
                         setCompanyData({ ...companyData, timezone: String(v) })
                       }

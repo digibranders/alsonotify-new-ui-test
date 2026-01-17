@@ -79,6 +79,42 @@
     --sidebar-ring: oklch(0.439 0 0);
 }
 
+/* 
+  Global Cursor Enforcement 
+  Ensure all clickable elements show the hand cursor (pointer).
+  This includes buttons, links, form labels, details summaries, and semantic roles.
+*/
+button,
+a,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"],
+label,
+select,
+summary,
+area,
+[role="button"],
+[role="link"],
+[role="menuitem"],
+[role="tab"],
+.clickable,
+/* Target standard interactive classes often used */
+.cursor-pointer {
+    cursor: pointer !important;
+}
+
+/* Exception for disabled states */
+button:disabled,
+input:disabled,
+a[disabled],
+select:disabled,
+[aria-disabled="true"],
+.disabled {
+    cursor: not-allowed !important;
+}
+
 /* Custom Checkbox Styling - Single border, rounded corners */
 .custom-checkbox-wrapper .ant-checkbox {
     border: 1px solid #dddddd !important;

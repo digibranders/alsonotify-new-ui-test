@@ -274,8 +274,9 @@ export function ClientForm({
                     placeholder="8698027152"
                     className="flex-1 h-11 rounded-lg border border-[#EEEEEE]"
                     value={formData.phone}
+                    maxLength={15}
                     onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
+                      setFormData({ ...formData, phone: e.target.value.replace(/\D/g, "") })
                     }
                   />
                 </div>

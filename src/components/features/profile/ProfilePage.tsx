@@ -619,9 +619,10 @@ export function ProfilePage() {
                                     <Input
                                         value={profile.phone}
                                         onChange={(e) =>
-                                            setProfile({ ...profile, phone: e.target.value })
+                                            setProfile({ ...profile, phone: e.target.value.replace(/\D/g, "") })
                                         }
                                         placeholder="123 456 7890"
+                                        maxLength={15}
                                         disabled={!isEditing}
                                         className={`flex-1 h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] focus:ring-[#ff3b3b]/10 font-['Manrope:Medium',sans-serif] text-[13px] ${!isEditing ? "bg-[#FAFAFA] text-[#666666]" : "bg-white"
                                             }`}
