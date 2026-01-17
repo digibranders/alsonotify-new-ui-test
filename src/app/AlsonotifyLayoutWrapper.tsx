@@ -7,7 +7,7 @@ import { ProfileCompletionBanner } from '../components/common/ProfileCompletionB
 import { useUserDetails } from '@/hooks/useUser';
 import { getRoleFromUser, UserRole } from '@/utils/roleUtils';
 import { TimerProvider } from '../context/TimerContext';
-import { FloatingProductivityWidget } from '../components/widgets/FloatingProductivityWidget';
+// FloatingProductivityWidget removed - using FloatingTimerBar as the sole floating timer
 import { usePathname } from 'next/navigation';
 import { navPermissionMap } from '@/utils/navUtils';
 import { Shield24Regular } from '@fluentui/react-icons';
@@ -153,7 +153,7 @@ function AlsonotifyLayoutContent({ children }: Readonly<AlsonotifyLayoutWrapperP
           </div>
         </div>
       </div>
-      <FloatingProductivityWidget />
+      {/* FloatingProductivityWidget removed - FloatingTimerBar handles all timer functionality */}
       <FloatingTimerBar />
       <InvitationPopup />
     </TimerProvider>

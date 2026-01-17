@@ -169,11 +169,16 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
                                 <Option value="self" className="rounded-lg mb-1">
                                     {companyData?.result?.name || 'My Company'} (Self)
                                 </Option>
-                                {partnersData?.result?.map((partner: any) => (
-                                    <Option key={partner.partner_user_id || partner.id} value={partner.partner_user_id || partner.id} className="rounded-lg mb-1">
-                                        {partner.company || partner.partner_company?.name || partner.name || partner.email}
-                                    </Option>
-                                ))}
+                                {partnersData?.result
+                                    ?.filter((partner: any) => partner.partner_user_id != null || partner.id != null)
+                                    .map((partner: any, index: number) => {
+                                        const partnerId = partner.partner_user_id ?? partner.id;
+                                        return (
+                                            <Option key={partnerId ?? `partner-${index}`} value={partnerId} className="rounded-lg mb-1">
+                                                {partner.company || partner.partner_company?.name || partner.email || partner.name}
+                                            </Option>
+                                        );
+                                    })}
                             </Select>
                         </div>
 
