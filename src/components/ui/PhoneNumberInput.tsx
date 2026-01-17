@@ -75,6 +75,7 @@ export default function PhoneNumberInput({
         value={phoneNumber}
         onChange={handlePhoneChange}
         placeholder={placeholder}
+        maxLength={15}
         className="flex-1 bg-transparent border-none outline-none px-3 font-medium text-black placeholder:text-gray-300 h-full w-full"
       />
 

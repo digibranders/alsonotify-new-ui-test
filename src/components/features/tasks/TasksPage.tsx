@@ -413,18 +413,22 @@ export function TasksPage() {
 
       // Determine company/client name: if client exists, it's client work, otherwise show company name for in-house
       // Client company comes from task_project.client_user.company.name
-      const clientCompanyName = t.task_project?.client_user?.company?.name ||
+      let clientCompanyName = t.task_project?.client_user?.company?.name ||
         t.client ||
         t.client_company_name ||
         null;
+        
+      if (clientCompanyName === 'Unknown') clientCompanyName = null;
 
       // For in-house tasks, get company name from task's company relation, project's company, or current user's company
-      const inHouseCompanyName = t.company?.name ||
+      let inHouseCompanyName = t.company?.name ||
         t.company_name ||
         t.task_project?.company?.name ||
         // t.task_project?.company_name || // removed as not in DTO
         currentUserCompanyName ||
         null;
+      
+      if (inHouseCompanyName === 'Unknown') inHouseCompanyName = null;
 
       // If there's a client company, it's client work; otherwise show in-house company name
       const displayCompanyName = clientCompanyName || inHouseCompanyName || 'In-House';

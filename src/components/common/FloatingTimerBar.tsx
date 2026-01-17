@@ -30,12 +30,48 @@ export function FloatingTimerBar() {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
   
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  
+  useEffect(() => {
+    // Function to check if any drawer or modal is open
+    const checkFormOpen = () => {
+      // Check for Ant Design Drawer open state on body
+      const isDrawerOpen = document.body.classList.contains('ant-scrolling-effect') || 
+                           document.querySelector('.ant-drawer-open') !== null ||
+                           document.querySelector('.ant-drawer-mask:not(.ant-drawer-mask-hidden)') !== null;
+      
+      // Check for Ant Design Modal open state
+      const isModalOpen = document.querySelector('.ant-modal-wrap:not([style*="display: none"])') !== null ||
+                          document.body.classList.contains('ant-modal-open');
+
+      setIsFormOpen(!!isDrawerOpen || !!isModalOpen);
+    };
+
+    // Initial check
+    checkFormOpen();
+
+    // Create observer
+    const observer = new MutationObserver((mutations) => {
+      checkFormOpen();
+    });
+
+    // Start observing body for class changes and DOM mutations
+    observer.observe(document.body, {
+      attributes: true, 
+      attributeFilter: ['class', 'style'],
+      childList: true,
+      subtree: true
+    });
+
+    return () => observer.disconnect();
+  }, []);
+  
   // Visibility Logic - also hide on task details and requirement details
-  const isHidden = pathname && (
+  const isHidden = (pathname && (
     HIDDEN_ROUTES.some(route => pathname.startsWith(route)) ||
     pathname.includes('/dashboard/requirements/') ||
     pathname.includes('/dashboard/tasks/')
-  );
+  )) || isFormOpen;
   
   const { expandedContent } = useFloatingMenu();
   const { timerState, startTimer, stopTimer, isLoading: timerLoading } = useTimer();

@@ -554,6 +554,13 @@ export function SettingsPage() {
   const accountType = companyData?.result?.account_type || 'ORGANIZATION';
   const isIndividual = accountType === 'INDIVIDUAL';
 
+  // Determine if the user is an employee (not Admin/Owner)
+  const isEmployee = useMemo(() => {
+    const userData = userDetails?.result?.user || userDetails?.result || {};
+    const role = getRoleFromUser(userData);
+    return role === 'Employee'; // Assuming 'Employee' is the exact string returned
+  }, [userDetails]);
+
   return (
     <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] p-8 flex flex-col overflow-hidden relative font-['Manrope',sans-serif]">
       {/* Header Section */}
@@ -562,7 +569,8 @@ export function SettingsPage() {
           <h1 className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
             {isIndividual ? 'Settings' : 'Company Settings'}
           </h1>
-          {(activeTab === 'company' || (activeTab === 'security' && isAdmin)) && (
+          {/* Only show Edit button if not an employee */}
+          {(!isEmployee) && (activeTab === 'company' || (activeTab === 'security' && isAdmin)) && (
             !isEditing ? (
               <Button
                 onClick={handleEdit}
@@ -603,7 +611,8 @@ export function SettingsPage() {
             {activeTab === 'company' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
           </button>
 
-          {!isIndividual && (
+          {/* Hide other tabs for employees */}
+          {!isIndividual && !isEmployee && (
             <>
 
               <button
