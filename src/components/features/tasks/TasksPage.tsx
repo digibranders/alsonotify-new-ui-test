@@ -793,22 +793,6 @@ export function TasksPage() {
     const backendCounts = firstTask?.status_counts || {};
     const allTasks = (statsData?.result || []) as Task[];
 
-    // Calculate delayed count: tasks where end_date < today AND not completed
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayTime = today.getTime();
-
-    let delayedCount = 0;
-    allTasks.forEach((t: Task) => {
-      if (t.end_date && t.status !== 'Completed') {
-        const endDateObj = new Date(t.end_date);
-        endDateObj.setHours(0, 0, 0, 0);
-        if (endDateObj.getTime() < todayTime) {
-          delayedCount++;
-        }
-      }
-    });
-
     // Calculate total from counts if available
     const calculatedTotal = (backendCounts.All) ||
       ((backendCounts.Assigned || 0) + (backendCounts.In_Progress || 0) +
@@ -822,7 +806,8 @@ export function TasksPage() {
       'In_Progress': (backendCounts.In_Progress || 0) + (backendCounts.Delayed || 0) +
         (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0) + (backendCounts.Review || 0),
       'Completed': backendCounts.Completed || 0,
-      'Delayed': delayedCount > 0 ? delayedCount : ((backendCounts.Delayed || 0) + (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0)),
+      // Use explicit Overdue count from backend if available, fallback to Delayed status + Impediment + Stuck
+      'Delayed': backendCounts.Overdue ?? ((backendCounts.Delayed || 0) + (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0)),
     };
   }, [statsData, totalTasks]);
 
