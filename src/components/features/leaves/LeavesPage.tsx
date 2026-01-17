@@ -270,14 +270,14 @@ export function LeavesPage() {
               label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]">Start Date</span>}
               rules={[{ required: true, message: 'Please select start date' }]}
             >
-              <DatePicker className="w-full h-10 rounded-lg" format="YYYY-MM-DD" />
+              <DatePicker className="w-full h-10 rounded-lg" format="YYYY-MM-DD" disabledDate={(current) => current && current < dayjs().startOf('day')} />
             </Form.Item>
             <Form.Item
               name="end_date"
               label={<span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666]">End Date</span>}
               rules={[{ required: true, message: 'Please select end date' }]}
             >
-              <DatePicker className="w-full h-10 rounded-lg" format="YYYY-MM-DD" />
+              <DatePicker className="w-full h-10 rounded-lg" format="YYYY-MM-DD" disabledDate={(current) => current && current < dayjs().startOf('day')} />
             </Form.Item>
           </div>
           <Form.Item

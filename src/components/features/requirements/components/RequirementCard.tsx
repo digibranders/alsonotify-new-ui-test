@@ -51,13 +51,14 @@ export function RequirementCard({
       }
       
       // Receiver (B) sees pending when:
-      // - Status = Waiting (needs to submit quote)
-      // - Status = Assigned AND no workspace mapped (needs to map workspace)
-      // - Status = Review means quote submitted, waiting for A's response - NO BUTTONS
       if (requirement.isReceiver) {
+        // - Status = Waiting (needs to submit quote)
         if (status === 'Waiting') return true;
+        // - Status = Assigned AND no workspace mapped (needs to map workspace)
         if (status === 'Assigned' && !requirement.receiver_workspace_id) return true;
-        return false; // Explicitly false for Review and other statuses
+        // - Status = Review (quote submitted, waiting for sender's response - passive waiting)
+        if (status === 'Review') return true; // ✅ FIXED: Include Review for receiver
+        return false; // Explicitly false for other statuses
       }
     }
     
@@ -158,10 +159,29 @@ export function RequirementCard({
 
   const getPendingStatusText = () => {
     if (requirement.type === 'outsourced') {
-        if (requirement.isReceiver && requirement.rawStatus === 'Assigned') return 'Action Needed: Map Workspace';
-        return `Sent to ${requirement.headerContact || 'Vendor'}. Awaiting quote...`;
+      // Receiver (B) messages
+      if (requirement.isReceiver) {
+        if (requirement.rawStatus === 'Waiting') {
+          return 'Action Needed: Submit Quote';
+        }
+        if (requirement.rawStatus === 'Assigned') {
+          return 'Action Needed: Map Workspace';
+        }
+        if (requirement.rawStatus === 'Review') {
+          return `Quote submitted to ${requirement.headerContact || 'Client'}. Awaiting approval...`;
+        }
+      }
+      // Sender (A) messages
+      if (requirement.isSender) {
+        if (requirement.rawStatus === 'Waiting') {
+          return `Sent to ${requirement.headerContact || 'Vendor'}. Awaiting quote...`;
+        }
+        if (requirement.rawStatus === 'Review') {
+          return `Quote received from ${requirement.headerContact || 'Vendor'}. Review and accept or reject.`;
+        }
+      }
     }
-    // Simplification for brevity
+    // Fallback for other types
     return 'Waiting for approval...';
   };
 
@@ -408,9 +428,10 @@ export function RequirementCard({
 
           {isPending ? (
             <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-              {/* Only show reject button for Waiting and Review states */}
-              {/* Once A accepts (Assigned), B cannot arbitrarily reject - protects business commitment */}
-              {(requirement.rawStatus === 'Waiting' || requirement.rawStatus === 'Review') && (
+              {/* Show reject button with role-based logic */}
+              {/* Receiver can reject in Waiting, Sender can reject in Review */}
+              {((requirement.isReceiver && requirement.rawStatus === 'Waiting') || 
+                (requirement.isSender && requirement.rawStatus === 'Review')) && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); onReject?.(); }}
                   className="w-6 h-6 flex items-center justify-center rounded-full bg-white border border-[#ff3b3b] text-[#ff3b3b] hover:bg-[#ff3b3b] hover:text-white transition-all shadow-sm"
