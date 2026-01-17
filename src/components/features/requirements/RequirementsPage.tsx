@@ -497,21 +497,31 @@ export function RequirementsPage() {
       
       if (req.type === 'outsourced') {
         if (isSender) {
-          // Sender views: Show receiver info (B's name and B's company)
-          headerContact = req.contact_person?.name || undefined;
+          // Sender (A) views: Show receiver info (B's contact name and B's company)
+          // Priority: contact_person -> receiver_company name as fallback
+          headerContact = req.contact_person?.name || req.receiver_company?.name || undefined;
           headerCompany = req.receiver_company?.name || undefined;
+          // Don't show company if it's the same as contact (when using company as fallback)
+          if (headerContact && headerCompany && headerContact === headerCompany) {
+            headerCompany = undefined;
+          }
         } else if (isReceiver) {
-          // Receiver views: Show sender info (A's name and A's company)
-          headerContact = req.created_user_data?.name || req.created_user?.name || undefined;
+          // Receiver (B) views: Show sender info (A's name and A's company)
+          // Priority: created_user_data -> created_user -> sender_company name as fallback
+          headerContact = req.created_user_data?.name || req.created_user?.name || req.sender_company?.name || undefined;
           headerCompany = req.sender_company?.name || undefined;
+          // Don't show company if it's the same as contact
+          if (headerContact && headerCompany && headerContact === headerCompany) {
+            headerCompany = undefined;
+          }
         } else {
           // Not directly involved (shouldn't happen for outsourced)
           headerContact = undefined;
           headerCompany = undefined;
         }
       } else {
-        // Inhouse requirements - no company header needed
-        headerContact = req.contact_person?.name || clientName || undefined;
+        // Inhouse requirements - show contact person or manager/leader
+        headerContact = req.contact_person?.name || req.manager?.name || req.leader?.name || clientName || undefined;
         headerCompany = undefined;
       }
 
