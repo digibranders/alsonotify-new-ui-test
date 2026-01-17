@@ -114,7 +114,7 @@ export function FloatingTimerBar() {
   const tasks: TaskOption[] = (assignedTasksData?.result || [])
     .filter((t) => {
       const status = (t.status || '').toLowerCase();
-      // ✅ FIX BUG #22: Include stuck, review, delayed - all workable statuses
+      // Filter out completed tasks to show only active, review, or workable items
       return !status.includes('completed');
     })
     .map((t) => ({
@@ -162,7 +162,8 @@ export function FloatingTimerBar() {
   };
 
   const handleTaskSelect = async (task: TaskOption) => {
-    // ✅ FIX BUG #20: Auto-stop current timer when switching tasks
+    // Automatically stop the current timer when switching to a different task
+    // to ensure accurate time tracking and prevent overlapping sessions.
     if (timerState.isRunning && timerState.taskId !== task.id) {
       try {
         await stopTimer();
@@ -180,7 +181,8 @@ export function FloatingTimerBar() {
     setShowTaskSelector(false);
   };
 
-  // ✅ FIX BUG #19: Improved complete button behavior
+  // Handle task completion by stopping the timer and updating state.
+  // This ensures the worklog is closed properly before any status changes.
   const handleComplete = async () => {
     if (!timerState.isRunning || !selectedTaskId) {
       message.warning("No active timer to complete");

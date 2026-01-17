@@ -642,7 +642,10 @@ export function TasksPage() {
     });
   };
 
-  // ✅ FIX BUG #6: Bulk Delete
+  /**
+   * Handles bulk deletion of selected tasks.
+   * Shows a confirmation modal before proceeding with concurrent deletion requests.
+   */
   const handleBulkDelete = () => {
     Modal.confirm({
       title: 'Delete Tasks',
@@ -662,7 +665,10 @@ export function TasksPage() {
     });
   };
 
-  // ✅ FIX BUG #6: Bulk Complete
+  /**
+   * Handles bulk completion of selected tasks.
+   * Updates status to 'Completed' for all selected items concurrently.
+   */
   const handleBulkComplete = async () => {
     try {
       await Promise.all(
