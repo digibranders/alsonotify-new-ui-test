@@ -267,33 +267,32 @@ export function RequirementCard({
 
       {/* Header */}
       <div className="mb-3">
-        {/* Context Row */}
+        {/* Context Row: [TYPE] | [Contact Name] | [Company Name] */}
         <div className="flex items-center gap-2 mb-2">
+            {/* Type Badge: For outsourced reqs, receiver sees INHOUSE, sender sees OUTSOURCED */}
             <span className="px-1.5 py-0.5 rounded text-[9px] font-['Inter:Medium',sans-serif] bg-[#F5F5F5] text-[#666666] uppercase border border-[#EEEEEE] tracking-wide whitespace-nowrap">
-                {requirement.type === 'client' ? 'inhouse' : (requirement.type || 'inhouse')}
+                {requirement.type === 'outsourced' 
+                  ? (requirement.isReceiver ? 'inhouse' : 'outsourced')
+                  : (requirement.type || 'inhouse')}
             </span>
 
+            {/* Contact Person Name - only show if available */}
             {requirement.headerContact && (
                 <>
                     <span className="text-[#E5E5E5]">|</span>
-                    <div className="flex items-center gap-2 text-[11px] min-w-0">
-                        <span className="font-['Manrope:Bold',sans-serif] text-[#111111] truncate max-w-[100px]" title={requirement.headerContact}>
-                            {requirement.headerContact.split(' ')[0]}
-                        </span>
-                        
-                        {(requirement.company || requirement.client) && 
-                         (requirement.company || requirement.client) !== requirement.headerContact && 
-                         requirement.company !== 'External Agency' && (
-                            <>
-                                <span className="text-[#E5E5E5] shrink-0">|</span>
-                                <span className="font-['Manrope:Bold',sans-serif] uppercase tracking-wider text-[#999999] text-[10px] truncate max-w-[100px]" title={requirement.company || requirement.client}>
-                                    {(requirement.client === 'Internal' || requirement.company === 'Internal') 
-                                        ? 'Alsonotify' 
-                                        : (requirement.company || requirement.client)}
-                                </span>
-                            </>
-                        )}
-                    </div>
+                    <span className="font-['Manrope:Bold',sans-serif] text-[#111111] text-[11px] truncate max-w-[100px]" title={requirement.headerContact}>
+                        {requirement.headerContact}
+                    </span>
+                </>
+            )}
+            
+            {/* Company Name - Use headerCompany which is correctly computed, no hardcoded fallbacks */}
+            {requirement.headerCompany && (
+                <>
+                    <span className="text-[#E5E5E5] shrink-0">|</span>
+                    <span className="font-['Manrope:Bold',sans-serif] uppercase tracking-wider text-[#999999] text-[10px] truncate max-w-[100px]" title={requirement.headerCompany}>
+                        {requirement.headerCompany}
+                    </span>
                 </>
             )}
         </div>

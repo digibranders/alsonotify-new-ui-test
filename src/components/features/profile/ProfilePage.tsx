@@ -61,9 +61,12 @@ const countryCodes = [
 export function ProfilePage() {
     const { message } = App.useApp();
     const { data: currentUserData, isLoading } = useUserDetails();
-    const user = currentUserData?.result?.user;
+    // Note: useUserDetails hook transforms result via mapUserDtoToEmployee,
+    // so result IS the user/employee object, not { user, access, token }
+    const user = currentUserData?.result;
     const updateProfileMutation = useUpdateProfile();
     const updatePasswordMutation = useUpdatePassword();
+
 
     // Initialize profile state with real data or fallback to mock data
     const initialProfile = useMemo(() => {
