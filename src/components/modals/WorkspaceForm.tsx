@@ -170,9 +170,10 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
                                     {companyData?.result?.name || 'My Company'} (Self)
                                 </Option>
                                 {partnersData?.result
-                                    ?.filter((partner: any) => partner.partner_user_id != null || partner.id != null)
+                                    ?.filter((partner: any) => partner.company_id != null)
                                     .map((partner: any, index: number) => {
-                                        const partnerId = partner.partner_user_id ?? partner.id;
+                                        // Use company_id (Company ID) for partner_id FK, not partner_user_id (User ID)
+                                        const partnerId = partner.company_id;
                                         return (
                                             <Option key={partnerId ?? `partner-${index}`} value={partnerId} className="rounded-lg mb-1">
                                                 {partner.company || partner.partner_company?.name || partner.email || partner.name}

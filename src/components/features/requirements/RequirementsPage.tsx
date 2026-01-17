@@ -492,27 +492,26 @@ export function RequirementsPage() {
       // Header Contact: Who is on the OTHER end of this requirement?
       // - If I'm Sender (A): Show Receiver's contact (contact_person / receiver)
       // - If I'm Receiver (B): Show Sender's name (created_user_data / created_user / sender)
-      let headerContact: string;
+      let headerContact: string | undefined;
       let headerCompany: string | undefined;
       
       if (req.type === 'outsourced') {
         if (isSender) {
-          // Sender views: Show receiver info
-          headerContact = req.contact_person?.name || 'Unknown Vendor';
-          headerCompany = req.receiver_company?.name || 'Unknown Vendor Company';
+          // Sender views: Show receiver info (B's name and B's company)
+          headerContact = req.contact_person?.name || undefined;
+          headerCompany = req.receiver_company?.name || undefined;
         } else if (isReceiver) {
-          // Receiver views: Show sender info
-          headerContact = req.created_user_data?.name || req.created_user?.name || 'Unknown Client';
-          headerCompany = req.sender_company?.name || 'Unknown Client Company';
+          // Receiver views: Show sender info (A's name and A's company)
+          headerContact = req.created_user_data?.name || req.created_user?.name || undefined;
+          headerCompany = req.sender_company?.name || undefined;
         } else {
           // Not directly involved (shouldn't happen for outsourced)
-          headerContact = 'Unknown';
+          headerContact = undefined;
           headerCompany = undefined;
         }
       } else {
-        // Inhouse requirements
-        // Prefer contact_person if selected (e.g. Employee), otherwise fall back to Client Name
-        headerContact = req.contact_person?.name || clientName || 'Unknown Contact';
+        // Inhouse requirements - no company header needed
+        headerContact = req.contact_person?.name || clientName || undefined;
         headerCompany = undefined;
       }
 
