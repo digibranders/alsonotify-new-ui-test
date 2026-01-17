@@ -3,6 +3,7 @@ import { Button, Input, Select, Checkbox, DatePicker, App, Radio, Tooltip, Avata
 import { CheckSquare, Calendar, Users, ArrowRight, Layers, UserPlus, X } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useUserDetails } from '@/hooks/useUser';
+import { FormLayout } from '@/components/common/FormLayout';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -159,25 +160,31 @@ export function TaskForm({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      {/* Fixed Header */}
-      <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[17px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-            <div className="p-1.5 rounded-full bg-[#F7F7F7]">
-              <CheckSquare className="w-3.5 h-3.5 text-[#666666]" />
-            </div>
-            {isEditing ? 'Edit Task' : 'New Task'}
-          </div>
-        </div>
-        <p className="text-[11px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-9">
-          {isEditing ? 'Update task parameters and squad.' : 'Define objective and assemble your squad.'}
-        </p>
-      </div>
-
-      {/* Scrollable Body - Reduced padding */}
-      <div className="flex-1 overflow-y-auto px-5 py-4 font-['Manrope',sans-serif]">
-
+    <FormLayout
+      title={isEditing ? 'Edit Task' : 'New Task'}
+      subtitle={isEditing ? 'Update task parameters and squad.' : 'Define objective and assemble your squad.'}
+      icon={CheckSquare}
+      onCancel={onCancel}
+      onSubmit={handleSubmit}
+      footer={
+        <>
+        <Button
+          type="text"
+          onClick={handleReset}
+          className="h-[40px] px-4 text-[14px] font-semibold text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
+        >
+          Reset Data
+        </Button>
+        <Button
+          type="primary"
+          onClick={handleSubmit}
+          className="h-[40px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-semibold transition-transform active:scale-95 border-none"
+        >
+          {isEditing ? 'Update Task' : 'Submit'}
+        </Button>
+        </>
+      }
+    >
         {/* Compact Grid Layout */}
         <div className="grid grid-cols-12 gap-x-4 gap-y-4 mb-5">
 
@@ -426,25 +433,6 @@ export function TaskForm({
             }}
           />
         </div>
-      </div>
-
-      {/* Fixed Footer */}
-      <div className="flex-shrink-0 border-t border-[#EEEEEE] px-6 py-4 flex items-center justify-end bg-white gap-4">
-        <Button
-          type="text"
-          onClick={handleReset}
-          className="h-[40px] px-4 text-[14px] font-semibold text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
-        >
-          Reset Data
-        </Button>
-        <Button
-          type="primary"
-          onClick={handleSubmit}
-          className="h-[40px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-semibold transition-transform active:scale-95 border-none"
-        >
-          {isEditing ? 'Update Task' : 'Submit'}
-        </Button>
-      </div>
-    </div >
+    </FormLayout>
   );
 }

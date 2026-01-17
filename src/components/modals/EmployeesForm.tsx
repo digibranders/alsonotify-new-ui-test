@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { Button, Input, Select, DatePicker, TimePicker, App, Space } from "antd";
-import { ShieldCheck, Briefcase, User, Users, Calendar, User as UserIcon, Loader2 } from "lucide-react";
+import { ShieldCheck, Briefcase, User, Users, Calendar, User as UserIcon } from "lucide-react";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import PhoneNumberInput from "@/components/ui/PhoneNumberInput";
 import { useCurrentUserCompany, useRoles, useEmployees } from "@/hooks/useUser";
 import { currencies, getCurrencySymbol } from "@/utils/currencyUtils";
 import { Employee, Role } from '@/types/domain';
+import { FormLayout } from '@/components/common/FormLayout';
 
 dayjs.extend(customParseFormat);
 
@@ -291,24 +292,14 @@ export function EmployeeForm({
   );
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      {/* Fixed Header */}
-      <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-3">
-        <div className="flex items-center justify-between mb-0.5">
-          <div className="flex items-center gap-2 text-[17px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-            <div className="p-1.5 rounded-full bg-[#F7F7F7]">
-              <UserIcon className="w-3.5 h-3.5 text-[#666666]" />
-            </div>
-            {isEditing ? 'Edit Employee Details' : 'Add Employee'}
-          </div>
-        </div>
-        <p className="text-[11px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-9">
-          {isEditing ? 'Update employee profile, access, and HR details.' : 'Onboard a new employee to the organization.'}
-        </p>
-      </div>
-
-      {/* Scrollable Body */}
-      <div className="flex-1 overflow-y-auto px-6 py-5 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
+    <FormLayout
+      title={isEditing ? 'Edit Employee Details' : 'Add Employee'}
+      subtitle={isEditing ? 'Update employee profile, access, and HR details.' : 'Onboard a new employee to the organization.'}
+      icon={UserIcon}
+      onCancel={onCancel}
+      onSubmit={handleSubmit}
+      submitLabel={isEditing ? "Update Profile" : "Create Employee"}
+    >
         <div className="grid grid-cols-12 gap-x-4 gap-y-4">
           {/* Row 1: First Name & Last Name */}
           <div className="col-span-6 space-y-1">
@@ -737,25 +728,6 @@ export function EmployeeForm({
             display: flex !important;
           }
         `}</style>
-      </div>
-
-      {/* Fixed Footer */}
-      <div className="flex-shrink-0 border-t border-[#EEEEEE] px-6 py-4 flex items-center justify-end bg-white gap-4">
-        <Button
-          type="text"
-          onClick={onCancel}
-          className="h-[40px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
-        >
-          Cancel
-        </Button>
-        <Button
-          type="primary"
-          onClick={handleSubmit}
-          className="h-[40px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
-        >
-          {isEditing ? "Update Profile" : "Create Employee"}
-        </Button>
-      </div>
-    </div>
+    </FormLayout>
   );
 }
