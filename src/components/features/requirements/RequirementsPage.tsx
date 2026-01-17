@@ -522,7 +522,14 @@ export function RequirementsPage() {
       } else {
         // Inhouse requirements - show contact person or manager/leader
         headerContact = req.contact_person?.name || req.manager?.name || req.leader?.name || clientName || undefined;
-        headerCompany = undefined;
+        // For client workspaces, show the client company name as the company
+        // If no client (internal workspace), show the workspace owner company name
+        headerCompany = workspace?.client_company_name || workspace?.company_name || undefined;
+        
+        // Don't show company if it's the same as contact
+        if (headerContact && headerCompany && headerContact === headerCompany) {
+            headerCompany = undefined;
+        }
       }
 
       const mappedReq: Requirement = {

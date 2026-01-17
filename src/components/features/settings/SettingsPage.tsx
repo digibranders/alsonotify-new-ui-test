@@ -890,7 +890,7 @@ export function SettingsPage() {
                       <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
                         Departments
                       </h2>
-                      {!isAddingDept && (
+                      {!isAddingDept && !isEmployee && (
                         <button
                           onClick={() => setIsAddingDept(true)}
                           className="hover:scale-110 active:scale-95 transition-transform"
@@ -918,24 +918,29 @@ export function SettingsPage() {
                               <span className="text-[11px] text-[#666666] font-['Manrope:Bold',sans-serif]">
                                 Active
                               </span>
-                              <Switch
-                                checked={dept.active}
-                                onChange={() => toggleDepartmentStatus(String(dept.id))}
-                                className="bg-gray-200 hover:bg-gray-300"
-                                style={{
-                                  backgroundColor: dept.active ? "#ff3b3b" : undefined,
-                                }}
-                              />
+                                <Switch
+                                  checked={dept.active}
+                                  onChange={() => toggleDepartmentStatus(String(dept.id))}
+                                  disabled={isEmployee}
+                                  className="bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  style={{
+                                    backgroundColor: dept.active ? "#ff3b3b" : undefined,
+                                  }}
+                                />
                             </div>
-                            <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteDepartment(String(dept.id))}
-                              className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#ff3b3b]"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {!isEmployee && (
+                              <>
+                                <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteDepartment(String(dept.id))}
+                                  className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#ff3b3b]"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -981,7 +986,7 @@ export function SettingsPage() {
                       <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
                         Required Documents
                       </h2>
-                      {!isAddingDoc && (
+                      {!isAddingDoc && !isEmployee && (
                         <button
                           onClick={() => setIsAddingDoc(true)}
                           className="hover:scale-110 active:scale-95 transition-transform"
@@ -1012,21 +1017,26 @@ export function SettingsPage() {
                               <Switch
                                 checked={doc.required}
                                 onChange={() => toggleDocumentRequired(doc.id)}
-                                className="bg-gray-200 hover:bg-gray-300"
+                                disabled={isEmployee}
+                                className="bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                 style={{
                                   backgroundColor: doc.required ? "#ff3b3b" : undefined,
                                 }}
                               />
                             </div>
-                            <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteDocument(doc.id)}
-                              className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#ff3b3b]"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {!isEmployee && (
+                              <>
+                                <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteDocument(doc.id)}
+                                  className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#ff3b3b]"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
                       ))}
