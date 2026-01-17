@@ -792,6 +792,21 @@ export function TasksPage() {
     }
   };
 
+  // ✅ FIX BUG #2 Frontend: Permission check for status changes
+  const canChangeTaskStatus = useCallback((task: UITask): boolean => {
+    if (!currentUserId) return false;
+    
+    // Check if user is task leader
+    const isLeader = task.leader_id === Number(currentUserId);
+    
+    // Check if user is a task member
+    const isMember = task.task_members?.some(
+      (member) => member.user_id === Number(currentUserId) || member.user?.id === Number(currentUserId)
+    );
+    
+    return isLeader || (isMember ?? false);
+  }, [currentUserId]);
+
   const { setExpandedContent } = useFloatingMenu();
 
   // Update floating menu with bulk actions
@@ -1077,15 +1092,19 @@ export function TasksPage() {
               key={task.id}
               task={{
                 ...task,
-                status: (task.status === 'In Progress' ? 'In_Progress' : 
+                 status: (task.status === 'In Progress' ? 'In_Progress' : 
                          task.status === 'Todo' ? 'Assigned' : 
-                         task.status) as any 
+                         task.status) as unknown as TaskStatus
               }}
               selected={selectedTasks.includes(task.id)}
               onSelect={() => toggleSelect(task.id)}
               onEdit={() => handleEditTask(task)}
               onDelete={() => handleDeleteTask(task.id)}
-              onStatusChange={(status) => updateTaskMutation.mutate({ id: Number(task.id), status })}
+              onStatusChange={
+                canChangeTaskStatus(task)
+                  ? (status) => updateTaskMutation.mutate({ id: Number(task.id), status })
+                  : undefined  // ✅ FIX BUG #2: Disable status change if no permission
+              }
               currentUserId={currentUserId ? Number(currentUserId) : undefined}
             />
           ))}
