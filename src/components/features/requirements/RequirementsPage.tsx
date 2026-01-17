@@ -838,7 +838,7 @@ export function RequirementsPage() {
       req.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       req.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (req.company || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.client.toLowerCase().includes(searchQuery.toLowerCase());
+      (req.client || '').toLowerCase().includes(searchQuery.toLowerCase());
 
     // Category - match if filter is 'All' or if requirement has the selected department
     const categoryMatch = filters.category === 'All' ||

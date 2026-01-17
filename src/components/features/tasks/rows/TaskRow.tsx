@@ -126,7 +126,7 @@ const TaskRowComponent = memo(function TaskRow({
       await stopTimer();
     } else {
       if (isPlayDisabled || isPendingEstimate) return;
-      await startTimer(Number(task.id), task.name, task.project); // Pass task info
+      await startTimer(Number(task.id), task.name, task.project || ''); // Pass task info
     }
   };
 

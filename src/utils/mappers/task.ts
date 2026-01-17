@@ -26,9 +26,9 @@ export function mapTaskToDomain(dto: TaskDto): Task {
   }
 
   // client/project/leader resolution
-  const clientName = dto.client?.name || dto.client_name || dto.task_project?.client_user?.company?.name || 'Unknown';
-  const projectName = dto.task_project?.company?.name || dto.client_company_name || 'Unknown';
-  const leaderName = dto.leader_user?.name || dto.manager_user?.name || 'Unknown';
+  const clientName = dto.client?.name || dto.client_name || dto.task_project?.client_user?.company?.name || null;
+  const projectName = dto.task_project?.company?.name || dto.client_company_name || null;
+  const leaderName = dto.leader_user?.name || dto.manager_user?.name || null;
 
   return {
     id: String(dto.id),
@@ -119,24 +119,24 @@ export function mapTaskToDomain(dto: TaskDto): Task {
 
     memberUser: dto.member_user ? {
       ...dto.member_user,
-      name: dto.member_user.name || 'Unknown',
+      name: dto.member_user.name || 'Unassigned',
       profilePic: dto.member_user.profile_pic,
       profile_pic: dto.member_user.profile_pic,
     } : undefined,
     member_user: dto.member_user ? {
       ...dto.member_user,
-      name: dto.member_user.name || 'Unknown'
+      name: dto.member_user.name || 'Unassigned'
     } : undefined,
 
     leaderUser: dto.leader_user ? {
       ...dto.leader_user,
-      name: dto.leader_user.name || 'Unknown',
+      name: dto.leader_user.name || null,
       profilePic: dto.leader_user.profile_pic,
       profile_pic: dto.leader_user.profile_pic,
     } : undefined,
     leader_user: dto.leader_user ? {
       ...dto.leader_user,
-      name: dto.leader_user.name || 'Unknown'
+      name: dto.leader_user.name || null
     } : undefined,
 
     assignedToUser: dto.assigned_to_user,

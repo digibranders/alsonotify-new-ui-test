@@ -10,8 +10,8 @@ export interface Requirement {
   title: string;
   name?: string;
   description: string;
-  company: string;
-  client: string;
+  company: string | null;
+  client: string | null;
   assignedTo: string[];
   dueDate: string;
   createdDate: string;
@@ -76,10 +76,10 @@ export interface Requirement {
   quoted_price?: number; // covered by quotedPrice
   totalTask?: number;
   total_task?: number;
-  leaderUser?: { name: string; id?: number; avatar?: string };
-  leader_user?: { name: string; id?: number; avatar?: string };
-  managerUser?: { name: string; id?: number; avatar?: string };
-  manager_user?: { name: string; id?: number; avatar?: string };
+  leaderUser?: { name: string | null; id?: number; avatar?: string };
+  leader_user?: { name: string | null; id?: number; avatar?: string };
+  managerUser?: { name: string | null; id?: number; avatar?: string };
+  manager_user?: { name: string | null; id?: number; avatar?: string };
   senderCompany?: { name: string; id?: number };
   sender_company?: { name: string; id?: number };
   documentLink?: string;
@@ -109,10 +109,10 @@ export interface Task {
   id: string;
   name: string;
   taskId: string;
-  client: string;
-  project: string;
-  leader: string;
-  assignedTo: string | { name: string; id: number };
+  client: string | null;
+  project: string | null;
+  leader: string | null;
+  assignedTo: string | { name: string; id: number } | null;
   startDate: string;
   dueDate: string;
   estTime: number;
@@ -203,12 +203,12 @@ export interface Task {
     company?: { name: string };
     company_name?: string;
   };
-  memberUser?: { name: string; id: number; profilePic?: string; profile_pic?: string };
-  member_user?: { name: string; id: number; profile_pic?: string };
-  leaderUser?: { name: string; id: number; profilePic?: string; profile_pic?: string };
-  leader_user?: { name: string; id: number; profile_pic?: string };
-  assignedToUser?: { name: string; id: number };
-  assigned_to_user?: { name: string; id: number };
+  memberUser?: { name: string | null; id: number; profilePic?: string; profile_pic?: string };
+  member_user?: { name: string | null; id: number; profile_pic?: string };
+  leaderUser?: { name: string | null; id: number; profilePic?: string; profile_pic?: string };
+  leader_user?: { name: string | null; id: number; profile_pic?: string };
+  assignedToUser?: { name: string | null; id: number };
+  assigned_to_user?: { name: string | null; id: number };
   // assignedTo already defined as string, but UI usage suggests object or string
   // Changing base definition to union
   assigned_to?: { name: string; id: number } | string; // Sometimes string in older parts
@@ -246,8 +246,8 @@ export interface Workspace {
   partner_name?: string;
   companyName?: string;
   company_name?: string;
-  client?: { id: number; name: string } | null;
-  client_user?: { id: number; name: string } | null;
+  client?: { id: number; name: string | null } | null;
+  client_user?: { id: number; name: string | null } | null;
   company?: { id: number; name: string } | null;
   // Additional fields used in ProjectCard
   clientCompanyName?: string;

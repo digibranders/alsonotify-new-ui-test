@@ -15,8 +15,8 @@ export function mapRequirementToDomain(dto: RequirementDto): Requirement {
     status: (dto.status as 'in-progress' | 'completed' | 'delayed' | 'draft' | 'Waiting') || 'draft',
     approvalStatus: (dto.approvalStatus as 'pending' | 'approved' | 'rejected') || 'pending',
     
-    company: dto.company || dto.sender_company?.name || 'Unknown',
-    client: dto.client || 'Unknown',
+    company: dto.company || dto.sender_company?.name || null,
+    client: dto.client || null,
     assignedTo: Array.isArray(dto.assignedTo) ? dto.assignedTo.map(String) : [],
     
     dueDate: dto.dueDate || dto.end_date || '',
@@ -89,10 +89,10 @@ export function mapRequirementToDomain(dto: RequirementDto): Requirement {
     leader: dto.leader,
     department: undefined, 
     
-    leaderUser: dto.leader_user ? { ...dto.leader_user, name: dto.leader_user.name || 'Unknown' } : undefined,
-    leader_user: dto.leader_user ? { ...dto.leader_user, name: dto.leader_user.name || 'Unknown' } : undefined,
-    managerUser: dto.manager_user ? { ...dto.manager_user, name: dto.manager_user.name || 'Unknown' } : undefined,
-    manager_user: dto.manager_user ? { ...dto.manager_user, name: dto.manager_user.name || 'Unknown' } : undefined,
+    leaderUser: dto.leader_user ? { ...dto.leader_user, name: dto.leader_user.name || null } : undefined,
+    leader_user: dto.leader_user ? { ...dto.leader_user, name: dto.leader_user.name || null } : undefined,
+    managerUser: dto.manager_user ? { ...dto.manager_user, name: dto.manager_user.name || null } : undefined,
+    manager_user: dto.manager_user ? { ...dto.manager_user, name: dto.manager_user.name || null } : undefined,
     
     documentLink: dto.document_link,
     document_link: dto.document_link,
