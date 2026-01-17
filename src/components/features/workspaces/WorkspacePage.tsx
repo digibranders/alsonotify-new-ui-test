@@ -159,7 +159,7 @@ export function WorkspacePage() {
     {
       id: 'organization',
       label: 'Organization',
-      options: ['All', `${companyData?.result?.name || 'Current Company'} (Self)`, ...(partnersData?.result?.map((p: any) => p.name || p.partner_company?.name || p.email) || [])],
+      options: ['All', `${companyData?.result?.name || 'Current Company'} (Self)`, ...(partnersData?.result?.map((p: any) => p.company || p.partner_company?.name || p.email || p.name) || [])],
       defaultValue: 'All'
     }
   ];

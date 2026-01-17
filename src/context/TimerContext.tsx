@@ -51,7 +51,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
                         isRunning: true,
                         taskId: result.task_id,
                         taskName: result.task_name,
-                        projectName: result.project_name,
+                        projectName: result.project_name || result.workspace_name,
                         worklogId: result.worklog_id,
                         startTime: start,
                         elapsedSeconds: elapsed,

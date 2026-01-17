@@ -5,40 +5,92 @@ import {
   Play,
   Pause,
   CheckCircle,
-  ChevronDown
+  ChevronDown,
+  Loader2
 } from "lucide-react";
 import { useFloatingMenu } from '../../context/FloatingMenuContext';
+import { useTimer } from '../../context/TimerContext';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getAssignedTasks } from '../../services/task';
+import { useUserDetails } from '../../hooks/useUser';
+import { App } from 'antd';
+import { queryKeys } from '../../lib/queryKeys';
 
 // Global floating timer bar - expands with bulk actions from pages
 const HIDDEN_ROUTES = ['/dashboard/reports', '/dashboard/finance', '/dashboard/settings', '/dashboard/profile'];
 
+interface TaskOption {
+  id: number;
+  name: string;
+  project: string;
+}
+
 export function FloatingTimerBar() {
   const pathname = usePathname();
-  const isHidden = pathname && HIDDEN_ROUTES.some(route => pathname.startsWith(route));
+  const { message } = App.useApp();
+  const queryClient = useQueryClient();
+  
+  // Visibility Logic - also hide on task details and requirement details
+  const isHidden = pathname && (
+    HIDDEN_ROUTES.some(route => pathname.startsWith(route)) ||
+    pathname.includes('/dashboard/requirements/') ||
+    pathname.includes('/dashboard/tasks/')
+  );
+  
   const { expandedContent } = useFloatingMenu();
-  const [isRunning, setIsRunning] = useState(false);
-  const [time, setTime] = useState(0);
+  const { timerState, startTimer, stopTimer, isLoading: timerLoading } = useTimer();
+  
   const [showTaskSelector, setShowTaskSelector] = useState(false);
-  const [selectedTask, setSelectedTask] = useState("Design System Planning");
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const [selectedTaskName, setSelectedTaskName] = useState("Select Task");
+  const [localTime, setLocalTime] = useState(0);
 
-  // Timer effect
+  // Sync with TimerContext on load
+  useEffect(() => {
+    if (!timerLoading) {
+      if (timerState.taskId) {
+        setSelectedTaskId(timerState.taskId);
+        setSelectedTaskName(timerState.taskName || "Unknown Task");
+      }
+      setLocalTime(timerState.elapsedSeconds);
+    }
+  }, [timerState, timerLoading]);
+
+  // Local timer increment for smooth UI
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isRunning) {
+    if (timerState.isRunning) {
       interval = setInterval(() => {
-        setTime((prevTime) => prevTime + 1);
+        setLocalTime((prev) => prev + 1);
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isRunning]);
+  }, [timerState.isRunning]);
 
-  const tasks = [
-    { id: 1, name: "Design System Planning", requirement: "Acme Corp" },
-    { id: 2, name: "Website Redesign", requirement: "Acme Corp" },
-    { id: 3, name: "Client Presentation", requirement: "TechStart Inc" },
-    { id: 4, name: "User Research Analysis", requirement: "Digital Solutions" },
-    { id: 5, name: "Prototype Review", requirement: "Acme Corp" }
-  ];
+  // Fetch assigned tasks
+  const { data: userDetailsData } = useUserDetails();
+  const userId = userDetailsData?.result?.user?.id || userDetailsData?.result?.id;
+
+  const { data: assignedTasksData, isLoading: tasksLoading } = useQuery({
+    queryKey: queryKeys.tasks.assigned(),
+    queryFn: () => getAssignedTasks(),
+    enabled: !!userId,
+  });
+
+  // Filter tasks that can have timer started (Assigned, In_Progress, Impediment)
+  const tasks: TaskOption[] = (assignedTasksData?.result || [])
+    .filter((t) => {
+      const status = (t.status || '').toLowerCase();
+      return (status === 'assigned' || status.includes('in_progress') || status.includes('impediment')) 
+        && !status.includes('completed');
+    })
+    .map((t) => ({
+      id: t.id,
+      name: t.name || t.title || "Untitled Task",
+      project: t.task_workspace?.name || 
+               t.task_project?.company?.name || 
+               "Unknown Project"
+    }));
 
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -47,28 +99,70 @@ export function FloatingTimerBar() {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handlePlayPause = () => {
-    setIsRunning(!isRunning);
+  const handlePlayPause = async () => {
+    if (!selectedTaskId) {
+      message.warning("Please select a task first");
+      return;
+    }
+
+    if (timerState.isRunning) {
+      await stopTimer();
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.assigned() });
+      if (selectedTaskId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(selectedTaskId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.worklogsRoot(selectedTaskId) });
+      }
+      message.info("Timer paused");
+    } else {
+      // Find project name for the selected task
+      const task = tasks.find((t) => t.id === selectedTaskId);
+      const projectName = task?.project || "Unknown Project";
+      
+      await startTimer(selectedTaskId, selectedTaskName, projectName);
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.assigned() });
+      message.success("Timer started");
+    }
   };
 
-  const handleTaskSelect = (taskName: string) => {
-    setSelectedTask(taskName);
+  const handleTaskSelect = (task: TaskOption) => {
+    // If timer is running on a different task, stop it first
+    if (timerState.isRunning && timerState.taskId !== task.id) {
+      message.warning("Please stop the current timer before switching tasks");
+      setShowTaskSelector(false);
+      return;
+    }
+    
+    setSelectedTaskId(task.id);
+    setSelectedTaskName(task.name);
     setShowTaskSelector(false);
   };
 
-  const handleComplete = () => {
-    setIsRunning(false);
-    // You can add toast notification here
-    setTime(0);
+  const handleComplete = async () => {
+    if (timerState.isRunning) {
+      await stopTimer();
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.assigned() });
+      if (selectedTaskId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(selectedTaskId) });
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.worklogsRoot(selectedTaskId) });
+      }
+    }
+    message.success("Timer stopped. Don't forget to submit your worklog!");
+    // Reset local state but keep task selected
+    setLocalTime(0);
   };
+
+  if (isHidden) return null;
 
   return (
     <div 
       className="fixed left-1/2 -translate-x-1/2 z-[9999] transition-all duration-300 ease-out"
-      style={{ 
-        bottom: '24px',
-        display: isHidden ? 'none' : undefined
-      }}
+      style={{ bottom: '24px' }}
     >
       <div 
         className={`
@@ -80,7 +174,7 @@ export function FloatingTimerBar() {
         {/* Progress Bar at Bottom */}
         <div 
           className="absolute bottom-0 left-0 h-[4px] bg-[#ff3b3b] transition-all duration-1000 ease-linear"
-          style={{ width: isRunning ? `${(time % 60) * (100/60)}%` : '0%' }}
+          style={{ width: timerState.isRunning ? `${(localTime % 60) * (100/60)}%` : '0%' }}
         />
 
         {/* Expanded Content (Bulk Actions) */}
@@ -96,11 +190,18 @@ export function FloatingTimerBar() {
           <button
             onClick={() => setShowTaskSelector(!showTaskSelector)}
             className="flex items-center gap-2 group hover:bg-white/10 rounded-full px-4 py-2 transition-all"
+            disabled={timerLoading}
           >
-            <p className="text-[14px] text-white font-['Inter:Medium',sans-serif] group-hover:text-white transition-colors truncate max-w-[200px]">
-              {selectedTask}
-            </p>
-            <ChevronDown className="w-4 h-4 text-white/70 group-hover:text-white transition-colors shrink-0" />
+            {timerLoading ? (
+              <Loader2 className="w-4 h-4 text-white animate-spin" />
+            ) : (
+              <>
+                <p className="text-[14px] text-white font-['Inter:Medium',sans-serif] group-hover:text-white transition-colors truncate max-w-[200px]">
+                  {selectedTaskName}
+                </p>
+                <ChevronDown className="w-4 h-4 text-white/70 group-hover:text-white transition-colors shrink-0" />
+              </>
+            )}
           </button>
 
           {/* Task Selector Dropdown */}
@@ -119,33 +220,43 @@ export function FloatingTimerBar() {
                   <div className="flex-1 h-px bg-[#EEEEEE]" />
                 </div>
                 <div className="space-y-1 max-h-[240px] overflow-y-auto">
-                  {tasks.map((task) => (
-                    <button
-                      key={task.id}
-                      onClick={() => handleTaskSelect(task.name)}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-[12px] text-left transition-all ${
-                        selectedTask === task.name
-                          ? 'bg-gradient-to-br from-[#ff3b3b] to-[#cc2f2f] text-white shadow-sm'
-                          : 'hover:bg-[#F7F7F7] text-[#111111]'
-                      }`}
-                    >
-                      <div className="flex-1">
-                        <p className={`text-[13px] font-['Manrope:SemiBold',sans-serif] ${
-                          selectedTask === task.name ? 'text-white' : 'text-[#111111]'
-                        }`}>
-                          {task.name}
-                        </p>
-                        <p className={`text-[10px] font-['Inter:Regular',sans-serif] mt-0.5 ${
-                          selectedTask === task.name ? 'text-white/80' : 'text-[#999999]'
-                        }`}>
-                          {task.requirement}
-                        </p>
-                      </div>
-                      {selectedTask === task.name && (
-                        <CheckCircle className="w-4 h-4 text-white flex-shrink-0 ml-2" />
-                      )}
-                    </button>
-                  ))}
+                  {tasksLoading ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="w-5 h-5 text-[#999999] animate-spin" />
+                    </div>
+                  ) : tasks.length > 0 ? (
+                    tasks.map((task) => (
+                      <button
+                        key={task.id}
+                        onClick={() => handleTaskSelect(task)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-[12px] text-left transition-all ${
+                          selectedTaskId === task.id
+                            ? 'bg-gradient-to-br from-[#ff3b3b] to-[#cc2f2f] text-white shadow-sm'
+                            : 'hover:bg-[#F7F7F7] text-[#111111]'
+                        }`}
+                      >
+                        <div className="flex-1">
+                          <p className={`text-[13px] font-['Manrope:SemiBold',sans-serif] ${
+                            selectedTaskId === task.id ? 'text-white' : 'text-[#111111]'
+                          }`}>
+                            {task.name}
+                          </p>
+                          <p className={`text-[10px] font-['Inter:Regular',sans-serif] mt-0.5 ${
+                            selectedTaskId === task.id ? 'text-white/80' : 'text-[#999999]'
+                          }`}>
+                            {task.project}
+                          </p>
+                        </div>
+                        {selectedTaskId === task.id && (
+                          <CheckCircle className="w-4 h-4 text-white flex-shrink-0 ml-2" />
+                        )}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="p-3 text-center text-[#999999] text-xs">
+                      No assigned tasks found
+                    </div>
+                  )}
                 </div>
               </div>
             </>
@@ -156,27 +267,29 @@ export function FloatingTimerBar() {
         <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={handlePlayPause}
-            className="text-white hover:text-white/80 transition-all active:scale-90"
-            title={isRunning ? "Pause" : "Play"}
+            className="text-white hover:text-white/80 transition-all active:scale-90 disabled:opacity-50"
+            title={timerState.isRunning ? "Pause" : "Play"}
+            disabled={timerLoading || !selectedTaskId}
           >
-            {isRunning ? (
+            {timerState.isRunning ? (
               <Pause className="w-5 h-5 fill-current" />
             ) : (
               <Play className="w-5 h-5 fill-current ml-0.5" />
             )}
           </button>
           <button
-            className="text-white hover:text-white/80 transition-all active:scale-90"
-            title="Mark as Complete"
+            className="text-white hover:text-white/80 transition-all active:scale-90 disabled:opacity-50"
+            title="Mark as Complete (Stop Timer)"
             onClick={handleComplete}
+            disabled={timerLoading}
           >
             <CheckCircle className="w-5 h-5" />
           </button>
         </div>
 
         {/* Timer Display */}
-        <div className="font-['Manrope:Bold',sans-serif] text-white leading-none tracking-tight text-[20px]">
-          {formatTime(time)}
+        <div className="font-['Manrope:Bold',sans-serif] text-white leading-none tracking-tight text-[20px] tabular-nums">
+          {formatTime(localTime)}
         </div>
       </div>
     </div>

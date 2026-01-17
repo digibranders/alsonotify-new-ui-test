@@ -41,6 +41,12 @@ export const useForgotPassword = () => {
   });
 };
 
+export const useResendVerificationEmail = () => {
+  return useMutation({
+    mutationFn: (email: string) => import("../services/auth").then(mod => mod.resendVerificationEmail(email)),
+  });
+};
+
 export const useLogout = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
