@@ -82,14 +82,16 @@ export function RequirementsPage() {
   const isLoading = isLoadingWorkspaces || isLoadingRequirements;
 
   // Helper function to strip HTML tags from text
+  // Helper function to strip HTML tags from text - using DOMParser for XSS safety
   const stripHtmlTags = useMemo(() => {
-    // Return a function that uses a single cached div for performance
+    // Return a function that uses DOMParser for security
     if (typeof document === 'undefined') return (html: string) => html.replace(/<[^>]*>/g, '').trim();
-    const tmp = document.createElement('div');
     return (html: string): string => {
       if (!html) return '';
-      tmp.innerHTML = html;
-      return (tmp.textContent || tmp.innerText || '').trim();
+      // Use DOMParser instead of innerHTML for XSS protection
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      return (doc.body.textContent || '').trim();
     };
   }, []);
 

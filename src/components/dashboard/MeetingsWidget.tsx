@@ -308,16 +308,17 @@ function MeetingItem({
 }) {
   const [showDetails, setShowDetails] = useState(false);
 
-  // Strip HTML tags from description
+  // Strip HTML tags from description - using DOMParser for XSS safety
   const stripHtml = (html: string | null): string => {
     if (!html) return '';
     if (typeof document === 'undefined') {
       // SSR fallback - simple regex strip
       return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
     }
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
+    // Use DOMParser instead of innerHTML for XSS protection
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    return doc.body.textContent || '';
   };
 
   const handleJoinClick = (e: React.MouseEvent) => {
