@@ -70,6 +70,7 @@ describe('useAuth Hooks', () => {
     it('should call doLogin and set token on success', async () => {
       const mockResponse = {
         success: true,
+        message: 'Login successful',
         result: {
           token: 'test-token-123',
           user: { id: 1, name: 'Test User', email: 'test@example.com' },
@@ -94,14 +95,14 @@ describe('useAuth Hooks', () => {
       });
       expect(CookieService.setToken).toHaveBeenCalledWith('test-token-123');
       expect(AxiosConfig.setAuthToken).toHaveBeenCalledWith('test-token-123');
-      expect(localStorage.setItem).toHaveBeenCalledWith('user', JSON.stringify(mockResponse.result.user));
       expect(mockPush).toHaveBeenCalledWith('/dashboard');
     });
 
     it('should redirect to custom path when provided', async () => {
       const mockResponse = {
         success: true,
-        result: { token: 'test-token', user: { id: 1 } },
+        message: 'Success',
+        result: { token: 'test-token', user: { id: 1, name: 'Test', email: 'test@example.com' } },
       };
       vi.spyOn(AuthService, 'doLogin').mockResolvedValue(mockResponse);
       vi.spyOn(CookieService, 'setToken').mockImplementation(() => {});
@@ -125,7 +126,8 @@ describe('useAuth Hooks', () => {
     it('should not redirect on failed login', async () => {
       vi.spyOn(AuthService, 'doLogin').mockResolvedValue({
         success: false,
-        result: null,
+        message: 'Invalid credentials',
+        result: null as any,
       });
 
       const { result } = renderHook(() => useLogin(), {
@@ -143,7 +145,7 @@ describe('useAuth Hooks', () => {
 
   describe('useLogout', () => {
     it('should clear token and redirect to login', async () => {
-      vi.spyOn(CookieService, 'deleteToken').mockImplementation(() => {});
+      vi.spyOn(CookieService, 'deleteToken').mockImplementation(() => true);
 
       const { result } = renderHook(() => useLogout(), {
         wrapper: createWrapper(queryClient),
@@ -163,7 +165,7 @@ describe('useAuth Hooks', () => {
 
   describe('useRegister', () => {
     it('should call doSignup with correct params', async () => {
-      const mockResponse = { success: true, result: { id: 1 } };
+      const mockResponse = { success: true, message: 'Signup success', result: { token: 'token', user: { id: 1, name: 'John', email: 'john@example.com' } } };
       vi.spyOn(AuthService, 'doSignup').mockResolvedValue(mockResponse);
 
       const { result } = renderHook(() => useRegister(), {
@@ -193,7 +195,7 @@ describe('useAuth Hooks', () => {
 
   describe('useForgotPassword', () => {
     it('should call forgetPassword service', async () => {
-      const mockResponse = { success: true };
+      const mockResponse = { success: true, message: 'Email sent', result: { success: true } };
       vi.spyOn(AuthService, 'forgetPassword').mockResolvedValue(mockResponse);
 
       const { result } = renderHook(() => useForgotPassword(), {
@@ -215,7 +217,8 @@ describe('useAuth Hooks', () => {
       vi.spyOn(CookieService, 'getToken').mockReturnValue('valid-token');
       vi.spyOn(UserService, 'getUserDetails').mockResolvedValue({
         success: true,
-        result: mockUser,
+        message: 'Success',
+        result: { user: mockUser as any, access: {} },
       });
 
       const { result } = renderHook(() => useUser(), {
@@ -223,7 +226,7 @@ describe('useAuth Hooks', () => {
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
-      expect(result.current.data?.result).toEqual(mockUser);
+      expect(result.current.data?.result.user).toEqual(mockUser);
     });
 
     it('should not fetch when no token', () => {
@@ -242,7 +245,8 @@ describe('useAuth Hooks', () => {
       vi.spyOn(CookieService, 'getToken').mockReturnValue('test-token');
       vi.spyOn(UserService, 'getUserDetails').mockResolvedValue({
         success: true,
-        result: { user: { id: 1, name: 'Test' } },
+        message: 'Success',
+        result: { user: { id: 1, name: 'Test', email: 'test@example.com' } as any, access: {} },
       });
 
       const { result } = renderHook(() => useAuth(), {

@@ -19,7 +19,7 @@ export const useLogin = () => {
         setAuthToken(data.result.token);
         if (data.result.user) {
           queryClient.setQueryData(queryKeys.users.me(), data.result.user);
-          localStorage.setItem("user", JSON.stringify(data.result.user));
+          // Removed localStorage persistence for security (PII protection)
         }
 
         const redirect = variables.redirect || "/dashboard";
@@ -118,7 +118,7 @@ export const useCompleteSignup = () => {
         setAuthToken(data.result.token);
         if (data.result.user) {
           queryClient.setQueryData(queryKeys.users.me(), data.result.user);
-          localStorage.setItem("user", JSON.stringify(data.result.user));
+          // Removed localStorage persistence for security (PII protection)
         }
         // Redirect handled by component
       }

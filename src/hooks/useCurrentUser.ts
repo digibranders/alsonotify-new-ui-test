@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useUserDetails } from './useUser';
 
 // Define a unified User type that covers what's currently being used in the app
@@ -27,21 +27,6 @@ export interface CurrentUser {
 
 export const useCurrentUser = () => {
   const { data: userDetailsData, isLoading, error } = useUserDetails();
-  const [localUser, setLocalUser] = useState<any>(null);
-
-  useEffect(() => {
-    // Initial load from local storage
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem("user");
-      if (stored) {
-        try {
-          setLocalUser(JSON.parse(stored));
-        } catch (e) {
-          console.error("Failed to parse user from local storage", e);
-        }
-      }
-    }
-  }, []);
 
   const user = useMemo(() => {
     // Prefer API data if available
@@ -51,22 +36,13 @@ export const useCurrentUser = () => {
     if (userDetailsData?.result && !userDetailsData.result.user) {
       return userDetailsData.result; // Handle flattened response
     }
-
-    // Fallback to local storage
-    if (localUser && typeof localUser === 'object') {
-       // Handle both { result: { user: ... } } and direct user object styles in localStorage
-       // just in case they were stored differently at some point
-       if (localUser.result?.user) return localUser.result.user;
-       if (localUser.result) return localUser.result;
-       return localUser;
-    }
-
+    
     return null;
-  }, [userDetailsData, localUser]);
+  }, [userDetailsData]);
 
   return {
     user: user as CurrentUser | null,
-    isLoading: isLoading && !user, // Only true loading if we don't even have local data
+    isLoading: isLoading && !user,
     isAuthenticated: !!user,
     error
   };
