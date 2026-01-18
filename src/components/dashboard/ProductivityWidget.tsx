@@ -30,6 +30,7 @@ import { AssignedTaskDetailDto } from "@/types/dto/task.dto";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { WorklogModal } from "../modals/WorklogModal";
 import { Modal } from "antd";
+import { formatDuration, formatTime, parseAsUTC } from "@/utils/timeFormat";
 
 interface Message {
   id: number;
@@ -38,27 +39,6 @@ interface Message {
   timestamp: Date;
   actions?: string[];
   responseType?: string;
-}
-
-// Helper function to format seconds as HH:MM:SS
-function formatDuration(seconds: number): string {
-  const hrs = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-  return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-}
-
-// Helper function to parse date string as UTC
-// Backend stores dates in UTC but may return without 'Z' suffix
-// JavaScript's new Date() interprets dates without 'Z' as local time, causing timezone offset issues
-function parseAsUTC(dateString: string): Date {
-  if (!dateString) return new Date();
-  // If already has timezone info (Z or +/-offset), parse directly
-  if (dateString.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(dateString)) {
-    return new Date(dateString);
-  }
-  // Otherwise, append 'Z' to treat as UTC
-  return new Date(dateString + 'Z');
 }
 
 export function ProductivityWidget() {
@@ -336,13 +316,6 @@ export function ProductivityWidget() {
   //     setSelectedTask(tasks[0].name);
   //   }
   // }, [tasks]);
-
-  const formatTime = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
   const handlePlayPause = () => {
     if (!selectedTask) {
