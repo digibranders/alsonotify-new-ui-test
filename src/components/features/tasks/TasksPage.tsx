@@ -32,6 +32,7 @@ dayjs.extend(isSameOrAfter);
 import { Task, TaskStatus } from '@/types/domain';
 import { TaskDto, CreateTaskRequestDto, UpdateTaskRequestDto } from '@/types/dto/task.dto';
 import { getErrorMessage } from '@/types/api-utils';
+import { toQueryParams } from '@/utils/queryParams';
 
 // Local alias if needed to avoid massive rename, or just use Task
 // transforming UITask -> Task in the code
@@ -39,15 +40,6 @@ type UITask = Task;
 type ITaskStatus = TaskStatus;
 
 type StatusTab = 'all' | 'In_Progress' | 'Completed' | 'Delayed';
-
-// Helper function to convert filter object to query params
-// Helper function to convert filter object to query params
-const toQueryParams = (params: Record<string, unknown>): string => {
-  return Object.entries(params)
-    .filter(([_, value]) => value !== null && value !== "" && value !== undefined && value !== 'All')
-    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
-    .join("&");
-};
 
 export function TasksPage() {
   const router = useRouter();

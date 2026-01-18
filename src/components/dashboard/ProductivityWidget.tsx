@@ -31,15 +31,11 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { WorklogModal } from "../modals/WorklogModal";
 import { Modal } from "antd";
 import { formatDuration, formatTime, parseAsUTC } from "@/utils/timeFormat";
+import { ChatMessage } from "@/types/chat";
+import { chatMarkdownComponents } from "../common/MarkdownComponents";
 
-interface Message {
-  id: number;
-  type: 'user' | 'ai';
-  content: string;
-  timestamp: Date;
-  actions?: string[];
-  responseType?: string;
-}
+// Use ChatMessage type from shared module
+type Message = ChatMessage;
 
 export function ProductivityWidget() {
   const { message: antdMessage } = App.useApp();
@@ -883,40 +879,8 @@ export function ProductivityWidget() {
     }
   }, [isRunning, selectedTaskId, refetchTaskDetail]);
 
-
-  const markdownComponents = useMemo<Components>(
-    () => ({
-      p: ({ children }) => (
-        <p className="mb-2 last:mb-0 text-[14px] font-['Manrope:Medium',sans-serif] leading-relaxed">{children}</p>
-      ),
-      ul: ({ children }) => (
-        <ul className="mb-2 pl-4 list-disc space-y-1 text-[14px] font-['Manrope:Medium',sans-serif]">{children}</ul>
-      ),
-      ol: ({ children }) => (
-        <ol className="mb-2 pl-4 list-decimal space-y-1 text-[14px] font-['Manrope:Medium',sans-serif]">{children}</ol>
-      ),
-      li: ({ children }) => (
-        <li className="pl-1">{children}</li>
-      ),
-      strong: ({ children }) => (
-        <strong className="font-semibold text-[#111111]">{children}</strong>
-      ),
-      a: ({ href, children }) => (
-        <a href={href} className="text-[#ff3b3b] underline hover:text-[#cc2f2f]" target="_blank" rel="noopener noreferrer">{children}</a>
-      ),
-      table: ({ children }) => (
-        <div className="my-2 overflow-x-auto rounded-lg border border-[#EEEEEE]">
-          <table className="w-full text-[13px] text-left">{children}</table>
-        </div>
-      ),
-      thead: ({ children }) => <thead className="bg-[#F7F7F7] font-semibold text-[#111111]">{children}</thead>,
-      tbody: ({ children }) => <tbody className="divide-y divide-[#EEEEEE]">{children}</tbody>,
-      tr: ({ children }) => <tr className="hover:bg-[#F7F7F7]/50">{children}</tr>,
-      th: ({ children }) => <th className="px-3 py-2 whitespace-nowrap">{children}</th>,
-      td: ({ children }) => <td className="px-3 py-2">{children}</td>,
-    }),
-    []
-  );
+  // Use shared markdown components
+  const markdownComponents = chatMarkdownComponents;
 
   return (
     <div className="flex flex-col gap-3 w-full relative pr-1">
