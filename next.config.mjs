@@ -6,8 +6,16 @@ const nextConfig = {
                 protocol: 'https',
                 hostname: 'github.com',
             },
+            {
+                protocol: 'https',
+                hostname: '*.s3.amazonaws.com',
+            },
+            {
+                protocol: 'https',
+                hostname: '*.s3.*.amazonaws.com',
+            },
         ],
-        unoptimized: true,
+        // Image optimization enabled (default behavior)
     },
     // Performance optimizations
     compiler: {
