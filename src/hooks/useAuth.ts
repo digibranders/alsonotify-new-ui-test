@@ -5,6 +5,7 @@ import { setToken, deleteToken, getToken } from "../services/cookies";
 import axiosApi, { setAuthToken } from "../config/axios";
 import { getUserDetails } from "../services/user";
 import { queryKeys } from "../lib/queryKeys";
+import { useUserDetails } from "./useUser";
 
 export const useLogin = () => {
   const router = useRouter();
@@ -127,6 +128,6 @@ export const useCompleteSignup = () => {
 
 export const useAuth = () => {
   const token = getToken();
-  const { data: user } = useUser();
-  return { token, user: user?.result };
+  const { data: userDetails } = useUserDetails();
+  return { token, user: userDetails?.result };
 };

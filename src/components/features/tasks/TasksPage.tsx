@@ -146,7 +146,7 @@ export function TasksPage() {
     // Wait for user details to be sure about the role
     if (!filterInitialized && currentUserName && usersDropdown.length > 0 && userDetailsData) {
       // Check if current user is Admin
-      const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
+      const apiUser = userDetailsData?.result || {};
       const userRole = getRoleFromUser(apiUser);
       const isAdmin = userRole?.toLowerCase() === 'admin';
 
@@ -511,7 +511,7 @@ export function TasksPage() {
     );
   };
 
-  const currentUserId = userDetailsData?.result?.id || userDetailsData?.result?.user?.id;
+  const currentUserId = userDetailsData?.result?.id;
 
   useEffect(() => {
     // side-effects after tasks change (currently none)

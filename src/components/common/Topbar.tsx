@@ -3,8 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { AccessBadge } from '../ui/AccessBadge';
-import Image from 'next/image';
-import { Button, Dropdown, Modal, Input, Select, Popover, Avatar, Badge, Typography, App } from 'antd';
+import { Button, Dropdown, Modal, Input, Select, Avatar, Typography, App } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   Alert24Filled,
@@ -31,7 +30,7 @@ import { FeedbackWidget } from './FeedbackWidget';
 import { useUserDetails } from '@/hooks/useUser';
 import { getRoleFromUser } from '@/utils/roleUtils';
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/useNotification';
-import { useWorkspaces, usePartners } from '@/hooks/useWorkspace';
+import { useWorkspaces } from '@/hooks/useWorkspace';
 import { useEmployees } from '@/hooks/useUser';
 import { searchEmployees } from '@/services/user';
 import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
@@ -159,13 +158,14 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
     }
 
     // Fallback to API data structure directly if local state isn't ready
-    const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {} as any;
+    // useUserDetails result is now the Employee/User object directly
+    const apiUser = userDetailsData?.result || {} as any;
     return apiUser;
   }, [localUser, userDetailsData]);
 
   // Extract first name from user data
   const firstName = useMemo(() => {
-    const userProfile = user?.user_profile || (userDetailsData?.result?.user?.user_profile);
+    const userProfile = user?.user_profile;
     if (userProfile?.first_name) {
       return userProfile.first_name;
     }
@@ -376,7 +376,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
   const isIndividual = accountType === 'INDIVIDUAL';
 
   const isAdmin = useMemo(() => {
-    const userData = userDetailsData?.result?.user || userDetailsData?.result || {};
+    const userData = userDetailsData?.result || {};
     return getRoleFromUser(userData) === 'Admin';
   }, [userDetailsData]);
 

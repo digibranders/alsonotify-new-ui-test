@@ -1,15 +1,11 @@
-"use client";
+'use client';
 
 import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { UploadCloud, User, Check, ArrowRight, Loader2 } from "lucide-react";
 import {
-  message,
   Select,
-  Steps,
-  Button,
-  Upload,
   Input,
   App,
 } from "antd";

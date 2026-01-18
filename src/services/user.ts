@@ -6,8 +6,9 @@ import { CompanyProfile } from "../types/auth";
 import { UserDto, RoleDto, ModuleActionGroupDto, CreateEmployeeRequestDto, UpdateEmployeeRequestDto, UpdateUserProfileRequestDto } from "../types/dto/user.dto";
 
 // Get user details
-export const getUserDetails = async () => {
-  const { data } = await axiosApi.get("/user/details");
+// Get user details
+export const getUserDetails = async (): Promise<ApiResponse<{ user: UserDto; access: any }>> => {
+  const { data } = await axiosApi.get<ApiResponse<{ user: UserDto; access: any }>>("/user/details");
   return data;
 };
 

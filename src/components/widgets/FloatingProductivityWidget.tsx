@@ -54,7 +54,7 @@ export function FloatingProductivityWidget() {
 
   // Fetch Tasks
   const { data: userDetailsData } = useUserDetails();
-  const userId = userDetailsData?.result?.user?.id || userDetailsData?.result?.id;
+  const userId = (userDetailsData?.result as any)?.user?.id || (userDetailsData?.result as any)?.id;
 
   const { data: assignedTasksData } = useQuery({
     queryKey: ['assignedTasks'],

@@ -314,7 +314,6 @@ export interface Employee {
   date_of_joining?: string;
   skills?: string[];
   userEmployee?: { isActive?: boolean; is_active?: boolean };
-  user_employee?: { is_active?: boolean };
   employeeType?: string;
   employee_type?: string;
   employeeAccess?: string;
@@ -322,7 +321,17 @@ export interface Employee {
   company_id?: number;
   isActive?: boolean;
   is_active?: boolean;
+  employee_id?: string;
+  documents?: any[];
+  permissions?: UserPermissions; 
+  user_employee?: { 
+    is_active?: boolean;
+    role?: any; 
+    role_id?: number | null;
+  };
 }
+
+export type UserPermissions = Record<string, Record<string, boolean>>;
 
 export interface CalendarEvent {
   id: number;

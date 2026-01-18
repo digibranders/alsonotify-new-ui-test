@@ -1,10 +1,10 @@
 import axiosApi, { setAuthToken } from "../config/axios";
 import { ApiResponse } from "../constants/constants";
 
-import { LoginResponse } from "../types/auth";
+import { LoginResponseDTO, GenericSuccessDTO, RegisterCompleteResponseDTO, VerifyTokenResponseDTO } from "../types/dto/auth.dto";
 
-export const doLogin = async (params: { email: string; password: string }): Promise<ApiResponse<LoginResponse>> => {
-    const { data } = await axiosApi.post<ApiResponse<LoginResponse>>("/auth/login", params);
+export const doLogin = async (params: { email: string; password: string }): Promise<ApiResponse<LoginResponseDTO>> => {
+    const { data } = await axiosApi.post<ApiResponse<LoginResponseDTO>>("/auth/login", params);
     return data;
 };
 
@@ -12,16 +12,20 @@ export const doSignup = async (
   firstName: string,
   lastName: string,
   email: string,
-  password: string,
-  token: string | null
-): Promise<ApiResponse<{ token: string }>> => {
-    const { data } = await axiosApi.post("/auth/register", {
+  password?: string,
+  token?: string | null
+): Promise<ApiResponse<RegisterCompleteResponseDTO>> => {
+    const { data } = await axiosApi.post<ApiResponse<RegisterCompleteResponseDTO>>("/auth/register", {
       firstName,
       lastName,
       email,
       password,
       token,
     });
+    // If registration immediately logs in, set token
+    if (data.success && data.result?.token) {
+        setAuthToken(data.result.token);
+    }
     return data;
 };
 
@@ -35,8 +39,8 @@ export const doCompleteSignup = async (
   firstName?: string,
   lastName?: string,
   phone?: string
-): Promise<ApiResponse<{ token: string; user: any }>> => { // TODO: Replace 'any' with specific user type if aligned
-    const { data } = await axiosApi.post<ApiResponse<{ token: string; user: any }>>("/auth/register/complete", {
+  ): Promise<ApiResponse<RegisterCompleteResponseDTO>> => {
+    const { data } = await axiosApi.post<ApiResponse<RegisterCompleteResponseDTO>>("/auth/register/complete", {
       registerToken,
       companyName,
       businessType,
@@ -51,29 +55,30 @@ export const doCompleteSignup = async (
     return data;
 };
 
-export const verifyRegisterToken = async (registerToken: string): Promise<ApiResponse<any>> => {
-    const { data } = await axiosApi.get<ApiResponse<any>>(`/auth/register/verify-token?registerToken=${registerToken}`);
+export const verifyRegisterToken = async (registerToken: string): Promise<ApiResponse<VerifyTokenResponseDTO>> => {
+    const { data } = await axiosApi.get<ApiResponse<VerifyTokenResponseDTO>>(`/auth/register/verify-token?registerToken=${registerToken}`);
     return data;
 };
 
-export const forgetPassword = async (email: string): Promise<ApiResponse<any>> => {
-    const { data } = await axiosApi.post<ApiResponse<any>>("/auth/password/forgot", {
+export const forgetPassword = async (email: string): Promise<ApiResponse<GenericSuccessDTO>> => {
+    const { data } = await axiosApi.post<ApiResponse<GenericSuccessDTO>>("/auth/password/forgot", {
       email: email,
     });
     return data;
 };
 
-export const resetPassword = async (reset_token: string, password: string): Promise<ApiResponse<any>> => {
-    const { data } = await axiosApi.post<ApiResponse<any>>("/auth/password/reset", {
+export const resetPassword = async (reset_token: string, password: string): Promise<ApiResponse<GenericSuccessDTO>> => {
+    const { data } = await axiosApi.post<ApiResponse<GenericSuccessDTO>>("/auth/password/reset", {
       reset_token,
       password,
     });
     return data;
 };
 
-export const resendVerificationEmail = async (email: string): Promise<ApiResponse<any>> => {
-    const { data } = await axiosApi.post<ApiResponse<any>>("/auth/resend-verification", {
+export const resendVerificationEmail = async (email: string): Promise<ApiResponse<GenericSuccessDTO>> => {
+    const { data } = await axiosApi.post<ApiResponse<GenericSuccessDTO>>("/auth/resend-verification", {
       email,
     });
     return data;
 };
+

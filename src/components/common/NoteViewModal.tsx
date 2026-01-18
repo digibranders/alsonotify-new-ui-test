@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, KeyboardEvent } from 'react';
 
-import { Modal, Button, Input, Checkbox, App } from 'antd';
+import { Modal, Button, Input, App } from 'antd';
 import { Note, ChecklistItem } from '../../types/domain';
 import { updateNote } from '../../services/notes';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { RichTextEditor, formatText } from './RichTextEditor';
 import { ChecklistEditor } from './ChecklistEditor';
 import { queryKeys } from "../../lib/queryKeys";
-import { Bold, Italic, List, CheckSquare, Trash2, Archive, ArchiveRestore } from 'lucide-react';
+import { Bold, Italic, List, CheckSquare } from 'lucide-react';
 import type { InputRef } from 'antd';
 import { NoteType, convertTextToChecklist, convertChecklistToText, createEmptyChecklistItem } from '../../types/notes';
 
@@ -20,7 +20,7 @@ interface NoteViewModalProps {
   onDelete?: (id: number) => void;
 }
 
-export function NoteViewModal({ open, note, onClose, onEdit, onArchive, onDelete }: NoteViewModalProps) {
+export function NoteViewModal({ open, note, onClose }: NoteViewModalProps) {
   const { message } = App.useApp();
   const queryClient = useQueryClient();
 

@@ -172,7 +172,7 @@ export function ProductivityWidget() {
   // Fetch user details to get current user ID
   const { data: userDetailsData } = useUserDetails();
   const user = useMemo(() => {
-    return userDetailsData?.result?.user || userDetailsData?.result || {};
+    return userDetailsData?.result;
   }, [userDetailsData]);
 
   // Fetch workspaces to map project names

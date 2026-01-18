@@ -101,9 +101,9 @@ export function FloatingTimerBar() {
   // ✅ FIX BUG #21: Use context as single source of truth
   const displayTime = timerState.isRunning ? timerState.elapsedSeconds : localTime;
 
-  // Fetch assigned tasks
   const { data: userDetailsData } = useUserDetails();
-  const userId = userDetailsData?.result?.user?.id || userDetailsData?.result?.id;
+  // Using flattened Employee object from useUserDetails
+  const userId = userDetailsData?.result?.id;
 
   const { data: assignedTasksData, isLoading: tasksLoading } = useQuery({
     queryKey: queryKeys.tasks.assigned(),
@@ -171,7 +171,7 @@ export function FloatingTimerBar() {
         await stopTimer();
         queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
         message.info("Previous timer stopped, switching task");
-      } catch (error) {
+      } catch (_error) {
         message.error("Failed to stop timer");
         setShowTaskSelector(false);
         return;

@@ -168,7 +168,7 @@ export function NoteComposerModal({ open, onClose, onSave, initialNote }: NoteCo
       });
       hasChangesRef.current = false;
       onClose();
-    } catch (error) {
+    } catch (_error) {
       message.error("Failed to save note");
     } finally {
       setIsSaving(false);

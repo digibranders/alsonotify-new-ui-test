@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { Workspace, Requirement, Employee, Client, Task } from '../types/genericTypes';
 import { initialWorkspaces, initialRequirements, initialEmployees, initialClients, initialTasks } from '../data/defaultData';

@@ -2,7 +2,7 @@
 import axiosApi from "../config/axios";
 import { ApiResponse } from "../types/api";
 import { ApiError, NetworkError, getErrorMessage, isAxiosError } from "../types/errors";
-import { TaskDto, WorklogDto, AssignedTaskDetailDto, CreateTaskRequestDto, UpdateTaskRequestDto } from "../types/dto/task.dto";
+import { TaskDto, WorklogDto, AssignedTaskDetailDto, CreateTaskRequestDto, UpdateTaskRequestDto, ActiveTimerResponseDto, RevisionResponseDto } from "../types/dto/task.dto";
 
 /**
  * Validate task ID
@@ -221,15 +221,15 @@ export const getTaskById = async (id: number): Promise<ApiResponse<TaskDto>> => 
 /**
  * Create a worklog/activity for a task
  */
-export const createActivity = async (params: Partial<TaskDto>): Promise<ApiResponse<TaskDto>> => {
+export const createActivity = async (params: Partial<WorklogDto>): Promise<ApiResponse<WorklogDto>> => {
   try {
-    if (!params.id) {
-      throw new ApiError('Task ID is required', 400);
+    if (!params.task_id) {
+      throw new ApiError('Task ID is required (task_id)', 400);
     }
 
-    validateTaskId(params.id);
+    validateTaskId(params.task_id);
 
-    const { data } = await axiosApi.post<ApiResponse<TaskDto>>("/task/worklog/create", params);
+    const { data } = await axiosApi.post<ApiResponse<WorklogDto>>("/task/worklog/create", params);
 
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid response format from server', 500);
@@ -450,18 +450,18 @@ export const provideEstimate = async (id: number, hours: number): Promise<ApiRes
   }
 };
 
-export const getCurrentActiveTimer = async () => {
-  const { data } = await axiosApi.get('/task/active-timer');
+export const getCurrentActiveTimer = async (): Promise<ApiResponse<ActiveTimerResponseDto>> => {
+  const { data } = await axiosApi.get<ApiResponse<ActiveTimerResponseDto>>('/task/active-timer');
   return data;
 };
 
 /**
  * Request a revision for a task
  */
-export const requestRevision = async (id: number, revisionNotes: string): Promise<ApiResponse<any>> => {
+export const requestRevision = async (id: number, revisionNotes: string): Promise<ApiResponse<RevisionResponseDto>> => {
   try {
     validateTaskId(id);
-    const { data } = await axiosApi.post<ApiResponse<any>>(`/task/${id}/revision`, { revisionNotes });
+    const { data } = await axiosApi.post<ApiResponse<RevisionResponseDto>>(`/task/${id}/revision`, { revisionNotes });
     return data;
   } catch (error) {
     if (isAxiosError(error)) {

@@ -4,10 +4,8 @@ import { useRouter } from 'next/navigation';
 
 import { ProgressWidget } from '../../components/dashboard/ProgressWidget';
 import { MeetingsWidget } from '../../components/dashboard/MeetingsWidget';
-import { TodoWidget } from '../../components/dashboard/TodoWidget';
 import { LeavesWidget } from '../../components/dashboard/LeavesWidget';
 import { NotesWidget } from '../../components/dashboard/NotesWidget';
-import { ProductivityWidget } from '../../components/dashboard/ProductivityWidget';
 
 // ... (imports)
 
