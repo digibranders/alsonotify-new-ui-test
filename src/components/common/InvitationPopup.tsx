@@ -69,7 +69,7 @@ export function InvitationPopup() {
             } else {
                 message.error(res.message || 'Failed to accept invitation');
             }
-        } catch (error) {
+        } catch (_error) {
             message.error('Failed to accept invitation');
         } finally {
             setLoading(false);
@@ -92,7 +92,7 @@ export function InvitationPopup() {
             } else {
                 message.error(res.message || 'Failed to decline invitation');
             }
-        } catch (error) {
+        } catch (_error) {
             message.error('Failed to decline invitation');
         } finally {
             setLoading(false);

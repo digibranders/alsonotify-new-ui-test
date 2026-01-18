@@ -1,7 +1,7 @@
 import { UserDto } from '../../types/dto/user.dto';
-import { Employee, User } from '../../types/domain';
+import { Employee, User, UserPermissions } from '../../types/domain';
 
-export const mapUserDtoToEmployee = (dto: UserDto): Employee => {
+export const mapUserDtoToEmployee = (dto: UserDto, permissions?: UserPermissions): Employee => {
   // Strict ID Normalization:
   // Normalize all IDs to the User Table ID (user_id).
   // Some endpoints return UserProfile as root (id = profileId, user_id = userId).
@@ -10,7 +10,13 @@ export const mapUserDtoToEmployee = (dto: UserDto): Employee => {
   
   // Access Level / Role
   // Allow dto.role to pass through (it might be 'Manager', 'Leader', etc.)
-  const access = (dto.employee_access || dto.access || dto.role || 'Employee') as Employee['access'];
+  // Ensure access is treated as string if it comes from DTO
+  const accessString = (typeof dto.access === 'string' ? dto.access : undefined) 
+    || (typeof dto.employee_access === 'string' ? dto.employee_access : undefined)
+    || (typeof dto.role === 'string' ? dto.role : undefined)
+    || 'Employee';
+    
+  const access = accessString as Employee['access'];
   
   // Employment Type
   let employmentType = dto.employment_type || dto.employmentType || 'Full-time';
@@ -34,7 +40,7 @@ export const mapUserDtoToEmployee = (dto: UserDto): Employee => {
     userId: normalizedId,
     profileId: dto.user_id ? dto.id : undefined, // Original Profile ID if user_id was the source
     name: dto.name || '',
-    role: dto.designation || dto.role || 'Unassigned',
+    role: dto.designation || (typeof dto.role === 'object' ? dto.role?.name : dto.role) || 'Unassigned',
     designation: dto.designation,
     email: dto.email || '',
     phone,
@@ -91,6 +97,7 @@ export const mapUserDtoToEmployee = (dto: UserDto): Employee => {
     user_employee: dto.user_employee,
     
     company_id: dto.company_id,
+    permissions: permissions || {},
   };
 };
 
@@ -99,7 +106,7 @@ export const mapUserToDomain = (dto: UserDto): User => {
     id: dto.id,
     name: dto.name || '',
     email: dto.email || '',
-    role: dto.role || '',
+    role: (typeof dto.role === 'object' ? dto.role?.name : dto.role) || '',
     profilePic: dto.profile_pic,
     profile_pic: dto.profile_pic,
     mobileNumber: dto.mobile_number,

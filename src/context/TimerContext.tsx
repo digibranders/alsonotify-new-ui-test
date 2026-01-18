@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { getCurrentActiveTimer } from "../services/task";
@@ -42,17 +42,18 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         const syncTimer = async () => {
             try {
                 const { result } = await getCurrentActiveTimer();
-                if (result) {
-                    const start = new Date(result.start_datetime);
+                if (result && result.active_timer) {
+                    const timer = result.active_timer;
+                    const start = new Date(timer.start_datetime || "");
                     const now = new Date();
                     const elapsed = Math.floor((now.getTime() - start.getTime()) / 1000);
 
                     setTimerState({
                         isRunning: true,
-                        taskId: result.task_id,
-                        taskName: result.task_name,
-                        projectName: result.project_name || result.workspace_name,
-                        worklogId: result.worklog_id,
+                        taskId: timer.task_id,
+                        taskName: timer.task_name || null,
+                        projectName: timer.project_name || timer.workspace_name || null, 
+                        worklogId: timer.id,
                         startTime: start,
                         elapsedSeconds: elapsed,
                     });

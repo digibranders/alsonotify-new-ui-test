@@ -6,7 +6,7 @@ export interface UserDto {
   mobile_number?: string;
   designation?: string;
   is_active?: boolean;
-  role?: string;
+  role?: string | { id?: number; name: string; color?: string };
   role_id?: number;
   roleColor?: string;
   status?: string;
@@ -56,6 +56,7 @@ export interface UserDto {
   user?: { mobile_number?: string; phone?: string }; // Nested user object sometimes returned
   company?: string | { id: number; name: string }; // Company name (from ClientOrOutsourceType) or object
   company_id?: number;
+  companies?: { id: number; name: string }[];
   
   // Partner specific fields
   association_id?: number;

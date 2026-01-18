@@ -10,10 +10,10 @@ interface RoleLike {
 }
 
 interface UserLike {
-  role?: RoleLike | null;
+  role?: RoleLike | string | null;
   role_id?: number | null;
   user_employee?: {
-    role?: RoleLike | null;
+    role?: RoleLike | string | null;
     role_id?: number | null;
   } | null;
 }
@@ -22,7 +22,9 @@ export const getRoleFromUser = (user: UserLike | null | undefined): UserRole => 
     if (!user) return 'Employee';
 
     // 1. Try Role Name (Most reliable)
-    const roleName = user?.role?.name || user?.user_employee?.role?.name;
+    const roleVal = user?.role || user?.user_employee?.role;
+    const roleName = typeof roleVal === 'string' ? roleVal : (roleVal as RoleLike)?.name;
+    
     if (roleName) {
         const roleLower = roleName.toLowerCase().trim();
         if (roleLower === 'admin') return 'Admin';
@@ -44,7 +46,7 @@ export const getRoleFromUser = (user: UserLike | null | undefined): UserRole => 
     // Note: These IDs might change after database reset. Name matching is preferred.
     const roleId = user?.role_id ||
         user?.user_employee?.role_id ||
-        user?.role?.id;
+        (typeof user?.role === 'object' ? (user?.role as RoleLike)?.id : undefined);
 
     if (roleId) {
         const roleIdMapping: Record<number, UserRole> = {

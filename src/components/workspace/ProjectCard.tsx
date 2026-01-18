@@ -93,7 +93,7 @@ export function WorkspaceDetailsPage({ id }: { id: string }) {
   const tasks = useMemo((): ProjectTaskUI[] => {
     if (!tasksData?.result) return [];
     return tasksData.result.map((t: DomainTask) => {
-      const assignedName = typeof t.assignedTo === 'object' ? t.assignedTo?.name : (t.assignedTo || 'Unassigned');
+      const assignedName = (typeof t.assignedTo === 'object' ? t.assignedTo?.name : t.assignedTo) || 'Unassigned';
       
       return {
       // Map service TaskDto to UI Task

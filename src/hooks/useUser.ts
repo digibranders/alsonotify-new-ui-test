@@ -32,7 +32,7 @@ export const useEmployees = (options: string = "") => {
     staleTime: 5 * 1000, // 5 seconds
     select: (data) => ({
       ...data,
-      result: data.result ? data.result.map(mapUserDtoToEmployee) : []
+      result: data.result ? data.result.map((user) => mapUserDtoToEmployee(user)) : []
     })
   });
 };
@@ -138,7 +138,7 @@ export const useUserDetails = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
     select: (data) => ({
       ...data,
-      result: data.result ? mapUserDtoToEmployee({ ...data.result.user, access: data.result.access }) : undefined
+      result: data.result ? mapUserDtoToEmployee(data.result.user, data.result.access) : undefined
     })
   });
 };

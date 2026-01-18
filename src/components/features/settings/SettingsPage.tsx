@@ -247,7 +247,7 @@ export function SettingsPage() {
   const { data: userDetails } = useUserDetails();
 
   const isAdmin = useMemo(() => {
-    const userData = userDetails?.result?.user || userDetails?.result || {};
+    const userData = userDetails?.result || {};
     return getRoleFromUser(userData) === 'Admin';
   }, [userDetails]);
 
@@ -556,7 +556,7 @@ export function SettingsPage() {
 
   // Determine if the user is an employee (not Admin/Owner)
   const isEmployee = useMemo(() => {
-    const userData = userDetails?.result?.user || userDetails?.result || {};
+    const userData = userDetails?.result || {};
     const role = getRoleFromUser(userData);
     return role === 'Employee'; // Assuming 'Employee' is the exact string returned
   }, [userDetails]);

@@ -178,7 +178,7 @@ export function ProfilePage() {
 
     const documents = useMemo(() => {
         // Check if user data has documents
-        return user?.documents || user?.user_profile?.documents || [];
+        return user?.documents || [];
     }, [user]);
 
     // Update profile when user data changes
@@ -477,9 +477,9 @@ export function ProfilePage() {
 
                                 <div className="relative group self-center">
                                     <div className="w-32 h-32 rounded-full overflow-hidden border border-[#EEEEEE] shadow-sm flex items-center justify-center bg-gray-50">
-                                        {(user?.user_profile?.profile_pic || user?.profile_pic) ? (
+                                        {(user?.profile_pic) ? (
                                             <Image
-                                                src={user?.user_profile?.profile_pic || user?.profile_pic || ""}
+                                                src={user?.profile_pic || ""}
                                                 alt="Profile"
                                                 width={128}
                                                 height={128}

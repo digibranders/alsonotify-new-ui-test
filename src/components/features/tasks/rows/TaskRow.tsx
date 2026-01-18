@@ -20,7 +20,7 @@ interface TaskRowProps {
   onStatusChange?: (status: string) => void;
   currentUserId?: number;
   hideRequirements?: boolean;
-  isSender?: boolean;
+
   onRequestRevision?: () => void;
 }
 
@@ -33,7 +33,7 @@ const TaskRowComponent = memo(function TaskRow({
   onStatusChange,
   currentUserId,
   hideRequirements = false,
-  isSender = false,
+
   onRequestRevision
 }: TaskRowProps) {
   const router = useRouter();
@@ -126,7 +126,7 @@ const TaskRowComponent = memo(function TaskRow({
       await stopTimer();
     } else {
       if (isPlayDisabled || isPendingEstimate) return;
-      await startTimer(Number(task.id), task.name, task.project); // Pass task info
+      await startTimer(Number(task.id), task.name, task.project || ''); // Pass task info
     }
   };
 
@@ -271,22 +271,22 @@ const TaskRowComponent = memo(function TaskRow({
           <Avatar.Group max={{ count: 3, style: { color: '#666666', backgroundColor: '#EEEEEE' } }}>
             {task.task_members && task.task_members.length > 0 ? (
               task.task_members.map((member) => (
-                <Tooltip key={member.id} title={`${isSender ? 'Partner Resource' : member.user.name} (${member.status})`}>
+                <Tooltip key={member.id} title={`${member.user.name} (${member.status})`}>
                   <div className="relative">
-                    {member.user.profile_pic && !isSender ? (
+                    {member.user.profile_pic ? (
                       <Avatar src={member.user.profile_pic} />
                     ) : (
                       <Avatar style={{ backgroundColor: '#CCCCCC' }}>
-                        {isSender ? 'P' : (member.user.name ? member.user.name.charAt(0).toUpperCase() : 'U')}
+                        {member.user.name ? member.user.name.charAt(0).toUpperCase() : 'U'}
                       </Avatar>
                     )}
                   </div>
                 </Tooltip>
               ))
             ) : (
-              <Tooltip title={isSender ? 'Partner Resource' : (typeof task.assignedTo === 'string' ? task.assignedTo : task.assignedTo?.name)}>
+              <Tooltip title={typeof task.assignedTo === 'string' ? task.assignedTo : task.assignedTo?.name}>
                 <Avatar style={{ backgroundColor: '#CCCCCC' }}>
-                  {isSender ? 'P' : (task.assignedTo ? (typeof task.assignedTo === 'string' ? task.assignedTo.charAt(0).toUpperCase() : task.assignedTo.name?.charAt(0).toUpperCase()) : 'U')}
+                  {task.assignedTo ? (typeof task.assignedTo === 'string' ? task.assignedTo.charAt(0).toUpperCase() : task.assignedTo.name?.charAt(0).toUpperCase()) : 'U'}
                 </Avatar>
               </Tooltip>
             )}

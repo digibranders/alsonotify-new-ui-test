@@ -162,7 +162,7 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
 
   // Fetch user details for filtering tasks by current user
   const { data: userDetailsData } = useUserDetails();
-  const currentUserId = userDetailsData?.result?.user?.id || userDetailsData?.result?.id;
+  const currentUserId = userDetailsData?.result?.id;
 
   // Calculate Hours Capacity Data
   const hoursData = useMemo(() => {

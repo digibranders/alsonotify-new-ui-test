@@ -27,7 +27,7 @@ export function mapWorkspaceToDomain(dto: WorkspaceDto): Workspace {
     companyName: dto.company_name,
     company_name: dto.company_name,
     
-    client: dto.client || dto.client_user ? { id: dto.client_user?.id || dto.client?.id || 0, name: dto.client_user?.name || dto.client?.name || 'Unknown' } : null,
+    client: dto.client || dto.client_user ? { id: dto.client_user?.id || dto.client?.id || 0, name: dto.client_user?.name || dto.client?.name || null } : null,
     company: dto.company || null,
     
     clientCompanyName: dto.client_company_name || dto.client_user?.name, // fallback

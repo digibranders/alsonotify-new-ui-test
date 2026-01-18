@@ -8,6 +8,7 @@ import { useApplyForLeave } from '@/hooks/useLeave';
 import { createCalendarEvent, CreateEventPayload } from '@/services/calendar';
 import { getErrorMessage } from '@/types/api-utils';
 import { Employee } from '@/types/domain';
+import { FormLayout } from '@/components/common/FormLayout';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -149,122 +150,110 @@ export function CalendarEventForm({
       closeIcon={<X className="w-5 h-5 text-[#666666]" />}
       styles={{ body: { padding: 0 } }}
     >
-      <div className="flex flex-col h-full bg-white">
-        <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-6">
-          <div className="flex items-center justify-between mb-4">
-               <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                  <div className="p-2 rounded-full bg-[#F7F7F7]">
-                      <CalendarIcon className="w-5 h-5 text-[#666666]" />
-                  </div>
-                  {eventType === 'event' ? 'Create Event' : 'Apply Leave'}
+      <FormLayout
+        title={eventType === 'event' ? 'Create Event' : 'Apply Leave'}
+        subtitle={eventType === 'event' 
+            ? 'Schedule a new meeting or event with your team.' 
+            : 'Apply for leave request to your manager.'}
+        icon={CalendarIcon}
+        onCancel={onCancel}
+        onSubmit={handleCreate}
+        isLoading={submitting}
+        submitLabel={eventType === 'event' ? 'Create Event' : 'Apply Leave'}
+        headerExtra={
+          <Segmented
+            options={[
+              { label: 'Event', value: 'event' },
+              { label: 'Leave', value: 'leave' }
+            ]}
+            value={eventType}
+            onChange={(val) => setEventType(val as 'event' | 'leave')}
+            className="bg-[#F7F7F7] p-1 rounded-lg"
+          />
+        }
+      >
+        <div className="space-y-5">
+          {eventType === 'event' ? (
+            <>
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> Title</span>
+                <Input placeholder="Event title" className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.title ? 'bg-white' : 'bg-[#F9FAFB]'}`} value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
               </div>
-              <Segmented
-                  options={[
-                      { label: 'Event', value: 'event' },
-                      { label: 'Leave', value: 'leave' }
-                  ]}
-                  value={eventType}
-                  onChange={(val) => setEventType(val as 'event' | 'leave')}
-                  className="bg-[#F7F7F7] p-1 rounded-lg"
-              />
-          </div>
-          <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
-              {eventType === 'event' 
-                  ? 'Schedule a new meeting or event with your team.' 
-                  : 'Apply for leave request to your manager.'}
-          </p>
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> Start Date & Time</span>
+                <DatePicker showTime format="YYYY-MM-DD HH:mm" placeholder="Select start date & time" className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.startDateTime ? 'bg-white' : 'bg-[#F9FAFB]'}`} value={formData.startDateTime} onChange={(date) => setFormData({ ...formData, startDateTime: date })} suffixIcon={<CalendarIcon className="w-4 h-4 text-[#666666]" />} disabledDate={(current) => current && current < dayjs().startOf('day')} />
+              </div>
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> End Time</span>
+                <div className="flex items-center gap-3">
+                  <Select placeholder="Select duration" className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.duration ? 'bg-white' : 'bg-[#F9FAFB]'}`} value={formData.duration} onChange={(value) => setFormData({ ...formData, duration: value })}>
+                    <Option value="30 mins">30 mins</Option>
+                    <Option value="45 mins">45 mins</Option>
+                    <Option value="1 hour">1 hour</Option>
+                    <Option value="1.5 hours">1.5 hours</Option>
+                    <Option value="2 hours">2 hours</Option>
+                  </Select>
+                  <Input placeholder="Custom time" className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.customTime ? 'bg-white' : 'bg-[#F9FAFB]'}`} value={formData.customTime} onChange={(e) => setFormData({ ...formData, customTime: e.target.value })} suffix={<Clock className="w-4 h-4 text-[#666666]" />} />
+                </div>
+              </div>
+              <AttendeesField attendees={formData.attendees} onAddAttendee={(attendee) => { if (!formData.attendees.some(a => a.email.toLowerCase() === attendee.email.toLowerCase())) { setFormData({ ...formData, attendees: [...formData.attendees, attendee] }); } }} onRemoveAttendee={(index) => { setFormData({ ...formData, attendees: formData.attendees.filter((_, i) => i !== index) }); }} employeesData={employeesData} />
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</span>
+                <div className="space-y-2">
+                  <TextArea placeholder="Agenda, notes, etc." className={`min-h-[120px] rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] resize-none ${formData.description ? 'bg-white' : 'bg-[#F9FAFB]'}`} rows={4} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Leave Type */}
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> Leave Type</span>
+                <Select
+                  placeholder="Select leave type"
+                  className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.leaveType ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                  value={formData.leaveType}
+                  onChange={(value) => setFormData({ ...formData, leaveType: value })}
+                >
+                  {availableLeaveTypes.map(t => <Option key={t} value={t}>{t}</Option>)}
+                </Select>
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> Start Date</span>
+                  <DatePicker format="YYYY-MM-DD" placeholder="Start Date" className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.startDateTime ? 'bg-white' : 'bg-[#F9FAFB]'}`} value={formData.startDateTime} onChange={(date) => setFormData({ ...formData, startDateTime: date })} suffixIcon={<CalendarIcon className="w-4 h-4 text-[#666666]" />} />
+                </div>
+                <div className="space-y-2">
+                  <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> End Date</span>
+                  <DatePicker format="YYYY-MM-DD" placeholder="End Date" className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.endDateTime ? 'bg-white' : 'bg-[#F9FAFB]'}`} value={formData.endDateTime} onChange={(date) => setFormData({ ...formData, endDateTime: date })} suffixIcon={<CalendarIcon className="w-4 h-4 text-[#666666]" />} />
+                </div>
+              </div>
+
+              {/* Day Type */}
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> Day Type</span>
+                <Radio.Group
+                  value={formData.dayType}
+                  onChange={(e) => setFormData({ ...formData, dayType: e.target.value })}
+                  className="flex gap-4"
+                >
+                  <Radio value="Full Day">Full Day</Radio>
+                  <Radio value="First Half">First Half</Radio>
+                  <Radio value="Second Half">Second Half</Radio>
+                </Radio.Group>
+              </div>
+
+              {/* Reason */}
+              <div className="space-y-2">
+                <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> Reason</span>
+                <TextArea placeholder="Reason for leave" className={`min-h-[120px] rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] resize-none ${formData.description ? 'bg-white' : 'bg-[#F9FAFB]'}`} rows={4} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+              </div>
+            </>
+          )}
         </div>
-        
-        <div className="flex-1 overflow-y-auto px-6 py-6">
-          <div className="space-y-5">
-            
-            {eventType === 'event' ? (
-                <>
-                    <div className="space-y-2">
-                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> Title</span>
-                      <Input placeholder="Event title" className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.title ? 'bg-white' : 'bg-[#F9FAFB]'}`} value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
-                    </div>
-                    <div className="space-y-2">
-                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> Start Date & Time</span>
-                      <DatePicker showTime format="YYYY-MM-DD HH:mm" placeholder="Select start date & time" className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.startDateTime ? 'bg-white' : 'bg-[#F9FAFB]'}`} value={formData.startDateTime} onChange={(date) => setFormData({ ...formData, startDateTime: date })} suffixIcon={<CalendarIcon className="w-4 h-4 text-[#666666]" />} disabledDate={(current) => current && current < dayjs().startOf('day')} />
-                    </div>
-                    <div className="space-y-2">
-                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> End Time</span>
-                      <div className="flex items-center gap-3">
-                        <Select placeholder="Select duration" className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.duration ? 'bg-white' : 'bg-[#F9FAFB]'}`} value={formData.duration} onChange={(value) => setFormData({ ...formData, duration: value })}>
-                          <Option value="30 mins">30 mins</Option>
-                          <Option value="45 mins">45 mins</Option>
-                          <Option value="1 hour">1 hour</Option>
-                          <Option value="1.5 hours">1.5 hours</Option>
-                          <Option value="2 hours">2 hours</Option>
-                        </Select>
-                        <Input placeholder="Custom time" className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.customTime ? 'bg-white' : 'bg-[#F9FAFB]'}`} value={formData.customTime} onChange={(e) => setFormData({ ...formData, customTime: e.target.value })} suffix={<Clock className="w-4 h-4 text-[#666666]" />} />
-                      </div>
-                    </div>
-                    <AttendeesField attendees={formData.attendees} onAddAttendee={(attendee) => { if (!formData.attendees.some(a => a.email.toLowerCase() === attendee.email.toLowerCase())) { setFormData({ ...formData, attendees: [...formData.attendees, attendee] }); } }} onRemoveAttendee={(index) => { setFormData({ ...formData, attendees: formData.attendees.filter((_, i) => i !== index) }); }} employeesData={employeesData} />
-                    <div className="space-y-2">
-                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Description</span>
-                      <TextArea placeholder="Agenda, notes, etc." className={`min-h-[120px] rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] resize-none ${formData.description ? 'bg-white' : 'bg-[#F9FAFB]'}`} rows={4} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
-                    </div>
-                </>
-            ) : (
-                <>
-                    {/* Leave Type */}
-                    <div className="space-y-2">
-                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> Leave Type</span>
-                      <Select 
-                          placeholder="Select leave type" 
-                          className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.leaveType ? 'bg-white' : 'bg-[#F9FAFB]'}`} 
-                          value={formData.leaveType} 
-                          onChange={(value) => setFormData({ ...formData, leaveType: value })}
-                      >
-                           {availableLeaveTypes.map(t => <Option key={t} value={t}>{t}</Option>)}
-                      </Select>
-                    </div>
-
-                    {/* Dates */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> Start Date</span>
-                          <DatePicker format="YYYY-MM-DD" placeholder="Start Date" className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.startDateTime ? 'bg-white' : 'bg-[#F9FAFB]'}`} value={formData.startDateTime} onChange={(date) => setFormData({ ...formData, startDateTime: date })} suffixIcon={<CalendarIcon className="w-4 h-4 text-[#666666]" />} />
-                        </div>
-                        <div className="space-y-2">
-                          <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> End Date</span>
-                          <DatePicker format="YYYY-MM-DD" placeholder="End Date" className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.endDateTime ? 'bg-white' : 'bg-[#F9FAFB]'}`} value={formData.endDateTime} onChange={(date) => setFormData({ ...formData, endDateTime: date })} suffixIcon={<CalendarIcon className="w-4 h-4 text-[#666666]" />} />
-                        </div>
-                    </div>
-
-                    {/* Day Type */}
-                    <div className="space-y-2">
-                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> Day Type</span>
-                      <Radio.Group 
-                          value={formData.dayType} 
-                          onChange={(e) => setFormData({ ...formData, dayType: e.target.value })}
-                          className="flex gap-4"
-                      >
-                          <Radio value="Full Day">Full Day</Radio>
-                          <Radio value="First Half">First Half</Radio>
-                          <Radio value="Second Half">Second Half</Radio>
-                      </Radio.Group>
-                    </div>
-
-                    {/* Reason */}
-                    <div className="space-y-2">
-                      <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]"><span className="text-[#ff3b3b]">*</span> Reason</span>
-                      <TextArea placeholder="Reason for leave" className={`min-h-[120px] rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] resize-none ${formData.description ? 'bg-white' : 'bg-[#F9FAFB]'}`} rows={4} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
-                    </div>
-                </>
-            )}
-
-            <div className="flex items-center justify-end gap-4 pt-6">
-              <Button type="text" onClick={onCancel} className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg">Cancel</Button>
-              <Button type="primary" onClick={handleCreate} loading={submitting} className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none">
-                  {eventType === 'event' ? 'Create Event' : 'Apply Leave'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+      </FormLayout>
     </Modal>
   );
 }

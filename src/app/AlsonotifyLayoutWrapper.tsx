@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { InvitationPopup } from '../components/common/InvitationPopup';
 import { FloatingMenuProvider } from '../context/FloatingMenuContext';
 import { FloatingTimerBar } from '../components/common/FloatingTimerBar';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 interface AlsonotifyLayoutWrapperProps {
   children: ReactNode;
@@ -28,7 +29,9 @@ export function AlsonotifyLayoutWrapper({ children }: Readonly<AlsonotifyLayoutW
     <SidebarProvider>
       <FloatingMenuProvider>
         <AlsonotifyLayoutContent>
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </AlsonotifyLayoutContent>
       </FloatingMenuProvider>
     </SidebarProvider>
@@ -52,7 +55,8 @@ function AlsonotifyLayoutContent({ children }: Readonly<AlsonotifyLayoutWrapperP
     }
 
     // Handle different API response structures or localStorage fallback if needed
-    let user = userDetailsData?.result?.user || userDetailsData?.result;
+    // useUserDetails now maps to a flattened Employee object, so use result directly.
+    let user = userDetailsData?.result;
 
     // Fallback to localStorage if API data not yet available
     if (!user) {
@@ -60,13 +64,13 @@ function AlsonotifyLayoutContent({ children }: Readonly<AlsonotifyLayoutWrapperP
     }
 
     return {
-      userRole: getRoleFromUser(user || {}),
-      userRoleColor: user?.user_employee?.role?.color || user?.role?.color
+      userRole: getRoleFromUser(user),
+      userRoleColor: user?.roleColor
     };
   }, [userDetailsData, isMounted]);
 
   // Extract permissions
-  const permissions = useMemo(() => userDetailsData?.result?.access || {}, [userDetailsData]);
+  const permissions = useMemo(() => userDetailsData?.result?.permissions || {}, [userDetailsData]);
 
   const pathname = usePathname();
 
@@ -77,7 +81,7 @@ function AlsonotifyLayoutContent({ children }: Readonly<AlsonotifyLayoutWrapperP
 
     // Find if the current path matches any protected resource in navPermissionMap
     const currentPath = pathname || '';
-    const protectedResource = Object.entries(navPermissionMap).find(([id, perm]) => {
+    const protectedResource = Object.entries(navPermissionMap).find(([id, _perm]) => {
       // Check for exact match or child route match (e.g. /dashboard/tasks/1 matches /dashboard/tasks)
       const pathToCheck = `/dashboard/${id}`;
       return currentPath === pathToCheck || currentPath.startsWith(`${pathToCheck}/`);

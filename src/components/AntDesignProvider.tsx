@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { AntdRegistry } from '@ant-design/nextjs-registry';
 import { ConfigProvider, App } from "antd";

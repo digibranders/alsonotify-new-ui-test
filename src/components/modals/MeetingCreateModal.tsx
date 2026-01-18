@@ -6,6 +6,7 @@ import { useEmployees } from '@/hooks/useUser';
 import { createCalendarEvent, CreateEventPayload } from '../../services/calendar';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '../../lib/queryKeys';
+import { FormLayout } from '../common/FormLayout';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -155,128 +156,104 @@ export function MeetingCreateModal({
         body: { padding: 0 },
       }}
     >
-      <div className="flex flex-col h-full bg-white">
-        <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-6">
-          <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-2">
-            <div className="p-2 rounded-full bg-[#F7F7F7]">
-              <CalendarIcon className="w-5 h-5 text-[#666666]" />
-            </div>
-            Create Event
+      <FormLayout
+        title="Create Event"
+        subtitle="Schedule a new meeting or event with your team."
+        icon={CalendarIcon}
+        onCancel={handleCancel}
+        onSubmit={handleCreateEvent}
+        isLoading={submitting}
+        submitLabel="Create"
+      >
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+              <span className="text-[#ff3b3b]">*</span> Title
+            </span>
+            <Input
+              placeholder="Event title"
+              className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.title ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            />
           </div>
-          <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif] ml-11">
-            Schedule a new meeting or event with your team.
-          </p>
-        </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-6">
-          <div className="space-y-5">
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                <span className="text-[#ff3b3b]">*</span> Title
-              </span>
+          <div className="space-y-2">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+              <span className="text-[#ff3b3b]">*</span> Start Date & Time
+            </span>
+            <DatePicker
+              showTime
+              format="YYYY-MM-DD HH:mm"
+              placeholder="Select start date & time"
+              className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.startDateTime ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+              value={formData.startDateTime}
+              onChange={(date) => setFormData({ ...formData, startDateTime: date })}
+              suffixIcon={<CalendarIcon className="w-4 h-4 text-[#666666]" />}
+              disabledDate={(current) => current && current < dayjs().startOf('day')}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+              <span className="text-[#ff3b3b]">*</span> End Time
+            </span>
+            <div className="flex items-center gap-3">
+              <Select
+                placeholder="Select duration"
+                className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.duration ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                value={formData.duration}
+                onChange={(value) => setFormData({ ...formData, duration: value })}
+              >
+                <Option value="30 mins">30 mins</Option>
+                <Option value="45 mins">45 mins</Option>
+                <Option value="1 hour">1 hour</Option>
+                <Option value="1.5 hours">1.5 hours</Option>
+                <Option value="2 hours">2 hours</Option>
+              </Select>
               <Input
-                placeholder="Event title"
-                className={`h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.title ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                placeholder="Custom time"
+                className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.customTime ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+                value={formData.customTime}
+                onChange={(e) => setFormData({ ...formData, customTime: e.target.value })}
+                suffix={<Clock className="w-4 h-4 text-[#666666]" />}
               />
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                <span className="text-[#ff3b3b]">*</span> Start Date & Time
-              </span>
-              <DatePicker
-                showTime
-                format="YYYY-MM-DD HH:mm"
-                placeholder="Select start date & time"
-                className={`w-full h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.startDateTime ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                value={formData.startDateTime}
-                onChange={(date) => setFormData({ ...formData, startDateTime: date })}
-                suffixIcon={<CalendarIcon className="w-4 h-4 text-[#666666]" />}
-                disabledDate={(current) => current && current < dayjs().startOf('day')}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                <span className="text-[#ff3b3b]">*</span> End Time
-              </span>
-              <div className="flex items-center gap-3">
-                <Select
-                  placeholder="Select duration"
-                  className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] ${formData.duration ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                  value={formData.duration}
-                  onChange={(value) => setFormData({ ...formData, duration: value })}
-                >
-                  <Option value="30 mins">30 mins</Option>
-                  <Option value="45 mins">45 mins</Option>
-                  <Option value="1 hour">1 hour</Option>
-                  <Option value="1.5 hours">1.5 hours</Option>
-                  <Option value="2 hours">2 hours</Option>
-                </Select>
-                <Input
-                  placeholder="Custom time"
-                  className={`flex-1 h-11 rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] ${formData.customTime ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                  value={formData.customTime}
-                  onChange={(e) => setFormData({ ...formData, customTime: e.target.value })}
-                  suffix={<Clock className="w-4 h-4 text-[#666666]" />}
-                />
-              </div>
-            </div>
-
-            <AttendeesField
-              attendees={formData.attendees}
-              onAddAttendee={(attendee) => {
-                if (!formData.attendees.some(a => a.email.toLowerCase() === attendee.email.toLowerCase())) {
-                  setFormData({
-                    ...formData,
-                    attendees: [...formData.attendees, attendee],
-                  });
-                }
-              }}
-              onRemoveAttendee={(index) => {
+          <AttendeesField
+            attendees={formData.attendees}
+            onAddAttendee={(attendee) => {
+              if (!formData.attendees.some(a => a.email.toLowerCase() === attendee.email.toLowerCase())) {
                 setFormData({
                   ...formData,
-                  attendees: formData.attendees.filter((_, i) => i !== index),
+                  attendees: [...formData.attendees, attendee],
                 });
-              }}
-              employeesData={employeesData}
+              }
+            }}
+            onRemoveAttendee={(index) => {
+              setFormData({
+                ...formData,
+                attendees: formData.attendees.filter((_, i) => i !== index),
+              });
+            }}
+            employeesData={employeesData}
+          />
+
+          <div className="space-y-2">
+            <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
+              Description
+            </span>
+            <TextArea
+              placeholder="Agenda, notes, etc."
+              className={`min-h-[120px] rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] resize-none ${formData.description ? 'bg-white' : 'bg-[#F9FAFB]'}`}
+              rows={4}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
-
-            <div className="space-y-2">
-              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                Description
-              </span>
-              <TextArea
-                placeholder="Agenda, notes, etc."
-                className={`min-h-[120px] rounded-lg border border-[#EEEEEE] focus:border-[#EEEEEE] font-['Manrope:Medium',sans-serif] resize-none ${formData.description ? 'bg-white' : 'bg-[#F9FAFB]'}`}
-                rows={4}
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              />
-            </div>
-
-            <div className="flex items-center justify-end gap-4 pt-6">
-              <Button
-                type="text"
-                onClick={handleCancel}
-                className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="primary"
-                onClick={handleCreateEvent}
-                loading={submitting}
-                className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
-              >
-                Create
-              </Button>
-            </div>
           </div>
         </div>
-      </div>
+      </FormLayout>
     </Modal>
   );
 }

@@ -11,6 +11,19 @@ export interface WorklogDto {
   end_datetime?: string;
   created_user?: number;
   created_at?: string;
+  // Fields present when fetched via active-timer
+  task_name?: string;
+  project_name?: string;
+  workspace_name?: string;
+}
+
+export interface ActiveTimerResponseDto {
+  active_timer: WorklogDto | null;
+}
+
+export interface RevisionResponseDto {
+  success: boolean;
+  message: string;
 }
 
 export interface CommentDto {

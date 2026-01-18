@@ -1,13 +1,14 @@
 
 import axiosApi from "../config/axios";
 import { ApiResponse } from "../types/api";
-import { ProfileUpdateInput, CompanyUpdateInput } from "../types/genericTypes";
+import { CompanyUpdateInput } from "../types/genericTypes";
 import { CompanyProfile } from "../types/auth";
 import { UserDto, RoleDto, ModuleActionGroupDto, CreateEmployeeRequestDto, UpdateEmployeeRequestDto, UpdateUserProfileRequestDto } from "../types/dto/user.dto";
 
 // Get user details
-export const getUserDetails = async () => {
-  const { data } = await axiosApi.get("/user/details");
+// Get user details
+export const getUserDetails = async (): Promise<ApiResponse<{ user: UserDto; access: any }>> => {
+  const { data } = await axiosApi.get<ApiResponse<{ user: UserDto; access: any }>>("/user/details");
   return data;
 };
 
@@ -81,7 +82,7 @@ export const updateCurrentUserProfile = async (
 
 // Update user password
 export const updateCurrentUserPassword = async (params: { password: string, currentPassword?: string }): Promise<ApiResponse<unknown>> => {
-  const { data } = await axiosApi.post<ApiResponse<any>>(`/user/password`, params);
+  const { data } = await axiosApi.post<ApiResponse<unknown>>(`/user/password`, params);
   return data;
 };
 

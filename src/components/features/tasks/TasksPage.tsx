@@ -146,7 +146,7 @@ export function TasksPage() {
     // Wait for user details to be sure about the role
     if (!filterInitialized && currentUserName && usersDropdown.length > 0 && userDetailsData) {
       // Check if current user is Admin
-      const apiUser = userDetailsData?.result?.user || userDetailsData?.result || {};
+      const apiUser = userDetailsData?.result || {};
       const userRole = getRoleFromUser(apiUser);
       const isAdmin = userRole?.toLowerCase() === 'admin';
 
@@ -323,7 +323,7 @@ export function TasksPage() {
     const normalizedStatus = status.replace(/\s+/g, '_');
 
     // Map to backend enum values
-    const validStatuses: ITaskStatus[] = ['Assigned', 'In_Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'];
+    const validStatuses: ITaskStatus[] = ['Assigned', 'In_Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck', 'Pending'];
     const matchedStatus = validStatuses.find(s => s === normalizedStatus || s.toLowerCase() === normalizedStatus.toLowerCase());
 
     return matchedStatus || 'Assigned'; // Default to Assigned
@@ -511,7 +511,7 @@ export function TasksPage() {
     );
   };
 
-  const currentUserId = userDetailsData?.result?.id || userDetailsData?.result?.user?.id;
+  const currentUserId = userDetailsData?.result?.id;
 
   useEffect(() => {
     // side-effects after tasks change (currently none)
@@ -642,6 +642,48 @@ export function TasksPage() {
     });
   };
 
+  /**
+   * Handles bulk deletion of selected tasks.
+   * Shows a confirmation modal before proceeding with concurrent deletion requests.
+   */
+  const handleBulkDelete = () => {
+    Modal.confirm({
+      title: 'Delete Tasks',
+      content: `Are you sure you want to delete ${selectedTasks.length} tasks?`,
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          await Promise.all(selectedTasks.map(id => deleteTaskMutation.mutateAsync(parseInt(id))));
+          message.success(`${selectedTasks.length} tasks deleted`);
+          setSelectedTasks([]);
+        } catch (error) {
+          message.error('Failed to delete some tasks');
+        }
+      },
+    });
+  };
+
+  /**
+   * Handles bulk completion of selected tasks.
+   * Updates status to 'Completed' for all selected items concurrently.
+   */
+  const handleBulkComplete = async () => {
+    try {
+      await Promise.all(
+        selectedTasks.map(id => {
+          // Use status 'Completed' (matching backend enum)
+          return updateTaskMutation.mutateAsync({ id: parseInt(id), status: 'Completed' } as any);
+        })
+      );
+      message.success(`${selectedTasks.length} tasks marked as completed`);
+      setSelectedTasks([]);
+    } catch (error) {
+       message.error('Failed to complete some tasks');
+    }
+  };
+
   // Get total count from API response
   const totalTasks = useMemo(() => {
     const firstTask = tasksData?.result?.[0] as TaskDto | undefined;
@@ -751,22 +793,6 @@ export function TasksPage() {
     const backendCounts = firstTask?.status_counts || {};
     const allTasks = (statsData?.result || []) as Task[];
 
-    // Calculate delayed count: tasks where end_date < today AND not completed
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayTime = today.getTime();
-
-    let delayedCount = 0;
-    allTasks.forEach((t: Task) => {
-      if (t.end_date && t.status !== 'Completed') {
-        const endDateObj = new Date(t.end_date);
-        endDateObj.setHours(0, 0, 0, 0);
-        if (endDateObj.getTime() < todayTime) {
-          delayedCount++;
-        }
-      }
-    });
-
     // Calculate total from counts if available
     const calculatedTotal = (backendCounts.All) ||
       ((backendCounts.Assigned || 0) + (backendCounts.In_Progress || 0) +
@@ -780,7 +806,8 @@ export function TasksPage() {
       'In_Progress': (backendCounts.In_Progress || 0) + (backendCounts.Delayed || 0) +
         (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0) + (backendCounts.Review || 0),
       'Completed': backendCounts.Completed || 0,
-      'Delayed': delayedCount > 0 ? delayedCount : ((backendCounts.Delayed || 0) + (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0)),
+      // Use explicit Overdue count from backend if available, fallback to Delayed status + Impediment + Stuck
+      'Delayed': backendCounts.Overdue ?? ((backendCounts.Delayed || 0) + (backendCounts.Impediment || 0) + (backendCounts.Stuck || 0)),
     };
   }, [statsData, totalTasks]);
 
@@ -823,17 +850,25 @@ export function TasksPage() {
 
             <div className="flex items-center gap-2">
               <Tooltip title="Mark as Completed">
-                <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <button 
+                  onClick={handleBulkComplete}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                >
                   <CheckSquare className="w-4 h-4" />
                 </button>
               </Tooltip>
+              {/* Assign To - Future implementation 
               <Tooltip title="Assign To">
                 <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
                   <Users className="w-4 h-4" />
                 </button>
               </Tooltip>
+              */}
               <Tooltip title="Delete">
-                <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]">
+                <button 
+                  onClick={handleBulkDelete}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </Tooltip>

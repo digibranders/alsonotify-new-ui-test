@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useTimer } from "../../context/TimerContext";
 import { Button } from "antd";

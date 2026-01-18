@@ -194,7 +194,7 @@ export default function AdminFeedbackPage() {
 
   // Check if user is Admin
   const isAdmin = useMemo(() => {
-    const userData = userDetails?.result?.user || userDetails?.result || {};
+    const userData = userDetails?.result || {};
     return getRoleFromUser(userData) === 'Admin';
   }, [userDetails]);
 

@@ -1,10 +1,9 @@
-"use client";
+'use client';
 
 import { ReactNode } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import BrandLogo from "@/assets/images/logo-white.png";
 import { useRouter } from "next/navigation";
 

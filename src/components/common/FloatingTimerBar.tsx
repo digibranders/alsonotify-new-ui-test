@@ -23,6 +23,7 @@ interface TaskOption {
   id: number;
   name: string;
   project: string;
+  estimatedTime: number;
 }
 
 export function FloatingTimerBar() {
@@ -100,9 +101,9 @@ export function FloatingTimerBar() {
   // ✅ FIX BUG #21: Use context as single source of truth
   const displayTime = timerState.isRunning ? timerState.elapsedSeconds : localTime;
 
-  // Fetch assigned tasks
   const { data: userDetailsData } = useUserDetails();
-  const userId = userDetailsData?.result?.user?.id || userDetailsData?.result?.id;
+  // Using flattened Employee object from useUserDetails
+  const userId = userDetailsData?.result?.id;
 
   const { data: assignedTasksData, isLoading: tasksLoading } = useQuery({
     queryKey: queryKeys.tasks.assigned(),
@@ -114,15 +115,16 @@ export function FloatingTimerBar() {
   const tasks: TaskOption[] = (assignedTasksData?.result || [])
     .filter((t) => {
       const status = (t.status || '').toLowerCase();
-      return (status === 'assigned' || status.includes('in_progress') || status.includes('impediment')) 
-        && !status.includes('completed');
+      // Filter out completed tasks to show only active, review, or workable items
+      return !status.includes('completed');
     })
     .map((t) => ({
       id: t.id,
       name: t.name || t.title || "Untitled Task",
       project: t.task_workspace?.name || 
                t.task_project?.company?.name || 
-               "Unknown Project"
+               "Unknown Project",
+      estimatedTime: t.estimated_time || 0
     }));
 
   const formatTime = (seconds: number) => {
@@ -161,12 +163,19 @@ export function FloatingTimerBar() {
     }
   };
 
-  const handleTaskSelect = (task: TaskOption) => {
-    // If timer is running on a different task, stop it first
+  const handleTaskSelect = async (task: TaskOption) => {
+    // Automatically stop the current timer when switching to a different task
+    // to ensure accurate time tracking and prevent overlapping sessions.
     if (timerState.isRunning && timerState.taskId !== task.id) {
-      message.warning("Please stop the current timer before switching tasks");
-      setShowTaskSelector(false);
-      return;
+      try {
+        await stopTimer();
+        queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
+        message.info("Previous timer stopped, switching task");
+      } catch (_error) {
+        message.error("Failed to stop timer");
+        setShowTaskSelector(false);
+        return;
+      }
     }
     
     setSelectedTaskId(task.id);
@@ -174,7 +183,8 @@ export function FloatingTimerBar() {
     setShowTaskSelector(false);
   };
 
-  // ✅ FIX BUG #19: Improved complete button behavior
+  // Handle task completion by stopping the timer and updating state.
+  // This ensures the worklog is closed properly before any status changes.
   const handleComplete = async () => {
     if (!timerState.isRunning || !selectedTaskId) {
       message.warning("No active timer to complete");
@@ -215,10 +225,20 @@ export function FloatingTimerBar() {
         `}
       >
         {/* Progress Bar at Bottom */}
-        <div 
-          className="absolute bottom-0 left-0 h-[4px] bg-[#ff3b3b] transition-all duration-1000 ease-linear"
-          style={{ width: timerState.isRunning ? `${(localTime % 60) * (100/60)}%` : '0%' }}
-        />
+        {(() => {
+          const currentTask = tasks.find(t => t.id === (timerState.taskId || selectedTaskId));
+          const estimatedSeconds = (currentTask?.estimatedTime || 0) * 3600;
+          const progress = (timerState.isRunning && estimatedSeconds > 0) 
+            ? Math.min((displayTime / estimatedSeconds) * 100, 100) 
+            : (timerState.isRunning ? (displayTime % 60) * (100/60) : 0);
+          
+          return (
+            <div 
+              className="absolute bottom-0 left-0 h-[4px] bg-[#ff3b3b] transition-all duration-1000 ease-linear"
+              style={{ width: `${progress}%` }}
+            />
+          );
+        })()}
 
         {/* Expanded Content (Bulk Actions) */}
         {expandedContent && (
@@ -322,7 +342,7 @@ export function FloatingTimerBar() {
           </button>
           <button
             className="text-white hover:text-white/80 transition-all active:scale-90 disabled:opacity-50"
-            title="Mark as Complete (Stop Timer)"
+            title="Stop Timer & Save Worklog"
             onClick={handleComplete}
             disabled={timerLoading}
           >

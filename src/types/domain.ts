@@ -10,8 +10,8 @@ export interface Requirement {
   title: string;
   name?: string;
   description: string;
-  company: string;
-  client: string;
+  company: string | null;
+  client: string | null;
   assignedTo: string[];
   dueDate: string;
   createdDate: string;
@@ -76,10 +76,10 @@ export interface Requirement {
   quoted_price?: number; // covered by quotedPrice
   totalTask?: number;
   total_task?: number;
-  leaderUser?: { name: string; id?: number; avatar?: string };
-  leader_user?: { name: string; id?: number; avatar?: string };
-  managerUser?: { name: string; id?: number; avatar?: string };
-  manager_user?: { name: string; id?: number; avatar?: string };
+  leaderUser?: { name: string | null; id?: number; avatar?: string };
+  leader_user?: { name: string | null; id?: number; avatar?: string };
+  managerUser?: { name: string | null; id?: number; avatar?: string };
+  manager_user?: { name: string | null; id?: number; avatar?: string };
   senderCompany?: { name: string; id?: number };
   sender_company?: { name: string; id?: number };
   documentLink?: string;
@@ -103,16 +103,16 @@ export interface Requirement {
   contact_person?: { name: string; id: number };
 }
 
-export type TaskStatus = 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck' | 'In Progress' | 'Todo';
+export type TaskStatus = 'Assigned' | 'In_Progress' | 'Completed' | 'Delayed' | 'Impediment' | 'Review' | 'Stuck' | 'Pending' | 'In Progress' | 'Todo';
 
 export interface Task {
   id: string;
   name: string;
   taskId: string;
-  client: string;
-  project: string;
-  leader: string;
-  assignedTo: string | { name: string; id: number };
+  client: string | null;
+  project: string | null;
+  leader: string | null;
+  assignedTo: string | { name: string; id: number } | null;
   startDate: string;
   dueDate: string;
   estTime: number;
@@ -203,12 +203,12 @@ export interface Task {
     company?: { name: string };
     company_name?: string;
   };
-  memberUser?: { name: string; id: number; profilePic?: string; profile_pic?: string };
-  member_user?: { name: string; id: number; profile_pic?: string };
-  leaderUser?: { name: string; id: number; profilePic?: string; profile_pic?: string };
-  leader_user?: { name: string; id: number; profile_pic?: string };
-  assignedToUser?: { name: string; id: number };
-  assigned_to_user?: { name: string; id: number };
+  memberUser?: { name: string | null; id: number; profilePic?: string; profile_pic?: string };
+  member_user?: { name: string | null; id: number; profile_pic?: string };
+  leaderUser?: { name: string | null; id: number; profilePic?: string; profile_pic?: string };
+  leader_user?: { name: string | null; id: number; profile_pic?: string };
+  assignedToUser?: { name: string | null; id: number };
+  assigned_to_user?: { name: string | null; id: number };
   // assignedTo already defined as string, but UI usage suggests object or string
   // Changing base definition to union
   assigned_to?: { name: string; id: number } | string; // Sometimes string in older parts
@@ -246,8 +246,8 @@ export interface Workspace {
   partner_name?: string;
   companyName?: string;
   company_name?: string;
-  client?: { id: number; name: string } | null;
-  client_user?: { id: number; name: string } | null;
+  client?: { id: number; name: string | null } | null;
+  client_user?: { id: number; name: string | null } | null;
   company?: { id: number; name: string } | null;
   // Additional fields used in ProjectCard
   clientCompanyName?: string;
@@ -314,7 +314,6 @@ export interface Employee {
   date_of_joining?: string;
   skills?: string[];
   userEmployee?: { isActive?: boolean; is_active?: boolean };
-  user_employee?: { is_active?: boolean };
   employeeType?: string;
   employee_type?: string;
   employeeAccess?: string;
@@ -322,7 +321,17 @@ export interface Employee {
   company_id?: number;
   isActive?: boolean;
   is_active?: boolean;
+  employee_id?: string;
+  documents?: any[];
+  permissions?: UserPermissions; 
+  user_employee?: { 
+    is_active?: boolean;
+    role?: any; 
+    role_id?: number | null;
+  };
 }
+
+export type UserPermissions = Record<string, Record<string, boolean>>;
 
 export interface CalendarEvent {
   id: number;

@@ -32,7 +32,7 @@ export function TaskDetailsPage() {
   const [selectedSteps, setSelectedSteps] = useState<string[]>([]);
 
   // Access Control
-  const isAdmin = currentUser?.role?.name?.toLowerCase() === 'admin';
+  const isAdmin = currentUser?.role?.toLowerCase() === 'admin';
   const isMember = task?.task_members?.some((tm: any) => tm.user_id === currentUser?.id);
   const isLeader = task?.leader_id === currentUser?.id;
   const isAssignee = task?.member_id === currentUser?.id;

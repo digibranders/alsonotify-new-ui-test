@@ -7,14 +7,12 @@ const axiosApi = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// Helper to set auth token consistently (both casings for compatibility)
+// Helper to set auth token consistently
 export const setAuthToken = (token: string | null) => {
   if (token) {
     axiosApi.defaults.headers.common["Authorization"] = token;
-    axiosApi.defaults.headers.common["authorization"] = token;
   } else {
     delete axiosApi.defaults.headers.common["Authorization"];
-    delete axiosApi.defaults.headers.common["authorization"];
   }
 };
 
@@ -30,7 +28,6 @@ axiosApi.interceptors.request.use(
     const token = cookies.get("_token");
     if (token) {
       config.headers.Authorization = token;
-      config.headers.authorization = token;
     }
     return config;
   },

@@ -318,14 +318,14 @@ export function RequirementsPage() {
   // Fetch collaborative requirements (where my company is receiver)
   const { data: collaborativeData, isLoading: isLoadingCollaborative } = useCollaborativeRequirements();
   const { data: userData } = useUserDetails();
-  // userData.result = { user, access, token }
-  // We need user.company_id for role detection
-  const currentUser = userData?.result?.user;
+  // userData.result is the Employee/User object directly
+  // We need company_id for role detection
+  const currentUser = userData?.result;
   
   console.log('CurrentUser DEBUG:', {
     rawUserData: userData,
     resultUser: userData?.result?.user,
-    companyId: userData?.result?.user?.company_id,
+    companyId: userData?.result?.company_id,
   });
 
 
@@ -838,7 +838,7 @@ export function RequirementsPage() {
       req.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       req.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (req.company || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      req.client.toLowerCase().includes(searchQuery.toLowerCase());
+      (req.client || '').toLowerCase().includes(searchQuery.toLowerCase());
 
     // Category - match if filter is 'All' or if requirement has the selected department
     const categoryMatch = filters.category === 'All' ||
