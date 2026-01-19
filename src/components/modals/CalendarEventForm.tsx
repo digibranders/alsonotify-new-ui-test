@@ -148,7 +148,15 @@ export function CalendarEventForm({
       centered
       className="rounded-[16px] overflow-hidden"
       closeIcon={<X className="w-5 h-5 text-[#666666]" />}
-      styles={{ body: { padding: 0 } }}
+      styles={{ 
+        body: { 
+          padding: 0,
+          maxHeight: '80vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        } 
+      }}
     >
       <FormLayout
         title={eventType === 'event' ? 'Create Event' : 'Apply Leave'}

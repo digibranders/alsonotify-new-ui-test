@@ -323,8 +323,8 @@ function HoursBar({ data, onClick }: HoursBarProps) {
         {/* Stats Section */}
         <div className="flex items-center gap-4 min-w-[170px]">
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-[#666666] font-medium font-['Inter',sans-serif]">Allotted:</span>
-            <span className="text-[12px] font-bold text-[#111111] font-['Manrope',sans-serif]">{data.allotted}h</span>
+            <span className="text-[10px] text-[#666666] font-medium font-['Inter',sans-serif]">Balance:</span>
+            <span className="text-[12px] font-bold text-[#111111] font-['Manrope',sans-serif]">{data.remaining}h</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] text-[#666666] font-medium font-['Inter',sans-serif]">Total:</span>

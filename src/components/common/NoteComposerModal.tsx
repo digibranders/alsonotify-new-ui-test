@@ -3,6 +3,7 @@ import { Modal, Input, Button, InputRef, App } from 'antd';
 import { Bold, Italic, List, CheckSquare } from 'lucide-react';
 import { RichTextEditor, formatText } from './RichTextEditor';
 import { ChecklistEditor } from './ChecklistEditor';
+import { FormLayout } from './FormLayout';
 import { NoteType, ChecklistItem, convertTextToChecklist, convertChecklistToText, isNoteEmpty, createEmptyChecklistItem } from '../../types/notes';
 import { DEFAULT_NOTE_COLOR, NOTE_COLORS } from '../../utils/colorUtils';
 
@@ -241,12 +242,9 @@ export function NoteComposerModal({ open, onClose, onSave, initialNote }: NoteCo
       destroyOnHidden
       styles={{
         body: {
-          height: 'auto',
-          maxHeight: '85vh',
+          padding: 0,
+          height: '80vh',
           overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          padding: '24px'
         }
       }}
       afterOpenChange={(visible) => {
@@ -255,147 +253,127 @@ export function NoteComposerModal({ open, onClose, onSave, initialNote }: NoteCo
         }
       }}
     >
-      <div onKeyDown={handleKeyDown} tabIndex={-1}>
-        <div className="border-b border-[#EEEEEE] mb-6 pb-4 flex-shrink-0">
-          <h2 className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">
-            {initialNote ? 'Edit Note' : 'Add Note'}
-          </h2>
-          <p className="font-['Manrope:Regular',sans-serif] text-[14px] text-[#666666] mt-1">
-            Create a new sticky note for quick reminders and tasks.
-          </p>
-        </div>
-
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="flex flex-col space-y-4 flex-shrink-0">
-            {/* Title Input */}
-            <div className="flex-shrink-0">
-              <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Title</span>
-              <Input
-                ref={titleInputRef}
-                placeholder="Note title"
-                className="rounded-lg font-['Manrope:Medium',sans-serif]"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  hasChangesRef.current = true;
-                }}
-              />
-            </div>
-
-            {/* Type Toggle Button */}
-            <div className="flex items-center justify-between flex-shrink-0">
-              <Button
-                type="text"
-                onClick={handleTypeToggle}
-                className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666] hover:text-[#111111] p-0 h-auto"
-              >
-                {noteType === 'TEXT_NOTE' ? (
-                  <>
-                    <CheckSquare className="size-4 inline mr-1" />
-                    Show checkboxes
-                  </>
-                ) : (
-                  <>
-                    <List className="size-4 inline mr-1" />
-                    Hide checkboxes
-                  </>
-                )}
-              </Button>
-
-              {/* Formatting Buttons (only for text notes) - Google Keep style: minimal formatting */}
-              {noteType === 'TEXT_NOTE' && (
-                <div className="flex gap-1">
-                  <button type="button" onClick={() => handleFormat('bold')} className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Bold" aria-label="Bold">
-                    <Bold className="size-4 text-[#666666]" />
-                  </button>
-                  <button type="button" onClick={() => handleFormat('italic')} className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Italic" aria-label="Italic">
-                    <Italic className="size-4 text-[#666666]" />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Content Editor */}
-            <div
-              className="border border-[#d9d9d9] rounded-lg overflow-hidden flex flex-col flex-shrink-0"
-              style={{
-                minHeight: '200px',
-                maxHeight: '400px'
-              }}
-            >
-              {noteType === 'TEXT_NOTE' ? (
-                <RichTextEditor
-                  value={content}
-                  onChange={(newContent) => {
-                    setContent(newContent);
+      <div onKeyDown={handleKeyDown} className="h-full" tabIndex={-1}>
+        <FormLayout
+          title={initialNote ? 'Edit Note' : 'Add Note'}
+          subtitle="Create a new sticky note for quick reminders and tasks."
+          onCancel={handleClose}
+          onSubmit={handleSave}
+          submitLabel={initialNote ? 'Update Note' : 'Add Note'}
+          isLoading={isSaving}
+          isEditing={!!initialNote}
+        >
+            <div className="flex flex-col space-y-4">
+              {/* Title Input */}
+              <div>
+                <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Title</span>
+                <Input
+                  ref={titleInputRef}
+                  placeholder="Note title"
+                  className="rounded-lg font-['Manrope:Medium',sans-serif]"
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
                     hasChangesRef.current = true;
                   }}
-                  placeholder="Note content..."
-                  style={{ minHeight: '200px', maxHeight: '400px', overflowY: 'auto' }}
                 />
-              ) : (
-                <div
-                  className="p-3"
-                  style={{
-                    maxHeight: '400px',
-                    overflowY: 'auto',
-                    flex: 1,
-                    minHeight: 0
-                  }}
-                >
-                  <ChecklistEditor
-                    items={items}
-                    onChange={(newItems) => {
-                      setItems(newItems);
-                      hasChangesRef.current = true;
-                    }}
-                    placeholder="List"
-                  />
-                </div>
-              )}
-            </div>
+              </div>
 
-            {/* Color Picker */}
-            <div className="flex-shrink-0">
-              <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Color</span>
-              <div className="flex gap-2">
-                {NOTE_COLORS.map((c) => (
-                  <button
-                    key={c}
-                    className={`w-10 h-10 rounded-lg border-2 transition-colors ${color === c ? 'border-[#111111]' : 'border-transparent hover:border-[#ff3b3b]'}`}
-                    style={{ backgroundColor: c }}
-                    aria-label={`Select color ${c}`}
-                    aria-pressed={color === c}
-                    type="button"
-                    onClick={() => {
-                      setColor(c);
+              {/* Type Toggle Button */}
+              <div className="flex items-center justify-between">
+                <Button
+                  type="text"
+                  onClick={handleTypeToggle}
+                  className="text-[13px] font-['Manrope:Medium',sans-serif] text-[#666666] hover:text-[#111111] p-0 h-auto"
+                >
+                  {noteType === 'TEXT_NOTE' ? (
+                    <>
+                      <CheckSquare className="size-4 inline mr-1" />
+                      Show checkboxes
+                    </>
+                  ) : (
+                    <>
+                      <List className="size-4 inline mr-1" />
+                      Hide checkboxes
+                    </>
+                  )}
+                </Button>
+
+                {/* Formatting Buttons (only for text notes) - Google Keep style: minimal formatting */}
+                {noteType === 'TEXT_NOTE' && (
+                  <div className="flex gap-1">
+                    <button type="button" onClick={() => handleFormat('bold')} className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Bold" aria-label="Bold">
+                      <Bold className="size-4 text-[#666666]" />
+                    </button>
+                    <button type="button" onClick={() => handleFormat('italic')} className="p-1 hover:bg-[#F7F7F7] rounded transition-colors" title="Italic" aria-label="Italic">
+                      <Italic className="size-4 text-[#666666]" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Content Editor */}
+              <div
+                className="border border-[#d9d9d9] rounded-lg overflow-hidden flex flex-col"
+                style={{
+                  minHeight: '200px',
+                  maxHeight: '400px'
+                }}
+              >
+                {noteType === 'TEXT_NOTE' ? (
+                  <RichTextEditor
+                    value={content}
+                    onChange={(newContent) => {
+                      setContent(newContent);
                       hasChangesRef.current = true;
                     }}
+                    placeholder="Note content..."
+                    style={{ minHeight: '200px', maxHeight: '400px', overflowY: 'auto' }}
                   />
-                ))}
+                ) : (
+                  <div
+                    className="p-3"
+                    style={{
+                      maxHeight: '400px',
+                      overflowY: 'auto',
+                      flex: 1,
+                      minHeight: 0
+                    }}
+                  >
+                    <ChecklistEditor
+                      items={items}
+                      onChange={(newItems) => {
+                        setItems(newItems);
+                        hasChangesRef.current = true;
+                      }}
+                      placeholder="List"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Color Picker */}
+              <div>
+                <span className="text-[14px] font-['Manrope:Medium',sans-serif] text-[#666666] mb-2 block">Color</span>
+                <div className="flex gap-2 flex-wrap">
+                  {NOTE_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      className={`w-10 h-10 rounded-lg border-2 transition-colors ${color === c ? 'border-[#111111]' : 'border-transparent hover:border-[#ff3b3b]'}`}
+                      style={{ backgroundColor: c }}
+                      aria-label={`Select color ${c}`}
+                      aria-pressed={color === c}
+                      type="button"
+                      onClick={() => {
+                        setColor(c);
+                        hasChangesRef.current = true;
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Action Buttons - Always visible at bottom */}
-          <div className="flex items-center justify-end gap-4 pt-4 mt-4 border-t border-[#EEEEEE] flex-shrink-0 bg-white">
-            <Button
-              type="text"
-              onClick={handleClose}
-              className="h-[44px] px-4 text-[14px] font-['Manrope:SemiBold',sans-serif] text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] transition-colors rounded-lg"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="primary"
-              onClick={handleSave}
-              loading={isSaving}
-              className="h-[44px] px-8 rounded-lg bg-[#111111] hover:bg-[#000000]/90 text-white text-[14px] font-['Manrope:SemiBold',sans-serif] transition-transform active:scale-95 border-none"
-            >
-              {initialNote ? 'Update Note' : 'Add Note'}
-            </Button>
-          </div>
-        </div>
+        </FormLayout>
       </div>
     </Modal>
   );
