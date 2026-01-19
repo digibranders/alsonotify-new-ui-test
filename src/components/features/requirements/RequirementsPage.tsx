@@ -306,7 +306,7 @@ export function RequirementsPage() {
         invoiceStatus: mockInvoiceStatus as 'paid' | 'billed' | undefined,
         estimatedCost: req.estimatedCost || (req.budget || undefined),
         budget: req.budget || undefined,
-        quotedPrice: req.quotedPrice || undefined, // Add quoted_price for vendor quotes
+        quotedPrice: req.quotedPrice || req.quoted_price || undefined, // Add quoted_price for vendor quotes
         hourlyRate: req.hourlyRate || undefined,
         estimatedHours: req.estimatedHours || undefined,
         pricingModel: mockPricingModel as 'hourly' | 'project' | undefined,

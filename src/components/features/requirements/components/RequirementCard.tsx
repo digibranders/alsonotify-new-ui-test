@@ -213,6 +213,7 @@ export function RequirementCard({
   };
   
   const costDisplay = getCostDisplay();
+  
 
   return (
     <div
