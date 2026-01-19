@@ -47,7 +47,7 @@ export function FormLayout({
   className = "",
 }: FormLayoutProps) {
   return (
-    <div className={`flex flex-col h-full bg-white ${className}`}>
+    <div className={`flex flex-col min-h-0 max-h-full bg-white ${className}`}>
       {/* Fixed Header */}
       <div className="flex-shrink-0 border-b border-[#EEEEEE] px-6 py-4">
         <div className="flex items-center justify-between">
