@@ -1300,7 +1300,7 @@ export function RequirementsPage() {
         styles={{
           body: {
             padding: 0,
-            maxHeight: 'calc(100vh - 100px)',
+            maxHeight: '80vh',
             display: 'flex',
             flexDirection: 'column',
           },

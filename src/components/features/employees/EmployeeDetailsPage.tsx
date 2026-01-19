@@ -419,19 +419,18 @@ export function EmployeeDetailsPage() {
         width={700}
         centered
         className="rounded-[16px] overflow-hidden"
+        styles={{
+          body: {
+            padding: 0,
+            maxHeight: '80vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          },
+        }}
       >
-        <div className="p-0">
-          <div className="border-b border-[#EEEEEE] mb-6 pb-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-[20px] font-['Manrope:Bold',sans-serif] text-[#111111]">
-                {/* User icon could be added here similar to EmployeesPage */}
-                Edit Employee Details
-              </div>
-            </div>
-            <p className="text-[13px] text-[#666666] font-['Manrope:Regular',sans-serif]">
-              Update employee profile, access, and HR details.
-            </p>
-          </div>
+        <div className="h-full flex flex-col">
+
 
           <EmployeeForm
             departments={departmentsData?.result?.filter((dept: { is_active?: boolean; name?: string }) => dept.is_active !== false).map((dept) => dept.name) || []}

@@ -514,8 +514,10 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         styles={{
           body: {
             padding: 0,
-            height: '80vh',
+            maxHeight: '80vh',
             overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
           }
         }}
       >
@@ -559,7 +561,10 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         styles={{
           body: {
             padding: 0,
-            height: '80vh',
+            maxHeight: '80vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
           }
         }}
       >

@@ -1246,7 +1246,13 @@ export function ProductivityWidget() {
         footer={null}
         width={600}
         styles={{
-          body: { padding: 0 },
+          body: { 
+            padding: 0,
+            maxHeight: '80vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          },
         }}
         className="worklog-modal"
       >

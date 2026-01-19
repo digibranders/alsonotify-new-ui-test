@@ -121,8 +121,10 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
             styles={{
                 body: {
                     padding: 0,
-                    height: 'calc(100vh - 100px)',
+                    maxHeight: '80vh',
                     overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column',
                 },
             }}
         >
@@ -135,7 +137,7 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
                 onCancel={onCancel}
                 isLoading={createWorkspaceMutation.isPending || updateWorkspaceMutation.isPending}
                 submitLabel={initialData ? 'Update Workspace' : 'Create Workspace'}
-                className="h-[500px]" // Limit height to ensure scrolling if content grows, or let it auto-expand
+                className="h-full"
             >
                 <div className="grid grid-cols-2 gap-6">
                     {/* Workspace Name */}
