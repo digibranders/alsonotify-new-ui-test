@@ -45,9 +45,13 @@ export function RequirementCard({
     if (requirement.type === 'outsourced') {
       const status = requirement.rawStatus;
       
-      // Sender (A) sees pending when status = Review (reviewing quote)
+      // Sender (A) sees pending when:
       if (requirement.isSender) {
-        return status === 'Review';
+        // - Status = Waiting (sent to partner, awaiting quote)
+        if (status === 'Waiting') return true;
+        // - Status = Review (received quote from partner, needs to review)
+        if (status === 'Review') return true;
+        return false;
       }
       
       // Receiver (B) sees pending when:
@@ -57,7 +61,7 @@ export function RequirementCard({
         // - Status = Assigned AND no workspace mapped (needs to map workspace)
         if (status === 'Assigned' && !requirement.receiver_workspace_id) return true;
         // - Status = Review (quote submitted, waiting for sender's response - passive waiting)
-        if (status === 'Review') return true; // ✅ FIXED: Include Review for receiver
+        if (status === 'Review') return true; 
         return false; // Explicitly false for other statuses
       }
     }
@@ -420,7 +424,7 @@ export function RequirementCard({
 
         {/* Right: Status or Action */}
         <div className="flex items-center gap-3">
-          {costDisplay && !isPending && requirement.status !== 'draft' && (
+          {costDisplay && (
              <span className={`text-[12px] font-['Manrope:Bold',sans-serif] ${requirement.type === 'outsourced' ? 'text-[#ff3b3b]' : 'text-[#7ccf00]'}`}>
                 {costDisplay}
              </span>
@@ -440,13 +444,18 @@ export function RequirementCard({
                   <X className="w-3 h-3" />
                 </button>
               )}
-              <button 
-                onClick={(e) => { e.stopPropagation(); onAccept?.(); }}
-                className="px-2 h-6 flex items-center justify-center rounded-full bg-[#7ccf00] text-white hover:bg-[#6bb800] transition-all shadow-sm text-[10px] font-bold whitespace-nowrap"
-                title="Approve"
-              >
-                {getApproveButtonText()}
-              </button>
+              {/* Only show accept/approve button if there is an action for the current user */}
+              {((requirement.isReceiver && (requirement.rawStatus === 'Waiting' || requirement.rawStatus === 'Rejected' || (requirement.rawStatus === 'Assigned' && !requirement.receiver_workspace_id))) || 
+                (requirement.isSender && requirement.rawStatus === 'Review') ||
+                (!requirement.type || requirement.type === 'inhouse' || requirement.type === 'client')) && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onAccept?.(); }}
+                  className="px-2 h-6 flex items-center justify-center rounded-full bg-[#7ccf00] text-white hover:bg-[#6bb800] transition-all shadow-sm text-[10px] font-bold whitespace-nowrap"
+                  title="Approve"
+                >
+                  {getApproveButtonText()}
+                </button>
+              )}
             </div>
           ) : (
              <div 

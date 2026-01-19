@@ -229,31 +229,39 @@ export function RequirementsPage() {
       // - Receiver sees: INHOUSE badge, shows Sender's name/company
       
       // Header Contact: Who is on the OTHER end of this requirement?
-      // - If I'm Sender (A): Show Receiver's contact (contact_person / receiver)
-      // - If I'm Receiver (B): Show Sender's name (created_user_data / created_user / sender)
+      // - If I'm Sender (A): Show Receiver's info (partner company name or contact person from receiver side)
+      // - If I'm Receiver (B): Show Sender's info (the person who created/sent the requirement)
       let headerContact: string | undefined;
       let headerCompany: string | undefined;
       
       if (req.type === 'outsourced') {
         if (isSender) {
-          // Sender (A) views: Show receiver info (B's contact name and B's company)
-          // Priority: contact_person -> receiver_company name as fallback
-          headerContact = req.contact_person?.name || req.receiver_company?.name || undefined;
-          headerCompany = req.receiver_company?.name || undefined;
-          // Don't show company if it's the same as contact (when using company as fallback)
-          if (headerContact && headerCompany && headerContact === headerCompany) {
+          // Sender (A) views: Show receiver info (B's company/contact)
+          // Sender (A) views: Show receiver info (B's contact and company)
+          const contactName = req.contact_person?.name;
+          const creatorName = req.created_user_data?.name;
+          const receiverCompanyName = req.receiver_company?.name;
+
+          // Avoid showing creator as contact if it accidentally matches (outsourced should always have distinct receiver contact)
+          const isContactSameAsCreator = (!!contactName && !!creatorName && contactName === creatorName);
+          
+          if (isContactSameAsCreator) {
+            headerContact = receiverCompanyName || 'Partner';
             headerCompany = undefined;
+          } else {
+            headerContact = contactName || receiverCompanyName || 'Partner';
+            headerCompany = (receiverCompanyName && receiverCompanyName !== headerContact) ? receiverCompanyName : undefined;
           }
         } else if (isReceiver) {
           // Receiver (B) views: Show sender info (A's name and A's company)
-          // Priority: created_user_data -> created_user -> sender_company name as fallback
-          headerContact = req.created_user_data?.name || req.created_user?.name || req.sender_company?.name || undefined;
-          headerCompany = req.sender_company?.name || undefined;
-          // Don't show company if it's the same as contact
-          if (headerContact && headerCompany && headerContact === headerCompany) {
+          headerContact = req.created_user_data?.name || req.sender_company?.name || 'Sender';
+          headerCompany = req.sender_company?.name;
+          
+          if (headerContact === headerCompany) {
             headerCompany = undefined;
           }
-        } else {
+        }
+ else {
           // Not directly involved (shouldn't happen for outsourced)
           headerContact = undefined;
           headerCompany = undefined;
@@ -614,12 +622,18 @@ export function RequirementsPage() {
     if (activeStatusTab === 'pending') {
       // For outsourced requirements, use explicit logic
       if (req.type === 'outsourced') {
+        const isSender = req.isSender;
+        const isReceiver = req.isReceiver;
+
         // Waiting for B to submit quote
         if (req.rawStatus === 'Waiting') return true;
         // Waiting for A to review quote
         if (req.rawStatus === 'Review') return true;
-        // Waiting for B to map workspace (quote accepted but not mapped)
-        if (req.rawStatus === 'Assigned' && !req.receiver_workspace_id) return true;
+        
+        // For Receiver (B): Waiting to map workspace
+        if (isReceiver && req.rawStatus === 'Assigned' && !req.receiver_workspace_id) return true;
+        
+        // For Sender (A): Once Assigned, it's no longer pending action from them
         return false;
       }
       
@@ -628,15 +642,24 @@ export function RequirementsPage() {
       return isPendingWorkflow || req.approvalStatus === 'pending';
     }
 
-
     // Active Tab: Workspace mapped and work in progress
     if (activeStatusTab === 'active') {
       // For outsourced requirements, use explicit logic
       if (req.type === 'outsourced') {
-        // Workspace mapped - ready to work
-        if (req.rawStatus === 'Assigned' && req.receiver_workspace_id) return true;
-        // Actively being worked on
-        if (req.rawStatus === 'In_Progress') return true;
+        const isSender = req.isSender;
+        const isReceiver = req.isReceiver;
+
+        // For Sender (A): Approved (Assigned) and In_Progress are active
+        if (isSender) {
+          if (req.rawStatus === 'Assigned' || req.rawStatus === 'In_Progress') return true;
+        }
+
+        // For Receiver (B): Only active if mapped OR in progress
+        if (isReceiver) {
+          if (req.rawStatus === 'Assigned' && req.receiver_workspace_id) return true;
+          if (req.rawStatus === 'In_Progress') return true;
+        }
+
         return false;
       }
       
