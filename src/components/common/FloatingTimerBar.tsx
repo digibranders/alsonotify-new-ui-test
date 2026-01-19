@@ -220,7 +220,7 @@ export function FloatingTimerBar() {
       <div 
         className={`
           bg-[#111111] text-white rounded-full shadow-2xl flex items-center border border-[#111111]
-          transition-all duration-300 ease-out h-[60px] relative overflow-hidden
+          transition-all duration-300 ease-out h-[48px] relative overflow-hidden
           ${expandedContent ? 'px-6 gap-4' : 'px-8 gap-6'}
         `}
       >
