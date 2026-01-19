@@ -141,7 +141,7 @@ export function RequirementsForm({
             budget: Number(formData.budget) || 0,
             end_date: formData.dueDate ? dayjs(formData.dueDate).toISOString() : undefined,
             start_date: new Date().toISOString(),
-            priority: formData.is_high_priority ? 'High' : 'Medium', // Map boolean to string expected by DTO/Backend
+            // Note: priority enum removed - backend uses is_high_priority boolean directly
         };
 
         onSubmit(payload, selectedFiles);
