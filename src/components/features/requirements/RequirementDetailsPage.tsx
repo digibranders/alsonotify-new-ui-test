@@ -1083,9 +1083,8 @@ export function RequirementDetailsPage() {
         styles={{
           body: {
             padding: 0,
-            maxHeight: 'calc(100vh - 100px)',
-            display: 'flex',
-            flexDirection: 'column',
+            height: 'calc(100vh - 100px)',
+            overflow: 'hidden',
           },
         }}
       >

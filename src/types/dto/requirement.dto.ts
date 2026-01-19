@@ -33,6 +33,7 @@ export interface RequirementDto {
   type?: string;
   category?: string;
   departments?: string[];
+  department?: { name: string; id: number };
   progress?: number;
   tasksCompleted?: number;
   tasksTotal?: number;

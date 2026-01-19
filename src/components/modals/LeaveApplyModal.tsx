@@ -82,7 +82,11 @@ export function LeaveApplyModal({
       destroyOnHidden
       closeIcon={<X className="w-5 h-5 text-[#666666]" />}
       styles={{
-        body: { padding: 0 },
+        body: { 
+          padding: 0,
+          height: '80vh',
+          overflow: 'hidden',
+        },
       }}
     >
       <FormLayout

@@ -3,12 +3,12 @@ import axiosApi from "../config/axios";
 import { ApiResponse } from "../types/api";
 import { CompanyUpdateInput } from "../types/genericTypes";
 import { CompanyProfile } from "../types/auth";
-import { UserDto, RoleDto, ModuleActionGroupDto, CreateEmployeeRequestDto, UpdateEmployeeRequestDto, UpdateUserProfileRequestDto } from "../types/dto/user.dto";
+import { UserDto, RoleDto, ModuleActionGroupDto, CreateEmployeeRequestDto, UpdateEmployeeRequestDto, UpdateUserProfileRequestDto, UserAccessDto } from "../types/dto/user.dto";
 
 // Get user details
 // Get user details
-export const getUserDetails = async (): Promise<ApiResponse<{ user: UserDto; access: any }>> => {
-  const { data } = await axiosApi.get<ApiResponse<{ user: UserDto; access: any }>>("/user/details");
+export const getUserDetails = async (): Promise<ApiResponse<{ user: UserDto; access: UserAccessDto }>> => {
+  const { data } = await axiosApi.get<ApiResponse<{ user: UserDto; access: UserAccessDto }>>("/user/details");
   return data;
 };
 

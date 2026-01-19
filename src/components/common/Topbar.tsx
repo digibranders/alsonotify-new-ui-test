@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AccessBadge } from '../ui/AccessBadge';
 import { Button, Dropdown, Modal, Input, Select, Avatar, Typography, App } from 'antd';
@@ -122,46 +122,14 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
     return () => clearInterval(interval);
   }, []);
 
-  // Sync user from local storage on mount to avoid hydration mismatch
-  const [localUser, setLocalUser] = useState<unknown>(null);
-
-  useEffect(() => {
-    // Initial load from local storage
-    const stored = localStorage.getItem("user");
-    if (stored) {
-      try {
-        setLocalUser(JSON.parse(stored));
-      } catch (e) {
-        console.error("Failed to parse user from local storage", e);
-      }
-    }
-  }, []);
-
-  // Sync API data back to localStorage to keep it fresh
-  useEffect(() => {
-    if (userDetailsData?.result?.user) {
-      const newUser = userDetailsData.result.user;
-      setLocalUser(newUser);
-      localStorage.setItem("user", JSON.stringify(newUser));
-    } else if (userDetailsData?.result && !userDetailsData.result.user) {
-       // Handle case where result is the user object directly
-       const newUser = userDetailsData.result;
-       setLocalUser(newUser);
-       localStorage.setItem("user", JSON.stringify(newUser));
-    }
-  }, [userDetailsData]);
+  // Removed localUser state and localStorage sync to prevent PII exposure
+  // We now rely entirely on React Query state which is hydrated from the API
 
   const user = useMemo(() => {
-    // Prefer the most recent data (which will be setLocalUser from API if available, or initial load)
-    if (localUser && typeof localUser === 'object' && ('name' in localUser || 'first_name' in localUser || 'email' in localUser)) {
-        return localUser as { name?: string; first_name?: string; email?: string; user_profile?: { first_name?: string; profile_pic?: string }; company?: { account_type?: string }; profile_pic?: string; role?: { name: string; color?: string } };
-    }
-
-    // Fallback to API data structure directly if local state isn't ready
-    // useUserDetails result is now the Employee/User object directly
+    // Return API data directly
     const apiUser = userDetailsData?.result || {} as any;
     return apiUser;
-  }, [localUser, userDetailsData]);
+  }, [userDetailsData]);
 
   // Extract first name from user data
   const firstName = useMemo(() => {
@@ -176,7 +144,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
       return user.name.split(' ')[0] || user.name;
     }
     return user?.email?.split('@')[0] || 'User';
-  }, [user, userDetailsData]);
+  }, [user]);
 
   // Determine role for UI - prefer prop if passed from authoritative Layout
   const mappedRole = userRole;
@@ -546,6 +514,8 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         styles={{
           body: {
             padding: 0,
+            height: '80vh',
+            overflow: 'hidden',
           }
         }}
       >

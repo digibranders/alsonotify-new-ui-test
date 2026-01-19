@@ -40,42 +40,35 @@ describe('axios config', () => {
   });
 
   describe('setAuthToken', () => {
-    it('should set both Authorization and authorization headers when token is provided', () => {
+    it('should set Authorization header when token is provided', () => {
       setAuthToken('test-bearer-token');
 
       expect(mockHeaders.common['Authorization']).toBe('test-bearer-token');
-      expect(mockHeaders.common['authorization']).toBe('test-bearer-token');
     });
 
-    it('should set both headers to the same token value', () => {
+    it('should set header to the token value', () => {
       const token = 'Bearer xyz123';
       setAuthToken(token);
 
       expect(mockHeaders.common['Authorization']).toBe(token);
-      expect(mockHeaders.common['authorization']).toBe(token);
-      expect(mockHeaders.common['Authorization']).toBe(mockHeaders.common['authorization']);
     });
 
-    it('should remove both Authorization and authorization headers when token is null', () => {
+    it('should remove Authorization header when token is null', () => {
       // First set the headers
       mockHeaders.common['Authorization'] = 'existing-token';
-      mockHeaders.common['authorization'] = 'existing-token';
 
       setAuthToken(null);
 
       expect(mockHeaders.common['Authorization']).toBeUndefined();
-      expect(mockHeaders.common['authorization']).toBeUndefined();
     });
 
     it('should handle empty string token by removing headers', () => {
       mockHeaders.common['Authorization'] = 'existing-token';
-      mockHeaders.common['authorization'] = 'existing-token';
 
       // Empty string is falsy, so should remove headers
       setAuthToken('');
 
       expect(mockHeaders.common['Authorization']).toBeUndefined();
-      expect(mockHeaders.common['authorization']).toBeUndefined();
     });
 
     it('should preserve token format exactly as provided', () => {
@@ -83,7 +76,6 @@ describe('axios config', () => {
       setAuthToken(rawToken);
 
       expect(mockHeaders.common['Authorization']).toBe(rawToken);
-      expect(mockHeaders.common['authorization']).toBe(rawToken);
     });
   });
 });

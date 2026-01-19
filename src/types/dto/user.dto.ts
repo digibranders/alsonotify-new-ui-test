@@ -58,6 +58,8 @@ export interface UserDto {
   company_id?: number;
   companies?: { id: number; name: string }[];
   
+  partner_company?: { name: string; id?: number };
+  
   // Partner specific fields
   association_id?: number;
   partner_user_id?: number;
@@ -66,6 +68,8 @@ export interface UserDto {
   timezone?: string;
   user_id?: number;
 }
+
+export type UserAccessDto = Record<string, Record<string, boolean>>;
 
 // Role types for access management
 export interface RoleDto {

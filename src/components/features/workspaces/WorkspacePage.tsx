@@ -202,7 +202,7 @@ export function WorkspacePage() {
             </button>
             <WorkspaceForm
               open={isDialogOpen}
-              initialData={selectedWorkspaceForEdit}
+              initialData={selectedWorkspaceForEdit || undefined}
               onCancel={() => { setIsDialogOpen(false); setSelectedWorkspaceForEdit(null); }}
               onSuccess={() => {
                 setIsDialogOpen(false);

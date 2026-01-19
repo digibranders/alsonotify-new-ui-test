@@ -6,15 +6,25 @@ import { usePartners, useCurrentUserCompany } from '@/hooks/useUser';
 import { FormLayout } from '@/components/common/FormLayout';
 
 import { CreateWorkspaceRequestDto, UpdateWorkspaceRequestDto } from '@/types/dto/workspace.dto';
+import { UserDto } from '@/types/dto/user.dto';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
+export interface WorkspaceFormData {
+    id?: number;
+    name: string;
+    description?: string;
+    partner_id?: number | null;
+    in_house?: boolean;
+    inHouse?: boolean; // Form state legacy
+}
+
 interface WorkspaceFormProps {
     open: boolean;
     onCancel: () => void;
-    onSuccess?: (data?: any) => void;
-    initialData?: any; // Added for edit mode
+    onSuccess?: (data?: unknown) => void;
+    initialData?: WorkspaceFormData; 
 }
 
 const defaultWorkspaceData = {
@@ -39,11 +49,11 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
         if (open) {
             if (initialData) {
                 setNewWorkspace({
-                    id: initialData.id,
+                    id: initialData.id ?? null,
                     name: initialData.name || '',
                     description: initialData.description || '',
                     partner_id: initialData.partner_id || null,
-                    inHouse: initialData.in_house ?? !initialData.partner_id,
+                    inHouse: initialData.in_house ?? (initialData.inHouse ?? !initialData.partner_id),
                 });
             } else {
                 setNewWorkspace(defaultWorkspaceData);
@@ -58,7 +68,7 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
             return;
         }
 
-        if (initialData) {
+        if (initialData?.id) {
             const updatePayload: UpdateWorkspaceRequestDto = {
                 id: initialData.id,
                 name: newWorkspace.name,
@@ -67,7 +77,7 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
                 in_house: newWorkspace.inHouse,
             };
             updateWorkspaceMutation.mutate(updatePayload, {
-                onSuccess: (data: any) => {
+                onSuccess: (data: unknown) => {
                     message.success(`Workspace updated successfully!`);
                     if (onSuccess) onSuccess(data);
                     onCancel();
@@ -85,7 +95,7 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
                 in_house: newWorkspace.inHouse,
             };
             createWorkspaceMutation.mutate(createPayload, {
-                onSuccess: (data: any) => {
+                onSuccess: (data: unknown) => {
                     message.success(`Workspace created successfully!`);
                     if (onSuccess) onSuccess(data);
                     onCancel();
@@ -111,11 +121,8 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
             styles={{
                 body: {
                     padding: 0,
-                    maxHeight: 'calc(100vh - 100px)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    // FormLayout handles inner height and scroll
-                    height: 'auto', 
+                    height: 'calc(100vh - 100px)',
+                    overflow: 'hidden',
                 },
             }}
         >
@@ -166,13 +173,14 @@ export function WorkspaceForm({ open, onCancel, onSuccess, initialData }: Worksp
                                 {companyData?.result?.name || 'My Company'} (Self)
                             </Option>
                             {partnersData?.result
-                                ?.filter((partner: any) => partner.company_id != null)
-                                .map((partner: any, index: number) => {
+                                ?.filter((partner: UserDto) => partner.company_id != null)
+                                .map((partner: UserDto, index: number) => {
                                     // Use company_id (Company ID) for partner_id FK, not partner_user_id (User ID)
                                     const partnerId = partner.company_id;
+                                    const companyName = typeof partner.company === 'string' ? partner.company : partner.company?.name;
                                     return (
                                         <Option key={partnerId ?? `partner-${index}`} value={partnerId} className="rounded-lg mb-1">
-                                            {partner.company || partner.partner_company?.name || partner.email || partner.name}
+                                            {companyName || partner.partner_company?.name || partner.email || partner.name}
                                         </Option>
                                     );
                                 })}

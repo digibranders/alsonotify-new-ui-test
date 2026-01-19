@@ -58,9 +58,10 @@ function AlsonotifyLayoutContent({ children }: Readonly<AlsonotifyLayoutWrapperP
     // useUserDetails now maps to a flattened Employee object, so use result directly.
     let user = userDetailsData?.result;
 
-    // Fallback to localStorage if API data not yet available
+    // Fallback to localStorage removed for security (PII protection)
+    // We rely on React Query hydration. If not ready, we default to Employee/undefined which is safe.
     if (!user) {
-      user = JSON.parse(localStorage.getItem("user") || "{}");
+      // user = JSON.parse(localStorage.getItem("user") || "{}"); // Removed
     }
 
     return {

@@ -1,0 +1,117 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Modal, Input, App } from 'antd';
+
+interface QuotationDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: (data: { cost?: number; rate?: number; hours?: number }) => void;
+  pricingModel?: 'hourly' | 'project';
+}
+
+/**
+ * Dialog for submitting quotations for requirements.
+ * Supports both hourly and project-based pricing models.
+ */
+export function QuotationDialog({
+  open,
+  onOpenChange,
+  onConfirm,
+  pricingModel
+}: QuotationDialogProps) {
+  const { message: messageApi } = App.useApp();
+  const [amount, setAmount] = useState('');
+  const [rate, setRate] = useState('');
+  const [hours, setHours] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setAmount('');
+      setRate('');
+      setHours('');
+    }
+  }, [open]);
+
+  const handleConfirm = () => {
+    if (pricingModel === 'hourly') {
+      if (!rate || !hours) {
+        messageApi.error("Please enter rate and hours");
+        return;
+      }
+      onConfirm({
+        rate: parseFloat(rate),
+        hours: parseFloat(hours),
+        cost: parseFloat(rate) * parseFloat(hours)
+      });
+    } else {
+      if (!amount) {
+        messageApi.error("Please enter an amount");
+        return;
+      }
+      onConfirm({ cost: parseFloat(amount) });
+    }
+    onOpenChange(false);
+  };
+
+  return (
+    <Modal
+      open={open}
+      onCancel={() => onOpenChange(false)}
+      onOk={handleConfirm}
+      title="Submit Quotation"
+      okText="Send Quotation"
+      cancelText="Cancel"
+      okButtonProps={{ className: 'bg-[#111111] hover:bg-[#000000]/90' }}
+      width={400}
+      centered
+    >
+      <div className="space-y-4 py-4">
+        <p className="text-[13px] text-[#666666] font-['Inter:Regular',sans-serif]">
+          Please provide the final quotation details for this {pricingModel === 'hourly' ? 'hourly' : 'project'} requirement.
+        </p>
+        {pricingModel === 'hourly' ? (
+          <>
+            <div className="space-y-2">
+              <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Confirmed Hourly Rate ($)</label>
+              <Input
+                type="number"
+                placeholder="0.00"
+                className="h-11 rounded-lg"
+                value={rate}
+                onChange={(e) => setRate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Estimated Hours</label>
+              <Input
+                type="number"
+                placeholder="0"
+                className="h-11 rounded-lg"
+                value={hours}
+                onChange={(e) => setHours(e.target.value)}
+              />
+            </div>
+            <div className="pt-2 border-t border-[#EEEEEE] flex justify-between items-center">
+              <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Total Estimated:</span>
+              <span className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#ff3b3b]">
+                ${((parseFloat(rate) || 0) * (parseFloat(hours) || 0)).toFixed(2)}
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-2">
+            <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Total Project Cost ($)</label>
+            <Input
+              type="number"
+              placeholder="0.00"
+              className="h-11 rounded-lg"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
