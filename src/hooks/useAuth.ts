@@ -18,8 +18,8 @@ export const useLogin = () => {
         setToken(data.result.token);
         setAuthToken(data.result.token);
         if (data.result.user) {
-          queryClient.setQueryData(queryKeys.users.me(), data.result.user);
-          // Removed localStorage persistence for security (PII protection)
+          // Invalidate to fetch full details (including access rights) instead of setting partial data
+          queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
         }
 
         const redirect = variables.redirect || "/dashboard";
@@ -117,8 +117,8 @@ export const useCompleteSignup = () => {
         setToken(data.result.token);
         setAuthToken(data.result.token);
         if (data.result.user) {
-          queryClient.setQueryData(queryKeys.users.me(), data.result.user);
-          // Removed localStorage persistence for security (PII protection)
+          // Invalidate to fetch full details
+          queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
         }
         // Redirect handled by component
       }
