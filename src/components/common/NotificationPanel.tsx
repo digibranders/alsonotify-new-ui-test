@@ -180,13 +180,21 @@ function NotificationItemComponent({
                   if (notification.metadata?.requirement_id) {
                     try {
                       const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
-                      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/requirements/approve`, {
+                      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/requirements/approve`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                         body: JSON.stringify({ requirement_id: notification.metadata.requirement_id, status: 'Rejected' })
                       });
+                      const data = await resp.json();
+                      if (!resp.ok) {
+                        alert(data?.message || 'Failed to reject requirement. It may have already been processed.');
+                        return;
+                      }
                       markAsRead(notification.id);
-                    } catch (err) { console.error('Reject failed:', err); }
+                    } catch (err) { 
+                      console.error('Reject failed:', err);
+                      alert('Network error. Please try again.');
+                    }
                   }
                 }}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-[#ff3b3b] text-white hover:bg-[#d32f2f] transition-colors shadow-sm ring-1 ring-[#ff3b3b]/10"
@@ -200,14 +208,22 @@ function NotificationItemComponent({
                   if (notification.metadata?.requirement_id) {
                     try {
                       const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
-                      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/requirements/approve`, {
+                      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/requirements/approve`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                         body: JSON.stringify({ requirement_id: notification.metadata.requirement_id, status: 'Assigned' })
                       });
+                      const data = await resp.json();
+                      if (!resp.ok) {
+                        alert(data?.message || 'Failed to accept requirement. It may have already been processed.');
+                        return;
+                      }
                       markAsRead(notification.id);
                       if (notification.actionLink) navigate(notification.actionLink);
-                    } catch (err) { console.error('Accept failed:', err); }
+                    } catch (err) { 
+                      console.error('Accept failed:', err);
+                      alert('Network error. Please try again.');
+                    }
                   }
                 }}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-[#0F9D58] text-white hover:bg-[#0B8043] transition-colors shadow-sm ring-1 ring-[#0F9D58]/10"
