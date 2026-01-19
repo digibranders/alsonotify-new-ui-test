@@ -1210,8 +1210,7 @@ export function EmployeesPage() {
           body: {
             padding: 0,
             height: 'calc(100vh - 100px)', // Fixed height to force header/footer positioning
-            display: 'flex',
-            flexDirection: 'column',
+            overflow: 'hidden',
           },
         }}
       >

@@ -87,8 +87,9 @@ export function InternalMappingModal({
       <WorkspaceForm
         open={isCreateOpen}
         onCancel={() => setIsCreateOpen(false)}
-        onSuccess={(data: { result?: { id: number }; id?: number }) => {
-           const newId = data?.result?.id || data?.id;
+        onSuccess={(data: unknown) => {
+           const typedData = data as { result?: { id: number }; id?: number };
+           const newId = typedData?.result?.id || typedData?.id;
            if (newId) {
              setSelectedWorkspace(newId);
            }

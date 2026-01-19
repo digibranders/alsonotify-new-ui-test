@@ -153,7 +153,11 @@ export function MeetingCreateModal({
       className="rounded-[16px] overflow-hidden"
       closeIcon={<X className="w-5 h-5 text-[#666666]" />}
       styles={{
-        body: { padding: 0 },
+        body: { 
+          padding: 0,
+          height: '80vh',
+          overflow: 'hidden',
+        },
       }}
     >
       <FormLayout

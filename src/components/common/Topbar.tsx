@@ -514,6 +514,8 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         styles={{
           body: {
             padding: 0,
+            height: '80vh',
+            overflow: 'hidden',
           }
         }}
       >

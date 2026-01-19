@@ -248,3 +248,31 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
 - **Verification**:
     - `npm run build` passed successfully.
     - Unified design tokens: 17px/20px Manrope Bold headers, 24px body padding, 44px primary black buttons with 12px border radius.
+
+## 2026-01-18: Security Hardening & Type Safety Improvement
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Remove PII from LocalStorage and improve Type Safety.
+
+### Phase 1: Security Hardening (Complete)
+
+- **Goal**: Stop persisting sensitive User PII in logic-less `localStorage`.
+- **Changes**:
+    - Removed `localStorage.setItem("user", ...)` from `useAuth.ts`.
+    - Removed `localStorage` usage from `Topbar.tsx` and `useCurrentUser.ts`.
+    - Updated `useAuth.test.tsx` to reflect these changes.
+- **Verification**: Tests passed, Manual Verification passed.
+
+### Phase 2: Type Safety (Complete)
+
+- **Goal**: Eliminate `any` types in Service Layer and Critical Components.
+- **Changes**:
+    - **Service Layer**:
+        - Defined `UserAccessDto` in `src/types/dto/user.dto.ts`.
+        - Updated `src/services/user.ts` to use `UserAccessDto` instead of `any`.
+        - Added `partner_company`, `department` to DTOs.
+    - **Components**:
+        - Refactored `RequirementsPage.tsx` to use `RequirementDto[]`, fixed field names (`total_task`).
+        - Refactored `WorkspaceForm.tsx`: Defined `WorkspaceFormData`, strict typed `partner`, fixed ID types.
+        - Updated `InternalMappingModal.tsx` and `WorkspacePage.tsx` to resolve type errors.
+- **Verification**: `npm run typecheck` Passed. `npm test` matches baseline (pending Axios test fix).

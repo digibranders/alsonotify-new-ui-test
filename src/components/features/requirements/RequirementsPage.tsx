@@ -130,7 +130,7 @@ export function RequirementsPage() {
   };
 
   const allRequirements = useMemo(() => {
-    const combined: Requirement[] = [];
+    const combined: RequirementDto[] = [];
 
     requirementQueries.forEach((query, index) => {
       const workspaceIdFromQuery = workspaceIds[index];
@@ -139,19 +139,7 @@ export function RequirementsPage() {
           ...req,
           workspace_id: req.workspace_id ?? workspaceIdFromQuery,
         }));
-        // Use type assertion here because RequirementDto comes from API but we push to combined which is Requirement[] 
-        // OR we should type combined as RequirementDto[] first then map to Requirement.
-        // Actually, combined is typed as Requirement[] (Line 351). 
-        // But the mapping happens LATER at Line 387. 
-        // So combined SHOULD be RequirementDto[].
-        // WAIT: Line 351 says `const combined: Requirement[] = [];`
-        // But Line 388 says `const mappedData = allRequirements.map((req: Requirement) => {`
-        // This implies `Requirement` interface is used for BOTH raw and mapped?
-        // Let's check Domain vs DTO. 
-        // Domain Requirement generally matches UI. DTO matches API.
-        // If combined is DTOs, then Line 351 should be RequirementDto[].
-        // I will change combined type to RequirementDto[].
-        combined.push(...requirementsWithWorkspace as unknown as Requirement[]);
+        combined.push(...requirementsWithWorkspace);
       }
     });
 
@@ -159,7 +147,7 @@ export function RequirementsPage() {
     if (collaborativeData?.result) {
       collaborativeData.result.forEach((collab: RequirementDto) => {
         if (!combined.some(req => req.id === collab.id)) {
-          combined.push(collab as unknown as Requirement);
+          combined.push(collab);
         }
       });
     }
@@ -179,7 +167,7 @@ export function RequirementsPage() {
 
   // Transform backend data to UI format with placeholder/mock data where API data is not available
   const requirements = useMemo(() => {
-    const mappedData = allRequirements.map((req: Requirement) => {
+    const mappedData = allRequirements.map((req: RequirementDto) => {
       // Get workspace data for this requirement to access client/company information
       // NOTE: The requirement API (getRequirements.sql) doesn't include project/client data
       // It only returns: requirement fields, department, manager, leader, created_user, approved_by
@@ -299,12 +287,12 @@ export function RequirementsPage() {
         category: departmentName || 'General',
         departments: departmentName ? [departmentName] : [],
         progress: req.progress || 0,
-        tasksCompleted: req.total_tasks ? Math.floor(req.total_tasks * (req.progress || 0) / 100) : 0,
-        tasksTotal: req.total_tasks || 0,
+        tasksCompleted: req.total_task ? Math.floor(req.total_task * (req.progress || 0) / 100) : 0,
+        tasksTotal: req.total_task || 0,
         workspaceId: req.workspace_id || 0,
         workspace: workspace?.name || 'Unknown Workspace',
         approvalStatus: (req.approved_by?.id ? 'approved' :
-          ((req.status as any) === 'Waiting' || (req.status as any) === 'Review' || (req.status as any) === 'Rejected' || req.status?.toLowerCase() === 'review' || req.status?.toLowerCase() === 'waiting' || req.status?.toLowerCase() === 'rejected' || req.status?.toLowerCase().includes('pending')) ? 'pending' :
+          (req.status === 'Waiting' || req.status === 'Review' || req.status === 'Rejected' || req.status?.toLowerCase() === 'review' || req.status?.toLowerCase() === 'waiting' || req.status?.toLowerCase() === 'rejected' || req.status?.toLowerCase().includes('pending')) ? 'pending' :
             undefined
         ) as 'pending' | 'approved' | 'rejected' | undefined,
         invoiceStatus: mockInvoiceStatus as 'paid' | 'billed' | undefined,
