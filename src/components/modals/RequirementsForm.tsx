@@ -57,7 +57,7 @@ export function RequirementsForm({
         .filter((item: any) => (item.status === 'ACCEPTED' || item.is_active === true) && item.is_active !== false)
         .map((item: any) => {
             // Fix: Backend returns client_id/outsource_id/association_id/invite_id, not user_... prefixes
-            const id = item.partner_user_id ?? item.user_id ?? item.client_id ?? item.outsource_id ?? item.association_id ?? item.invite_id ?? item.id;
+            const id = item.id ?? item.user_id ?? item.partner_user_id ?? item.client_id ?? item.outsource_id ?? item.association_id ?? item.invite_id;
             return {
                 id: (typeof id === 'number' ? id : undefined) as number | undefined,
                 name: (item.partner_user?.name || item.name || item.partner_user?.company || item.company || 'Unknown Partner') as string,
