@@ -555,11 +555,21 @@ export function SettingsPage() {
   const isIndividual = accountType === 'INDIVIDUAL';
 
   // Determine if the user is an employee (not Admin/Owner)
-  const isEmployee = useMemo(() => {
-    const userData = userDetails?.result || {};
-    const role = getRoleFromUser(userData);
-    return role === 'Employee'; // Assuming 'Employee' is the exact string returned
-  }, [userDetails]);
+  const permissions = userDetails?.result?.permissions?.['Settings'] || {};
+  
+  const canViewCompany = permissions['VIEW_COMPANY_DETAILS'];
+  const canEditCompany = permissions['EDIT_COMPANY_DETAILS'];
+  const canViewNotifications = permissions['VIEW_NOTIFICATIONS'];
+  const canViewSecurity = permissions['VIEW_SECURITY'];
+  const canEditSecurity = permissions['EDIT_SECURITY'];
+  const canViewLeaves = permissions['VIEW_LEAVES'];
+  const canEditLeaves = permissions['EDIT_LEAVES'];
+  const canViewWorkingHours = permissions['VIEW_WORKING_HOURS'];
+  const canEditWorkingHours = permissions['EDIT_WORKING_HOURS'];
+  const canViewAccessManagement = permissions['VIEW_ACCESS_MANAGEMENT'];
+  const canEditAccessManagement = permissions['EDIT_ACCESS_MANAGEMENT'];
+  const canViewIntegrations = permissions['VIEW_INTEGRATIONS'];
+  const canEditIntegrations = permissions['EDIT_INTEGRATIONS'];
 
   return (
     <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] p-8 flex flex-col overflow-hidden relative font-['Manrope',sans-serif]">
@@ -569,8 +579,8 @@ export function SettingsPage() {
           <h1 className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
             {isIndividual ? 'Settings' : 'Company Settings'}
           </h1>
-          {/* Only show Edit button if not an employee */}
-          {(!isEmployee) && (activeTab === 'company' || (activeTab === 'security' && isAdmin)) && (
+          {/* Only show Edit button if user has edit permission */}
+          {(activeTab === 'company' && canEditCompany) || (activeTab === 'security' && canEditSecurity) ? (
             !isEditing ? (
               <Button
                 onClick={handleEdit}
@@ -597,24 +607,26 @@ export function SettingsPage() {
                 </Button>
               </div>
             )
-          )}
+          ) : null}
         </div>
 
         {/* Tabs */}
         <div className="flex items-center gap-8 border-b border-[#EEEEEE] overflow-x-auto">
-          <button
-            onClick={() => handleTabChange('company')}
-            className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'company' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
-              }`}
-          >
-            {isIndividual ? 'Details' : 'Company Details'}
-            {activeTab === 'company' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
-          </button>
+          {(isIndividual || canViewCompany) && (
+            <button
+              onClick={() => handleTabChange('company')}
+              className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'company' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
+                }`}
+            >
+              {isIndividual ? 'Details' : 'Company Details'}
+              {activeTab === 'company' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
+            </button>
+          )}
 
-          {/* Hide other tabs for employees */}
-          {!isIndividual && !isEmployee && (
+          {/* Hide other tabs based on permissions */}
+          {!isIndividual && (
             <>
-
+              {canViewNotifications && (
               <button
                 onClick={() => handleTabChange('notifications')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'notifications' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
@@ -623,6 +635,9 @@ export function SettingsPage() {
                 Notifications
                 {activeTab === 'notifications' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
               </button>
+              )}
+              
+              {canViewSecurity && (
               <button
                 onClick={() => handleTabChange('security')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'security' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
@@ -631,7 +646,9 @@ export function SettingsPage() {
                 Security
                 {activeTab === 'security' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
               </button>
+              )}
 
+              {canViewLeaves && (
               <button
                 onClick={() => handleTabChange('leaves')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'leaves' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
@@ -640,6 +657,9 @@ export function SettingsPage() {
                 Leaves
                 {activeTab === 'leaves' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
               </button>
+              )}
+              
+              {canViewWorkingHours && (
               <button
                 onClick={() => handleTabChange('working-hours')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'working-hours' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
@@ -648,7 +668,9 @@ export function SettingsPage() {
                 Working Hours
                 {activeTab === 'working-hours' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
               </button>
-              {isAdmin && (
+              )}
+              
+              {canViewAccessManagement && (
                 <button
                   onClick={() => handleTabChange('access-management')}
                   className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'access-management' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
@@ -658,6 +680,8 @@ export function SettingsPage() {
                   {activeTab === 'access-management' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
                 </button>
               )}
+              
+              {canViewIntegrations && (
               <button
                 onClick={() => handleTabChange('integrations')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'integrations' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
@@ -666,6 +690,7 @@ export function SettingsPage() {
                 Integrations
                 {activeTab === 'integrations' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
               </button>
+              )}
             </>
           )}
         </div>
@@ -890,7 +915,7 @@ export function SettingsPage() {
                       <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
                         Departments
                       </h2>
-                      {!isAddingDept && !isEmployee && (
+                      {!isAddingDept && canEditCompany && (
                         <button
                           onClick={() => setIsAddingDept(true)}
                           className="hover:scale-110 active:scale-95 transition-transform"
@@ -921,14 +946,14 @@ export function SettingsPage() {
                                 <Switch
                                   checked={dept.active}
                                   onChange={() => toggleDepartmentStatus(String(dept.id))}
-                                  disabled={isEmployee}
+                                  disabled={!canEditCompany}
                                   className="bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                   style={{
                                     backgroundColor: dept.active ? "#ff3b3b" : undefined,
                                   }}
                                 />
                             </div>
-                            {!isEmployee && (
+                            {canEditCompany && (
                               <>
                                 <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
                                   <Edit className="w-4 h-4" />
@@ -986,7 +1011,7 @@ export function SettingsPage() {
                       <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">
                         Required Documents
                       </h2>
-                      {!isAddingDoc && !isEmployee && (
+                      {!isAddingDoc && canEditCompany && (
                         <button
                           onClick={() => setIsAddingDoc(true)}
                           className="hover:scale-110 active:scale-95 transition-transform"
@@ -1017,14 +1042,14 @@ export function SettingsPage() {
                               <Switch
                                 checked={doc.required}
                                 onChange={() => toggleDocumentRequired(doc.id)}
-                                disabled={isEmployee}
+                                disabled={!canEditCompany}
                                 className="bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                 style={{
                                   backgroundColor: doc.required ? "#ff3b3b" : undefined,
                                 }}
                               />
                             </div>
-                            {!isEmployee && (
+                            {canEditCompany && (
                               <>
                                 <button className="p-2 hover:bg-[#F7F7F7] rounded-full transition-colors text-[#666666] hover:text-[#111111]">
                                   <Edit className="w-4 h-4" />
@@ -1097,6 +1122,7 @@ export function SettingsPage() {
                     <Input
                       value={leave.count}
                       onChange={(e) => handleUpdateLeaveCount(String(leave.id), e.target.value)}
+                      disabled={!canEditLeaves}
                       className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
                     />
                     <button className="p-2 text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] rounded-full transition-colors">
@@ -1120,12 +1146,14 @@ export function SettingsPage() {
             <div className="space-y-6 border-l border-[#EEEEEE] pl-12">
               <div className="flex items-center gap-2">
                 <h2 className="text-[16px] font-['Manrope:SemiBold',sans-serif] text-[#111111]">Public Holidays</h2>
-                <button
-                  onClick={handleAddHoliday}
+                {canEditLeaves && (
+                  <button
+                    onClick={handleAddHoliday}
                   className="hover:scale-110 active:scale-95 transition-transform"
                 >
                   <Plus className="w-5 h-5 text-[#ff3b3b]" />
                 </button>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -1148,18 +1176,22 @@ export function SettingsPage() {
                       <div className="flex items-center gap-2">
                         {!holiday.is_api && (
                           <>
-                            <button
-                              onClick={() => handleEditHoliday(holiday)}
+                            {canEditLeaves && (
+                              <button
+                                onClick={() => handleEditHoliday(holiday)}
                               className="p-2 text-[#666666] hover:text-[#111111] hover:bg-[#F7F7F7] rounded-full transition-colors"
                             >
                               <Edit className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={() => handleDeleteHoliday(holiday.id)}
-                              className="p-2 text-[#ff3b3b] hover:bg-[#FFF5F5] rounded-full transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            )}
+                            {canEditLeaves && (
+                              <button
+                                onClick={() => handleDeleteHoliday(holiday.id)}
+                                className="p-2 text-[#ff3b3b] hover:bg-[#FFF5F5] rounded-full transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </>
                         )}
                         {holiday.is_api && (
@@ -1207,15 +1239,18 @@ export function SettingsPage() {
                   {workingDays.map(day => (
                     <div key={day} className="h-8 px-3 bg-[#F0F0F0] rounded-md flex items-center gap-2 text-[13px] font-['Manrope:Medium',sans-serif] text-[#111111]">
                       {day}
-                      <button onClick={() => toggleWorkingDay(day)} className="hover:text-[#ff3b3b]">
-                        <X className="w-3 h-3" />
-                      </button>
+                      {canEditWorkingHours && (
+                        <button onClick={() => toggleWorkingDay(day)} className="hover:text-[#ff3b3b]">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                   ))}
-                  <div className="relative group">
-                    <button className="h-8 w-8 flex items-center justify-center hover:scale-110 transition-transform">
-                      <Plus className="w-5 h-5 text-[#ff3b3b]" />
-                    </button>
+                  {canEditWorkingHours && (
+                    <div className="relative group">
+                      <button className="h-8 w-8 flex items-center justify-center hover:scale-110 transition-transform">
+                        <Plus className="w-5 h-5 text-[#ff3b3b]" />
+                      </button>
                     <div className="hidden group-hover:block absolute top-full left-0 mt-1 w-40 bg-white border border-[#EEEEEE] shadow-lg rounded-lg p-1 z-10">
                       {daysOfWeek.filter(d => !workingDays.includes(d)).map(day => (
                         <button
@@ -1231,6 +1266,7 @@ export function SettingsPage() {
                       )}
                     </div>
                   </div>
+                  )}
                 </div>
               </div>
 
@@ -1243,6 +1279,7 @@ export function SettingsPage() {
                       type="time"
                       value={workStartTime}
                       onChange={(e) => setWorkStartTime(e.target.value)}
+                      disabled={!canEditWorkingHours}
                       className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
                     />
                   </div>
@@ -1252,6 +1289,7 @@ export function SettingsPage() {
                       type="time"
                       value={workEndTime}
                       onChange={(e) => setWorkEndTime(e.target.value)}
+                      disabled={!canEditWorkingHours}
                       className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
                     />
                   </div>
@@ -1265,6 +1303,7 @@ export function SettingsPage() {
                   type="number"
                   value={breakTime}
                   onChange={(e) => setBreakTime(e.target.value)}
+                  disabled={!canEditWorkingHours}
                   className="h-11 rounded-lg border-[#EEEEEE] focus:border-[#ff3b3b] font-['Manrope:Medium',sans-serif] text-[13px]"
                 />
               </div>
@@ -1300,17 +1339,19 @@ export function SettingsPage() {
                   Manage roles and define specific permissions for your team.
                 </p>
               </div>
-              <Button
-                onClick={() => {
-                  setEditingRole(null);
-                  setRoleFormName('');
-                  setIsRoleModalOpen(true);
-                }}
-                className="bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-11 rounded-full text-[13px] flex items-center gap-2 border-none transition-all shadow-md active:scale-95"
-              >
-                <Plus className="w-4 h-4" />
-                Add Role
-              </Button>
+              {canEditAccessManagement && (
+                <Button
+                  onClick={() => {
+                    setEditingRole(null);
+                    setRoleFormName('');
+                    setIsRoleModalOpen(true);
+                  }}
+                  className="bg-[#111111] hover:bg-[#000000]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-11 rounded-full text-[13px] flex items-center gap-2 border-none transition-all shadow-md active:scale-95"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Role
+                </Button>
+              )}
             </div>
 
             <div className="flex gap-8 h-[calc(100vh-500px)] min-h-[500px]">
@@ -1348,18 +1389,20 @@ export function SettingsPage() {
                             <span className="text-[14px] font-['Manrope:Medium',sans-serif]">{role.name}</span>
                           </div>
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingRole(role);
-                                setRoleFormName(role.name);
-                                setRoleFormColor(role.color || '#BBBBBB');
-                                setIsRoleModalOpen(true);
-                              }}
-                              className={`p-1.5 rounded-md hover:bg-white/20 ${selectedRoleId === role.id ? 'text-white' : 'text-[#666666]'}`}
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
+                            {canEditAccessManagement && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingRole(role);
+                                  setRoleFormName(role.name);
+                                  setRoleFormColor(role.color || '#BBBBBB');
+                                  setIsRoleModalOpen(true);
+                                }}
+                                className={`p-1.5 rounded-md hover:bg-white/20 ${selectedRoleId === role.id ? 'text-white' : 'text-[#666666]'}`}
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -1378,18 +1421,20 @@ export function SettingsPage() {
                       <span className="text-[12px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider">
                         Permissions for {rolesData?.result?.find((r: Role) => r.id === selectedRoleId)?.name}
                       </span>
-                      <Button
-                        onClick={() => {
-                          updatePermissionsMutation.mutate({
-                            roleId: selectedRoleId,
-                            actions: Array.from(selectedPermissionIds),
-                          });
-                        }}
-                        loading={updatePermissionsMutation.isPending}
-                        className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-9 rounded-full text-[12px] border-none shadow-sm active:scale-95 transition-all"
-                      >
-                        Save Permissions
-                      </Button>
+                      {canEditAccessManagement && (
+                        <Button
+                          onClick={() => {
+                            updatePermissionsMutation.mutate({
+                              roleId: selectedRoleId,
+                              actions: Array.from(selectedPermissionIds),
+                            });
+                          }}
+                          loading={updatePermissionsMutation.isPending}
+                          className="bg-[#ff3b3b] hover:bg-[#ff3b3b]/90 text-white font-['Manrope:SemiBold',sans-serif] px-6 h-9 rounded-full text-[12px] border-none shadow-sm active:scale-95 transition-all"
+                        >
+                          Save Permissions
+                        </Button>
+                      )}
                     </div>
 
                     <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6">
@@ -1553,7 +1598,7 @@ export function SettingsPage() {
               <Switch checked={security.twoFactor} onChange={(v) => setSecurity({ ...security, twoFactor: v })} />
             </div>
 
-            {isAdmin && (
+            {canEditSecurity && (
               <>
                 <Divider />
                 <div className="mt-8">

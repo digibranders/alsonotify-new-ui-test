@@ -28,7 +28,7 @@ import { NotificationPanel, NotificationItem } from './NotificationPanel';
 import { Skeleton } from '../ui/Skeleton';
 import { FeedbackWidget } from './FeedbackWidget';
 import { useUserDetails } from '@/hooks/useUser';
-import { getRoleFromUser } from '@/utils/roleUtils';
+import { getRoleFromUser, isSuperAdmin } from '@/utils/roleUtils';
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/useNotification';
 import { useWorkspaces } from '@/hooks/useWorkspace';
 import { useEmployees } from '@/hooks/useUser';
@@ -347,6 +347,11 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
     const userData = userDetailsData?.result || {};
     return getRoleFromUser(userData) === 'Admin';
   }, [userDetailsData]);
+  
+  const isDeveloper = useMemo(() => {
+    const userData = userDetailsData?.result || {};
+    return isSuperAdmin(userData);
+  }, [userDetailsData]);
 
   const profileMenuItems: MenuProps['items'] = [
     {
@@ -370,7 +375,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
           icon: <UserCog className="w-4 h-4" />,
           onClick: () => router.push('/dashboard/profile'),
         },
-        ...(isAdmin ? [
+        ...(isDeveloper ? [
           {
             key: 'feedbacks',
             label: 'Feedbacks',

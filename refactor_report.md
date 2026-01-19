@@ -276,3 +276,39 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
         - Refactored `WorkspaceForm.tsx`: Defined `WorkspaceFormData`, strict typed `partner`, fixed ID types.
         - Updated `InternalMappingModal.tsx` and `WorkspacePage.tsx` to resolve type errors.
 - **Verification**: `npm run typecheck` Passed. `npm test` matches baseline (pending Axios test fix).
+
+## 2026-01-19: Restrict Feedbacks Visibility
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Restrict "Feedbacks" option in Topbar to "Real Super Admins" (developers).
+
+### Changes
+
+- **Utility**: Added `isSuperAdmin` function in `src/utils/roleUtils.ts` to identify privileged users (via Admin role + Logic/Emails).
+- **Component**: Updated `Topbar.tsx` to conditionally render "Feedbacks" menu item using `isSuperAdmin` check instead of generic `isAdmin`.
+- **Configuration**: Moved developer email allowlist to `NEXT_PUBLIC_DEVELOPER_EMAILS` env variable.
+
+### Verification
+
+- `npm run typecheck` Passed.
+- Verified logic ensures only specific users see the option.
+- Verified `.env` integration.
+
+## 2026-01-19: Configurable Settings Permissions
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Enable granular permission control for Settings tabs (Company, Leaves, etc.) via Access Management.
+
+### Changes
+
+- **Database**:
+    - Created `scripts/seed_settings_permissions.ts` to seed `Action` entries (`VIEW_COMPANY_DETAILS`, `EDIT_LEAVES`, etc.).
+    - Assigned default permissions (Admin: All; HR: Read-Only Company, Edit Leaves/Hours).
+- **Frontend**:
+    - Refactored `SettingsPage.tsx`:
+        - Removed hardcoded role checks (`isAdmin`, `!isEmployee`).
+        - Implemented dynamic checks using `user.permissions['Settings']['ACTION_NAME']`.
+        - Protected "Edit" buttons and sensitive inputs (e.g., Delete Holiday, Edit Role) with specific `EDIT_` permissions.
+- **Verification**:
+    - `npm run typecheck` Passed (fixed syntax errors manually).
+    - Verified logic covers all tabs and action buttons.
