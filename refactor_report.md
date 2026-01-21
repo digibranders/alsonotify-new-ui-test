@@ -312,3 +312,21 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
 - **Verification**:
     - `npm run typecheck` Passed (fixed syntax errors manually).
     - Verified logic covers all tabs and action buttons.
+
+## 2026-01-21: AI Assistant Drawer Alignment Fix
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Fix the alignment of the UI in AI Assistant Drawer and make the drawer width same as Notification Panel.
+
+### Changes
+
+- **Component**: `src/components/features/ai/AIAssistantDrawer.tsx`
+    - Updated drawer width to `500px` to match `NotificationPanel`.
+    - Updated internal layout to use `flex-col` with `flex-1` and `center` alignment for the empty state, ensuring the "How can I help?" text and suggestions are vertically and horizontally centered when no messages exist.
+    - Added `wrapper: { width: 500 }` to `styles` prop to ensure the drawer container respects the width.
+
+### Verification
+
+- **Linting**: `npm run lint` warning unrelated to changes.
+- **Typecheck**: `npm run typecheck` Passed.
+- **Build**: `npm run build` Passed.

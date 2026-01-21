@@ -107,14 +107,15 @@ export function AIAssistantDrawer({ open, onClose }: AIAssistantDrawerProps) {
       open={open}
       style={{ width: 500 }}
       styles={{
+        wrapper: { width: 500 },
         body: { padding: 0, display: 'flex', flexDirection: 'column' },
         header: { borderBottom: '1px solid #f0f0f0' }
       }}
     >
       {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 bg-[#F9FAFB] space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 bg-[#F9FAFB] space-y-4 flex flex-col">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center gap-4 opacity-70">
+          <div className="flex-1 flex flex-col items-center justify-center text-center gap-4 opacity-70">
             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
                 <Sparkle24Filled className="w-6 h-6 text-[#ff3b3b]" />
             </div>
