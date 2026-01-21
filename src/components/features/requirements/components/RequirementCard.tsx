@@ -7,7 +7,8 @@ import {
   Receipt,
   Clock,
   FilePlus,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -23,6 +24,8 @@ interface RequirementCardProps {
   onDelete?: () => void;
   onDuplicate?: () => void;
   onNavigate?: () => void;
+  deleteLabel?: string;
+  deleteIcon?: React.ReactNode;
 }
 
 export function RequirementCard({
@@ -35,6 +38,8 @@ export function RequirementCard({
   onDelete,
   onDuplicate,
   onNavigate,
+  deleteLabel,
+  deleteIcon,
 }: RequirementCardProps) {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -262,14 +267,16 @@ export function RequirementCard({
                 >
                   Duplicate
                 </button>
+
                 <button 
                   onClick={() => {
                     setIsMenuOpen(false);
                     onDelete?.();
                   }}
-                  className="w-full text-left px-3 py-2 text-[13px] text-[#ff3b3b] hover:bg-gray-50 rounded"
+                  className={`w-full text-left px-3 py-2 text-[13px] hover:bg-gray-50 rounded flex items-center gap-2 ${deleteLabel === 'Archive' ? 'text-[#F59E0B]' : 'text-[#ff3b3b]'}`}
                 >
-                  Delete
+                  {deleteIcon || <Trash2 className="w-3.5 h-3.5" />}
+                  {deleteLabel || 'Delete'}
                 </button>
               </div>
             }

@@ -330,3 +330,27 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
 - **Linting**: `npm run lint` warning unrelated to changes.
 - **Typecheck**: `npm run typecheck` Passed.
 - **Build**: `npm run build` Passed.
+
+## 2026-01-21: Requirement Archive Logic & Tab
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Implement "Archive" tab and status-based deletion logic (Archive for Active, Delete for Draft/Pending).
+
+### Changes
+
+- **Domain**: Updated `Requirement` status type to include `'archived'`.
+- **UI Components**:
+    - **`RequirementsPage.tsx`**:
+        - Added "Archive" tab to filter requirements.
+        - Implemented logic to map `Archived` status.
+        - Updated `onDelete` handler to check requirement status:
+            - If **Draft**/**Pending**: Prompt for permanent deletion.
+            - If **Active**: Prompt to Archive instead.
+    - **`RequirementCard.tsx`**:
+        - Added `deleteLabel` and `deleteIcon` props to support dynamic "Archive" vs "Delete" actions in the menu.
+        - Fixed syntax errors and imports (`Trash2`).
+
+### Verification
+
+- **Typecheck**: `npm run typecheck` Passed.
+- **Build**: `npm run build` Passed.

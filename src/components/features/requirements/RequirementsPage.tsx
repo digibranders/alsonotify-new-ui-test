@@ -8,7 +8,7 @@ import { useFloatingMenu } from '../../../context/FloatingMenuContext';
 import {
   X, Calendar as CalendarIcon, Clock, CheckCircle, CheckSquare, Users, Trash2,
   FilePlus, Receipt, MoreHorizontal, Play, XCircle, RotateCcw, ChevronDown, AlertCircle,
-  ArrowDown, ArrowUp
+  ArrowDown, ArrowUp, Archive
 } from 'lucide-react';
 
 import { PaginationBar } from '../../ui/PaginationBar';
@@ -123,6 +123,10 @@ export function RequirementsPage() {
       
       case 'Rejected':
         return 'draft';
+
+      case 'Archived':
+      case 'archived':
+        return 'archived' as any;
       
       default:
         return 'in-progress';
@@ -355,7 +359,7 @@ export function RequirementsPage() {
   // Read tab from URL params
   const searchParams = useSearchParams();
   const tabFromUrl = searchParams.get('tab');
-  const initialTab = (tabFromUrl === 'draft' || tabFromUrl === 'pending' || tabFromUrl === 'active' || tabFromUrl === 'completed' || tabFromUrl === 'delayed')
+  const initialTab = (tabFromUrl === 'draft' || tabFromUrl === 'pending' || tabFromUrl === 'active' || tabFromUrl === 'completed' || tabFromUrl === 'delayed' || tabFromUrl === 'archived')
     ? tabFromUrl
     : 'active';
   const [activeStatusTab, setActiveStatusTab] = useState<string>(initialTab);
@@ -363,7 +367,7 @@ export function RequirementsPage() {
   // Update tab when URL changes
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
-    if (tabFromUrl === 'draft' || tabFromUrl === 'pending' || tabFromUrl === 'active' || tabFromUrl === 'completed' || tabFromUrl === 'delayed') {
+    if (tabFromUrl === 'draft' || tabFromUrl === 'pending' || tabFromUrl === 'active' || tabFromUrl === 'completed' || tabFromUrl === 'delayed' || tabFromUrl === 'archived') {
       setActiveStatusTab(tabFromUrl);
     } else if (tabFromUrl === null) {
       setActiveStatusTab('active');
@@ -672,6 +676,11 @@ export function RequirementsPage() {
     // Delayed Tab
     if (activeStatusTab === 'delayed') {
       return req.status === 'delayed';
+    }
+
+    // Archived Tab
+    if (activeStatusTab === 'archived') {
+      return req.rawStatus === 'Archived' || req.rawStatus === 'archived';
     }
 
     return true;
@@ -1026,6 +1035,9 @@ export function RequirementsPage() {
       id: 'delayed', label: 'Delayed', count: baseFilteredReqs.filter(req => req.status === 'delayed').length
     },
     { id: 'completed', label: 'Completed' },
+    {
+       id: 'archived', label: 'Archive', count: baseFilteredReqs.filter(req => req.rawStatus === 'Archived' || req.rawStatus === 'archived').length
+    }
   ];
 
 
@@ -1260,19 +1272,59 @@ export function RequirementsPage() {
                       onEdit={() => handleEditDraft({
                         ...requirement,
                       } as any)}
-                      onDelete={() => {
-                         Modal.confirm({
-                           title: 'Delete Requirement',
-                           content: 'Are you sure you want to delete this requirement? This action cannot be undone.',
-                           okText: 'Delete',
-                           cancelText: 'Cancel',
-                           okButtonProps: { danger: true },
-                           onOk: () => {
-                             deleteRequirement({ id: requirement.id, workspace_id: requirement.workspaceId });
-                           },
-                         });
+                       onDelete={() => {
+                          // Standardize status check
+                          const status = requirement.status;
+                          const rawStatus = requirement.rawStatus;
+                          const isArchived = status === 'archived' || rawStatus === 'Archived' || rawStatus === 'archived';
+                          
+                          // If already archived, allow permanent delete
+                          // If Active or Completed, force Archive
+                          // If Draft or Pending/Delayed, allow Delete
+                          
+                          const isActive = status === 'in-progress' || status === 'completed'; // Treat completed as archiving candidate too? User said "Active state can't be deleted"
+                          // User req: "if it is in pending or waiting state it can be deleted, but once it is in activ state it cant be deleted it should e archived"
+                          
+                          // Let's interpret "active" as Assigned, In_Progress, Completed.
+                          // Draft, Waiting, Review, Rejected -> Delete.
+                          
+                          const canDelete = status === 'draft' || status === 'delayed' || requirement.approvalStatus === 'pending' || isArchived;
+                          
+                          if (!canDelete) {
+                             // Archive Action
+                             Modal.confirm({
+                               title: 'Archive Requirement',
+                               content: 'This requirement is active and cannot be permanently deleted. Do you want to archive it instead?',
+                               okText: 'Archive',
+                               cancelText: 'Cancel',
+                               okButtonProps: { className: 'bg-[#F59E0B] hover:bg-[#D97706]' },
+                               onOk: () => {
+                                 updateRequirementMutation.mutate({
+                                   id: requirement.id,
+                                   workspace_id: requirement.workspaceId || 0,
+                                   status: 'Archived'
+                                 } as any, {
+                                    onSuccess: () => messageApi.success("Requirement archived")
+                                 });
+                               },
+                             });
+                          } else {
+                             // Delete Action
+                             Modal.confirm({
+                               title: 'Delete Requirement',
+                               content: 'Are you sure you want to permanently delete this requirement? This action cannot be undone.',
+                               okText: 'Delete',
+                               cancelText: 'Cancel',
+                               okButtonProps: { danger: true },
+                               onOk: () => {
+                                 deleteRequirement({ id: requirement.id, workspace_id: requirement.workspaceId });
+                               },
+                             });
+                          }
                        }}
-                      onDuplicate={() => {
+                       deleteLabel={(requirement.status === 'in-progress' || requirement.status === 'completed') ? 'Archive' : 'Delete'}
+                       deleteIcon={(requirement.status === 'in-progress' || requirement.status === 'completed') ? <Archive className="w-3.5 h-3.5" /> : undefined}
+                       onDuplicate={() => {
                           handleDuplicateRequirement({
                             ...requirement,
                             workspaceId: requirement.workspaceId,
