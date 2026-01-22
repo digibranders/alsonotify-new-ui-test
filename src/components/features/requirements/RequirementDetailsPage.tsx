@@ -752,14 +752,7 @@ export function RequirementDetailsPage() {
                     </p>
                   </div>
 
-                  {/* Pricing Model */}
-                  <div>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Pricing Model</p>
-                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111] flex items-center gap-1">
-                      <span className="text-[#ff3b3b]">$</span>
-                      {requirement.pricing_model || 'Requirement Basis'}
-                    </p>
-                  </div>
+
 
                   {/* Partner / Company */}
                   <div>
@@ -769,13 +762,7 @@ export function RequirementDetailsPage() {
                     </p>
                   </div>
 
-                  {/* Requirement Budget */}
-                  <div>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Requirement Budget</p>
-                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                      ${requirement.budget ? Number(requirement.budget).toFixed(2) : '0.00'}
-                    </p>
-                  </div>
+
 
                   {/* Start Date */}
                   <div>

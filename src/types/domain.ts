@@ -19,7 +19,7 @@ export interface Requirement {
   isHighPriority?: boolean;
   is_high_priority: boolean;
   type: 'inhouse' | 'outsourced' | 'client';
-  status: 'in-progress' | 'completed' | 'delayed' | 'draft' | 'Waiting';
+  status: 'in-progress' | 'completed' | 'delayed' | 'draft' | 'Waiting' | 'archived' | 'Archived';
   category: string;
   departments?: string[];
   progress: number;
