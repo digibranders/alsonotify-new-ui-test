@@ -27,9 +27,9 @@ describe('roleUtils', () => {
         expect(getRoleFromUser({ role: { name: 'MANAGER' } })).toBe('Manager');
       });
 
-      it('should return Department Head when role name contains "Department Head"', () => {
-          expect(getRoleFromUser({ role: { name: 'Department Head' } })).toBe('Department Head');
-          expect(getRoleFromUser({ role: { name: 'Head of Department' } })).toBe('Department Head');
+      it('should return Head when role name contains "Head"', () => {
+          expect(getRoleFromUser({ role: { name: 'Head' } })).toBe('Head');
+          expect(getRoleFromUser({ role: { name: 'Head of Department' } })).toBe('Head');
       });
 
       it('should return HR when role name is exactly "hr"', () => {
@@ -57,8 +57,8 @@ describe('roleUtils', () => {
         expect(getRoleFromUser({ user_employee: { role: { name: 'Admin' } } })).toBe('Admin');
         expect(getRoleFromUser({ user_employee: { role: { name: 'Manager' } } })).toBe('Manager');
         // 'Leader' is legacy, might default to Employee if not explicitly handled by string.
-        // Let's test valid Department Head string
-        expect(getRoleFromUser({ user_employee: { role: { name: 'Department Head' } } })).toBe('Department Head');
+        // Let's test valid Head string
+        expect(getRoleFromUser({ user_employee: { role: { name: 'Head' } } })).toBe('Head');
       });
     });
 
@@ -80,7 +80,7 @@ describe('roleUtils', () => {
       });
 
       it('should return Department Head for role_id 5', () => {
-        expect(getRoleFromUser({ role_id: 5 })).toBe('Department Head');
+        expect(getRoleFromUser({ role_id: 5 })).toBe('Head');
       });
 
       it('should return Finance for role_id 6', () => {
@@ -98,7 +98,7 @@ describe('roleUtils', () => {
 
       it('should use role.id as fallback', () => {
         expect(getRoleFromUser({ role: { id: 1 } })).toBe('Admin');
-        expect(getRoleFromUser({ role: { id: 5 } })).toBe('Department Head'); // Updated from Leader
+        expect(getRoleFromUser({ role: { id: 5 } })).toBe('Head'); // Updated from Leader
       });
     });
 
@@ -158,8 +158,8 @@ describe('roleUtils', () => {
       });
 
       it('should prioritize role.name over user_employee.role_id', () => {
-        const user = { role: { name: 'Department Head' }, user_employee: { role_id: 1 } };
-        expect(getRoleFromUser(user)).toBe('Department Head'); // Updated from Leader
+        const user = { role: { name: 'Head' }, user_employee: { role_id: 1 } };
+        expect(getRoleFromUser(user)).toBe('Head'); // Updated from Leader
       });
     });
   });
