@@ -1,4 +1,4 @@
-export type UserRole = 'Admin' | 'Department Head' | 'Finance' | 'HR' | 'Manager' | 'Employee';
+export type UserRole = 'Admin' | 'Head' | 'Finance' | 'HR' | 'Manager' | 'Employee';
 
 /**
  * Minimal type for user objects passed to getRoleFromUser.
@@ -28,7 +28,7 @@ export const getRoleFromUser = (user: UserLike | null | undefined): UserRole => 
     if (roleName) {
         const roleLower = roleName.toLowerCase().trim();
         if (roleLower === 'admin') return 'Admin';
-        if (roleLower === 'department head') return 'Department Head';
+        if (roleLower === 'head') return 'Head';
         if (roleLower === 'finance') return 'Finance';
         if (roleLower === 'hr') return 'HR';
         if (roleLower === 'manager') return 'Manager';
@@ -39,7 +39,7 @@ export const getRoleFromUser = (user: UserLike | null | undefined): UserRole => 
         if (roleLower.includes('manager')) return 'Manager';
         if (roleLower.includes('finance')) return 'Finance';
         if (roleLower.includes('hr')) return 'HR';
-        if (roleLower.includes('department') || roleLower.includes('head')) return 'Department Head';
+        if (roleLower.includes('department') || roleLower.includes('head')) return 'Head';
     }
 
     // 2. Try Role ID (Fallback / Legacy)
@@ -54,7 +54,7 @@ export const getRoleFromUser = (user: UserLike | null | undefined): UserRole => 
             2: 'Employee',
             3: 'HR',       // Updated from legacy mapping
             4: 'Admin',
-            5: 'Department Head', // Was Leader
+            5: 'Head', 
             6: 'Finance',  // Updated from legacy mapping
             7: 'Manager',
         };
