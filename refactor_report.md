@@ -354,3 +354,17 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
 
 - **Typecheck**: `npm run typecheck` Passed.
 - **Build**: `npm run build` Passed.
+
+## 2026-01-22: Settings Permission Fix
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Fix issue where Admins could not access company settings tabs.
+
+### Changes
+
+- **SettingsPage.tsx**: Updated permission logic to explicitly allow all tabs and edit actions if `isAdmin` is true.
+
+### Verification
+
+- **Typecheck**: `npm run typecheck` Passed.
+- **Build**: `npm run build` Passed.

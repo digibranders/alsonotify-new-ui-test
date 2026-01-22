@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, Input, App } from 'antd';
+import { Modal, Input, App, Select } from 'antd';
+
+const { Option } = Select;
 
 interface QuotationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (data: { cost?: number; rate?: number; hours?: number }) => void;
+  onConfirm: (data: { cost?: number; rate?: number; hours?: number; currency: string }) => void;
   pricingModel?: 'hourly' | 'project';
 }
 
@@ -24,12 +26,14 @@ export function QuotationDialog({
   const [amount, setAmount] = useState('');
   const [rate, setRate] = useState('');
   const [hours, setHours] = useState('');
+  const [currency, setCurrency] = useState('USD');
 
   useEffect(() => {
     if (open) {
       setAmount('');
       setRate('');
       setHours('');
+      setCurrency('USD');
     }
   }, [open]);
 
@@ -42,17 +46,31 @@ export function QuotationDialog({
       onConfirm({
         rate: parseFloat(rate),
         hours: parseFloat(hours),
-        cost: parseFloat(rate) * parseFloat(hours)
+        cost: parseFloat(rate) * parseFloat(hours),
+        currency
       });
     } else {
       if (!amount) {
         messageApi.error("Please enter an amount");
         return;
       }
-      onConfirm({ cost: parseFloat(amount) });
+      onConfirm({ 
+        cost: parseFloat(amount),
+        currency
+      });
     }
     onOpenChange(false);
   };
+
+  const currencySelector = (
+    <Select value={currency} onChange={setCurrency} style={{ width: 80 }} variant="borderless">
+      <Option value="USD">USD</Option>
+      <Option value="EUR">EUR</Option>
+      <Option value="GBP">GBP</Option>
+      <Option value="INR">INR</Option>
+      <Option value="AED">AED</Option>
+    </Select>
+  );
 
   return (
     <Modal
@@ -73,11 +91,12 @@ export function QuotationDialog({
         {pricingModel === 'hourly' ? (
           <>
             <div className="space-y-2">
-              <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Confirmed Hourly Rate ($)</label>
+              <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Confirmed Hourly Rate</label>
               <Input
                 type="number"
                 placeholder="0.00"
                 className="h-11 rounded-lg"
+                addonBefore={currencySelector}
                 value={rate}
                 onChange={(e) => setRate(e.target.value)}
               />
@@ -95,17 +114,18 @@ export function QuotationDialog({
             <div className="pt-2 border-t border-[#EEEEEE] flex justify-between items-center">
               <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Total Estimated:</span>
               <span className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#ff3b3b]">
-                ${((parseFloat(rate) || 0) * (parseFloat(hours) || 0)).toFixed(2)}
+                {currency} {((parseFloat(rate) || 0) * (parseFloat(hours) || 0)).toFixed(2)}
               </span>
             </div>
           </>
         ) : (
           <div className="space-y-2">
-            <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Total Project Cost ($)</label>
+            <label className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Total Project Cost</label>
             <Input
               type="number"
               placeholder="0.00"
               className="h-11 rounded-lg"
+              addonBefore={currencySelector}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />

@@ -557,19 +557,19 @@ export function SettingsPage() {
   // Determine if the user is an employee (not Admin/Owner)
   const permissions = userDetails?.result?.permissions?.['Settings'] || {};
   
-  const canViewCompany = permissions['VIEW_COMPANY_DETAILS'];
-  const canEditCompany = permissions['EDIT_COMPANY_DETAILS'];
-  const canViewNotifications = permissions['VIEW_NOTIFICATIONS'];
-  const canViewSecurity = permissions['VIEW_SECURITY'];
-  const canEditSecurity = permissions['EDIT_SECURITY'];
-  const canViewLeaves = permissions['VIEW_LEAVES'];
-  const canEditLeaves = permissions['EDIT_LEAVES'];
-  const canViewWorkingHours = permissions['VIEW_WORKING_HOURS'];
-  const canEditWorkingHours = permissions['EDIT_WORKING_HOURS'];
-  const canViewAccessManagement = permissions['VIEW_ACCESS_MANAGEMENT'];
-  const canEditAccessManagement = permissions['EDIT_ACCESS_MANAGEMENT'];
-  const canViewIntegrations = permissions['VIEW_INTEGRATIONS'];
-  const canEditIntegrations = permissions['EDIT_INTEGRATIONS'];
+  const canViewCompany = isAdmin || permissions['VIEW_COMPANY_DETAILS'];
+  const canEditCompany = isAdmin || permissions['EDIT_COMPANY_DETAILS'];
+  const canViewNotifications = isAdmin || permissions['VIEW_NOTIFICATIONS'];
+  const canViewSecurity = isAdmin || permissions['VIEW_SECURITY'];
+  const canEditSecurity = isAdmin || permissions['EDIT_SECURITY'];
+  const canViewLeaves = isAdmin || permissions['VIEW_LEAVES'];
+  const canEditLeaves = isAdmin || permissions['EDIT_LEAVES'];
+  const canViewWorkingHours = isAdmin || permissions['VIEW_WORKING_HOURS'];
+  const canEditWorkingHours = isAdmin || permissions['EDIT_WORKING_HOURS'];
+  const canViewAccessManagement = isAdmin || permissions['VIEW_ACCESS_MANAGEMENT'];
+  const canEditAccessManagement = isAdmin || permissions['EDIT_ACCESS_MANAGEMENT'];
+  const canViewIntegrations = isAdmin || permissions['VIEW_INTEGRATIONS'];
+  const canEditIntegrations = isAdmin || permissions['EDIT_INTEGRATIONS'];
 
   return (
     <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] p-8 flex flex-col overflow-hidden relative font-['Manrope',sans-serif]">

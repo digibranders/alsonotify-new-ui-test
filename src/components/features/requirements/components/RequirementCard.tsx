@@ -356,7 +356,7 @@ export function RequirementCard({
                 <CalendarIcon className="w-3 h-3 text-[#999999] flex-shrink-0" />
                 <span className="truncate">
                 {requirement.startDate ? format(new Date(requirement.startDate), 'MMM d') : ''} 
-                {requirement.startDate && requirement.dueDate && requirement.dueDate !== 'TBD' ? ' - ' : ''}
+                {requirement.startDate ? ' - ' : ''}
                 {requirement.dueDate && requirement.dueDate !== 'TBD' ? format(new Date(requirement.dueDate), 'MMM d') : 'TBD'}
                 </span>
                 {timelineStatus && (

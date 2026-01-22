@@ -428,7 +428,7 @@ export function RequirementsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleQuotationConfirm = (data: { cost?: number; rate?: number; hours?: number }) => {
+  const handleQuotationConfirm = (data: { cost?: number; rate?: number; hours?: number; currency?: string }) => {
     const amount = data.cost || 0;
     const hours = data.hours || 0;
     // Determine the ID: editingReq for basic edits, or pendingReqId for workflow actions
