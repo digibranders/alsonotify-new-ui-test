@@ -36,7 +36,13 @@ import { QuotationDialog, RejectDialog, InternalMappingModal } from './component
 import { Requirement, Workspace } from '@/types/domain';
 import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDto } from '@/types/dto/requirement.dto';
 import { getErrorMessage } from '@/types/api-utils';
-import { getRequirementTab } from './utils/requirementState.utils';
+import { getRequirementTab, type TabContext } from '@/lib/workflow';
+import {
+  mapRequirementToStatus,
+  mapRequirementToRole,
+  mapRequirementToContext,
+  mapRequirementToType,
+} from './utils/requirementState.utils';
 
 export function RequirementsPage() {
   const { message: messageApi, modal: modalApi } = App.useApp();
@@ -629,7 +635,16 @@ export function RequirementsPage() {
 
   // 2. Apply Status Tab filter
   const finalFilteredReqs = baseFilteredReqs.filter(req => {
-    const reqTab = getRequirementTab(req);
+    const status = mapRequirementToStatus(req);
+    const type = mapRequirementToType(req);
+    const role = mapRequirementToRole(req);
+    const baseContext = mapRequirementToContext(req, undefined, role);
+    const tabContext: TabContext = {
+      ...baseContext,
+      isArchived: req.rawStatus === 'Archived' || req.rawStatus === 'archived',
+      approvalStatus: req.approvalStatus,
+    };
+    const reqTab = getRequirementTab(status, type, role, tabContext);
     return reqTab === activeStatusTab;
   });
 
@@ -1245,7 +1260,16 @@ export function RequirementsPage() {
                         ...requirement,
                       } as any)}
                        onDelete={() => {
-                          const tab = getRequirementTab(requirement);
+                          const status = mapRequirementToStatus(requirement);
+                          const type = mapRequirementToType(requirement);
+                          const role = mapRequirementToRole(requirement);
+                          const baseContext = mapRequirementToContext(requirement, undefined, role);
+                          const tabContext: TabContext = {
+                            ...baseContext,
+                            isArchived: requirement.rawStatus === 'Archived' || requirement.rawStatus === 'archived',
+                            approvalStatus: requirement.approvalStatus,
+                          };
+                          const tab = getRequirementTab(status, type, role, tabContext);
                           const isActive = tab === 'active' || tab === 'completed' || tab === 'delayed';
                           const isArchived = tab === 'archived';
                           const canDelete = tab === 'draft' || tab === 'pending' || isArchived;

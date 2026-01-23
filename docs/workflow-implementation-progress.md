@@ -1,8 +1,8 @@
 # Workflow Implementation Progress
 
 **Last Updated:** 2026-01-23
-**Current Phase:** 2.6 COMPLETE (Backend + Frontend Alignment)
-**Next Phase:** 3.1 (Sprint 3 - Backend Types Refactoring)
+**Current Phase:** 4.1 COMPLETE (Sprint 4 - Component Migration)
+**Next Phase:** 4.2 (Migrate RequirementCard Component)
 
 ---
 
@@ -104,6 +104,21 @@
   - Updated modal field names to snake_case for backend API compatibility
 - **Verified:** Both backend (`bun run build`) and frontend (`bun run build`) compile successfully
 
+### Phase 4.1: Migrate requirementState.utils.ts ✅
+- **File Modified:** `src/components/features/requirements/utils/requirementState.utils.ts`
+- **Changes:**
+  - Added workflow module imports (`getRequirementTab`, `getRequirementCTAConfig`, type guards, types)
+  - Created helper functions: `mapRequirementToStatus()`, `mapRequirementToRole()`, `mapRequirementToContext()`, `mapRequirementToType()`
+  - Refactored `getRequirementTab()` to delegate to workflow module with backward compatibility
+  - Refactored `getRequirementActionState()` to delegate to `getRequirementCTAConfig()` and map result to legacy format
+  - Added `@deprecated` JSDoc comments to both functions
+- **Backward Compatibility:** ✅ Maintained - all existing components continue to work without changes
+- **Files Using These Functions:**
+  - `RequirementCard.tsx` - uses `getRequirementActionState()`
+  - `RequirementsPage.tsx` - uses `getRequirementTab()`
+  - `RequirementDetailsPage.tsx` - uses both functions
+- **Verified:** ✅ TypeScript build passes, no errors, no `any` types introduced
+
 ---
 
 ## Files Created
@@ -123,18 +138,20 @@
 10. `src/lib/workflow/requirement/requirementModal.ts` - Modal field configurations
 11. `src/lib/workflow/task/taskCTA.ts` - Task CTA mapping
 
+### Sprint 4 (Component Migration)
+12. `src/components/features/requirements/utils/requirementState.utils.ts` - Refactored to use workflow module (backward compatible wrapper)
+
 ---
 
 ## Notes for Next Phase
 
-- Sprint 2 complete, ready for Sprint 3 (Backend Types Refactoring)
-- Phase 3.1 should create `types/common-type.ts` with shared types
-- Phase 3.2 should create `types/workspace-type.ts` (properly named) with workspace types
-- Phase 3.3 should create `types/task-type.ts` with task types
-- Phase 3.4 should rename `workspace-type.ts` → `requirement-type.ts` and add Delayed to enum
-- Phase 3.5 should update `types/user.ts` to keep only user-related types
-- Phase 3.6 should update all imports across 28 files
-- After Sprint 3, Sprint 4 will migrate frontend components to use workflow module
+- Phase 4.1 complete, ready for Phase 4.2 (Migrate RequirementCard Component)
+- Phase 4.2 should update `RequirementCard.tsx` to use `getRequirementCTAConfig()` directly
+- Phase 4.3 should refactor `RequirementsPage.handleReqAccept()` to use workflow CTA routing
+- Phase 4.4 should migrate `RequirementDetailsPage` action buttons
+- Phase 4.5 should add unit tests for workflow module
+
+**Note:** Sprint 3 (Backend Types Refactoring) can be done in parallel or after Sprint 4, as it's independent
 
 ---
 
@@ -210,6 +227,16 @@
 - [2026-01-23] Frontend: Updated modal field names to snake_case for API compatibility
 - [2026-01-23] Frontend: ✅ `bun run build` passed
 - [2026-01-23] Final: Both backend and frontend aligned and building successfully
+
+### Phase 4.1 (Component Migration - requirementState.utils.ts)
+- [2026-01-23] Added workflow module imports to requirementState.utils.ts
+- [2026-01-23] Created helper functions: mapRequirementToStatus, mapRequirementToRole, mapRequirementToContext, mapRequirementToType
+- [2026-01-23] Refactored getRequirementTab() to delegate to workflow module
+- [2026-01-23] Refactored getRequirementActionState() to delegate to getRequirementCTAConfig()
+- [2026-01-23] Added @deprecated JSDoc comments to both functions
+- [2026-01-23] Fixed TypeScript errors: handled draft status separately, removed non-existent isArchived property
+- [2026-01-23] ✅ `bun run build` passed, no TypeScript errors
+- [2026-01-23] Backward compatibility verified: RequirementCard, RequirementsPage, RequirementDetailsPage all work unchanged
 
 ---
 

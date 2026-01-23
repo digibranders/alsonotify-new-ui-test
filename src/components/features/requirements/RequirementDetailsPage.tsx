@@ -26,7 +26,18 @@ import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { TaskRow } from '@/components/features/tasks/rows/TaskRow';
 import { Requirement, Task, Employee } from '@/types/domain';
-import { getRequirementActionState, getRequirementTab } from './utils/requirementState.utils';
+import {
+  getRequirementCTAConfig,
+  getRequirementTab,
+  type RequirementStatus,
+  type TabContext,
+} from '@/lib/workflow';
+import {
+  mapRequirementToStatus,
+  mapRequirementToRole,
+  mapRequirementToContext,
+  mapRequirementToType,
+} from './utils/requirementState.utils';
 import { Archive } from 'lucide-react';
 
 // Extracted components
@@ -132,9 +143,37 @@ export function RequirementDetailsPage() {
     return tasksData.result.filter((t: Task & { type?: string }) => t.requirement_id === reqId && t.type === 'revision');
   }, [tasksData, requirement, reqId]);
 
-  const { isPending, displayStatus, actionButton, actionButtonLabel } = useMemo(() => {
-     return getRequirementActionState(requirement as any, user?.id);
+  const ctaConfig = useMemo(() => {
+    if (!requirement) {
+      return {
+        isPending: false,
+        displayStatus: '',
+        primaryAction: undefined,
+        secondaryAction: undefined,
+        tab: 'draft' as const,
+      };
+    }
+    
+    const status = mapRequirementToStatus(requirement);
+    const type = mapRequirementToType(requirement);
+    const role = mapRequirementToRole(requirement);
+    const context = mapRequirementToContext(requirement, user?.id, role);
+    
+    if (status === 'draft') {
+      return {
+        isPending: false,
+        displayStatus: 'Draft',
+        primaryAction: undefined,
+        secondaryAction: undefined,
+        tab: 'draft' as const,
+      };
+    }
+    
+    return getRequirementCTAConfig(status as RequirementStatus, role, context, type);
   }, [requirement, user?.id]);
+  
+  const isPending = ctaConfig.isPending;
+  const displayStatus = ctaConfig.displayStatus;
 
   const formatActivityMessage = (msg: string) => {
     if (!msg) return '';
@@ -552,18 +591,18 @@ export function RequirementDetailsPage() {
 
             <div className="flex items-center gap-4">
               {/* Standardized Requirement Action CTA */}
-              {actionButton && (
+              {ctaConfig.primaryAction && (
                 <div className="flex items-center gap-2">
-                   {actionButton === 'Map' && (
+                   {ctaConfig.primaryAction.modal === 'mapping' && (
                      <Button 
                        type="primary" 
                        className="bg-[#111111] hover:bg-[#000000]/90"
                        onClick={() => setIsAcceptModalOpen(true)}
                      >
-                       {actionButtonLabel}
+                       {ctaConfig.primaryAction.label}
                      </Button>
                    )}
-                   {actionButton === 'Submit' && (
+                   {ctaConfig.primaryAction.modal === 'quotation' && (
                       <Button 
                         type="primary" 
                         className="bg-[#111111]"
@@ -571,33 +610,45 @@ export function RequirementDetailsPage() {
                            message.info("Please use the 'Edit' action in the requirements list to resubmit your quote.");
                         }}
                       >
-                        {actionButtonLabel}
+                        {ctaConfig.primaryAction.label}
                       </Button>
                    )}
-                   {actionButton === 'Approve' && (
+                   {ctaConfig.primaryAction.modal === 'none' && (
                       <Button 
                         type="primary" 
                         className="bg-[#111111]"
                         onClick={() => {
                            // RequirementsPage handleReqAccept logic
+                           const newStatus = requirement.status === 'Submitted' ? 'Assigned' : 'Completed';
                            updateRequirement({
                               id: reqId,
                               workspace_id: requirement.workspace_id,
-                              status: requirement.status === 'Submitted' ? 'Assigned' : 'Completed'
+                              status: newStatus
                            } as any, {
                               onSuccess: () => message.success("Requirement accepted successfully")
                            });
                         }}
                       >
-                        {actionButtonLabel}
+                        {ctaConfig.primaryAction.label}
+                      </Button>
+                   )}
+                   {ctaConfig.primaryAction.modal === 'edit' && (
+                      <Button 
+                        type="primary" 
+                        className="bg-[#111111]"
+                        onClick={() => {
+                           // Edit action - could open edit modal or navigate
+                           message.info("Edit functionality");
+                        }}
+                      >
+                        {ctaConfig.primaryAction.label}
                       </Button>
                    )}
                 </div>
               )}
 
               {/* Reject Action (Secondary) */}
-              {((requirement.receiver_company_id === user?.company_id && requirement.status === 'Waiting') || 
-                (requirement.sender_company_id === user?.company_id && (requirement.status === 'Review' || requirement.status === 'Submitted'))) && (
+              {ctaConfig.secondaryAction?.type === 'danger' && (
                  <Button 
                    danger 
                    icon={<X className="w-4 h-4" />}
@@ -615,7 +666,7 @@ export function RequirementDetailsPage() {
                       });
                    }}
                  >
-                   Reject
+                   {ctaConfig.secondaryAction.label || 'Reject'}
                  </Button>
               )}
 

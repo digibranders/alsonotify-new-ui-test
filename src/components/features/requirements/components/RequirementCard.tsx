@@ -13,7 +13,16 @@ import {
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format, differenceInDays, isPast, isToday } from 'date-fns';
-import { getRequirementActionState } from '../utils/requirementState.utils';
+import {
+  getRequirementCTAConfig,
+  type RequirementStatus,
+} from '@/lib/workflow';
+import {
+  mapRequirementToStatus,
+  mapRequirementToRole,
+  mapRequirementToContext,
+  mapRequirementToType,
+} from '../utils/requirementState.utils';
 
 interface RequirementCardProps {
   requirement: any; // Using any for compatibility with mapped data
@@ -47,10 +56,31 @@ export function RequirementCard({
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Determine state using shared utility
-  const { isPending, displayStatus, actionButton, actionButtonLabel, isSender, isReceiver } = useMemo(() => {
-     return getRequirementActionState(requirement, currentUserId);
+  // Determine state using workflow module
+  const ctaConfig = useMemo(() => {
+    const status = mapRequirementToStatus(requirement);
+    const type = mapRequirementToType(requirement);
+    const role = mapRequirementToRole(requirement);
+    const context = mapRequirementToContext(requirement, currentUserId, role);
+    
+    if (status === 'draft') {
+      return {
+        isPending: false,
+        displayStatus: 'Draft',
+        primaryAction: undefined,
+        secondaryAction: undefined,
+        tab: 'draft' as const,
+      };
+    }
+    
+    return getRequirementCTAConfig(status as RequirementStatus, role, context, type);
   }, [requirement, currentUserId]);
+  
+  const isPending = ctaConfig.isPending;
+  const displayStatus = ctaConfig.displayStatus;
+  const role = mapRequirementToRole(requirement);
+  const isSender = role === 'sender';
+  const isReceiver = role === 'receiver';
 
   const getUnifiedStatusConfig = () => {
     // 1. Billing / Financial Status (Highest Priority)
@@ -397,63 +427,34 @@ export function RequirementCard({
                   - 'Revise': Show Revise Button (Receiver Revise Quote)
                */}
 
-               {/* REJECT BUTTON (Only if actionButton is 'Approve' or 'Reject' explicitly?) 
-                   Actually, let's look at `actionButton`.
-                   If actionButton === 'Approve' (Review phase), we also usually want a Reject option.
-                   The utility `actionButton` is the PRIMARY positive action.
-                   We need to know if Reject is allowed.
-                   Legacy logic: Receiver can Reject in Waiting. Sender can Reject in Review.
-               */}
-               {((isReceiver && requirement.rawStatus === 'Waiting') || 
-                 (isSender && (requirement.rawStatus === 'Review' || requirement.rawStatus === 'Submitted'))) && (
+               {/* REJECT BUTTON - Show if secondaryAction is danger type */}
+               {ctaConfig.secondaryAction?.type === 'danger' && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); onReject?.(); }}
                   className="w-6 h-6 flex items-center justify-center rounded-full bg-white border border-[#ff3b3b] text-[#ff3b3b] hover:bg-[#ff3b3b] hover:text-white transition-all shadow-sm"
-                  title="Reject"
+                  title={ctaConfig.secondaryAction.label || 'Reject'}
                 >
                   <X className="w-3 h-3" />
                 </button>
               )}
 
               {/* PRIMARY ACTION BUTTON */}
-              {actionButton && (
+              {ctaConfig.primaryAction && (
                  <button 
                   onClick={(e) => { 
                     e.stopPropagation(); 
-                    if (actionButton === 'Edit') {
-                        // Special case: Edit & Resend
-                        onEdit?.(); 
-                    } else if (actionButton === 'Revise') {
-                        // Special case: Revise Quote (Treat as Constructive/Approve flow regarding UI, but logically might need distinct handler? 
-                        // Reusing onAccept for primary positive action is common, but 'Revise' usually implies new quote dialog.
-                        // RequirementsPage passes `handleReviseQuote` as `onAccept`? No, let's check RequirementsPage.
-                        // RequirementsPage passes `() => { setPendingReqId(req.id); setIsQuotationOpen(true); }` for "Revise"?
-                        // We need to clarify props. 
-                        // RequirementCardProps has: onAccept, onReject, onEdit.
-                        // For 'Revise', we probably want a specific prop or reuse onAccept if that's the "Do the thing" button.
-                        // For 'Edit', we reuse onEdit.
-                        
-                        // Let's assume onReject is purely "Kill it".
-                        // onAccept is "Move it forward".
-                        
-                        // Receiver 'Revise' -> Move forward (back to Review). So onAccept?
-                        // But wait, user sees "Revise Quote".
-                        onDuplicate?.(); // Hack? No.
-                        // Let's use onReject for "Revise"? No, onReject opens RejectDialog.
-                        // We need a way to open QuotationDialog. 
-                        // If status is "Rejected", and I am Receiver, I see "Revise Quote".
-                        // To open QuotationDialog, RequirementsPage usually uses `onAccept` for "Submit Quote" (Waiting status).
-                        // So reusing `onAccept` for "Revise Quote" makes sense (Positive action to submit price).
-                        onAccept?.();
-                    } else {
-                        // 'Approve', 'Submit', 'Map'
-                        onAccept?.(); 
+                    const { modal } = ctaConfig.primaryAction!;
+                    if (modal === 'edit') {
+                      onEdit?.();
+                    } else if (modal === 'quotation' || modal === 'mapping' || modal === 'none') {
+                      // quotation, mapping, and none (direct API) all use onAccept
+                      onAccept?.();
                     }
                   }}
                   className={`px-2 h-6 flex items-center justify-center rounded-full bg-[#7ccf00] text-white hover:bg-[#6bb800] transition-all shadow-sm text-[10px] font-bold whitespace-nowrap`}
-                  title={actionButtonLabel}
+                  title={ctaConfig.primaryAction.label}
                 >
-                  {actionButtonLabel}
+                  {ctaConfig.primaryAction.label}
                 </button>
               )}
             </div>

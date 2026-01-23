@@ -1,5 +1,21 @@
-import { Requirement } from "@/types/domain";
+/**
+ * Requirement Workflow Helper Functions
+ * 
+ * Helper functions to map Requirement domain objects to workflow module types.
+ * These functions are used by components to convert Requirement objects to the
+ * types expected by the workflow module (@/lib/workflow).
+ */
 
+import { Requirement } from "@/types/domain";
+import {
+  isRequirementStatus,
+  type RequirementStatus,
+  type UserRole,
+  type RequirementContext,
+  type RequirementType,
+} from '@/lib/workflow';
+
+// Keep type exports for backward compatibility if needed
 export interface RequirementActionState {
   isPending: boolean;
   displayStatus: string;
@@ -11,205 +27,104 @@ export interface RequirementActionState {
 
 export type RequirementTab = 'draft' | 'pending' | 'active' | 'completed' | 'delayed' | 'archived';
 
+// =============================================================================
+// Helper Functions - Map Requirement to Workflow Types
+// =============================================================================
+
 /**
- * STRICT Logic for determining which tab a requirement belongs to.
- * This ensures consistency between the RequirementsPage filters and the individual card logic.
+ * Maps a Requirement's rawStatus to a workflow RequirementStatus or 'draft'.
+ * 
+ * @param req - The requirement object
+ * @returns RequirementStatus enum value or 'draft' special status
  */
-export const getRequirementTab = (req: Requirement): RequirementTab => {
-  // 1. Archived
-  if (req.rawStatus === 'Archived' || req.rawStatus === 'archived') {
-    return 'archived';
-  }
-
-  // 2. Delayed
-  if (req.status === 'delayed' || req.rawStatus === 'Delayed' || req.rawStatus === 'On_Hold') {
-    return 'delayed';
-  }
-
-  // 3. Draft
-  if (req.rawStatus === 'draft') {
+export function mapRequirementToStatus(req: Requirement): RequirementStatus | 'draft' {
+  const rawStatus = req.rawStatus;
+  
+  // Handle draft status (special status, not in state machine)
+  if (rawStatus === 'draft') {
     return 'draft';
   }
 
-  // 4. Completed (Strict)
-  if (req.rawStatus === 'Completed') {
-    return 'completed';
+  // Handle archived - treat as regular status (archived flag handled separately in context)
+  // Archived status should not exist in workflow, but handle gracefully
+  if (rawStatus === 'Archived' || rawStatus === 'archived') {
+    // Return a valid workflow status - will be handled by isArchived flag in context
+    return 'Assigned'; // Default fallback, archived flag will override tab
   }
-
-  // 5. Pending vs Active
-  // This is the core logic change requested.
-  // Pending = Waiting for Action (Quote, Review, or Mapping)
-  // Active = Work in Progress (Assigned + Mapped, or In_Progress)
-
-  if (req.type === 'outsourced') {
-    // For outsourced requirements, explicit state checks
-    const { isSender, isReceiver } = req;
-
-    // WAITING FOR QUOTE (Waiting) or QUOTE SUBMITTED (Submitted) or WORK REVIEW (Review)
-    // If waiting for quote or review, it is Pending for both (Sender waiting, Receiver needs to act, or vice versa)
-    if (req.rawStatus === 'Waiting' || req.rawStatus === 'Submitted' || req.rawStatus === 'Review') {
-      return 'pending';
-    }
-
-    // WAITING FOR MAPPING (ASSIGNED but not Mapped)
-    if (req.rawStatus === 'Assigned' && !req.receiver_workspace_id) {
-       return 'pending';
-    }
-
-    // REJECTED (Needs Edit/Resend or Revise)
-    if (req.rawStatus === 'Rejected') {
-      return 'pending';
-    }
-
-    // If we passed all above, it's likely Active (Assigned + Mapped, or In_Progress)
-    if (req.rawStatus === 'Assigned' || req.rawStatus === 'In_Progress' || req.rawStatus === 'Impediment' || req.rawStatus === 'Stuck' || req.rawStatus === 'Revision') {
-       return 'active';
-    }
-  } else {
-    // In-house / Client Logic
-    if (req.approvalStatus === 'pending') {
-      return 'pending';
-    }
-    if (req.rawStatus === 'Assigned' || req.rawStatus === 'In_Progress' || req.rawStatus === 'Submitted' || req.rawStatus === 'Revision' || req.rawStatus === 'Impediment' || req.rawStatus === 'Stuck') {
-      return 'active';
-    }
+  
+  // Use type guard to validate status
+  if (rawStatus && isRequirementStatus(rawStatus)) {
+    return rawStatus;
   }
-
-  // Fallback
-  return 'active';
-};
-
+  
+  // Fallback for unknown statuses
+  console.warn(`Unknown requirement status: ${rawStatus}, defaulting to 'Waiting'`);
+  return 'Waiting';
+}
 
 /**
- * Logic to determine the display state and available actions for a Requirement Card.
- * Decouples complex business logic from the UI component.
+ * Maps a Requirement's role flags to a workflow UserRole.
+ * 
+ * @param req - The requirement object
+ * @returns UserRole enum value
  */
-export const getRequirementActionState = (req: Requirement, currentUserId?: number): RequirementActionState => {
-  const isSender = !!req.isSender;
-  const isReceiver = !!req.isReceiver;
-  const rawStatus = req.rawStatus;
+export function mapRequirementToRole(req: Requirement): UserRole {
+  if (req.isSender === true) {
+    return 'sender';
+  }
+  if (req.isReceiver === true) {
+    return 'receiver';
+  }
+  return 'internal';
+}
 
-  let isPending = false;
-  let displayStatus: string = req.status || ''; // Default fallback, explicitly typed as string
-  let actionButton: RequirementActionState['actionButton'] = undefined;
-  let actionButtonLabel: string | undefined = undefined;
-
-  // Outsourced Logic
-  if (req.type === 'outsourced') {
-    
-    // --- RECEIVER (Partner) View ---
-    if (isReceiver) {
-      if (rawStatus === 'Waiting') {
-        isPending = true;
-        displayStatus = 'Action Needed: Submit Quote';
-        actionButton = 'Submit';
-        actionButtonLabel = 'Submit Quote';
-      }
-      else if (rawStatus === 'Submitted') {
-         isPending = true; // Passive wait
-         displayStatus = 'Quote Submitted. Pending Acceptance...';
-         // Can retract? allowed: [Submitted]: [Waiting]
-         // actionButton = 'Retract'; // Optional feature
-      }
-      else if (rawStatus === 'Assigned') {
-         if (!req.receiver_workspace_id) {
-            isPending = true;
-            displayStatus = 'Action Needed: Map Workspace';
-            actionButton = 'Map';
-            actionButtonLabel = 'Map Workspace';
-         } else {
-            // Active
-            isPending = false;
-            displayStatus = 'Assigned';
-         }
-      }
-      else if (rawStatus === 'Review') {
-         isPending = true;
-         displayStatus = 'Work Submitted. Pending Review...';
-      }
-      else if (rawStatus === 'Rejected') {
-        const isReceiverRejection = Number(req.updated_user) === Number(currentUserId);
-
-        if (isReceiverRejection) {
-          // I rejected the requirement
-          isPending = true;
-          displayStatus = 'Requirement Rejected. Awaiting Revision...';
-          // No action button for rejector
-        } else {
-          // Sender rejected my quote
-          isPending = true;
-          displayStatus = 'Quote Rejected';
-          actionButton = 'Revise';
-          actionButtonLabel = 'Revise Quote';
-        }
-      }
-      else if (rawStatus === 'Revision') {
-         // Work Rejected
-         isPending = true; // Or active? Usually active work. But pending correction.
-         // Let's call it active in tab logic? 
-         // Active tab logic includes Revision. So here isPending false?
-         // Using isPending=false allows Progress bar.
-         isPending = false; 
-         displayStatus = 'Revision Requested';
-      }
-    } 
-    
-    // --- SENDER (Creator) View ---
-    else if (isSender) {
-       if (rawStatus === 'Waiting') {
-         isPending = true; // Passive wait
-         displayStatus = 'Awaiting Quote...';
-       }
-       else if (rawStatus === 'Submitted') {
-         isPending = true;
-         displayStatus = 'Quote Received.';
-         actionButton = 'Approve'; // or Reject
-         actionButtonLabel = 'Accept Quote';
-       }
-       else if (rawStatus === 'Rejected') {
-         // Determine rejection source
-         const isSenderRejection = Number(req.updated_user) === Number(currentUserId);
-
-         if (isSenderRejection) {
-            // I rejected the quote
-            isPending = true;
-            displayStatus = 'Quote Rejected. Awaiting Revision...';
-            // No action button for rejector
-         } else {
-            // Receiver rejected my requirement
-            isPending = true;
-            displayStatus = 'Requirement Rejected';
-            actionButton = 'Edit';
-            actionButtonLabel = 'Edit & Resend';
-         }
-       }
-       else if (rawStatus === 'Assigned' && !req.receiver_workspace_id) {
-          isPending = true;
-          displayStatus = 'Waiting for Partner to Map Workspace...';
-       }
-       else if (rawStatus === 'Review') {
-          // Work Review
-          isPending = true;
-          displayStatus = 'Work Completed. Review Needed.';
-          actionButton = 'Approve'; 
-          actionButtonLabel = 'Approve Work';
-       }
-    }
-
-  } else {
-    // In-house / Client Logic
-    if (req.approvalStatus === 'pending') {
-      isPending = true;
-      displayStatus = 'Waiting for Approval';
+/**
+ * Maps a Requirement to RequirementContext for workflow module.
+ * 
+ * @param req - The requirement object
+ * @param currentUserId - Current user ID for rejection source detection
+ * @param role - User role (needed for rejection source detection)
+ * @returns RequirementContext object
+ */
+export function mapRequirementToContext(
+  req: Requirement,
+  currentUserId?: number,
+  role?: UserRole
+): RequirementContext {
+  const isWorkspaceMapped = !!req.receiver_workspace_id;
+  const hasQuotedPrice = !!(req.quotedPrice || req.quoted_price);
+  
+  // Determine rejection source: if updated_user matches currentUserId and role is sender,
+  // then sender rejected. Otherwise, if role is receiver and updated_user matches, receiver rejected.
+  let isRejectedBySender = false;
+  if (req.rawStatus === 'Rejected' && currentUserId && req.updated_user) {
+    if (role === 'sender' && Number(req.updated_user) === Number(currentUserId)) {
+      isRejectedBySender = true; // Sender rejected the quote
+    } else if (role === 'receiver' && Number(req.updated_user) !== Number(currentUserId)) {
+      isRejectedBySender = true; // Sender rejected (receiver didn't update it)
     }
   }
-
+  
   return {
-    isPending,
-    displayStatus,
-    actionButton,
-    actionButtonLabel,
-    isSender,
-    isReceiver
+    isWorkspaceMapped,
+    isRejectedBySender,
+    hasQuotedPrice,
   };
-};
+}
+
+/**
+ * Maps a Requirement to RequirementType for workflow module.
+ * 
+ * @param req - The requirement object
+ * @returns RequirementType enum value
+ */
+export function mapRequirementToType(req: Requirement): RequirementType {
+  if (req.type === 'outsourced') {
+    return 'outsourced';
+  }
+  if (req.type === 'client') {
+    return 'client';
+  }
+  return 'inhouse';
+}
+
