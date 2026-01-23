@@ -44,3 +44,7 @@ next-env.d.ts
 *.sw?
 
 alsonotify-new-ui/refactor_report.md
+
+# Bun
+bun.lock
+bun.lockb

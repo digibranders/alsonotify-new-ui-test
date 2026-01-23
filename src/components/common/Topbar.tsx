@@ -29,6 +29,7 @@ import { Skeleton } from '../ui/Skeleton';
 import { FeedbackWidget } from './FeedbackWidget';
 import { useUserDetails } from '@/hooks/useUser';
 import { getRoleFromUser, isSuperAdmin } from '@/utils/roleUtils';
+import { useAccountType } from '@/utils/accountTypeUtils';
 import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead } from '@/hooks/useNotification';
 import { useWorkspaces } from '@/hooks/useWorkspace';
 import { useEmployees } from '@/hooks/useUser';
@@ -72,6 +73,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
   const router = useRouter();
   const handleLogout = useLogout();
   const { message } = App.useApp();
+  const { isIndividual } = useAccountType();
 
   // Fetch user details
   const { data: userDetailsData, error: userDetailsError, isLoading: isLoadingUserDetails } = useUserDetails();
@@ -340,8 +342,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
     }
   ];
 
-  const accountType = user?.company?.account_type || 'ORGANIZATION';
-  const isIndividual = accountType === 'INDIVIDUAL';
+  // Account type is now handled by useAccountType hook above
 
   const isAdmin = useMemo(() => {
     const userData = userDetailsData?.result || {};
@@ -365,9 +366,9 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
       children: [
         {
           key: 'settings',
-          label: 'Settings',
+          label: isIndividual ? 'Settings' : 'Company Settings',
           icon: <Settings className="w-4 h-4" />,
-          onClick: () => router.push('/dashboard/settings'),
+          onClick: () => router.push(isIndividual ? '/dashboard/profile' : '/dashboard/settings'),
         },
         {
           key: 'profile',

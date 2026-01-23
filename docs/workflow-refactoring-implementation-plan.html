@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workflow Refactoring - Implementation Plan | AlsoNotify</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --accent-red: #FF3B3B;
+            --accent-green: #3fb950;
+            --accent-blue: #58a6ff;
+            --accent-orange: #d29922;
+            --accent-purple: #a371f7;
+            --accent-cyan: #39c5cf;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --border-color: #30363d;
+            --card-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 60px 40px; }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .project-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 24px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        h1 {
+            font-size: 42px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 16px;
+        }
+
+        header p { color: var(--text-secondary); font-size: 16px; max-width: 600px; margin: 0 auto; }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-top: 32px;
+        }
+
+        .meta-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: left;
+        }
+
+        .meta-card .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+        .meta-card .value { font-size: 18px; font-weight: 600; margin-top: 4px; }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-red { background: rgba(255, 59, 59, 0.15); color: var(--accent-red); }
+        .badge-green { background: rgba(63, 185, 80, 0.15); color: var(--accent-green); }
+        .badge-blue { background: rgba(88, 166, 255, 0.15); color: var(--accent-blue); }
+        .badge-orange { background: rgba(210, 153, 34, 0.15); color: var(--accent-orange); }
+        .badge-purple { background: rgba(163, 113, 247, 0.15); color: var(--accent-purple); }
+        .badge-cyan { background: rgba(57, 197, 207, 0.15); color: var(--accent-cyan); }
+
+        section { margin-bottom: 60px; }
+
+        h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h2::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: var(--accent-red);
+            border-radius: 2px;
+        }
+
+        h3 { font-size: 18px; font-weight: 600; margin: 24px 0 12px; color: var(--text-primary); }
+        h4 { font-size: 14px; font-weight: 600; margin: 16px 0 8px; color: var(--text-secondary); }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: 20px;
+            box-shadow: var(--card-shadow);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .card-title { font-size: 18px; font-weight: 600; }
+        .card-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+
+        .sprint-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sprint-number {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--accent-red), #ff6b6b);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .sprint-info { flex: 1; }
+        .sprint-info h3 { margin: 0; font-size: 20px; }
+        .sprint-info p { margin: 4px 0 0; color: var(--text-secondary); font-size: 13px; }
+
+        .phase {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .phase-number {
+            width: 28px;
+            height: 28px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--accent-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--accent-blue);
+        }
+
+        .phase-title { font-weight: 600; font-size: 15px; }
+
+        .file-list {
+            list-style: none;
+            padding: 0;
+            margin: 12px 0;
+        }
+
+        .file-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 10px 12px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .file-icon {
+            width: 20px;
+            height: 20px;
+            background: var(--accent-blue);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .file-info { flex: 1; }
+        .file-name { font-family: 'JetBrains Mono', monospace; color: var(--accent-cyan); }
+        .file-desc { color: var(--text-secondary); font-size: 12px; margin-top: 2px; }
+
+        .instruction-box {
+            background: rgba(88, 166, 255, 0.08);
+            border: 1px solid rgba(88, 166, 255, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .instruction-box h4 {
+            color: var(--accent-blue);
+            margin: 0 0 8px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .instruction-box p, .instruction-box ul {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin: 0;
+        }
+
+        .instruction-box ul { padding-left: 20px; margin-top: 8px; }
+        .instruction-box li { margin-bottom: 4px; }
+
+        .verification-box {
+            background: rgba(63, 185, 80, 0.08);
+            border: 1px solid rgba(63, 185, 80, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .verification-box h4 {
+            color: var(--accent-green);
+            margin: 0 0 8px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .verification-box ul {
+            color: var(--text-secondary);
+            font-size: 13px;
+            padding-left: 20px;
+            margin: 0;
+        }
+
+        .warning-box {
+            background: rgba(210, 153, 34, 0.08);
+            border: 1px solid rgba(210, 153, 34, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+
+        .warning-box h4 {
+            color: var(--accent-orange);
+            margin: 0 0 8px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .warning-box p {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin: 0;
+        }
+
+        .dependency-arrow {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 20px;
+            margin: 8px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 13px;
+        }
+
+        th, td {
+            padding: 12px 14px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-tertiary);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--accent-cyan);
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 32px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border-color);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-bottom: 24px;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -28px;
+            top: 6px;
+            width: 12px;
+            height: 12px;
+            background: var(--bg-primary);
+            border: 2px solid var(--accent-blue);
+            border-radius: 50%;
+        }
+
+        .timeline-item.completed::before {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .grid-2 { grid-template-columns: 1fr; }
+            .meta-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .principle-card {
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 12px;
+        }
+
+        .principle-card h4 {
+            color: var(--accent-purple);
+            margin: 0 0 8px;
+        }
+
+        .principle-card p {
+            color: var(--text-secondary);
+            font-size: 13px;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="project-badge">
+                <span style="color: var(--accent-red);">●</span>
+                PROJECT PLAN
+                <span style="color: var(--text-muted);">|</span>
+                AlsoNotify Frontend
+            </div>
+            <h1>Workflow Module Refactoring</h1>
+            <p>A phased implementation plan for centralizing Requirements and Tasks workflow logic into a dedicated module.</p>
+            
+            <div class="meta-grid">
+                <div class="meta-card">
+                    <div class="label">Total Sprints</div>
+                    <div class="value">3</div>
+                </div>
+                <div class="meta-card">
+                    <div class="label">Estimated Duration</div>
+                    <div class="value">6-8 Days</div>
+                </div>
+                <div class="meta-card">
+                    <div class="label">Risk Level</div>
+                    <div class="value" style="color: var(--accent-green);">Low</div>
+                </div>
+                <div class="meta-card">
+                    <div class="label">Breaking Changes</div>
+                    <div class="value" style="color: var(--accent-green);">None</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Section: Guiding Principles -->
+        <section>
+            <h2>Guiding Principles for AI Agent</h2>
+            
+            <div class="card">
+                <div class="card-title">Anti-Hallucination Strategy</div>
+                <div class="card-subtitle">Rules to prevent AI from generating incorrect or inconsistent code</div>
+                
+                <div class="grid-2" style="margin-top: 20px;">
+                    <div class="principle-card">
+                        <h4>1. Reference Before Writing</h4>
+                        <p>Always read the backend source files before writing frontend equivalents. Mirror the exact status enums, transition rules, and role logic from backend.</p>
+                    </div>
+                    <div class="principle-card">
+                        <h4>2. Small Verifiable Units</h4>
+                        <p>Complete ONE file at a time. Verify it compiles and exports correctly before moving to the next file. Never write multiple interdependent files in one go.</p>
+                    </div>
+                    <div class="principle-card">
+                        <h4>3. Type-First Development</h4>
+                        <p>Always create .types.ts files FIRST. All subsequent files import from types. This catches errors early and ensures consistency.</p>
+                    </div>
+                    <div class="principle-card">
+                        <h4>4. Incremental Migration</h4>
+                        <p>New workflow module must work alongside existing code. Migrate ONE component at a time. Old and new can coexist during transition.</p>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    <h4>Critical Rule</h4>
+                    <p>After each phase, STOP and wait for human verification. Do not proceed to next phase until explicitly instructed. This prevents cascading errors.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: File Structure Overview -->
+        <section>
+            <h2>Target File Structure</h2>
+            
+            <div class="card">
+                <div class="card-title">New Directory: <code>src/lib/workflow/</code></div>
+                
+                <pre style="background: var(--bg-tertiary); padding: 20px; border-radius: 12px; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.8; overflow-x: auto;">
+<span style="color: var(--text-muted);">alsonotify-new-ui/src/lib/workflow/</span>
+├── <span style="color: var(--accent-cyan);">index.ts</span>                           <span style="color: var(--text-muted);"># Public API exports</span>
+│
+├── <span style="color: var(--accent-orange);">types/</span>
+│   ├── <span style="color: var(--accent-cyan);">requirement.types.ts</span>           <span style="color: var(--text-muted);"># RequirementStatus, UserRole, CTAConfig</span>
+│   ├── <span style="color: var(--accent-cyan);">task.types.ts</span>                  <span style="color: var(--text-muted);"># TaskStatus, MemberStatus, TaskCTAConfig</span>
+│   └── <span style="color: var(--accent-cyan);">common.types.ts</span>                <span style="color: var(--text-muted);"># Shared types (Tab, ModalType, etc.)</span>
+│
+├── <span style="color: var(--accent-orange);">requirement/</span>
+│   ├── <span style="color: var(--accent-cyan);">requirementWorkflow.ts</span>         <span style="color: var(--text-muted);"># State machine, transitions</span>
+│   ├── <span style="color: var(--accent-cyan);">requirementCTA.ts</span>              <span style="color: var(--text-muted);"># CTA mapping per status/role</span>
+│   ├── <span style="color: var(--accent-cyan);">requirementTab.ts</span>              <span style="color: var(--text-muted);"># Tab determination logic</span>
+│   └── <span style="color: var(--accent-cyan);">requirementModal.ts</span>            <span style="color: var(--text-muted);"># Modal field configurations</span>
+│
+├── <span style="color: var(--accent-orange);">task/</span>
+│   ├── <span style="color: var(--accent-cyan);">taskWorkflow.ts</span>                <span style="color: var(--text-muted);"># Task state machine</span>
+│   ├── <span style="color: var(--accent-cyan);">taskCTA.ts</span>                     <span style="color: var(--text-muted);"># Task CTA mapping</span>
+│   └── <span style="color: var(--accent-cyan);">memberAggregation.ts</span>           <span style="color: var(--text-muted);"># Member → Task status rollup</span>
+│
+└── <span style="color: var(--accent-orange);">rollup/</span>
+    └── <span style="color: var(--accent-cyan);">statusRollup.ts</span>                <span style="color: var(--text-muted);"># Task → Requirement rollup</span>
+                </pre>
+            </div>
+        </section>
+
+        <!-- SPRINT 1 -->
+        <section>
+            <div class="card">
+                <div class="sprint-header">
+                    <div class="sprint-number">S1</div>
+                    <div class="sprint-info">
+                        <h3>Sprint 1: Foundation - Types & State Machines</h3>
+                        <p>Estimated: 2-3 days | Files: 7 | Risk: Low</p>
+                    </div>
+                    <span class="badge badge-blue">Foundation</span>
+                </div>
+
+                <p style="color: var(--text-secondary); margin-bottom: 24px;">
+                    Create the workflow module structure with type definitions and state machines. 
+                    No component changes yet - this sprint is purely additive.
+                </p>
+
+                <!-- Phase 1.1 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">1.1</div>
+                        <div class="phase-title">Directory Setup & Common Types</div>
+                        <span class="badge badge-green" style="margin-left: auto;">Start Here</span>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">📁</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/</div>
+                                <div class="file-desc">Create directory structure: types/, requirement/, task/, rollup/</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/types/common.types.ts</div>
+                                <div class="file-desc">Tab enum, ModalType enum, BaseActionConfig interface</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li>Create the directory structure first</li>
+                            <li>Define <code>Tab</code> type: 'draft' | 'pending' | 'active' | 'completed' | 'delayed' | 'archived'</li>
+                            <li>Define <code>ModalType</code>: 'quotation' | 'reject' | 'mapping' | 'edit' | 'none'</li>
+                            <li>Keep this file minimal - only truly shared types</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>File exists and has no TypeScript errors</li>
+                            <li>Can be imported in another test file</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="dependency-arrow">↓</div>
+
+                <!-- Phase 1.2 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">1.2</div>
+                        <div class="phase-title">Requirement Types</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/types/requirement.types.ts</div>
+                                <div class="file-desc">RequirementStatus enum, UserRole, CTAConfig, TransitionMap types</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li><strong>FIRST:</strong> Read <code>alsonotify-backend-new/service/requirement.service.ts</code> lines 364-500</li>
+                            <li>Extract exact <code>RequirementStatus</code> values from backend enum</li>
+                            <li>Define <code>UserRole</code>: 'sender' | 'receiver' | 'internal'</li>
+                            <li>Define <code>RequirementCTAConfig</code> interface with: displayStatus, isPending, tab, primaryAction, secondaryAction</li>
+                            <li>Define <code>ActionConfig</code>: { label, type, modal?, apiAction? }</li>
+                            <li>Import Tab and ModalType from common.types.ts</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>RequirementStatus has all 14 statuses matching backend</li>
+                            <li>No TypeScript errors</li>
+                            <li>Types are properly exported</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="dependency-arrow">↓</div>
+
+                <!-- Phase 1.3 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">1.3</div>
+                        <div class="phase-title">Task Types</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/types/task.types.ts</div>
+                                <div class="file-desc">TaskStatus enum, MemberStatus, TaskCTAConfig, ExecutionMode types</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li><strong>FIRST:</strong> Read <code>alsonotify-backend-new/service/TaskWorkflowManager.ts</code></li>
+                            <li>Extract exact <code>TaskStatus</code> values from VALID_TRANSITIONS keys</li>
+                            <li>Define <code>ExecutionMode</code>: 'parallel' | 'sequential'</li>
+                            <li>Define <code>MemberStatus</code> type</li>
+                            <li>Define <code>TaskCTAConfig</code> interface</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>TaskStatus matches backend: Assigned, In_Progress, Review, Stuck, Impediment, Delayed, Completed</li>
+                            <li>No TypeScript errors</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="dependency-arrow">↓</div>
+
+                <!-- Phase 1.4 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">1.4</div>
+                        <div class="phase-title">Requirement State Machine</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/requirement/requirementWorkflow.ts</div>
+                                <div class="file-desc">SENDER_TRANSITIONS, RECEIVER_TRANSITIONS, INTERNAL_TRANSITIONS, helper functions</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li><strong>FIRST:</strong> Re-read backend <code>RequirementWorkflowManager.validateTransition()</code></li>
+                            <li>Create <code>SENDER_TRANSITIONS: Record&lt;RequirementStatus, RequirementStatus[]&gt;</code></li>
+                            <li>Create <code>RECEIVER_TRANSITIONS: Record&lt;RequirementStatus, RequirementStatus[]&gt;</code></li>
+                            <li>Create <code>INTERNAL_TRANSITIONS: Record&lt;RequirementStatus, RequirementStatus[]&gt;</code></li>
+                            <li>Implement <code>isTransitionValid(from, to, role): boolean</code></li>
+                            <li>Implement <code>getAllowedTransitions(status, role): RequirementStatus[]</code></li>
+                            <li>Add JSDoc comments explaining each transition</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>Transitions match backend exactly - cross-reference line by line</li>
+                            <li>Helper functions work with simple test calls</li>
+                            <li>No TypeScript errors</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="dependency-arrow">↓</div>
+
+                <!-- Phase 1.5 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">1.5</div>
+                        <div class="phase-title">Task State Machine</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/task/taskWorkflow.ts</div>
+                                <div class="file-desc">TASK_TRANSITIONS, validation helpers</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li><strong>FIRST:</strong> Read <code>TaskWorkflowManager.VALID_TRANSITIONS</code></li>
+                            <li>Create <code>TASK_TRANSITIONS: Record&lt;TaskStatus, TaskStatus[]&gt;</code></li>
+                            <li>Copy the exact transitions from backend</li>
+                            <li>Implement <code>isTaskTransitionValid(from, to): boolean</code></li>
+                            <li>Implement <code>getAllowedTaskTransitions(status): TaskStatus[]</code></li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>TASK_TRANSITIONS matches TaskWorkflowManager.VALID_TRANSITIONS exactly</li>
+                            <li>No TypeScript errors</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="dependency-arrow">↓</div>
+
+                <!-- Phase 1.6 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">1.6</div>
+                        <div class="phase-title">Status Rollup Logic</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/rollup/statusRollup.ts</div>
+                                <div class="file-desc">deriveRequirementStatusFromTasks(), aggregateMemberStatuses()</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li><strong>FIRST:</strong> Read <code>rollupRequirementStatus()</code> in task.service.ts lines 1267-1316</li>
+                            <li><strong>ALSO READ:</strong> <code>calculateAggregatedTaskStatus()</code> lines 1174-1190</li>
+                            <li>Implement <code>deriveRequirementStatusFromTasks(tasks): RequirementStatus</code></li>
+                            <li>Priority: Revision → Review (all complete) → In_Progress → Assigned</li>
+                            <li>Implement <code>aggregateMemberStatuses(members): TaskStatus</code></li>
+                            <li>Priority: Stuck → Impediment → In_Progress → Completed → Review → Delayed → Assigned</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>Logic matches backend rollup exactly</li>
+                            <li>Test with sample data arrays</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="dependency-arrow">↓</div>
+
+                <!-- Phase 1.7 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">1.7</div>
+                        <div class="phase-title">Index Export File</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/index.ts</div>
+                                <div class="file-desc">Re-export all public APIs from submodules</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li>Export all types from types/*.ts</li>
+                            <li>Export workflow functions from requirement/ and task/</li>
+                            <li>Export rollup functions</li>
+                            <li>Use named exports, not default exports</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>Can import from '@/lib/workflow' in any component</li>
+                            <li>All exports resolve correctly</li>
+                            <li>Run: <code>bun run build</code> - no errors</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    <h4>Sprint 1 Complete - STOP</h4>
+                    <p>Do not proceed to Sprint 2 until all Phase 1.x files are verified. Run <code>bun run build</code> to ensure no compilation errors.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SPRINT 2 -->
+        <section>
+            <div class="card">
+                <div class="sprint-header">
+                    <div class="sprint-number">S2</div>
+                    <div class="sprint-info">
+                        <h3>Sprint 2: CTA & Tab Logic</h3>
+                        <p>Estimated: 2 days | Files: 4 | Risk: Low</p>
+                    </div>
+                    <span class="badge badge-orange">Business Logic</span>
+                </div>
+
+                <p style="color: var(--text-secondary); margin-bottom: 24px;">
+                    Implement the CTA mapping and tab determination logic using the specification document.
+                    Still no component changes - building the complete workflow module.
+                </p>
+
+                <!-- Phase 2.1 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">2.1</div>
+                        <div class="phase-title">Requirement Tab Logic</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/requirement/requirementTab.ts</div>
+                                <div class="file-desc">getRequirementTab() function</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li><strong>REFERENCE:</strong> Read <code>docs/requirements-workflow-specification.html</code> CTA Matrix table</li>
+                            <li><strong>ALSO READ:</strong> Existing <code>getRequirementTab()</code> in requirementState.utils.ts</li>
+                            <li>Implement <code>getRequirementTab(status, type, role, context): Tab</code></li>
+                            <li>Context includes: isWorkspaceMapped, isRejectedBySender, etc.</li>
+                            <li>Handle rejection tab logic: Sender → Draft, Receiver → Pending</li>
+                            <li>Use exhaustive switch statements for type safety</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>Test each status returns correct tab</li>
+                            <li>Rejection logic correct for both roles</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="dependency-arrow">↓</div>
+
+                <!-- Phase 2.2 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">2.2</div>
+                        <div class="phase-title">Requirement CTA Mapping</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/requirement/requirementCTA.ts</div>
+                                <div class="file-desc">getRequirementCTAConfig() function</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li><strong>REFERENCE:</strong> CTA Matrix in specification document</li>
+                            <li><strong>ALSO READ:</strong> Existing <code>getRequirementActionState()</code></li>
+                            <li>Implement <code>getRequirementCTAConfig(status, role, context): RequirementCTAConfig</code></li>
+                            <li>Return: displayStatus, isPending, tab, primaryAction, secondaryAction</li>
+                            <li>primaryAction/secondaryAction include: label, type, modal</li>
+                            <li>Handle all status × role combinations from the matrix</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>Every row in CTA Matrix has corresponding code path</li>
+                            <li>No missing combinations</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="dependency-arrow">↓</div>
+
+                <!-- Phase 2.3 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">2.3</div>
+                        <div class="phase-title">Requirement Modal Config</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/requirement/requirementModal.ts</div>
+                                <div class="file-desc">getModalConfig() function</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li><strong>REFERENCE:</strong> Modal Configuration section in specification</li>
+                            <li>Define <code>ModalFieldConfig</code> interface</li>
+                            <li>Implement <code>getQuotationModalConfig(pricingModel): ModalFieldConfig</code></li>
+                            <li>Implement <code>getRejectModalConfig(): ModalFieldConfig</code></li>
+                            <li>Implement <code>getMappingModalConfig(): ModalFieldConfig</code></li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>Modal configs match existing dialog implementations</li>
+                            <li>Field conditions are correct (hourly vs project)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="dependency-arrow">↓</div>
+
+                <!-- Phase 2.4 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">2.4</div>
+                        <div class="phase-title">Task CTA Mapping</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/task/taskCTA.ts</div>
+                                <div class="file-desc">getTaskCTAConfig() function</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li><strong>FIRST:</strong> Analyze existing TaskCard and TasksPage components</li>
+                            <li>Identify all task CTAs currently in use</li>
+                            <li>Implement <code>getTaskCTAConfig(status, isLeader, isMember): TaskCTAConfig</code></li>
+                            <li>Include: displayStatus, primaryAction, secondaryAction</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>All task statuses have CTA mappings</li>
+                            <li>Leader vs member permissions correct</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    <h4>Sprint 2 Complete - STOP</h4>
+                    <p>Update index.ts to export new functions. Run <code>bun run build</code>. Do not proceed until verified.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SPRINT 3 -->
+        <section>
+            <div class="card">
+                <div class="sprint-header">
+                    <div class="sprint-number">S3</div>
+                    <div class="sprint-info">
+                        <h3>Sprint 3: Component Migration</h3>
+                        <p>Estimated: 2-3 days | Files: 5+ | Risk: Medium</p>
+                    </div>
+                    <span class="badge badge-purple">Integration</span>
+                </div>
+
+                <p style="color: var(--text-secondary); margin-bottom: 24px;">
+                    Migrate existing components to use the new workflow module.
+                    One component at a time. Verify each before proceeding.
+                </p>
+
+                <!-- Phase 3.1 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">3.1</div>
+                        <div class="phase-title">Migrate requirementState.utils.ts</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/components/features/requirements/utils/requirementState.utils.ts</div>
+                                <div class="file-desc">Refactor to use workflow module, keep as thin wrapper</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li><strong>DO NOT DELETE</strong> existing file - refactor in place</li>
+                            <li>Import from '@/lib/workflow'</li>
+                            <li>Replace <code>getRequirementTab</code> implementation with call to workflow module</li>
+                            <li>Replace <code>getRequirementActionState</code> with call to <code>getRequirementCTAConfig</code></li>
+                            <li>Keep same function signatures for backward compatibility</li>
+                            <li>Add deprecation comments pointing to workflow module</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>RequirementsPage still works unchanged</li>
+                            <li>RequirementCard still works unchanged</li>
+                            <li>No visual regressions</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="dependency-arrow">↓</div>
+
+                <!-- Phase 3.2 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">3.2</div>
+                        <div class="phase-title">Migrate RequirementCard</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TSX</div>
+                            <div class="file-info">
+                                <div class="file-name">src/components/features/requirements/components/RequirementCard.tsx</div>
+                                <div class="file-desc">Use workflow module for CTA logic</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li>Import <code>getRequirementCTAConfig</code> from workflow module</li>
+                            <li>Replace inline CTA logic (lines ~386-458) with config object</li>
+                            <li>Render buttons based on config.primaryAction, config.secondaryAction</li>
+                            <li>Keep component props unchanged</li>
+                            <li>Remove redundant status checks - use config.isPending, config.tab</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>Cards display same CTAs as before</li>
+                            <li>Click handlers still work</li>
+                            <li>Test all tab views</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="dependency-arrow">↓</div>
+
+                <!-- Phase 3.3 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">3.3</div>
+                        <div class="phase-title">Migrate RequirementsPage handleReqAccept</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TSX</div>
+                            <div class="file-info">
+                                <div class="file-name">src/components/features/requirements/RequirementsPage.tsx</div>
+                                <div class="file-desc">Simplify handleReqAccept using workflow module</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li>Import <code>getRequirementCTAConfig</code> from workflow module</li>
+                            <li>Refactor <code>handleReqAccept</code> (lines 894-976)</li>
+                            <li>Get CTA config for requirement, then switch on config.primaryAction.modal</li>
+                            <li>Modal routing becomes: quotation → setIsQuotationOpen, mapping → setIsMappingOpen, none → direct API</li>
+                            <li>Remove nested if/else tree</li>
+                            <li>Also refactor <code>mapRequirementStatus</code> to use workflow module</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>All accept/reject flows still work</li>
+                            <li>Correct modals open for each status</li>
+                            <li>Status transitions succeed</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="dependency-arrow">↓</div>
+
+                <!-- Phase 3.4 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">3.4</div>
+                        <div class="phase-title">Migrate RequirementDetailsPage</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TSX</div>
+                            <div class="file-info">
+                                <div class="file-name">src/components/features/requirements/RequirementDetailsPage.tsx</div>
+                                <div class="file-desc">Use workflow module for action buttons</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li>Import from workflow module</li>
+                            <li>Refactor action button rendering (around lines 596-620)</li>
+                            <li>Use <code>getRequirementCTAConfig</code> to determine which buttons to show</li>
+                            <li>Simplify inline conditions</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>Detail page shows correct actions per status</li>
+                            <li>Accept/Reject buttons work</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="dependency-arrow">↓</div>
+
+                <!-- Phase 3.5 -->
+                <div class="phase">
+                    <div class="phase-header">
+                        <div class="phase-number">3.5</div>
+                        <div class="phase-title">Add Unit Tests</div>
+                    </div>
+
+                    <ul class="file-list">
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/__tests__/requirementWorkflow.test.ts</div>
+                                <div class="file-desc">Test state machine transitions</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/__tests__/requirementCTA.test.ts</div>
+                                <div class="file-desc">Test CTA config for all status × role combinations</div>
+                            </div>
+                        </li>
+                        <li>
+                            <div class="file-icon">TS</div>
+                            <div class="file-info">
+                                <div class="file-name">src/lib/workflow/__tests__/statusRollup.test.ts</div>
+                                <div class="file-desc">Test rollup logic with various task arrays</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="instruction-box">
+                        <h4>AI Agent Instructions</h4>
+                        <ul>
+                            <li>Use <code>bun test</code> framework</li>
+                            <li>Test every transition in SENDER/RECEIVER/INTERNAL_TRANSITIONS</li>
+                            <li>Test invalid transitions return false</li>
+                            <li>Test CTA config for each row in the specification matrix</li>
+                            <li>Test rollup priority logic with edge cases</li>
+                        </ul>
+                    </div>
+
+                    <div class="verification-box">
+                        <h4>Verification Checkpoint</h4>
+                        <ul>
+                            <li>All tests pass: <code>bun test</code></li>
+                            <li>Coverage for all status combinations</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="warning-box">
+                    <h4>Sprint 3 Complete - Final Verification</h4>
+                    <p>Run full test suite. Manual QA all requirement flows. Check for regressions in all tabs.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Summary Checklist -->
+        <section>
+            <h2>Final Deliverables Checklist</h2>
+            
+            <div class="card">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Sprint</th>
+                            <th>File</th>
+                            <th>Purpose</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="badge badge-blue">S1</span></td>
+                            <td><code>types/common.types.ts</code></td>
+                            <td>Tab, ModalType enums</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-blue">S1</span></td>
+                            <td><code>types/requirement.types.ts</code></td>
+                            <td>RequirementStatus, CTAConfig</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-blue">S1</span></td>
+                            <td><code>types/task.types.ts</code></td>
+                            <td>TaskStatus, MemberStatus</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-blue">S1</span></td>
+                            <td><code>requirement/requirementWorkflow.ts</code></td>
+                            <td>State machine transitions</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-blue">S1</span></td>
+                            <td><code>task/taskWorkflow.ts</code></td>
+                            <td>Task state machine</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-blue">S1</span></td>
+                            <td><code>rollup/statusRollup.ts</code></td>
+                            <td>Task → Requirement rollup</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-blue">S1</span></td>
+                            <td><code>index.ts</code></td>
+                            <td>Public exports</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-orange">S2</span></td>
+                            <td><code>requirement/requirementTab.ts</code></td>
+                            <td>Tab determination</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-orange">S2</span></td>
+                            <td><code>requirement/requirementCTA.ts</code></td>
+                            <td>CTA mapping</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-orange">S2</span></td>
+                            <td><code>requirement/requirementModal.ts</code></td>
+                            <td>Modal configurations</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-orange">S2</span></td>
+                            <td><code>task/taskCTA.ts</code></td>
+                            <td>Task CTA mapping</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-purple">S3</span></td>
+                            <td><code>requirementState.utils.ts</code></td>
+                            <td>Migrate to workflow module</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-purple">S3</span></td>
+                            <td><code>RequirementCard.tsx</code></td>
+                            <td>Use workflow CTA</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-purple">S3</span></td>
+                            <td><code>RequirementsPage.tsx</code></td>
+                            <td>Simplify handleReqAccept</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-purple">S3</span></td>
+                            <td><code>RequirementDetailsPage.tsx</code></td>
+                            <td>Use workflow CTA</td>
+                            <td>☐</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-purple">S3</span></td>
+                            <td><code>__tests__/*.test.ts</code></td>
+                            <td>Unit tests</td>
+                            <td>☐</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Risk Mitigation -->
+        <section>
+            <h2>Risk Mitigation</h2>
+            
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title">Rollback Strategy</div>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin-top: 12px;">
+                        Since Sprint 1 & 2 are purely additive (new files only), there's zero rollback risk.
+                        Sprint 3 modifies existing components - if issues arise, simply revert those specific file changes.
+                        The workflow module can exist alongside old code indefinitely.
+                    </p>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">Testing Strategy</div>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin-top: 12px;">
+                        Manual QA after each Sprint 3 phase. Test all tabs (Draft, Pending, Active, Completed, Delayed).
+                        Test both Sender and Receiver views. Test rejection flows specifically.
+                        Automated tests in Phase 3.5 provide regression safety net.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <footer style="text-align: center; padding: 40px 0; border-top: 1px solid var(--border-color); margin-top: 40px;">
+            <p style="color: var(--text-muted); font-size: 13px;">
+                AlsoNotify Workflow Refactoring Implementation Plan<br>
+                Prepared by: AI CTO + Project Manager | January 2026
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

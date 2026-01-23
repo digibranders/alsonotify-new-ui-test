@@ -122,14 +122,23 @@ const NAV_ITEMS: NavItemConfig[] = [
 ];
 
 import { useSidebar } from '@/context/SidebarContext';
+import { useCurrentUserCompany } from '@/hooks/useUser';
+import { useAccountType } from '@/utils/accountTypeUtils';
 
 // ... existing imports ...
 
 export const Sidebar = React.memo(function Sidebar({ userRole, permissions }: SidebarProps) {
   const pathname = usePathname();
   const { isCollapsed, toggleSidebar } = useSidebar();
+  const { isIndividual } = useAccountType();
 
   const filteredNavItems = React.useMemo(() => NAV_ITEMS.filter(item => {
+    // Filter out items for individual accounts
+    // Hide Employees and Reports management
+    if (isIndividual && ['employees', 'reports'].includes(item.id)) {
+      return false;
+    }
+
     const permissionKey = navPermissionMap[item.id];
     const hasPermission = permissions?.Navigation?.[permissionKey];
 
@@ -140,7 +149,7 @@ export const Sidebar = React.memo(function Sidebar({ userRole, permissions }: Si
 
     // Otherwise fallback to role-based access
     return item.allowedRoles.includes(userRole);
-  }), [permissions, userRole]);
+  }), [permissions, userRole, isIndividual]);
 
   const isActive = React.useCallback((path: string) => {
     if (path === '/dashboard') {
@@ -182,12 +191,17 @@ export const Sidebar = React.memo(function Sidebar({ userRole, permissions }: Si
       {/* Logo */}
       <div className={`flex items-center justify-center mb-6 h-8 overflow-hidden transition-all duration-300`}>
         {isCollapsed ? (
-             <Image
+             <img
                 src="/favicon.png"
                 alt="Alsonotify"
                 width={32}
                 height={32}
                 className="w-8 h-8 object-contain"
+                onError={(e) => {
+                  // Fallback if favicon doesn't load
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
              />
         ) : (
             <Image

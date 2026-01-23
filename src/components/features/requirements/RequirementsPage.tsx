@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { PageLayout } from '../../layout/PageLayout';
 import { FilterBar, FilterOption } from '../../ui/FilterBar';
 import { DateRangeSelector } from '../../common/DateRangeSelector';
@@ -36,9 +36,10 @@ import { QuotationDialog, RejectDialog, InternalMappingModal } from './component
 import { Requirement, Workspace } from '@/types/domain';
 import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDto } from '@/types/dto/requirement.dto';
 import { getErrorMessage } from '@/types/api-utils';
+import { getRequirementTab } from './utils/requirementState.utils';
 
 export function RequirementsPage() {
-  const { message: messageApi } = App.useApp();
+  const { message: messageApi, modal: modalApi } = App.useApp();
   const router = useRouter();
   const queryClient = useQueryClient();
   const createRequirementMutation = useCreateRequirement();
@@ -61,6 +62,7 @@ export function RequirementsPage() {
       queryKey: ['requirements', id],
       queryFn: () => getRequirementsByWorkspaceId(id),
       enabled: !!id && workspaceIds.length > 0,
+      refetchInterval: 5000,
     })),
   });
 
@@ -157,7 +159,9 @@ export function RequirementsPage() {
     }
 
     return combined;
-  }, [requirementQueries.map(q => q.data), workspaceIds, collaborativeData]);
+    // requirementQueries is an array that is structurally memoized, but requirementQueries.map creates a new array every render.
+    // Instead, depend on the queries themselves.
+  }, [requirementQueries, workspaceIds, collaborativeData]);
 
   // Create a map of workspace ID to workspace data for client/company lookup
   // Workspace API returns: { client: {id, name}, client_company_name, company_name }
@@ -311,6 +315,7 @@ export function RequirementsPage() {
         estimatedCost: req.estimatedCost || (req.budget || undefined),
         budget: req.budget || undefined,
         quotedPrice: req.quotedPrice || req.quoted_price || undefined, // Add quoted_price for vendor quotes
+        currency: req.currency || 'USD',
         hourlyRate: req.hourlyRate || undefined,
         estimatedHours: req.estimatedHours || undefined,
         pricingModel: mockPricingModel as 'hourly' | 'project' | undefined,
@@ -431,6 +436,7 @@ export function RequirementsPage() {
   const handleQuotationConfirm = (data: { cost?: number; rate?: number; hours?: number; currency?: string }) => {
     const amount = data.cost || 0;
     const hours = data.hours || 0;
+    const currency = data.currency || 'USD';
     // Determine the ID: editingReq for basic edits, or pendingReqId for workflow actions
     const reqId = pendingReqId;
     if (!reqId) {
@@ -444,10 +450,11 @@ export function RequirementsPage() {
       project_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
       workspace_id: requirements.find(r => r.id === reqId)?.workspaceId || 0,
       quoted_price: amount,
+      currency: currency,
       // estimated_hours: hours, // Not in DTO interface? Check DTO. 
       // DTO has budget, pricing_model etc. `estimated_hours` might not be in UpdateRequirementRequestDto.
       // Assuming it is for now or I will add it if needed.
-      status: 'Review' 
+      status: 'Submitted' 
     };
     
     // Check if estimated_hours is supported in DTO, if not we might need to cast or update DTO.
@@ -540,6 +547,12 @@ export function RequirementsPage() {
       id: editingReq.id,
     };
 
+    // INTELLIGENT WORKFLOW: If editing a Rejected Outsourced Requirement, treat it as "Resending" -> Move to Waiting
+    // This triggers the backend logic to clear old quotes and rejection reasons
+    if (editingReq.type === 'outsourced' && editingReq.rawStatus === 'Rejected') {
+        updatePayload.status = 'Waiting';
+    }
+
     updateRequirementMutation.mutate(updatePayload, {
       onSuccess: () => {
         messageApi.success("Requirement updated successfully");
@@ -616,74 +629,8 @@ export function RequirementsPage() {
 
   // 2. Apply Status Tab filter
   const finalFilteredReqs = baseFilteredReqs.filter(req => {
-    // Draft Tab: Normal drafts
-    if (activeStatusTab === 'draft') {
-      if (req.status === 'draft') return true;
-      return false;
-    }
-
-    // Pending Tab: Waiting for action (quote submission, review, or workspace mapping)
-    if (activeStatusTab === 'pending') {
-      // For outsourced requirements, use explicit logic
-      if (req.type === 'outsourced') {
-        const isSender = req.isSender;
-        const isReceiver = req.isReceiver;
-
-        // Waiting for B to submit quote
-        if (req.rawStatus === 'Waiting') return true;
-        // Waiting for A to review quote
-        if (req.rawStatus === 'Review') return true;
-        
-        // For Receiver (B): Waiting to map workspace
-        if (isReceiver && req.rawStatus === 'Assigned' && !req.receiver_workspace_id) return true;
-        
-        // For Sender (A): Once Assigned, it's no longer pending action from them
-        return false;
-      }
-      
-      // For non-outsourced requirements
-      const isPendingWorkflow = req.rawStatus === 'Waiting' || req.rawStatus === 'Review';
-      return isPendingWorkflow || req.approvalStatus === 'pending';
-    }
-
-    // Active Tab: Workspace mapped and work in progress
-    if (activeStatusTab === 'active') {
-      // For outsourced requirements, use explicit logic
-      if (req.type === 'outsourced') {
-        const isSender = req.isSender;
-        const isReceiver = req.isReceiver;
-
-        // For Sender (A): Approved (Assigned) and In_Progress are active
-        if (isSender) {
-          if (req.rawStatus === 'Assigned' || req.rawStatus === 'In_Progress') return true;
-        }
-
-        // For Receiver (B): Only active if mapped OR in progress
-        if (isReceiver) {
-          if (req.rawStatus === 'Assigned' && req.receiver_workspace_id) return true;
-          if (req.rawStatus === 'In_Progress') return true;
-        }
-
-        return false;
-      }
-      
-      // For non-outsourced requirements
-      const isActiveState = (req.rawStatus === 'Assigned' || req.rawStatus === 'In_Progress') && req.status !== 'delayed';
-      const isPendingWorkflow = req.rawStatus === 'Waiting' || req.rawStatus === 'Review';
-      return isActiveState && !isPendingWorkflow && req.approvalStatus !== 'pending';
-    }
-
-    // Delayed Tab
-    if (activeStatusTab === 'delayed') {
-      return req.status === 'delayed';
-    }
-
-    // Archived Tab
-    if (activeStatusTab === 'archived') {
-      return req.rawStatus === 'Archived' || req.rawStatus === 'archived';
-    }
-
-    return true;
+    const reqTab = getRequirementTab(req);
+    return reqTab === activeStatusTab;
   });
 
   // 3. Apply Sorting
@@ -814,14 +761,16 @@ export function RequirementsPage() {
   };
 
   const toggleSelect = (id: number) => {
-    if (selectedReqs.includes(id)) {
-      setSelectedReqs(selectedReqs.filter(reqId => reqId !== id));
-    } else {
-      setSelectedReqs([...selectedReqs, id]);
-    }
+    setSelectedReqs(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(reqId => reqId !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = useCallback(async () => {
     try {
       const deletePromises = selectedReqs.map(id => {
         const req = requirements.find(r => r.id === id);
@@ -834,9 +783,9 @@ export function RequirementsPage() {
     } catch (error: unknown) {
       messageApi.error(getErrorMessage(error, "Failed to delete requirements"));
     }
-  };
+  }, [selectedReqs, requirements, deleteRequirementMutation, messageApi]);
 
-  const handleBulkComplete = async () => {
+  const handleBulkComplete = useCallback(async () => {
     try {
       const updatePromises = selectedReqs.map(id => {
         const req = requirements.find(r => r.id === id);
@@ -853,9 +802,9 @@ export function RequirementsPage() {
     } catch (error: unknown) {
       messageApi.error(getErrorMessage(error, "Failed to update requirements"));
     }
-  };
+  }, [selectedReqs, requirements, updateRequirementMutation, messageApi]);
 
-  const handleBulkApprove = async () => {
+  const handleBulkApprove = useCallback(async () => {
     try {
       const approvePromises = selectedReqs.map(id =>
         approveRequirementMutation.mutateAsync({ requirement_id: id, status: "Assigned" })
@@ -866,9 +815,9 @@ export function RequirementsPage() {
     } catch (error: unknown) {
       messageApi.error(getErrorMessage(error, "Failed to approve requirements"));
     }
-  };
+  }, [selectedReqs, approveRequirementMutation, messageApi]);
 
-  const handleBulkReject = async () => {
+  const handleBulkReject = useCallback(async () => {
     try {
       const rejectPromises = selectedReqs.map(id =>
         approveRequirementMutation.mutateAsync({ requirement_id: id, status: "Rejected" })
@@ -879,18 +828,17 @@ export function RequirementsPage() {
     } catch (error: unknown) {
       messageApi.error(getErrorMessage(error, "Failed to reject requirements"));
     }
-  };
+  }, [selectedReqs, approveRequirementMutation, messageApi]);
 
-  const handleBulkSubmit = async () => {
+  const handleBulkSubmit = useCallback(async () => {
     try {
-      // Submit for approval by updating status to pending
       const updatePromises = selectedReqs.map(id => {
         const req = requirements.find(r => r.id === id);
         if (!req) return Promise.resolve();
         return updateRequirementMutation.mutateAsync({
           id,
           workspace_id: req.workspaceId,
-          status: 'Assigned', // This will trigger pending approval
+          status: 'Assigned', 
         } as any);
       });
       await Promise.all(updatePromises);
@@ -899,9 +847,9 @@ export function RequirementsPage() {
     } catch (error: unknown) {
       messageApi.error(getErrorMessage(error, "Failed to submit requirements"));
     }
-  };
+  }, [selectedReqs, requirements, updateRequirementMutation, messageApi]);
 
-  const handleBulkReopen = async () => {
+  const handleBulkReopen = useCallback(async () => {
     try {
       const updatePromises = selectedReqs.map(id => {
         const req = requirements.find(r => r.id === id);
@@ -909,7 +857,7 @@ export function RequirementsPage() {
         return updateRequirementMutation.mutateAsync({
           id,
           workspace_id: req.workspaceId,
-          status: 'Assigned', // Reopen by setting back to assigned/in-progress
+          status: 'Assigned',
         } as any);
       });
       await Promise.all(updatePromises);
@@ -918,9 +866,9 @@ export function RequirementsPage() {
     } catch (error: unknown) {
       messageApi.error(getErrorMessage(error, "Failed to reopen requirements"));
     }
-  };
+  }, [selectedReqs, requirements, updateRequirementMutation, messageApi]);
 
-  const handleBulkAssign = async (employee: { user_id?: number; id?: number; name?: string }) => {
+  const handleBulkAssign = useCallback(async (employee: { user_id?: number; id?: number; name?: string }) => {
     try {
       const updatePromises = selectedReqs.map(id => {
         const req = requirements.find(r => r.id === id);
@@ -941,7 +889,7 @@ export function RequirementsPage() {
     } catch (error: unknown) {
       messageApi.error(getErrorMessage(error, "Failed to assign requirements"));
     }
-  };
+  }, [selectedReqs, requirements, updateRequirementMutation, messageApi]);
 
   const handleReqAccept = (id: number) => {
     const req = requirements.find(r => r.id === id);
@@ -977,8 +925,8 @@ export function RequirementsPage() {
       
       // SENDER ACTIONS (Company A - Client)
       if (req.isSender) {
-        // Scenario 1: Reviewing quote submission
-        if (req.rawStatus === 'Review') {
+        // Scenario 1: Reviewing QUOTE submission (Status: Submitted)
+        if (req.rawStatus === 'Submitted') {
           // Accept quote directly - update status to Assigned
           updateRequirementMutation.mutate({
             id: req.id,
@@ -995,8 +943,28 @@ export function RequirementsPage() {
           });
           return;
         }
+
+        // Scenario 2: Reviewing WORK submission (Status: Review)
+         if (req.rawStatus === 'Review') {
+          // Approve Work -> Completed
+          // Might need feedback dialog later? For now direct approval.
+          updateRequirementMutation.mutate({
+            id: req.id,
+            workspace_id: req.workspaceId,
+            status: 'Completed'
+          }, {
+            onSuccess: () => {
+              messageApi.success("Work approved! Requirement marked as Completed.");
+              setPendingReqId(null);
+            },
+            onError: (err: Error) => {
+              messageApi.error(getErrorMessage(err, "Failed to approve work"));
+            }
+          });
+          return;
+        }
         
-        // Scenario 2: Other sender states
+        // Scenario 3: Other sender states
         messageApi.info("No action required at this stage");
         return;
       }
@@ -1021,7 +989,7 @@ export function RequirementsPage() {
     },
     {
       id: 'pending', label: 'Pending', count: baseFilteredReqs.filter(req => {
-        const isPendingWorkflow = req.rawStatus === 'Waiting' || (req.rawStatus as string) === 'Review';
+        const isPendingWorkflow = req.rawStatus === 'Waiting' || (req.rawStatus as string) === 'Review' || req.rawStatus === 'Submitted';
         return isPendingWorkflow || req.approvalStatus === 'pending';
       }).length
     },
@@ -1036,16 +1004,17 @@ export function RequirementsPage() {
     },
     { id: 'completed', label: 'Completed' },
     {
-       id: 'archived', label: 'Archive', count: baseFilteredReqs.filter(req => req.rawStatus === 'Archived' || req.rawStatus === 'archived').length
+       id: 'archived', label: 'Archive'
     }
   ];
 
 
-
-  // Update floating menu with bulk actions
-  useEffect(() => {
-    if (selectedReqs.length > 0) {
-      setExpandedContent(
+  
+  
+  const floatingMenuContent = useMemo(() => {
+    if (selectedReqs.length === 0) return null;
+    
+    return (
         <>
             <div className="flex items-center gap-2 border-r border-white/20 pr-6">
               <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
@@ -1137,15 +1106,17 @@ export function RequirementsPage() {
               </button>
             </div>
         </>
-      );
-    } else {
-      setExpandedContent(null);
-    }
+    );
+  }, [selectedReqs, activeStatusTab, employeesData, handleBulkSubmit, handleBulkApprove, handleBulkReject, handleBulkComplete, handleBulkReopen, handleBulkAssign, handleBulkDelete]);
+
+  // Update floating menu with bulk actions
+  useEffect(() => {
+    setExpandedContent(floatingMenuContent);
 
     return () => {
       setExpandedContent(null);
     };
-  }, [selectedReqs, activeStatusTab, employeesData]);
+  }, [floatingMenuContent, setExpandedContent]);
 
   return (
     <PageLayout
@@ -1257,6 +1228,7 @@ export function RequirementsPage() {
                     <RequirementCard
                       key={requirement.id}
                       requirement={requirement}
+                      currentUserId={currentUser?.id}
                       selected={selectedReqs.includes(requirement.id)}
                       onSelect={() => toggleSelect(requirement.id)}
                       onAccept={() => handleReqAccept(requirement.id)}
@@ -1273,26 +1245,14 @@ export function RequirementsPage() {
                         ...requirement,
                       } as any)}
                        onDelete={() => {
-                          // Standardize status check
-                          const status = requirement.status;
-                          const rawStatus = requirement.rawStatus;
-                          const isArchived = status === 'archived' || rawStatus === 'Archived' || rawStatus === 'archived';
-                          
-                          // If already archived, allow permanent delete
-                          // If Active or Completed, force Archive
-                          // If Draft or Pending/Delayed, allow Delete
-                          
-                          const isActive = status === 'in-progress' || status === 'completed'; // Treat completed as archiving candidate too? User said "Active state can't be deleted"
-                          // User req: "if it is in pending or waiting state it can be deleted, but once it is in activ state it cant be deleted it should e archived"
-                          
-                          // Let's interpret "active" as Assigned, In_Progress, Completed.
-                          // Draft, Waiting, Review, Rejected -> Delete.
-                          
-                          const canDelete = status === 'draft' || status === 'delayed' || requirement.approvalStatus === 'pending' || isArchived;
+                          const tab = getRequirementTab(requirement);
+                          const isActive = tab === 'active' || tab === 'completed' || tab === 'delayed';
+                          const isArchived = tab === 'archived';
+                          const canDelete = tab === 'draft' || tab === 'pending' || isArchived;
                           
                           if (!canDelete) {
                              // Archive Action
-                             Modal.confirm({
+                             modalApi.confirm({
                                title: 'Archive Requirement',
                                content: 'This requirement is active and cannot be permanently deleted. Do you want to archive it instead?',
                                okText: 'Archive',
@@ -1310,7 +1270,7 @@ export function RequirementsPage() {
                              });
                           } else {
                              // Delete Action
-                             Modal.confirm({
+                             modalApi.confirm({
                                title: 'Delete Requirement',
                                content: 'Are you sure you want to permanently delete this requirement? This action cannot be undone.',
                                okText: 'Delete',
@@ -1322,8 +1282,8 @@ export function RequirementsPage() {
                              });
                           }
                        }}
-                       deleteLabel={(requirement.status === 'in-progress' || requirement.status === 'completed') ? 'Archive' : 'Delete'}
-                       deleteIcon={(requirement.status === 'in-progress' || requirement.status === 'completed') ? <Archive className="w-3.5 h-3.5" /> : undefined}
+                       deleteLabel={(activeStatusTab === 'active' || activeStatusTab === 'completed' || activeStatusTab === 'delayed') ? 'Archive' : 'Delete'}
+                       deleteIcon={(activeStatusTab === 'active' || activeStatusTab === 'completed' || activeStatusTab === 'delayed') ? <Archive className="w-3.5 h-3.5" /> : undefined}
                        onDuplicate={() => {
                           handleDuplicateRequirement({
                             ...requirement,
@@ -1387,11 +1347,14 @@ export function RequirementsPage() {
             title: editingReq.title,
             workspace: String(editingReq.workspaceId),
             type: editingReq.type === 'client' ? 'inhouse' : (editingReq.type || 'inhouse') as 'inhouse' | 'outsourced',
-            description: editingReq.description,
-            dueDate: editingReq.dueDate,
+            description: editingReq.description || '',
+            dueDate: editingReq.dueDate || '',
             is_high_priority: editingReq.is_high_priority,
             contactPerson: editingReq.contactPerson,
+            contact_person_id: editingReq.contact_person_id || editingReq.clientId || undefined,
             budget: String(editingReq.budget || ''),
+            quoted_price: String(editingReq.quotedPrice || ''),
+            currency: editingReq.currency || 'USD',
           } : undefined}
           onSubmit={editingReq ? handleUpdateRequirement : handleCreateRequirement}
           onCancel={() => {

@@ -22,30 +22,39 @@ import {
 import { UserDto, RoleDto, ModuleActionGroupDto, CreateEmployeeRequestDto, UpdateEmployeeRequestDto, UpdateUserProfileRequestDto } from "../types/dto/user.dto";
 import { ProfileUpdateInput, CompanyUpdateInput } from "../types/genericTypes";
 
+import { ApiResponse } from "../types/api";
+import { Employee, UserPermissions } from "../types/domain";
 import { mapUserDtoToEmployee, mapUserToDomain } from "../utils/mappers/user";
 import { queryKeys } from "../lib/queryKeys";
+
+const selectEmployees = (data: ApiResponse<UserDto[]>): ApiResponse<Employee[]> => {
+  if (!data) return data as any;
+  return {
+    ...data,
+    result: data.result ? data.result.map((user: UserDto) => mapUserDtoToEmployee(user)) : []
+  } as ApiResponse<Employee[]>;
+};
 
 export const useEmployees = (options: string = "") => {
   return useQuery({
     queryKey: queryKeys.users.employees(options),
     queryFn: () => getEmployees(options),
     staleTime: 5 * 1000, // 5 seconds
-    select: (data) => ({
-      ...data,
-      result: data.result ? data.result.map((user) => mapUserDtoToEmployee(user)) : []
-    })
+    select: selectEmployees
   });
 };
+
+const selectEmployee = (data: ApiResponse<UserDto>): ApiResponse<Employee> => ({
+  ...data,
+  result: data.result ? mapUserDtoToEmployee(data.result) : undefined as any
+});
 
 export const useEmployee = (id: number) => {
   return useQuery({
     queryKey: queryKeys.users.detail(id),
     queryFn: () => getUserById(id),
     enabled: !!id,
-    select: (data) => ({
-      ...data,
-      result: data.result ? mapUserDtoToEmployee(data.result) : undefined
-    })
+    select: selectEmployee
   });
 };
 
@@ -131,15 +140,20 @@ export const useUpdateEmployeeStatus = () => {
   });
 };
 
+const selectUserDetails = (data: ApiResponse<{ user: UserDto; access: UserPermissions }>): ApiResponse<Employee> => {
+  if (!data) return data as any;
+  return {
+    ...data,
+    result: data.result ? mapUserDtoToEmployee(data.result.user, data.result.access) : undefined as any
+  };
+};
+
 export const useUserDetails = () => {
   return useQuery({
     queryKey: queryKeys.users.me(),
     queryFn: () => getUserDetails(),
     staleTime: 5 * 60 * 1000, // 5 minutes
-    select: (data) => ({
-      ...data,
-      result: data.result ? mapUserDtoToEmployee(data.result.user, data.result.access) : undefined
-    })
+    select: selectUserDetails
   });
 };
 

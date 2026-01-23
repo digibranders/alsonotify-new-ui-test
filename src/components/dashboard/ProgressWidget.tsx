@@ -19,6 +19,8 @@ import { useUserDetails } from '@/hooks/useUser';
 import { getRequirementsByWorkspaceId } from '@/services/workspace';
 import { DateRangeSelector } from '../common/DateRangeSelector';
 import { Skeleton } from '../ui/Skeleton';
+import { ApiResponse } from '@/types/api';
+import { RequirementDto } from '@/types/dto/requirement.dto';
 
 export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(() => {
@@ -112,8 +114,9 @@ export function ProgressWidget({ onNavigate }: { onNavigate?: (page: string) => 
   const allRequirements = useMemo(() => {
     const combined: Array<{ status?: string; start_date?: string }> = [];
     requirementQueries.forEach((query) => {
-      if (query.data?.result && Array.isArray(query.data.result)) {
-        combined.push(...query.data.result);
+      const data = query.data as ApiResponse<RequirementDto[]>;
+      if (data?.result && Array.isArray(data.result)) {
+        combined.push(...data.result);
       }
     });
     return combined;

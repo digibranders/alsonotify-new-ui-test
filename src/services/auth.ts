@@ -13,7 +13,8 @@ export const doSignup = async (
   lastName: string,
   email: string,
   password?: string,
-  token?: string | null
+  token?: string | null,
+  accountType?: string
 ): Promise<ApiResponse<RegisterCompleteResponseDTO>> => {
     const { data } = await axiosApi.post<ApiResponse<RegisterCompleteResponseDTO>>("/auth/register", {
       firstName,
@@ -21,6 +22,7 @@ export const doSignup = async (
       email,
       password,
       token,
+      accountType,
     });
     // If registration immediately logs in, set token
     if (data.success && data.result?.token) {

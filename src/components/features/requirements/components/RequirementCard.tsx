@@ -13,6 +13,7 @@ import {
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format, differenceInDays, isPast, isToday } from 'date-fns';
+import { getRequirementActionState } from '../utils/requirementState.utils';
 
 interface RequirementCardProps {
   requirement: any; // Using any for compatibility with mapped data
@@ -26,6 +27,7 @@ interface RequirementCardProps {
   onNavigate?: () => void;
   deleteLabel?: string;
   deleteIcon?: React.ReactNode;
+  currentUserId?: number;
 }
 
 export function RequirementCard({
@@ -40,42 +42,15 @@ export function RequirementCard({
   onNavigate,
   deleteLabel,
   deleteIcon,
+  currentUserId,
 }: RequirementCardProps) {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Determine if pending approval
-  const isPending = useMemo(() => {
-    // For outsourced requirements, use explicit status-based logic
-    if (requirement.type === 'outsourced') {
-      const status = requirement.rawStatus;
-      
-      // Sender (A) sees pending when:
-      if (requirement.isSender) {
-        // - Status = Waiting (sent to partner, awaiting quote)
-        if (status === 'Waiting') return true;
-        // - Status = Review (received quote from partner, needs to review)
-        if (status === 'Review') return true;
-        return false;
-      }
-      
-      // Receiver (B) sees pending when:
-      if (requirement.isReceiver) {
-        // - Status = Waiting (needs to submit quote)
-        if (status === 'Waiting') return true;
-        // - Status = Assigned AND no workspace mapped (needs to map workspace)
-        if (status === 'Assigned' && !requirement.receiver_workspace_id) return true;
-        // - Status = Review (quote submitted, waiting for sender's response - passive waiting)
-        if (status === 'Review') return true; 
-        return false; // Explicitly false for other statuses
-      }
-    }
-    
-    // Fallback for non-outsourced requirements
-    if (requirement.approvalStatus === 'pending') return true;
-    
-    return false;
-  }, [requirement]);
+  // Determine state using shared utility
+  const { isPending, displayStatus, actionButton, actionButtonLabel, isSender, isReceiver } = useMemo(() => {
+     return getRequirementActionState(requirement, currentUserId);
+  }, [requirement, currentUserId]);
 
   const getUnifiedStatusConfig = () => {
     // 1. Billing / Financial Status (Highest Priority)
@@ -98,7 +73,7 @@ export function RequirementCard({
     
     // 2. Project Status
     switch (requirement.status) {
-      case 'completed':
+      case 'completed': {
         if (requirement.type === 'outsourced') {
              return { 
                 label: 'Invoice Received', 
@@ -107,12 +82,16 @@ export function RequirementCard({
                 onClick: null
             };
         }
+        // In-House / Client work completed -> Ready to Bill
+        const price = requirement.quotedPrice || requirement.estimatedCost || requirement.budget;
+        const priceLabel = price ? ` - $${Number(price).toLocaleString()}` : '';
         return { 
-            label: 'Ready to Bill', 
+            label: `Ready to Bill${priceLabel}`, 
             icon: <Receipt className="w-3 h-3" />,
             className: 'bg-[#FFF3E0] text-[#EF6C00] border-[#FFE0B2]',
             onClick: null
         };
+      }
       case 'in-progress':
         return { 
             label: 'In Progress', 
@@ -166,57 +145,24 @@ export function RequirementCard({
 
   const timelineStatus = getTimelineStatus(requirement.dueDate);
 
-  const getPendingStatusText = () => {
-    if (requirement.type === 'outsourced') {
-      // Receiver (B) messages
-      if (requirement.isReceiver) {
-        if (requirement.rawStatus === 'Waiting') {
-          return 'Action Needed: Submit Quote';
-        }
-        if (requirement.rawStatus === 'Assigned') {
-          return 'Action Needed: Map Workspace';
-        }
-        if (requirement.rawStatus === 'Review') {
-          return `Quote submitted to ${requirement.headerContact || 'Client'}. Awaiting approval...`;
-        }
-      }
-      // Sender (A) messages
-      if (requirement.isSender) {
-        if (requirement.rawStatus === 'Waiting') {
-          return `Sent to ${requirement.headerContact || 'Vendor'}. Awaiting quote...`;
-        }
-        if (requirement.rawStatus === 'Review') {
-          return `Quote received from ${requirement.headerContact || 'Vendor'}. Review and accept or reject.`;
-        }
-      }
-    }
-    // Fallback for other types
-    return 'Waiting for approval...';
-  };
-
-  const getApproveButtonText = () => {
-    if (requirement.type === 'outsourced') {
-      if (requirement.isReceiver) {
-        const s = requirement.rawStatus;
-        if (s === 'Waiting') return 'Submit Quote';
-        if (s === 'Rejected') return 'Resubmit Quote';
-        if (s === 'Assigned' && !requirement.receiver_workspace_id) return 'Map Workspace';
-        return 'Action Needed';
-      }
-      if (requirement.isSender) {
-        return 'Accept Quote';
-      }
-      return 'Pending';
-    }
-    if (requirement.type === 'client') return 'Accept Job';
-    return 'Approve';
-  };
+  /* Helper methods replaced by getRequirementActionState utility */
 
   const getCostDisplay = () => {
-      const val = requirement.quotedPrice || requirement.estimatedCost || requirement.budget;
-      return val ? `$${Number(val).toLocaleString()}` : null;
+    const val = requirement.quotedPrice || requirement.estimatedCost || requirement.budget;
+    if (!val) return null;
+
+    const currencySymbols: Record<string, string> = {
+      'USD': '$',
+      'EUR': '€',
+      'GBP': '£',
+      'INR': '₹',
+      'AED': 'د.إ',
+    };
+
+    const symbol = currencySymbols[requirement.currency || 'USD'] || '$';
+    return `${symbol}${Number(val).toLocaleString()}`;
   };
-  
+
   const costDisplay = getCostDisplay();
   
 
@@ -400,7 +346,7 @@ export function RequirementCard({
       {/* Pending Message */}
       {isPending && (
         <div className="mt-auto mb-4 min-h-[40px] flex items-center justify-center text-[12px] text-[#999999] italic bg-[#F9FAFB] rounded-lg border border-dashed border-[#E5E7EB] mx-1 px-2 text-center">
-            {getPendingStatusText()}
+            {displayStatus}
         </div>
       )}
 
@@ -440,10 +386,26 @@ export function RequirementCard({
 
           {isPending ? (
             <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-              {/* Show reject button with role-based logic */}
-              {/* Receiver can reject in Waiting, Sender can reject in Review */}
-              {((requirement.isReceiver && requirement.rawStatus === 'Waiting') || 
-                (requirement.isSender && requirement.rawStatus === 'Review')) && (
+               {/* 
+                  Action Button Logic using Utility State:
+                  - 'Reject': Show Reject Button
+                  - 'Edit': Show Edit Button (Sender Resend) - maps to onEdit? No, RequirementsPage needs to handle "Resend". 
+                            Typical onEdit opens edit modal. We need to ensure saving there triggers transition if needed? 
+                            Actually, RequirementsPage handleEditAndResend will just open Edit Modal. 
+                            Saving that modal calls 'updateRequirement'. 
+                            So we just need to trigger the right callback prop here.
+                  - 'Revise': Show Revise Button (Receiver Revise Quote)
+               */}
+
+               {/* REJECT BUTTON (Only if actionButton is 'Approve' or 'Reject' explicitly?) 
+                   Actually, let's look at `actionButton`.
+                   If actionButton === 'Approve' (Review phase), we also usually want a Reject option.
+                   The utility `actionButton` is the PRIMARY positive action.
+                   We need to know if Reject is allowed.
+                   Legacy logic: Receiver can Reject in Waiting. Sender can Reject in Review.
+               */}
+               {((isReceiver && requirement.rawStatus === 'Waiting') || 
+                 (isSender && (requirement.rawStatus === 'Review' || requirement.rawStatus === 'Submitted'))) && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); onReject?.(); }}
                   className="w-6 h-6 flex items-center justify-center rounded-full bg-white border border-[#ff3b3b] text-[#ff3b3b] hover:bg-[#ff3b3b] hover:text-white transition-all shadow-sm"
@@ -452,16 +414,46 @@ export function RequirementCard({
                   <X className="w-3 h-3" />
                 </button>
               )}
-              {/* Only show accept/approve button if there is an action for the current user */}
-              {((requirement.isReceiver && (requirement.rawStatus === 'Waiting' || requirement.rawStatus === 'Rejected' || (requirement.rawStatus === 'Assigned' && !requirement.receiver_workspace_id))) || 
-                (requirement.isSender && requirement.rawStatus === 'Review') ||
-                (!requirement.type || requirement.type === 'inhouse' || requirement.type === 'client')) && (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onAccept?.(); }}
-                  className="px-2 h-6 flex items-center justify-center rounded-full bg-[#7ccf00] text-white hover:bg-[#6bb800] transition-all shadow-sm text-[10px] font-bold whitespace-nowrap"
-                  title="Approve"
+
+              {/* PRIMARY ACTION BUTTON */}
+              {actionButton && (
+                 <button 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if (actionButton === 'Edit') {
+                        // Special case: Edit & Resend
+                        onEdit?.(); 
+                    } else if (actionButton === 'Revise') {
+                        // Special case: Revise Quote (Treat as Constructive/Approve flow regarding UI, but logically might need distinct handler? 
+                        // Reusing onAccept for primary positive action is common, but 'Revise' usually implies new quote dialog.
+                        // RequirementsPage passes `handleReviseQuote` as `onAccept`? No, let's check RequirementsPage.
+                        // RequirementsPage passes `() => { setPendingReqId(req.id); setIsQuotationOpen(true); }` for "Revise"?
+                        // We need to clarify props. 
+                        // RequirementCardProps has: onAccept, onReject, onEdit.
+                        // For 'Revise', we probably want a specific prop or reuse onAccept if that's the "Do the thing" button.
+                        // For 'Edit', we reuse onEdit.
+                        
+                        // Let's assume onReject is purely "Kill it".
+                        // onAccept is "Move it forward".
+                        
+                        // Receiver 'Revise' -> Move forward (back to Review). So onAccept?
+                        // But wait, user sees "Revise Quote".
+                        onDuplicate?.(); // Hack? No.
+                        // Let's use onReject for "Revise"? No, onReject opens RejectDialog.
+                        // We need a way to open QuotationDialog. 
+                        // If status is "Rejected", and I am Receiver, I see "Revise Quote".
+                        // To open QuotationDialog, RequirementsPage usually uses `onAccept` for "Submit Quote" (Waiting status).
+                        // So reusing `onAccept` for "Revise Quote" makes sense (Positive action to submit price).
+                        onAccept?.();
+                    } else {
+                        // 'Approve', 'Submit', 'Map'
+                        onAccept?.(); 
+                    }
+                  }}
+                  className={`px-2 h-6 flex items-center justify-center rounded-full bg-[#7ccf00] text-white hover:bg-[#6bb800] transition-all shadow-sm text-[10px] font-bold whitespace-nowrap`}
+                  title={actionButtonLabel}
                 >
-                  {getApproveButtonText()}
+                  {actionButtonLabel}
                 </button>
               )}
             </div>

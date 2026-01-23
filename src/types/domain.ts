@@ -19,7 +19,7 @@ export interface Requirement {
   isHighPriority?: boolean;
   is_high_priority: boolean;
   type: 'inhouse' | 'outsourced' | 'client';
-  status: 'in-progress' | 'completed' | 'delayed' | 'draft' | 'Waiting' | 'archived' | 'Archived';
+  status: 'in-progress' | 'completed' | 'delayed' | 'draft' | 'Waiting' | 'archived' | 'Archived' | 'Submitted' | 'Rejected' | 'Revision' | 'On_Hold' | 'Assigned' | 'Review' | 'Impediment' | 'Stuck' | 'Pending';
   category: string;
   departments?: string[];
   progress: number;
@@ -41,6 +41,7 @@ export interface Requirement {
   // workspace_id?: number; // defined via camelCase above with alias
   headerCompany?: string;
   quotedPrice?: number;
+  currency?: string;
   rawStatus?: string;
   clientId?: number;
   client_id?: number;
@@ -94,6 +95,7 @@ export interface Requirement {
   created_user?: { name: string; id: number };
   createdUserData?: { name: string; id: number };
   created_user_data?: { name: string; id: number };
+  updated_user?: number;
   approvedBy?: { id: number; name?: string };
   approved_by?: { id: number; name?: string };
   invoice?: { status: string; id?: number };

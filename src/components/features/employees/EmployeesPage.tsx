@@ -117,7 +117,7 @@ export function EmployeesPage() {
   }, [employeesData, rolesData]);
 
   const filteredEmployees = useMemo(() => {
-    return employees.filter(emp => {
+    return employees.filter((emp: Employee) => {
       const matchesTab = emp.status === activeTab;
       const matchesSearch = searchQuery === '' ||
         emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

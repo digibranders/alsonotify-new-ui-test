@@ -35,8 +35,9 @@ function LoginForm() {
         onSuccess: () => {
           message.success("Login successful!");
         },
-        onError: (error: any) => {
-          const errorMessage = error?.response?.data?.message || "Invalid credentials or server error.";
+        onError: (error: unknown) => {
+          const errorData = error as { response?: { data?: { message?: string } } };
+          const errorMessage = errorData?.response?.data?.message || "Invalid credentials or server error.";
           message.error(errorMessage);
         },
       }

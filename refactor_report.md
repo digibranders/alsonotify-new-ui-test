@@ -368,3 +368,26 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
 
 - **Typecheck**: `npm run typecheck` Passed.
 - **Build**: `npm run build` Passed.
+
+## 2026-01-22: Requirements Workflow & CTA Refinement
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Finalize Archive/Delete logic and standardize CTAs in Requirement Details.
+
+### Changes
+
+- **Backend**:
+    - Enhanced `approveRequirementService` with semantic activity logging (differentiating Requirement vs Quote rejection).
+- **Frontend Utilities**:
+    - **`requirementState.utils.ts`**:
+        - Refined `getRequirementActionState` to accurately distinguish between Sender and Receiver roles and their respective rejection/approval contexts.
+- **Components**:
+    - **`RequirementsPage.tsx`**:
+        - Standardized `onDelete` handler using `getRequirementTab`.
+        - Dynamically switch between "Archive" (Active/Completed) and "Delete" (Draft/Archived) UI labels/icons.
+    - **`RequirementDetailsPage.tsx`**:
+        - Synchronized Header CTAs with `getRequirementActionState`.
+        - Implemented "Accept & Assign Workspace" modal for Receivers.
+        - Integrated standardized "Approve" and "Reject" actions for Senders.
+- **Domain**:
+    - Expanded `Requirement` status union in `src/types/domain.ts` to include all workflow statuses (`Submitted`, `Rejected`, `Revision`, etc.).

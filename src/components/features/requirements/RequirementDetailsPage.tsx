@@ -25,7 +25,9 @@ import { useRequirementActivities, useCreateRequirementActivity } from '@/hooks/
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { TaskRow } from '@/components/features/tasks/rows/TaskRow';
-import { Requirement, Task } from '@/types/domain';
+import { Requirement, Task, Employee } from '@/types/domain';
+import { getRequirementActionState, getRequirementTab } from './utils/requirementState.utils';
+import { Archive } from 'lucide-react';
 
 // Extracted components
 import { ChatPanel, GanttChartTab, PnLTab, DocumentsTab, KanbanBoardTab } from './components';
@@ -129,6 +131,10 @@ export function RequirementDetailsPage() {
     if (!tasksData?.result || !requirement) return [];
     return tasksData.result.filter((t: Task & { type?: string }) => t.requirement_id === reqId && t.type === 'revision');
   }, [tasksData, requirement, reqId]);
+
+  const { isPending, displayStatus, actionButton, actionButtonLabel } = useMemo(() => {
+     return getRequirementActionState(requirement as any, user?.id);
+  }, [requirement, user?.id]);
 
   const formatActivityMessage = (msg: string) => {
     if (!msg) return '';
@@ -508,7 +514,8 @@ export function RequirementDetailsPage() {
   };
 
 
-  const requirementStatus = mapRequirementStatus(requirement.status || 'in-progress');
+
+  const requirementStatus = mapRequirementStatus(displayStatus);
   const assignedTo = requirement.assignedTo || [];
 
   return (
@@ -544,42 +551,99 @@ export function RequirementDetailsPage() {
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Receiver Confirmation Action */}
-              {requirement.status === 'Waiting' && (
-                 <>
-                   <Button 
-                      type="primary" 
-                      className="bg-[#111111] hover:bg-[#000000]/90"
-                      onClick={() => setIsAcceptModalOpen(true)}
-                   >
-                     Accept & Assign Workspace
-                   </Button>
-                   <Modal
-                      open={isAcceptModalOpen}
-                      onCancel={() => setIsAcceptModalOpen(false)}
-                      title="Accept Requirement"
-                      onOk={handleAcceptRequirement}
-                      okText="Accept & Import"
-                      okButtonProps={{ className: "bg-[#111111]" }}
-                   >
-                      <div className="py-4">
-                         <p className="text-sm text-gray-600 mb-2">
-                           Select one of your existing workspaces to assign this requirement to.
-                         </p>
-                         <Select
-                            className="w-full"
-                            placeholder="Select your workspace"
-                            value={selectedReceiverWorkspace}
-                            onChange={setSelectedReceiverWorkspace}
-                         >
-                            {myWorkspacesData?.result?.workspaces?.map((w: { id: number; name: string }) => (
-                               <Option key={w.id} value={String(w.id)}>{w.name}</Option>
-                            ))}
-                         </Select>
-                      </div>
-                   </Modal>
-                 </>
+              {/* Standardized Requirement Action CTA */}
+              {actionButton && (
+                <div className="flex items-center gap-2">
+                   {actionButton === 'Map' && (
+                     <Button 
+                       type="primary" 
+                       className="bg-[#111111] hover:bg-[#000000]/90"
+                       onClick={() => setIsAcceptModalOpen(true)}
+                     >
+                       {actionButtonLabel}
+                     </Button>
+                   )}
+                   {actionButton === 'Submit' && (
+                      <Button 
+                        type="primary" 
+                        className="bg-[#111111]"
+                        onClick={() => {
+                           message.info("Please use the 'Edit' action in the requirements list to resubmit your quote.");
+                        }}
+                      >
+                        {actionButtonLabel}
+                      </Button>
+                   )}
+                   {actionButton === 'Approve' && (
+                      <Button 
+                        type="primary" 
+                        className="bg-[#111111]"
+                        onClick={() => {
+                           // RequirementsPage handleReqAccept logic
+                           updateRequirement({
+                              id: reqId,
+                              workspace_id: requirement.workspace_id,
+                              status: requirement.status === 'Submitted' ? 'Assigned' : 'Completed'
+                           } as any, {
+                              onSuccess: () => message.success("Requirement accepted successfully")
+                           });
+                        }}
+                      >
+                        {actionButtonLabel}
+                      </Button>
+                   )}
+                </div>
               )}
+
+              {/* Reject Action (Secondary) */}
+              {((requirement.receiver_company_id === user?.company_id && requirement.status === 'Waiting') || 
+                (requirement.sender_company_id === user?.company_id && (requirement.status === 'Review' || requirement.status === 'Submitted'))) && (
+                 <Button 
+                   danger 
+                   icon={<X className="w-4 h-4" />}
+                   onClick={() => {
+                      Modal.confirm({
+                         title: 'Reject Requirement',
+                         content: 'Are you sure you want to reject this requirement?',
+                         onOk: () => {
+                            updateRequirement({
+                              id: reqId,
+                              workspace_id: requirement.workspace_id,
+                              status: 'Rejected'
+                            } as any);
+                         }
+                      });
+                   }}
+                 >
+                   Reject
+                 </Button>
+              )}
+
+              {/* Accept Modal (Internal to the action trigger) */}
+              <Modal
+                  open={isAcceptModalOpen}
+                  onCancel={() => setIsAcceptModalOpen(false)}
+                  title="Accept Requirement"
+                  onOk={handleAcceptRequirement}
+                  okText="Accept & Import"
+                  okButtonProps={{ className: "bg-[#111111]" }}
+              >
+                  <div className="py-4">
+                      <p className="text-sm text-gray-600 mb-2">
+                        Select one of your existing workspaces to assign this requirement to.
+                      </p>
+                      <Select
+                        className="w-full"
+                        placeholder="Select your workspace"
+                        value={selectedReceiverWorkspace}
+                        onChange={setSelectedReceiverWorkspace}
+                      >
+                        {myWorkspacesData?.result?.workspaces?.map((w: { id: number; name: string }) => (
+                            <Option key={w.id} value={String(w.id)}>{w.name}</Option>
+                        ))}
+                      </Select>
+                  </div>
+              </Modal>
 
               <StatusBadge status={requirementStatus} showLabel />
               {requirement.is_high_priority && (
@@ -1095,8 +1159,8 @@ export function RequirementDetailsPage() {
             requirement: true
           }}
           workspaces={workspaceData?.result ? [{ id: workspaceData.result.id, name: workspaceData.result.name }] : []}
-          requirements={requirementsData?.result ? requirementsData.result.map(r => ({ id: r.id, name: r.title || r.name || `Requirement ${r.id}` })) : []}
-          users={employeesData?.result ? employeesData.result.map(u => ({ 
+          requirements={requirementsData?.result ? (requirementsData.result as Requirement[]).map((r: Requirement) => ({ id: r.id, name: r.title || r.name || `Requirement ${r.id}` })) : []}
+          users={employeesData?.result ? (employeesData.result as Employee[]).map((u: Employee) => ({ 
               id: u.user_id || u.id || 0, 
               name: u.name || 'Unknown User',
               profile_pic: u.profile_pic || undefined 

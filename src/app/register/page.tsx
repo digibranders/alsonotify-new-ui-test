@@ -28,7 +28,7 @@ function RegisterForm() {
       lastName: nameParts.slice(1).join(" ") || "",
       email: inviteEmail || "",
       password: "",
-      accountType: "Individual" as "Individual" | "Organization",
+      accountType: "Organization" as "Individual" | "Organization",
     };
   });
 
@@ -54,6 +54,7 @@ function RegisterForm() {
         email: formData.email,
         password: formData.password,
         token: inviteToken,
+        accountType: formData.accountType.toUpperCase(),
       },
       {
         onSuccess: (data) => {
@@ -111,7 +112,7 @@ function RegisterForm() {
           <motion.div variants={itemVariants} className="space-y-3">
             <label className="text-[11px] font-bold text-[#999999] uppercase tracking-widest">Account Type</label>
             <div className="grid grid-cols-2 gap-3">
-              {(['Individual', 'Organization'] as const).map((type) => (
+              {(['Organization', 'Individual'] as const).map((type) => (
                 <button
                   key={type}
                   type="button"

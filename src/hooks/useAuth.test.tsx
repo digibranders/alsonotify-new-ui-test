@@ -179,6 +179,7 @@ describe('useAuth Hooks', () => {
           email: 'john@example.com',
           password: 'password123',
           token: null,
+          accountType: 'ORGANIZATION',
         });
       });
 
@@ -188,7 +189,8 @@ describe('useAuth Hooks', () => {
         'Doe',
         'john@example.com',
         'password123',
-        null
+        null,
+        'ORGANIZATION'
       );
     });
   });
