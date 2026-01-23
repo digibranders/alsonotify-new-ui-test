@@ -1,8 +1,8 @@
 # Workflow Module Refactoring - Implementation Plan
 
-**Project:** AlsoNotify Frontend  
-**Total Sprints:** 3  
-**Estimated Duration:** 6-8 Days  
+**Project:** AlsoNotify Frontend + Backend  
+**Total Sprints:** 4  
+**Estimated Duration:** 8-10 Days  
 **Risk Level:** Low  
 **Breaking Changes:** None
 
@@ -344,6 +344,62 @@ Execute the next phase as indicated in the progress file. Follow all Senior Soft
     }
     ```
 
+### Comment Writing Standards
+
+16. **Comments should describe WHAT, not WHEN or WHY refactored**
+    ```typescript
+    // BAD - exposes timeline/refactoring context
+    // Sprint 2: Added tab logic
+    // Refactored from old implementation
+    // TODO: Migrate in Sprint 3
+    
+    // GOOD - describes functionality
+    // Requirement tab determination
+    // Task CTA configuration
+    // Status aggregation and rollup
+    ```
+
+17. **Keep comments functional and concise**
+    ```typescript
+    // BAD - too verbose, mentions implementation history
+    // This function was added in Sprint 2 to centralize CTA logic
+    // that was previously scattered across multiple components
+    
+    // GOOD - describes what the code does
+    // Returns CTA configuration based on status and role
+    ```
+
+18. **Section comments should categorize, not narrate**
+    ```typescript
+    // BAD
+    // =============================================================================
+    // Functions added during the workflow refactoring project
+    // =============================================================================
+    
+    // GOOD
+    // =============================================================================
+    // Function Exports
+    // =============================================================================
+    ```
+
+19. **JSDoc should focus on usage, not history**
+    ```typescript
+    // BAD
+    /**
+     * Replaces the old getRequirementTab function from requirementState.utils.ts
+     * Added as part of the workflow module refactoring.
+     */
+    
+    // GOOD
+    /**
+     * Determines which tab a requirement belongs to based on status and context.
+     * 
+     * @param status - Current requirement status
+     * @param type - Requirement type (outsourced, inhouse, client)
+     * @returns The tab this requirement should appear in
+     */
+    ```
+
 ---
 
 ## Target File Structure
@@ -595,7 +651,168 @@ Implement the CTA mapping and tab determination logic using the specification do
 
 ---
 
-## Sprint 3: Component Migration
+## Sprint 3: Backend Types Refactoring
+
+**Estimated:** 1-2 days | **Files:** 5 new + 28 imports to update | **Risk:** Low
+
+Refactor backend type files to improve organization and fix naming inconsistencies. This ensures backend types are properly organized before frontend component migration.
+
+---
+
+### Phase 3.1: Create Common Types File
+
+**File:** `alsonotify-backend-new/types/common-type.ts`
+
+**AI Agent Instructions:**
+1. Create new file `types/common-type.ts`
+2. Extract from `user.ts`:
+   - `ParamsSchema` / `IParamsType` (lines 193-204)
+   - `QueryParamsSchema` / `IQueryParamsType` (lines 238-264)
+   - `idParamsSchema` / `IdParamsType` (lines 503-514)
+3. Add proper JSDoc comments
+4. Export all schemas and types
+
+**Verification Checkpoint:**
+- [ ] File created with no TypeScript errors
+- [ ] All exports are properly typed
+
+---
+
+### Phase 3.2: Create Workspace Types File
+
+**File:** `alsonotify-backend-new/types/workspace-type.ts` (NEW - properly named)
+
+**AI Agent Instructions:**
+1. Create new file `types/workspace-type.ts`
+2. Extract from `user.ts`:
+   - `WorkspaceStatusUpdateSchema` / `IWorkspaceStatusUpdate` (lines 206-220)
+   - `WorkspaceQueryParamsSchema` / `IWorkspaceQueryParamsType` (lines 266-294)
+   - `WorkspaceCreateSchema` / `IWorkspaceCreateType` (lines 296-328)
+   - `WorkspaceApprovalSchema` / `IWorkspaceApprovalType` (lines 330-344)
+   - `WorkspaceWorklogParamsSchema` / `IWorkspaceWorklogParamsType` (lines 491-501)
+   - `WorkspaceReportQueryParamsSchema` / `IWorkspaceReportQueryParamsType` (lines 587-606)
+3. Import `FromSchema` from "json-schema-to-ts"
+4. Add proper JSDoc comments
+
+**Verification Checkpoint:**
+- [ ] File created with all workspace types
+- [ ] No TypeScript errors
+
+---
+
+### Phase 3.3: Create Task Types File
+
+**File:** `alsonotify-backend-new/types/task-type.ts`
+
+**AI Agent Instructions:**
+1. Create new file `types/task-type.ts`
+2. Extract from `user.ts`:
+   - `TaskStatusUpdateSchema` / `ITaskStatusUpdate` (lines 222-236)
+   - `TaskCreateSchema` / `ITaskCreateType` (lines 346-406)
+   - `TaskQueryParamsSchema` / `ITaskQueryParamsType` (lines 408-452)
+   - `TaskWorklogCreatSchema` / `ITaskWorklogCreatType` (lines 454-477)
+   - `WorklogParamsSchema` / `IWorklogParamsType` (lines 479-489)
+   - `TaskReportQueryParamsSchema` / `ITaskReportQueryParamsType` (lines 608-633)
+   - `TaskMemberStatus` / `TaskMemberStatusType` (lines 751-759)
+3. **IMPORTANT:** Add `"Stuck"` to `TaskStatusUpdateSchema` enum (line 229)
+4. **IMPORTANT:** Add `"Stuck"` to `TaskCreateSchema` enum (line 383)
+5. Import `FromSchema` from "json-schema-to-ts"
+
+**Verification Checkpoint:**
+- [ ] File created with all task types
+- [ ] `Stuck` added to both status enums
+- [ ] No TypeScript errors
+
+---
+
+### Phase 3.4: Rename and Fix Requirement Types
+
+**File:** `alsonotify-backend-new/types/requirement-type.ts` (RENAMED from workspace-type.ts)
+
+**AI Agent Instructions:**
+1. **RENAME** `types/workspace-type.ts` → `types/requirement-type.ts`
+2. **UPDATE** `RequirementSchema` status enum (line 72):
+   - Add `"Delayed"` to the enum array
+   - Should be: `["Assigned", "In_Progress", "On_Hold", "Submitted", "Completed", "Waiting", "Rejected", "Review", "Revision", "Impediment", "Stuck", "Delayed", null]`
+3. Keep all existing content:
+   - `RequirementSchema` / `IRequirementSchema`
+   - `WorkspaceParamsSchema` / `IWorkspaceParamsSchema` (used in requirement routes)
+   - `RequirementApprovalSchema` / `IRequirementApprovalType`
+
+**Verification Checkpoint:**
+- [ ] File renamed successfully
+- [ ] `Delayed` added to status enum
+- [ ] No TypeScript errors
+
+---
+
+### Phase 3.5: Update User Types File
+
+**File:** `alsonotify-backend-new/types/user.ts`
+
+**AI Agent Instructions:**
+1. **REMOVE** all extracted types (common, workspace, task types)
+2. **KEEP** only user-related types:
+   - User auth schemas (Login, Register, Password, RegisterCompany)
+   - User management schemas (Create, Invite, Activate, Update)
+   - Partner schemas (Delete, Activate)
+   - Company update schema
+   - Role actions schema
+   - Invoice schemas (optional - can keep or move later)
+   - Employee engagement schema (optional)
+3. **ADD** imports for extracted types:
+   ```typescript
+   // Re-export common types for backward compatibility (temporary)
+   export type { IParamsType, IQueryParamsType, IdParamsType } from './common-type';
+   export type { IWorkspaceCreateType, IWorkspaceStatusUpdate, ... } from './workspace-type';
+   export type { ITaskCreateType, ITaskStatusUpdate, ... } from './task-type';
+   ```
+
+**Verification Checkpoint:**
+- [ ] `user.ts` only contains user-related types
+- [ ] Backward compatibility exports added (temporary)
+- [ ] No TypeScript errors
+
+---
+
+### Phase 3.6: Update All Imports
+
+**AI Agent Instructions:**
+1. **Update 4 files** importing from `workspace-type.ts`:
+   - `service/requirement.service.ts` → `requirement-type.ts`
+   - `routes/workspace-routes.ts` → `requirement-type.ts` (for requirement types)
+   - `routes/requirement-routes.ts` → `requirement-type.ts`
+   - `controller/requirement.controller.ts` → `requirement-type.ts`
+
+2. **Update 24 files** importing from `user.ts`:
+   - Files needing `common-type.ts`: controllers, routes using ParamsSchema, QueryParamsSchema
+   - Files needing `workspace-type.ts`: workspace controller, workspace routes, workspace service
+   - Files needing `task-type.ts`: task controller, task routes, task service
+   - Files keeping `user.ts`: auth routes, user controller, user routes, user service
+
+3. **Update import statements** to use new file paths:
+   ```typescript
+   // FROM:
+   import { IParamsType, IWorkspaceCreateType } from '../types/user';
+   
+   // TO:
+   import { IParamsType } from '../types/common-type';
+   import { IWorkspaceCreateType } from '../types/workspace-type';
+   ```
+
+**Verification Checkpoint:**
+- [ ] All 28 files updated with correct imports
+- [ ] No broken import references
+- [ ] Backend builds successfully
+
+---
+
+> **SPRINT 3 COMPLETE - STOP**  
+> Run `bun run build` in backend. Verify all imports resolve. Do not proceed until verified.
+
+---
+
+## Sprint 4: Component Migration
 
 **Estimated:** 2-3 days | **Files:** 5+ | **Risk:** Medium
 
@@ -603,7 +820,7 @@ Migrate existing components to use the new workflow module. One component at a t
 
 ---
 
-### Phase 3.1: Migrate requirementState.utils.ts
+### Phase 4.1: Migrate requirementState.utils.ts
 
 **File:** `src/components/features/requirements/utils/requirementState.utils.ts`
 
@@ -622,7 +839,7 @@ Migrate existing components to use the new workflow module. One component at a t
 
 ---
 
-### Phase 3.2: Migrate RequirementCard
+### Phase 4.2: Migrate RequirementCard
 
 **File:** `src/components/features/requirements/components/RequirementCard.tsx`
 
@@ -640,7 +857,7 @@ Migrate existing components to use the new workflow module. One component at a t
 
 ---
 
-### Phase 3.3: Migrate RequirementsPage handleReqAccept
+### Phase 4.3: Migrate RequirementsPage handleReqAccept
 
 **File:** `src/components/features/requirements/RequirementsPage.tsx`
 
@@ -659,7 +876,7 @@ Migrate existing components to use the new workflow module. One component at a t
 
 ---
 
-### Phase 3.4: Migrate RequirementDetailsPage
+### Phase 4.4: Migrate RequirementDetailsPage
 
 **File:** `src/components/features/requirements/RequirementDetailsPage.tsx`
 
@@ -675,7 +892,7 @@ Migrate existing components to use the new workflow module. One component at a t
 
 ---
 
-### Phase 3.5: Add Unit Tests
+### Phase 4.5: Add Unit Tests
 
 **Files:**
 - `src/lib/workflow/__tests__/requirementWorkflow.test.ts`
@@ -695,7 +912,7 @@ Migrate existing components to use the new workflow module. One component at a t
 
 ---
 
-> **SPRINT 3 COMPLETE - FINAL VERIFICATION**  
+> **SPRINT 4 COMPLETE - FINAL VERIFICATION**  
 > Run full test suite. Manual QA all requirement flows. Check for regressions in all tabs.
 
 ---
@@ -726,10 +943,10 @@ Migrate existing components to use the new workflow module. One component at a t
 ## Risk Mitigation
 
 ### Rollback Strategy
-Since Sprint 1 & 2 are purely additive (new files only), there's zero rollback risk. Sprint 3 modifies existing components - if issues arise, simply revert those specific file changes. The workflow module can exist alongside old code indefinitely.
+Since Sprint 1 & 2 are purely additive (new files only), there's zero rollback risk. Sprint 3 (backend types refactoring) is also low risk - imports can be reverted if needed. Sprint 4 modifies existing components - if issues arise, simply revert those specific file changes. The workflow module can exist alongside old code indefinitely.
 
 ### Testing Strategy
-Manual QA after each Sprint 3 phase. Test all tabs (Draft, Pending, Active, Completed, Delayed). Test both Sender and Receiver views. Test rejection flows specifically. Automated tests in Phase 3.5 provide regression safety net.
+Sprint 3: Verify backend builds after each phase. Check all imports resolve. Sprint 4: Manual QA after each phase. Test all tabs (Draft, Pending, Active, Completed, Delayed). Test both Sender and Receiver views. Test rejection flows specifically. Automated tests in Phase 4.5 provide regression safety net.
 
 ---
 
