@@ -214,9 +214,68 @@ export function FloatingTimerBar() {
 
   return (
     <div 
-      className="fixed left-1/2 -translate-x-1/2 z-[9999] transition-all duration-300 ease-out"
+      className="fixed left-1/2 -translate-x-1/2 z-[9999] transition-all duration-300 ease-out flex flex-col items-center"
       style={{ bottom: '24px' }}
     >
+      {/* Dropdown Menu - Now outside the overflow-hidden container */}
+      {showTaskSelector && (
+        <>
+          {/* Backdrop to close dropdown */}
+          <div 
+            className="fixed inset-0 z-[9998]" 
+            onClick={() => setShowTaskSelector(false)}
+          />
+          <div className="absolute bottom-full mb-3 bg-white rounded-[20px] shadow-xl border border-[#EEEEEE] p-3 animate-in slide-in-from-bottom-2 duration-200 z-[10000] w-[320px]">
+            <div className="flex items-center gap-2 mb-2 px-2">
+              <span className="text-[10px] text-[#999999] font-['Inter:SemiBold',sans-serif] uppercase tracking-wide">
+                Select Task
+              </span>
+              <div className="flex-1 h-px bg-[#EEEEEE]" />
+            </div>
+            <div className="space-y-1 max-h-[240px] overflow-y-auto">
+              {tasksLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-5 h-5 text-[#999999] animate-spin" />
+                </div>
+              ) : tasks.length > 0 ? (
+                tasks.map((task) => (
+                  <button
+                    key={task.id}
+                    onClick={() => handleTaskSelect(task)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-[12px] text-left transition-all ${
+                      selectedTaskId === task.id
+                        ? 'bg-gradient-to-br from-[#ff3b3b] to-[#cc2f2f] text-white shadow-sm'
+                        : 'hover:bg-[#F7F7F7] text-[#111111]'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-[13px] font-['Manrope:SemiBold',sans-serif] truncate ${
+                        selectedTaskId === task.id ? 'text-white' : 'text-[#111111]'
+                      }`}>
+                        {task.name}
+                      </p>
+                      <p className={`text-[10px] font-['Inter:Regular',sans-serif] mt-0.5 truncate ${
+                        selectedTaskId === task.id ? 'text-white/80' : 'text-[#999999]'
+                      }`}>
+                        {task.project || "Unknown Project"}
+                      </p>
+                    </div>
+                    {selectedTaskId === task.id && (
+                      <CheckCircle className="w-4 h-4 text-white flex-shrink-0 ml-2" />
+                    )}
+                  </button>
+                ))
+              ) : (
+                <div className="p-3 text-center text-[#999999] text-xs">
+                  No assigned tasks found
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Main Bar (Pill) */}
       <div 
         className={`
           bg-[#111111] text-white rounded-full shadow-2xl flex items-center border border-[#111111]
@@ -266,64 +325,6 @@ export function FloatingTimerBar() {
               </>
             )}
           </button>
-
-          {/* Task Selector Dropdown */}
-          {showTaskSelector && (
-            <>
-              {/* Backdrop to close dropdown */}
-              <div 
-                className="fixed inset-0 z-[9998]" 
-                onClick={() => setShowTaskSelector(false)}
-              />
-              <div className="absolute bottom-full left-0 mb-3 bg-white rounded-[20px] shadow-xl border border-[#EEEEEE] p-3 animate-in slide-in-from-bottom-2 duration-200 z-[9999] w-[320px]">
-                <div className="flex items-center gap-2 mb-2 px-2">
-                  <span className="text-[10px] text-[#999999] font-['Inter:SemiBold',sans-serif] uppercase tracking-wide">
-                    Select Task
-                  </span>
-                  <div className="flex-1 h-px bg-[#EEEEEE]" />
-                </div>
-                <div className="space-y-1 max-h-[240px] overflow-y-auto">
-                  {tasksLoading ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="w-5 h-5 text-[#999999] animate-spin" />
-                    </div>
-                  ) : tasks.length > 0 ? (
-                    tasks.map((task) => (
-                      <button
-                        key={task.id}
-                        onClick={() => handleTaskSelect(task)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-[12px] text-left transition-all ${
-                          selectedTaskId === task.id
-                            ? 'bg-gradient-to-br from-[#ff3b3b] to-[#cc2f2f] text-white shadow-sm'
-                            : 'hover:bg-[#F7F7F7] text-[#111111]'
-                        }`}
-                      >
-                        <div className="flex-1">
-                          <p className={`text-[13px] font-['Manrope:SemiBold',sans-serif] ${
-                            selectedTaskId === task.id ? 'text-white' : 'text-[#111111]'
-                          }`}>
-                            {task.name}
-                          </p>
-                          <p className={`text-[10px] font-['Inter:Regular',sans-serif] mt-0.5 ${
-                            selectedTaskId === task.id ? 'text-white/80' : 'text-[#999999]'
-                          }`}>
-                            {task.project}
-                          </p>
-                        </div>
-                        {selectedTaskId === task.id && (
-                          <CheckCircle className="w-4 h-4 text-white flex-shrink-0 ml-2" />
-                        )}
-                      </button>
-                    ))
-                  ) : (
-                    <div className="p-3 text-center text-[#999999] text-xs">
-                      No assigned tasks found
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
         </div>
 
         {/* Timer Controls - Centered */}

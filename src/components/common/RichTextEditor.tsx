@@ -318,11 +318,30 @@ const applyFormatToSelection = (type: string, selection: Selection) => {
     case 'italic':
       document.execCommand('italic', false);
       break;
+    case 'underline':
+      document.execCommand('underline', false);
+      break;
     case 'strikethrough':
       document.execCommand('strikethrough', false);
       break;
+    case 'justifyLeft':
+      document.execCommand('justifyLeft', false);
+      break;
+    case 'justifyCenter':
+      document.execCommand('justifyCenter', false);
+      break;
+    case 'justifyRight':
+      document.execCommand('justifyRight', false);
+      break;
+    case 'removeFormat':
+      document.execCommand('removeFormat', false);
+      // Also strip block elements if possible or leave it to standard behavior
+      break;
     case 'list':
       document.execCommand('insertUnorderedList', false);
+      break;
+    case 'insertOrderedList':
+      document.execCommand('insertOrderedList', false);
       break;
     case 'checklist': {
       // Create a custom checklist item
@@ -354,14 +373,23 @@ const applyFormatToSelection = (type: string, selection: Selection) => {
       }
       break;
     case 'code': {
+      // Helper to wrap in code
       const code = document.createElement('code');
       code.style.backgroundColor = '#f5f5f5';
       code.style.padding = '2px 4px';
       code.style.borderRadius = '3px';
       code.style.fontFamily = 'monospace';
       code.style.fontSize = '0.9em';
-      code.appendChild(range.extractContents());
+      const fragment = range.extractContents();
+      // If empty, put a space so we can type
+      if (!fragment.textContent) code.textContent = '\u00A0';
+      else code.appendChild(fragment);
       range.insertNode(code);
+      // Move cursor inside
+      range.selectNodeContents(code);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
       break;
     }
     case 'quote':

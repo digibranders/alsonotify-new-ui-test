@@ -7,7 +7,6 @@ import {
   Divider,
   Input,
   Layout,
-  Modal,
   Segmented,
   Space,
   Spin,
@@ -27,6 +26,12 @@ import {
   ReplyAll,
   Send,
   Trash2,
+  Inbox,
+  FileText,
+  AlertCircle,
+  Archive,
+  PanelLeft,
+  PanelLeftClose,
 } from "lucide-react";
 import dayjs from "dayjs";
 import { PageLayout } from "../../layout/PageLayout";
@@ -40,6 +45,8 @@ import {
   replyMail,
   sendMail,
 } from "@/services/mail";
+import { EmailComposeModal } from "./EmailComposeModal";
+import type { ContactOption } from "./EmailInput";
 
 const { Sider, Content } = Layout;
 const { Text, Title } = Typography;
@@ -100,6 +107,15 @@ function sanitizeEmailHtml(html: string, allowImages: boolean) {
 }
 
 // ---- Folder helpers for counts (frontend-only) ----
+const FOLDER_ICONS: Record<string, any> = {
+  inbox: Inbox,
+  sentitems: Send,
+  drafts: FileText,
+  deleteditems: Trash2,
+  junkemail: AlertCircle,
+  archive: Archive,
+};
+
 const normalize = (s?: string) => (s || "").trim().toLowerCase();
 
 // well-known folder IDs used by your backend routing
@@ -130,19 +146,13 @@ export function MailPage() {
   // view controls
   const [bodyView, setBodyView] = useState<"html" | "text">("html");
   const [loadImages, setLoadImages] = useState(false);
+  const [foldersCollapsed, setFoldersCollapsed] = useState(false);
 
   // compose
   const [composeOpen, setComposeOpen] = useState(false);
-  const [composeTo, setComposeTo] = useState("");
-  const [composeCc, setComposeCc] = useState("");
-  const [composeBcc, setComposeBcc] = useState("");
-  const [composeSubject, setComposeSubject] = useState("");
-  const [composeBody, setComposeBody] = useState("");
-
-  // quick reply
-  const [replyOpen, setReplyOpen] = useState<"reply" | "replyAll" | "forward" | null>(null);
-  const [replyText, setReplyText] = useState("");
-  const [forwardTo, setForwardTo] = useState("");
+  
+  // Quick reply/forward state is now handled by passing data to the compose modal
+  const [composeInitialData, setComposeInitialData] = useState<any>(undefined);
 
   const foldersQ = useMailFolders();
   const messagesQ = useMailMessages(folder, unreadOnly, 25);
@@ -150,6 +160,31 @@ export function MailPage() {
   const msgs = useMemo(() => {
     return (messagesQ.data?.pages || []).flatMap((p) => p.result?.items || []);
   }, [messagesQ.data]);
+
+  // Harvest contacts from messages for autocomplete
+  const autocompleteOptions = useMemo(() => {
+    const contactsMap = new Map<string, ContactOption>();
+    
+    msgs.forEach((m: any) => {
+       // From
+       if (m.from?.emailAddress) {
+           const { address, name } = m.from.emailAddress;
+           if (address) contactsMap.set(address, { value: address, label: name || address, name, email: address });
+       }
+       // To
+       (m.toRecipients || []).forEach((r: any) => {
+           const { address, name } = r.emailAddress || {};
+           if (address) contactsMap.set(address, { value: address, label: name || address, name, email: address });
+       });
+       // Cc
+       (m.ccRecipients || []).forEach((r: any) => {
+           const { address, name } = r.emailAddress || {};
+           if (address) contactsMap.set(address, { value: address, label: name || address, name, email: address });
+       });
+    });
+
+    return Array.from(contactsMap.values());
+  }, [msgs]);
 
   const graphFolders = (foldersQ.data?.result || []) as any[];
 
@@ -251,52 +286,63 @@ export function MailPage() {
     window.URL.revokeObjectURL(url);
   };
 
-  const doSend = async () => {
-    const to = composeTo.split(",").map((s) => s.trim()).filter(Boolean);
-    const cc = composeCc.split(",").map((s) => s.trim()).filter(Boolean);
-    const bcc = composeBcc.split(",").map((s) => s.trim()).filter(Boolean);
+  const openCompose = (data?: any) => {
+      setComposeInitialData(data);
+      setComposeOpen(true);
+  };
 
-    if (to.length === 0) return message.error("Add at least one To recipient");
+  const handleSendMail = async (data: { to: string[]; cc: string[]; bcc: string[]; subject: string; body: string }) => {
+    if (data.to.length === 0) {
+        message.error("Add at least one To recipient");
+        throw new Error("No recipients");
+    }
 
     await sendMail({
-      to,
-      cc: cc.length ? cc : undefined,
-      bcc: bcc.length ? bcc : undefined,
-      subject: composeSubject || "(no subject)",
-      body: composeBody || "",
-      bodyType: "Text",
+      to: data.to,
+      cc: data.cc.length ? data.cc : undefined,
+      bcc: data.bcc.length ? data.bcc : undefined,
+      subject: data.subject || "(no subject)",
+      body: data.body || "",
+      bodyType: "HTML", // We are using rich text editor now
     });
 
     message.success("Mail sent");
-    setComposeOpen(false);
-    setComposeTo("");
-    setComposeCc("");
-    setComposeBcc("");
-    setComposeSubject("");
-    setComposeBody("");
     await messagesQ.refetch();
   };
+  
+  const handleQuickAction = (type: 'reply' | 'replyAll' | 'forward') => {
+      if (!current) return;
+      
+      let subject = current.subject || "";
+      if (!subject.toLowerCase().startsWith("re:") && (type === 'reply' || type === 'replyAll')) {
+          subject = `Re: ${subject}`;
+      } else if (!subject.toLowerCase().startsWith("fwd:") && type === 'forward') {
+          subject = `Fwd: ${subject}`;
+      }
 
-  const doQuickAction = async () => {
-    if (!selectedId) return;
-    if (!replyOpen) return;
+      let to: string[] = [];
+      let cc: string[] = [];
+      let bodyPrefix = `<br/><br/><hr/>From: ${formatFrom(current)}<br/>Date: ${dayjs(current.receivedDateTime).format("MMM D, YYYY • h:mm A")}<br/>Subject: ${current.subject}<br/><br/>`;
+      
+      if (type === 'reply') {
+          if (current.from?.emailAddress?.address) to.push(current.from.emailAddress.address);
+      } else if (type === 'replyAll') {
+          if (current.from?.emailAddress?.address) to.push(current.from.emailAddress.address);
+          (current.toRecipients || []).forEach((r: any) => {
+             if (r.emailAddress?.address) to.push(r.emailAddress.address);
+          });
+          (current.ccRecipients || []).forEach((r: any) => {
+             if (r.emailAddress?.address) cc.push(r.emailAddress.address);
+          });
+      }
+      // For forward, 'to' is empty
 
-    if (replyOpen === "reply") {
-      await replyMail(selectedId, replyText);
-      message.success("Replied");
-    } else if (replyOpen === "replyAll") {
-      await replyAllMail(selectedId, replyText);
-      message.success("Replied all");
-    } else if (replyOpen === "forward") {
-      const to = forwardTo.split(",").map((s) => s.trim()).filter(Boolean);
-      if (!to.length) return message.error("Add Forward To recipients");
-      await forwardMail(selectedId, { to, comment: replyText });
-      message.success("Forwarded");
-    }
-
-    setReplyOpen(null);
-    setReplyText("");
-    setForwardTo("");
+      openCompose({
+          to,
+          cc,
+          subject,
+          body: bodyPrefix + (current.body?.content || "") 
+      });
   };
 
   const htmlBody = useMemo(() => {
@@ -318,7 +364,7 @@ export function MailPage() {
       titleAction={{
         label: "Compose",
         icon: <Send className="w-4 h-4" />,
-        onClick: () => setComposeOpen(true),
+        onClick: () => openCompose(),
       }}
       titleExtra={
         <Space>
@@ -335,55 +381,87 @@ export function MailPage() {
           </Button>
         </Space>
       }
+      className="pb-0"
     >
       <Layout style={{ height: "100%", background: "transparent" }}>
         {/* Folders */}
-        <Sider width={260} style={{ background: "transparent", paddingRight: 12 }}>
-          <div className="bg-[#F7F7F7] rounded-[16px] p-4 h-full overflow-auto">
-            <div className="flex items-center gap-2 mb-3">
-              <Mail className="w-4 h-4" />
-              <Text strong>Folders</Text>
+        <Sider 
+          width={foldersCollapsed ? 64 : 180} 
+          style={{ 
+            background: "transparent", 
+            paddingRight: foldersCollapsed ? 0 : 8,
+            transition: "all 0.3s ease"
+          }}
+        >
+          <div className="bg-[#F7F7F7] rounded-[16px] p-2 md:p-3 h-full overflow-hidden flex flex-col text-[13px]">
+            <div className={`flex items-center ${foldersCollapsed ? 'justify-center' : 'justify-between'} mb-3`}>
+               {!foldersCollapsed && (
+                 <div className="flex items-center gap-2 truncate">
+                   <Mail className="w-4 h-4" />
+                   <Text strong>Folders</Text>
+                 </div>
+               )}
+               <button 
+                onClick={() => setFoldersCollapsed(!foldersCollapsed)}
+                className="p-1.5 rounded-full hover:bg-white text-[#999999] hover:text-[#111111] transition-all"
+               >
+                 {foldersCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+               </button>
             </div>
 
             {foldersQ.isLoading ? (
-              <Spin />
+              <div className="flex justify-center py-4"><Spin size="small" /></div>
             ) : (
-              <div className="space-y-1">
-                {folderItems.map((f: any) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    className={[
-                      "w-full text-left px-3 py-2 rounded-[12px] transition flex items-center justify-between gap-2",
-                      folder === f.id ? "bg-white ring-1 ring-black/5" : "hover:bg-white/70",
-                    ].join(" ")}
-                    onClick={() => {
-                      setFolder(f.id);
-                      setSelectedId(undefined);
-                    }}
-                  >
-                    <span className="truncate">{f.displayName}</span>
-
-                    {/* ✅ Unread count beside folder */}
-                    {!!f.unreadItemCount && f.unreadItemCount > 0 && (
-                      <Tag color="blue" className="m-0 shrink-0">
-                        {f.unreadItemCount}
-                      </Tag>
-                    )}
-                  </button>
-                ))}
+              <div className="space-y-1 overflow-auto flex-1">
+                {folderItems.map((f: any) => {
+                  const Icon = FOLDER_ICONS[f.id] || Mail;
+                  return (
+                    <Tooltip key={f.id} title={foldersCollapsed ? f.displayName : ""} placement="right">
+                      <button
+                        type="button"
+                        className={[
+                          "w-full text-left py-2 rounded-[12px] transition flex items-center gap-2",
+                          foldersCollapsed ? "justify-center px-0" : "px-3",
+                          folder === f.id ? "bg-white ring-1 ring-black/5" : "hover:bg-white/70",
+                        ].join(" ")}
+                        onClick={() => {
+                          setFolder(f.id);
+                          setSelectedId(undefined);
+                        }}
+                      >
+                        <Icon 
+                          className={`w-4 h-4 shrink-0 transition-colors ${folder === f.id ? "text-[#ff3b3b]" : "text-[#434343]"}`} 
+                        />
+                        
+                        {!foldersCollapsed && (
+                          <>
+                            <span className="truncate flex-1">{f.displayName}</span>
+                            {!!f.unreadItemCount && f.unreadItemCount > 0 && (
+                              <div className="bg-[#FEF3F2] text-[#ff3b3b] px-1.5 py-0.5 rounded-full text-[10px] font-bold min-w-[20px] text-center">
+                                {f.unreadItemCount}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </button>
+                    </Tooltip>
+                  );
+                })}
               </div>
             )}
           </div>
         </Sider>
 
         <Content style={{ background: "transparent" }}>
-          <div className="grid grid-cols-[420px_1fr] gap-4 h-full min-h-0">
-            {/* Message list */}
-            <div className="bg-[#F7F7F7] rounded-[16px] p-4 overflow-hidden flex flex-col min-h-0">
-              <Input placeholder="Search (later)" disabled className="mb-3" />
+          <div className={`grid ${foldersCollapsed ? 'grid-cols-[240px_1fr]' : 'grid-cols-[260px_1fr]'} xl:grid-cols-[320px_1fr] gap-3 h-full min-h-0 transition-all duration-300`}>
 
-              <div className="flex-1 overflow-auto">
+            {/* Message list */}
+            <div className="bg-[#F7F7F7] rounded-[16px] p-3 overflow-hidden flex flex-col min-h-0">
+              <div className="mb-2">
+                <Input placeholder="Search (later)" disabled />
+              </div>
+            
+              <div className="flex-1 overflow-auto pt-1">
                 {messagesQ.isLoading ? (
                   <Spin />
                 ) : msgs.length === 0 ? (
@@ -396,7 +474,7 @@ export function MailPage() {
                         type="button"
                         onClick={() => onSelect(m.id, m.isRead)}
                         className={[
-                          "w-full text-left rounded-[14px] px-3 py-3 transition",
+                          "w-full text-left rounded-[12px] px-2 py-2.5 transition",
                           selectedId === m.id ? "bg-white ring-1 ring-black/5" : "hover:bg-white/70",
                         ].join(" ")}
                       >
@@ -447,145 +525,196 @@ export function MailPage() {
             </div>
 
             {/* Reading pane */}
-            <div className="bg-[#F7F7F7] rounded-[16px] p-4 overflow-auto min-h-0">
+            <div className="bg-[#F7F7F7] rounded-[16px] overflow-hidden flex flex-col h-full min-h-0 relative">
               {!selectedId ? (
                 <div className="h-full flex items-center justify-center text-[#999]">Select a message</div>
               ) : msgQ.isLoading ? (
-                <Spin />
+                <div className="h-full flex items-center justify-center bg-white/50 backdrop-blur-sm z-10">
+                  <Spin size="large" />
+                </div>
               ) : (
                 <>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <Title level={5} style={{ margin: 0 }} className="truncate">
-                        {current?.subject || "(no subject)"}
-                      </Title>
+                  {/* Sticky Header Section */}
+                  <div className="p-3 md:p-4 pb-0 shrink-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h2 className="text-[16px] font-bold text-[#111111] font-['Manrope'] m-0 truncate">
+                          {current?.subject || "(no subject)"}
+                        </h2>
 
-                      <div className="mt-1 text-[12px] text-[#666] space-y-0.5">
-                        <div className="truncate">
-                          <Text type="secondary">From:</Text>{" "}
-                          <span className="text-[#444]">{formatFrom(current)}</span>
+                        <div className="mt-1 text-[11px] space-y-0.5">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="text-[#999999] font-medium min-w-[36px]">From:</span>
+                            <span className="text-[#434343] font-semibold">{formatFrom(current)}</span>
+                          </div>
+
+                          {!!formatRecipients(current?.toRecipients) && (
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="text-[#999999] font-medium min-w-[36px]">To:</span>
+                              <span className="text-[#434343]">{formatRecipients(current?.toRecipients)}</span>
+                            </div>
+                          )}
+
+                          {!!formatRecipients(current?.ccRecipients) && (
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="text-[#999999] font-medium min-w-[36px]">Cc:</span>
+                              <span className="text-[#434343]">{formatRecipients(current?.ccRecipients)}</span>
+                            </div>
+                          )}
+
+                          {current?.receivedDateTime ? (
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="text-[#999999] font-medium min-w-[36px]">Date:</span>
+                              <span className="text-[#434343]">
+                                {dayjs(current.receivedDateTime).format("MMM D, YYYY • h:mm A")}
+                              </span>
+                            </div>
+                          ) : null}
                         </div>
+                      </div>
 
-                        {!!formatRecipients(current?.toRecipients) && (
-                          <div className="truncate">
-                            <Text type="secondary">To:</Text>{" "}
-                            <span className="text-[#444]">{formatRecipients(current?.toRecipients)}</span>
-                          </div>
-                        )}
-
-                        {!!formatRecipients(current?.ccRecipients) && (
-                          <div className="truncate">
-                            <Text type="secondary">Cc:</Text>{" "}
-                            <span className="text-[#444]">{formatRecipients(current?.ccRecipients)}</span>
-                          </div>
-                        )}
-
-                        {current?.receivedDateTime ? (
-                          <div className="truncate">
-                            <Text type="secondary">Date:</Text>{" "}
-                            <span className="text-[#444]">
-                              {dayjs(current.receivedDateTime).format("MMM D, YYYY • h:mm A")}
-                            </span>
-                          </div>
-                        ) : null}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Tooltip title="Reply">
+                          <button
+                            onClick={() => handleQuickAction("reply")}
+                            className="p-1.5 rounded-full hover:bg-white ring-1 ring-black/5 transition-all text-[#434343] hover:text-[#ff3b3b]"
+                          >
+                            <Reply size={16} />
+                          </button>
+                        </Tooltip>
+                        <Tooltip title="Reply all">
+                          <button
+                            onClick={() => handleQuickAction("replyAll")}
+                            className="p-1.5 rounded-full hover:bg-white ring-1 ring-black/5 transition-all text-[#434343] hover:text-[#ff3b3b]"
+                          >
+                            <ReplyAll size={16} />
+                          </button>
+                        </Tooltip>
+                        <Tooltip title="Forward">
+                          <button
+                            onClick={() => handleQuickAction("forward")}
+                            className="p-1.5 rounded-full hover:bg-white ring-1 ring-black/5 transition-all text-[#434343] hover:text-[#ff3b3b]"
+                          >
+                            <Forward size={16} />
+                          </button>
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                          <button
+                            onClick={doDelete}
+                            className="p-1.5 rounded-full hover:bg-[#FEF3F2] ring-1 ring-black/5 transition-all text-[#434343] hover:text-[#ff3b3b] group"
+                          >
+                            <Trash2 size={16} className="group-hover:text-[#ff3b3b]" />
+                          </button>
+                        </Tooltip>
                       </div>
                     </div>
 
-                    <Space wrap>
-                      <Tooltip title="Reply">
-                        <Button icon={<Reply className="w-4 h-4" />} onClick={() => setReplyOpen("reply")} />
-                      </Tooltip>
-                      <Tooltip title="Reply all">
-                        <Button icon={<ReplyAll className="w-4 h-4" />} onClick={() => setReplyOpen("replyAll")} />
-                      </Tooltip>
-                      <Tooltip title="Forward">
-                        <Button icon={<Forward className="w-4 h-4" />} onClick={() => setReplyOpen("forward")} />
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <Button danger icon={<Trash2 className="w-4 h-4" />} onClick={doDelete} />
-                      </Tooltip>
-                    </Space>
-                  </div>
+                    <div className="h-px bg-[#EEEEEE] mt-2 mb-3" />
 
-                  <Divider />
+                    <div className="flex items-center justify-between gap-2 mb-0">
+                      <div className="flex items-center gap-4">
+                        <div className="flex bg-white ring-1 ring-black/5 rounded-full p-1 self-start">
+                          <button
+                            onClick={() => setBodyView("html")}
+                            className={`px-3 py-1 text-[12px] font-semibold rounded-full transition-all ${
+                              bodyView === "html" ? "bg-[#111111] text-white shadow-sm" : "text-[#777777] hover:text-[#111111]"
+                            }`}
+                          >
+                            HTML
+                          </button>
+                          <button
+                            onClick={() => setBodyView("text")}
+                            className={`px-3 py-1 text-[12px] font-semibold rounded-full transition-all ${
+                              bodyView === "text" ? "bg-[#111111] text-white shadow-sm" : "text-[#777777] hover:text-[#111111]"
+                            }`}
+                          >
+                            Text
+                          </button>
+                        </div>
 
-                  <div className="flex items-center justify-between gap-2 mb-3">
-                    <Space>
-                      <Segmented
-                        size="small"
-                        options={[
-                          { label: "HTML", value: "html" },
-                          { label: "Text", value: "text" },
-                        ]}
-                        value={bodyView}
-                        onChange={(v) => setBodyView(v as "html" | "text")}
-                      />
+                        {bodyView === "html" ? (
+                          <button
+                            onClick={() => setLoadImages((s) => !s)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white ring-1 ring-black/5 text-[12px] font-medium text-[#434343] hover:bg-[#F7F7F7] transition-all"
+                          >
+                            {loadImages ? <EyeOff size={14} /> : <Eye size={14} />}
+                            {loadImages ? "Hide images" : "Load images"}
+                          </button>
+                        ) : null}
+                      </div>
 
-                      {bodyView === "html" ? (
-                        <Button
-                          size="small"
-                          icon={loadImages ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          onClick={() => setLoadImages((s) => !s)}
-                        >
-                          {loadImages ? "Hide images" : "Load images"}
-                        </Button>
+                      {bodyView === "html" && !loadImages ? (
+                        <div className="flex items-center gap-1.5 text-[11px] text-[#999999]">
+                          <ImageIcon size={14} />
+                          Images are blocked
+                        </div>
                       ) : null}
-                    </Space>
-
-                    {bodyView === "html" && !loadImages ? (
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        <ImageIcon className="inline-block w-4 h-4 mr-1 align-[-2px]" />
-                        Images are blocked (click “Load images”)
-                      </Text>
-                    ) : null}
+                    </div>
                   </div>
+
+                  {/* Scrollable Content Section */}
+                  <div className="flex-1 overflow-auto px-3 md:px-4 pt-0 pb-3 md:pb-4">
 
                   {bodyView === "html" ? (
                     htmlBody ? (
-                      <div
-                        className="mail-html rounded-[12px] bg-white p-4 ring-1 ring-black/5"
-                        dangerouslySetInnerHTML={{ __html: htmlBody }}
-                      />
+                      <div className="min-w-full inline-block align-top">
+                        <div
+                          className="mail-html rounded-[12px] bg-white p-4 ring-1 ring-black/5"
+                          dangerouslySetInnerHTML={{ __html: htmlBody }}
+                        />
+                      </div>
                     ) : (
-                      <div className="rounded-[12px] bg-white p-4 ring-1 ring-black/5 text-[#777]">
+                      <div className="min-w-full inline-block align-top rounded-[12px] bg-white p-4 ring-1 ring-black/5 text-[#777]">
                         No HTML content (switch to Text)
                       </div>
                     )
                   ) : (
-                    <div className="rounded-[12px] bg-white p-4 ring-1 ring-black/5 whitespace-pre-wrap text-[13px] leading-6">
+                    <div className="min-w-full inline-block align-top rounded-[12px] bg-white p-4 ring-1 ring-black/5 whitespace-pre-wrap text-[13px] leading-6">
                       {textBody}
                     </div>
                   )}
 
-                  <Divider />
+                  <div className="h-px bg-[#EEEEEE] my-6" />
 
-                  <Title level={5} style={{ marginTop: 0 }}>
-                    Attachments
-                  </Title>
+                  <div className="min-w-full inline-block align-top">
+                    <h3 className="text-[16px] font-bold text-[#111111] font-['Manrope'] mt-0 mb-4">
+                      Attachments
+                    </h3>
 
-                  {attsQ.isLoading ? (
-                    <Spin />
-                  ) : (attsQ.data?.result?.length || 0) === 0 ? (
-                    <Text type="secondary">No attachments</Text>
-                  ) : (
-                    <div className="space-y-2">
-                      {(attsQ.data?.result || []).map((a: any) => (
-                        <div
-                          key={a.id}
-                          className="rounded-[12px] bg-white px-3 py-3 ring-1 ring-black/5 flex items-center justify-between gap-3"
-                        >
-                          <div className="min-w-0">
-                            <div className="font-semibold truncate">{a.name}</div>
-                            <div className="text-[12px] text-[#777]">
-                              {a.contentType || "file"} • {formatBytes(a.size || 0)}
+                    {attsQ.isLoading ? (
+                      <div className="flex justify-center p-4"><Spin /></div>
+                    ) : (attsQ.data?.result?.length || 0) === 0 ? (
+                      <div className="text-[13px] text-[#999999]">No attachments</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {(attsQ.data?.result || []).map((a: any) => (
+                          <div
+                            key={a.id}
+                            className="rounded-[16px] bg-white px-4 py-4 ring-1 ring-black/5 flex items-center justify-between gap-3 shadow-sm hover:shadow-md transition-shadow"
+                          >
+                            <div className="min-w-0 flex items-center gap-3">
+                              <div className="p-2 bg-[#F7F7F7] rounded-[10px] text-[#111111]">
+                                <Paperclip size={18} />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-semibold text-[14px] text-[#111111] truncate">{a.name}</div>
+                                <div className="text-[12px] text-[#777]">
+                                  {a.contentType || "file"} • {formatBytes(a.size || 0)}
+                                </div>
+                              </div>
                             </div>
-                          </div>
 
-                          <Button onClick={() => doDownload(a.id, a.name)}>Download</Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                            <button
+                              onClick={() => doDownload(a.id, a.name)}
+                              className="px-4 py-2 rounded-full bg-[#111111] text-white text-[12px] font-semibold hover:bg-[#333333] transition-all shadow-sm active:scale-95"
+                            >
+                              Download
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   <style jsx global>{`
                     .mail-html {
@@ -593,6 +722,8 @@ export function MailPage() {
                       line-height: 1.7;
                       color: #222;
                       overflow-wrap: anywhere;
+                      zoom: 0.92;
+                      transform-origin: top left;
                     }
                     .mail-html img {
                       max-width: 100%;
@@ -623,6 +754,7 @@ export function MailPage() {
                       overflow: auto;
                     }
                   `}</style>
+                  </div>
                 </>
               )}
             </div>
@@ -630,35 +762,13 @@ export function MailPage() {
         </Content>
       </Layout>
 
-      {/* Compose */}
-      <Modal title="Compose" open={composeOpen} onCancel={() => setComposeOpen(false)} onOk={doSend} okText="Send">
-        <Space orientation="vertical" className="w-full" size={10}>
-          <Input value={composeTo} onChange={(e) => setComposeTo(e.target.value)} placeholder="To (comma separated)" />
-          <Input value={composeCc} onChange={(e) => setComposeCc(e.target.value)} placeholder="Cc (optional)" />
-          <Input value={composeBcc} onChange={(e) => setComposeBcc(e.target.value)} placeholder="Bcc (optional)" />
-          <Input value={composeSubject} onChange={(e) => setComposeSubject(e.target.value)} placeholder="Subject" />
-          <Input.TextArea value={composeBody} onChange={(e) => setComposeBody(e.target.value)} rows={6} placeholder="Message" />
-        </Space>
-      </Modal>
-
-      {/* Quick reply / forward */}
-      <Modal
-        title={replyOpen ? (replyOpen === "forward" ? "Forward" : replyOpen === "replyAll" ? "Reply All" : "Reply") : ""}
-        open={!!replyOpen}
-        onCancel={() => setReplyOpen(null)}
-        onOk={doQuickAction}
-        okText="Send"
-      >
-        {replyOpen === "forward" && (
-          <Input
-            value={forwardTo}
-            onChange={(e) => setForwardTo(e.target.value)}
-            placeholder="Forward To (comma separated)"
-            className="mb-3"
-          />
-        )}
-        <Input.TextArea value={replyText} onChange={(e) => setReplyText(e.target.value)} rows={6} placeholder="Message" />
-      </Modal>
+      <EmailComposeModal 
+        open={composeOpen} 
+        onClose={() => setComposeOpen(false)} 
+        onSend={handleSendMail}
+        initialData={composeInitialData}
+        autocompleteOptions={autocompleteOptions}
+      />
     </PageLayout>
   );
 }
