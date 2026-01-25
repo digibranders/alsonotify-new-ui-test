@@ -39,6 +39,14 @@ interface RequirementCardProps {
   currentUserId?: number;
 }
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  'USD': '$',
+  'EUR': '€',
+  'GBP': '£',
+  'INR': '₹',
+  'AED': 'د.إ',
+};
+
 export function RequirementCard({
   requirement,
   selected,
@@ -114,7 +122,8 @@ export function RequirementCard({
         }
         // In-House / Client work completed -> Ready to Bill
         const price = requirement.quotedPrice || requirement.estimatedCost || requirement.budget;
-        const priceLabel = price ? ` - $${Number(price).toLocaleString()}` : '';
+        const symbol = CURRENCY_SYMBOLS[requirement.currency || 'USD'] || '$';
+        const priceLabel = price ? ` - ${symbol}${Number(price).toLocaleString()}` : '';
         return { 
             label: `Ready to Bill${priceLabel}`, 
             icon: <Receipt className="w-3 h-3" />,
@@ -181,15 +190,10 @@ export function RequirementCard({
     const val = requirement.quotedPrice || requirement.estimatedCost || requirement.budget;
     if (!val) return null;
 
-    const currencySymbols: Record<string, string> = {
-      'USD': '$',
-      'EUR': '€',
-      'GBP': '£',
-      'INR': '₹',
-      'AED': 'د.إ',
-    };
-
-    const symbol = currencySymbols[requirement.currency || 'USD'] || '$';
+    // Robust currency handling: Try exact match, then uppercase match, default to code or '$'
+    const currencyCode = requirement.currency ? requirement.currency.toUpperCase() : 'USD';
+    const symbol = CURRENCY_SYMBOLS[currencyCode] || (requirement.currency ? requirement.currency : '$');
+    
     return `${symbol}${Number(val).toLocaleString()}`;
   };
 

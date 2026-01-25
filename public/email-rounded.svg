@@ -1,0 +1,22 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Dynamic shadow/glow -->
+  <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+    <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#d92626" flood-opacity="0.2"/>
+  </filter>
+
+  <!-- Envelope Group -->
+  <g filter="url(#shadow)">
+    <!-- Back Body (Rounded Rect) -->
+    <rect x="40" y="70" width="120" height="90" rx="16" fill="#D92626"/>
+    
+    <!-- Paper Sheet (White) sticking out -->
+    <rect x="50" y="60" width="100" height="80" rx="4" fill="white"/>
+    
+    <!-- Front Body (Triangle Flaps simulation with path) -->
+    <!-- Left Triangle shape -->
+    <path d="M40 70 L100 115 L160 70 V144 C160 152.837 152.837 160 144 160 H56 C47.1634 160 40 152.837 40 144 V70Z" fill="#ff3b3b"/>
+    
+    <!-- Top Flap (Triangle with rounded tip) -->
+    <path d="M40 70 L96 112 C98.5 114 101.5 114 104 112 L160 70 H40Z" fill="#991A1A" opacity="0.9"/>
+  </g>
+</svg>

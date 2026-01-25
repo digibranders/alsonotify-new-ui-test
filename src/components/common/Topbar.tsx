@@ -202,9 +202,9 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
   // Transform notifications
   const notifications = useMemo(() => {
     if (!notificationsData?.result) return [];
-    return notificationsData.result.map((n: { id: number; title?: string; message?: string; created_at?: string; is_read?: boolean; type?: string; icon?: string; link?: string; metadata?: { requirement_id?: number; actions?: string[]; sender_company_id?: number } }) => ({
+    return notificationsData.result.map((n) => ({
       id: n.id,
-      title: n.title || n.message || 'Notification',
+      title: n.metadata?.title || n.title || n.message || 'Notification',
       message: n.message || n.title || '',
       time: n.created_at
         ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true })

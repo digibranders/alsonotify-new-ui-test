@@ -289,37 +289,7 @@ export function RequirementsForm({
                 </div>
             </div>
 
-            {/* Row 4: Quoted Price & Currency (Outsourced only) - Only show when editing */}
-            {formData.type === 'outsourced' && isEditing && (
-                <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-4">
-                    <div className="space-y-1.5">
-                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Quoted Price</span>
-                        <Input
-                            type="number"
-                            placeholder="0.00"
-                            className="h-11 rounded-lg border border-[#EEEEEE]"
-                            value={formData.quoted_price}
-                            onChange={(e) => setFormData({ ...formData, quoted_price: e.target.value })}
-                        />
-                    </div>
-                    <div className="space-y-1.5">
-                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Currency</span>
-                        <Select
-                            className="w-full h-11"
-                            placeholder="Select currency"
-                            value={formData.currency || 'USD'}
-                            onChange={(v) => setFormData({ ...formData, currency: v })}
-                            suffixIcon={<ChevronDown className="w-4 h-4 text-gray-400" />}
-                        >
-                            <Option value="USD">USD ($)</Option>
-                            <Option value="EUR">EUR (€)</Option>
-                            <Option value="GBP">GBP (£)</Option>
-                            <Option value="INR">INR (₹)</Option>
-                            <Option value="AED">AED (د.إ)</Option>
-                        </Select>
-                    </div>
-                </div>
-            )}
+
 
             {/* Description */}
             <div className="space-y-1.5 mb-4">

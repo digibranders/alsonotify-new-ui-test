@@ -183,6 +183,7 @@ function CompanyDetailsForm() {
     const businessType = industryToBusinessType[companyData.industry] || 21;
 
     try {
+      console.log("Submitting complete signup mutation...");
       const response = await completeSignupMutation.mutateAsync({
         registerToken: token,
         companyName: companyData.companyName,
@@ -195,7 +196,10 @@ function CompanyDetailsForm() {
         phone: adminData.phone,
       });
 
+      console.log("Complete Signup Response:", response);
+
       if (response && response.success) {
+        console.log("Signup success, processing uploads...");
         const user = response.result.user;
         const companyId = user?.company_id || (user?.companies && user.companies[0]?.id);
         const userId = user?.id;
@@ -244,7 +248,10 @@ function CompanyDetailsForm() {
           }
         }
 
+        console.log("Redirecting to dashboard...");
         router.push("/dashboard");
+      } else {
+        console.error("Signup response indicated failure or missing data:", response);
       }
     } catch (error: any) {
       const errorMessage =

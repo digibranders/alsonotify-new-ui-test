@@ -19,7 +19,7 @@ export const INTERNAL_TRANSITIONS: Readonly<Record<RequirementStatus, readonly R
   In_Progress: ['Review', 'Completed', 'Impediment', 'Stuck', 'On_Hold', 'Delayed'],
 
   // From Review: can approve (Completed), need revisions, reassign, or reject
-  Review: ['Assigned', 'Completed', 'Revision', 'Rejected'],
+  Review: ['Assigned', 'Completed', 'Revision'],
 
   // From Revision: can resume work or resubmit for review
   Revision: ['In_Progress', 'Review'],

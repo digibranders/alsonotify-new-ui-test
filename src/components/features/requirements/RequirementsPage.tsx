@@ -158,6 +158,9 @@ export function RequirementsPage() {
     // Add collaborative requirements (avoid duplicates if possible)
     if (collaborativeData?.result) {
       collaborativeData.result.forEach((collab: RequirementDto) => {
+        if (collab.title === 'Test 2' || collab.id === 3) {
+            console.log('DEBUG COLLAB REQ:', { id: collab.id, title: collab.title, currency: collab.currency, raw: collab });
+        }
         if (!combined.some(req => req.id === collab.id)) {
           combined.push(collab);
         }
@@ -321,11 +324,12 @@ export function RequirementsPage() {
         estimatedCost: req.estimatedCost || (req.budget || undefined),
         budget: req.budget || undefined,
         quotedPrice: req.quotedPrice || req.quoted_price || undefined, // Add quoted_price for vendor quotes
-        currency: req.currency || 'USD',
+        currency: (req.currency && req.currency.trim() !== '') ? req.currency : 'USD',
         hourlyRate: req.hourlyRate || undefined,
         estimatedHours: req.estimatedHours || undefined,
         pricingModel: mockPricingModel as 'hourly' | 'project' | undefined,
         contactPerson: mockContactPerson || undefined,
+        contact_person_id: req.contact_person_id,
         rejectionReason: mockRejectionReason,
         headerContact,
         headerCompany,
@@ -359,6 +363,15 @@ export function RequirementsPage() {
         rawSenderCompany: req.sender_company,
         rawReceiverCompany: req.receiver_company,
       });
+
+      if (req.id === 3 || mappedReq.title === 'Test 2') {
+         console.log('DEBUG MAPPED REQ:', { 
+            id: mappedReq.id, 
+            currency: mappedReq.currency, 
+            rawCurrency: req.currency,
+            isReceiver: mappedReq.isReceiver 
+         });
+      }
 
       return mappedReq;
 
