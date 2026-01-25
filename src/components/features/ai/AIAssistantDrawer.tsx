@@ -11,6 +11,7 @@ import {
 } from '@fluentui/react-icons';
 import { generateAgentResponse } from '@/services/assistant';
 import { useMutation } from '@tanstack/react-query';
+import { QUICK_ACTIONS } from '@/config/assistantConfig';
 
 interface Message {
   id: number;
@@ -30,11 +31,21 @@ export function AIAssistantDrawer({ open, onClose }: AIAssistantDrawerProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Focus input when drawer opens
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }, [open]);
 
   const { mutate: sendMessage, isPending } = useMutation({
     mutationFn: async (text: string) => {
@@ -84,6 +95,7 @@ export function AIAssistantDrawer({ open, onClose }: AIAssistantDrawerProps) {
 
   const handleQuickAction = (action: string) => {
     setInputText(action);
+    inputRef.current?.focus();
     // Optional: auto-send
     // handleSend();
   };
@@ -126,9 +138,16 @@ export function AIAssistantDrawer({ open, onClose }: AIAssistantDrawerProps) {
             
             {/* Quick Actions (The "3 options") */}
             <div className="flex flex-wrap gap-2 justify-center mt-4">
-                <Button size="small" shape="round" onClick={() => handleQuickAction("Team status")}>Team status</Button>
-                <Button size="small" shape="round" onClick={() => handleQuickAction("My time")}>My time</Button>
-                <Button size="small" shape="round" onClick={() => handleQuickAction("Workspace")}>Workspace</Button>
+                {QUICK_ACTIONS.map((action) => (
+                  <Button 
+                    key={action.label} 
+                    size="small" 
+                    shape="round" 
+                    onClick={() => handleQuickAction(action.prompt)}
+                  >
+                    {action.label}
+                  </Button>
+                ))}
             </div>
           </div>
         ) : (
@@ -166,6 +185,7 @@ export function AIAssistantDrawer({ open, onClose }: AIAssistantDrawerProps) {
         <div className="flex items-center gap-2 bg-[#F7F7F7] px-3 py-2 rounded-full border border-transparent focus-within:border-[#ff3b3b]/30 focus-within:bg-white focus-within:shadow-sm transition-all">
             <Sparkle24Filled className="w-5 h-5 text-[#ff3b3b]" />
             <input 
+                ref={inputRef}
                 className="flex-1 bg-transparent border-none focus:ring-0 text-sm placeholder:text-gray-400 focus:outline-none"
                 placeholder="Ask anything..."
                 value={inputText}
