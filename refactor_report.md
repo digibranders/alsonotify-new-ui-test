@@ -473,3 +473,50 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
 
 - **Automated**: `npm run build` Passed successfully.
 - **Manual**: Reviewed code logic to ensure robust handling of currency fields.
+
+## 2026-01-25: Integrate Mail Page
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Expose the new Mail page in the sidebar navigation for all user roles.
+
+### Changes
+
+- **Component**: `src/components/common/Sidebar.tsx`
+    - Added `Mail` icon import.
+    - Added `mail` navigation item pointing to `/dashboard/mail`.
+    - Configured access for all roles: `['Admin', 'Manager', 'Head', 'Finance', 'HR', 'Employee']`.
+
+### Verification
+
+- **Manual**: Verified file existence of `src/components/features/mail/MailPage.tsx` and `src/app/dashboard/mail/page.tsx`.
+- **Logic**: Confirmed route configuration matches existing patterns.
+
+## 2026-01-25: Refactor Mail Page Header
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Move Mail page controls (refresh, segments) to the top header row for better space utilization.
+
+### Changes
+
+- **Component**: `src/components/features/mail/MailPage.tsx`
+    - Moved controls from `action` prop to `titleExtra` prop in `PageLayout` component.
+
+### Verification
+
+- **Automated**: `npm run build` Passed successfully.
+- **Manual**: Logic check confirms `titleExtra` renders in the header row vs `action` in the secondary row.
+
+## 2026-01-25: Hide Task Timer on Mail Page
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Improve Mail Page usability by removing the global "Select Task" timer bar.
+
+### Changes
+
+- **Component**: `src/app/AlsonotifyLayoutWrapper.tsx`
+    - Conditionally render `<FloatingTimerBar />` only if pathname does not start with `/dashboard/mail`.
+
+### Verification
+
+- **Automated**: `npm run build` Passed successfully.
+- **Manual**: Verified conditional logic uses `pathname` correctly.

@@ -159,7 +159,7 @@ function AlsonotifyLayoutContent({ children }: Readonly<AlsonotifyLayoutWrapperP
         </div>
       </div>
       {/* FloatingProductivityWidget removed - FloatingTimerBar handles all timer functionality */}
-      <FloatingTimerBar />
+      {!pathname?.startsWith('/dashboard/mail') && <FloatingTimerBar />}
       <InvitationPopup />
     </TimerProvider>
   );

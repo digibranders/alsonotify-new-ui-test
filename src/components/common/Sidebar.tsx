@@ -17,7 +17,8 @@ import {
   CircleDollarSign,
   NotebookPen,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Mail
 } from 'lucide-react';
 import React from "react";
 
@@ -111,6 +112,13 @@ const NAV_ITEMS: NavItemConfig[] = [
     label: 'Finance',
     icon: <CircleDollarSign size={20} />,
     allowedRoles: ['Admin', 'Manager', 'Head', 'Finance']
+  },
+  {
+    id: 'mail',
+    path: '/dashboard/mail',
+    label: 'Mail',
+    icon: <Mail size={20} />,
+    allowedRoles: ['Admin', 'Manager', 'Head', 'Finance', 'HR', 'Employee']
   },
   {
     id: 'notes',
