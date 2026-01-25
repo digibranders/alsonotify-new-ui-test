@@ -77,5 +77,11 @@ export const queryKeys = {
     company: () => ['leaves', 'company'] as const,
     detail: (id: number) => ['leaves', 'detail', id] as const,
     balance: () => ['leaves', 'balance'] as const,
-  }
+  },
+  mail: {
+    folders: () => ["mail", "folders"] as const,
+    messages: (params: any) => ["mail", "messages", params] as const,
+    message: (id: string) => ["mail", "message", id] as const,
+    attachments: (messageId: string) => ["mail", "attachments", messageId] as const,
+  },
 } as const;
