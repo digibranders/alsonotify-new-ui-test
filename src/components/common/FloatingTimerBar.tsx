@@ -24,6 +24,7 @@ interface TaskOption {
   name: string;
   project: string;
   estimatedTime: number;
+  disabled?: boolean;
 }
 
 export function FloatingTimerBar() {
@@ -111,12 +112,29 @@ export function FloatingTimerBar() {
     enabled: !!userId,
   });
 
-  // Filter tasks that can have timer started (Assigned, In_Progress, Impediment)
+  // Filter tasks logic:
+  // 1. Must be Assigned/Active (not completed)
+  // 2. Must be the user's turn (backend sends disabled=true for sequential out-of-turn)
+  // 3. Must be a member (User request: "show only the tasks that logged in user is a member")
   const tasks: TaskOption[] = (assignedTasksData?.result || [])
     .filter((t) => {
       const status = (t.status || '').toLowerCase();
-      // Filter out completed tasks to show only active, review, or workable items
-      return !status.includes('completed');
+      
+      // 1. Status Filter
+      if (status.includes('completed')) return false;
+
+      // 2. Disabled/Sequential Filter (Backend Logic)
+      if (t.disabled) return false;
+
+      // 3. Membership Filter (Frontend Check)
+      // Leader sees all tasks in backend response, but might not be a "working member"
+      // If task_members is present, verify userId is in it.
+      if (t.task_members && Array.isArray(t.task_members) && t.task_members.length > 0) {
+        const isMember = t.task_members.some(m => m.user_id === userId);
+        if (!isMember) return false;
+      }
+
+      return true;
     })
     .map((t) => ({
       id: t.id,
@@ -124,7 +142,8 @@ export function FloatingTimerBar() {
       project: t.task_workspace?.name || 
                t.task_project?.company?.name || 
                "Unknown Project",
-      estimatedTime: t.estimated_time || 0
+      estimatedTime: t.estimated_time || 0,
+      disabled: t.disabled
     }));
 
   const formatTime = (seconds: number) => {

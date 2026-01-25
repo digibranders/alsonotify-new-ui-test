@@ -131,5 +131,10 @@ export {
   validateField,
 } from './requirement/requirementModal';
 
+
 // Task CTA configuration
 export { getTaskCTAConfig, getTaskTab } from './task/taskCTA';
+
+// Task UI Configuration (Colors, Icons, Labels)
+export { getTaskStatusUI } from './task/taskUI';
+export type { TaskUIConfig } from './task/taskUI';

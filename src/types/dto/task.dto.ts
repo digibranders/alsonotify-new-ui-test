@@ -57,6 +57,7 @@ export interface TaskDto {
   estimated_time?: number;
   time_spent?: number;
   execution_mode?: 'parallel' | 'sequential';
+  disabled?: boolean;
   
   // Relations/Nested objects often returned by different endpoints
   worklogs?: WorklogDto[];

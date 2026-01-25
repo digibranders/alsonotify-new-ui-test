@@ -9,16 +9,16 @@ import { DateRangeSelector } from '../../common/DateRangeSelector';
 import { useFloatingMenu } from '../../../context/FloatingMenuContext';
 import { TaskForm } from '../../modals/TaskForm';
 import { TaskRow } from './rows/TaskRow';
-import { useTasks, useCreateTask, useDeleteTask, useUpdateTask } from '@/hooks/useTask';
-import { useWorkspaces } from '@/hooks/useWorkspace';
-import { searchEmployees } from '@/services/user';
-import { getRoleFromUser } from '@/utils/roleUtils';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { Skeleton } from '../../ui/Skeleton';
 
-import { useUserDetails, useCurrentUserCompany } from '@/hooks/useUser';
-import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
+import { useTasks, useCreateTask, useDeleteTask, useUpdateTask, useUpdateTaskStatus } from '@/hooks/useTask';
+import { useWorkspaces, useWorkspaceRequirementsDropdown } from '@/hooks/useWorkspace';
+import { useEmployeesDropdown, useUserDetails, useCurrentUserCompany } from '@/hooks/useUser';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { getTaskStatusUI } from '@/lib/workflow';
+import { getRoleFromUser } from '@/utils/roleUtils';
+import { Skeleton } from '../../ui/Skeleton';
 import { useRouter, useSearchParams } from 'next/navigation';
+
 import dayjs, { Dayjs } from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
@@ -50,7 +50,13 @@ export function TasksPage() {
   const updateTaskMutation = useUpdateTask();
   const { data: workspacesData } = useWorkspaces();
   
-  // Use new centralized hook
+  // Use new centralized hooks for dropdowns
+  const { data: usersDropdownData } = useEmployeesDropdown();
+  const { data: requirementsDropdownData } = useWorkspaceRequirementsDropdown();
+  
+  const usersDropdown = usersDropdownData || [];
+  const requirementsDropdown = requirementsDropdownData || [];
+
   const { user: currentUser } = useCurrentUser();
   
   const { data: userDetailsData } = useUserDetails(); // Keep for legacy/edge cases if needed, but prefer currentUser
@@ -127,10 +133,6 @@ export function TasksPage() {
 
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  // Fetch users and requirements for form dropdowns
-  const [usersDropdown, setUsersDropdown] = useState<Array<{ id: number; name: string }>>([]);
-  const [requirementsDropdown, setRequirementsDropdown] = useState<Array<{ id: number; name: string }>>([]);
 
   // Set initial filter to current user when page loads (only once)
   // Skip auto-filter for Admin users - they should see all tasks by default
@@ -263,47 +265,7 @@ export function TasksPage() {
   // Fetch stats separately (without status filter)
   const { data: statsData } = useTasks(statsQueryParams);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await searchEmployees();
-        if (response.success) {
-          const transformed = (response.result || []).map((item: { label: string; value: number }) => ({
-            id: item.value,
-            name: item.label,
-          }));
-          setUsersDropdown(transformed);
-        }
-      } catch (error) {
-        // Failed to fetch users
-      }
-    };
-    fetchUsers();
-  }, []);
 
-  useEffect(() => {
-    const fetchRequirements = async () => {
-      try {
-        if (!workspacesData?.result?.workspaces) return;
-        const allRequirements: Array<{ id: number; name: string }> = [];
-
-        for (const workspace of workspacesData.result.workspaces) {
-          try {
-            const response = await getRequirementsDropdownByWorkspaceId(workspace.id);
-            if (response.success && response.result) {
-              allRequirements.push(...response.result);
-            }
-          } catch (error) {
-            // Failed to fetch requirements for workspace
-          }
-        }
-        setRequirementsDropdown(allRequirements);
-      } catch (error) {
-        // Failed to fetch requirements
-      }
-    };
-    fetchRequirements();
-  }, [workspacesData]);
 
   // Transform backend data to UI format
   // Backend statuses: 'Assigned', 'In_Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'
