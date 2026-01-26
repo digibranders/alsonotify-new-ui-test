@@ -1,36 +1,26 @@
-'use client';
-
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
-  FileText, ListTodo, BarChart2, Columns,
-  Plus, RotateCcw, Clock, MoreVertical,
-  Paperclip, TrendingUp, Briefcase,
-  CheckCircle2, AlertCircle,
-  MessageSquare,
-  Loader2,
-  X,
-  Send
+  ListTodo, BarChart2, Columns,
+  Plus, RotateCcw,
+  Paperclip, TrendingUp,
 } from 'lucide-react';
-import { Breadcrumb, Checkbox, Button, Tooltip, App, Input, Select, Modal, Mentions } from 'antd';
+import { Checkbox, Button, App, Input, Modal, Select } from 'antd'; 
 import { Skeleton } from '../../ui/Skeleton';
-import { sanitizeRichText } from '@/utils/sanitizeHtml';
 import { useWorkspace, useRequirements, useUpdateRequirement, useWorkspaces } from '@/hooks/useWorkspace';
 import { useTasks, useRequestRevision, useCreateTask } from '@/hooks/useTask';
 import { TaskForm } from '../../modals/TaskForm';
 import { CreateTaskRequestDto } from '@/types/dto/task.dto';
 import { getErrorMessage } from '@/types/api-utils';
 import { useEmployees, useUserDetails, usePartners } from '@/hooks/useUser';
-import { useRequirementActivities, useCreateRequirementActivity } from '@/hooks/useRequirementActivity';
+import { useRequirementActivities } from '@/hooks/useRequirementActivity';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { TaskRow } from '@/components/features/tasks/rows/TaskRow';
 import { Requirement, Task, Employee } from '@/types/domain';
 import {
   getRequirementCTAConfig,
-  getRequirementTab,
   type RequirementStatus,
-  type TabContext,
 } from '@/lib/workflow';
 import {
   mapRequirementToStatus,
@@ -38,11 +28,13 @@ import {
   mapRequirementToContext,
   mapRequirementToType,
 } from './utils/requirementState.utils';
-import { Archive } from 'lucide-react';
 
 // Extracted components
-import { ChatPanel, GanttChartTab, PnLTab, DocumentsTab, KanbanBoardTab } from './components';
-import { fileService } from '@/services/file.service';
+import { GanttChartTab, PnLTab, DocumentsTab, KanbanBoardTab } from './components';
+import { RequirementHeader } from './components/RequirementHeader';
+import { RequirementInfoCard } from './components/RequirementInfoCard';
+import { ActivitySidebar } from './components/ActivitySidebar';
+import { SubTaskRow } from './components/SubTaskRow';
 
 const { Option } = Select;
 
@@ -67,8 +59,7 @@ export function RequirementDetailsPage() {
   const { user } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { data: activityResponse, isLoading: isLoadingActivities } = useRequirementActivities(reqId);
-  const createActivity = useCreateRequirementActivity();
+
 
   const [activeTab, setActiveTab] = useState<'details' | 'tasks' | 'gantt' | 'kanban' | 'pnl' | 'documents'>('details');
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
@@ -77,42 +68,32 @@ export function RequirementDetailsPage() {
   const [ganttView, setGanttView] = useState<'day' | 'week' | 'month'>('week');
   const [activeMentionOptions, setActiveMentionOptions] = useState<{ value: string; label: string; key: string }[]>([]);
 
-  // Partner / Receiver Logic
-  const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
-  const [selectedReceiverWorkspace, setSelectedReceiverWorkspace] = useState<string | undefined>(undefined);
   const { mutate: updateRequirement } = useUpdateRequirement();
-    const { data: myWorkspacesData } = useWorkspaces();
+  const { data: myWorkspacesData } = useWorkspaces();
   const { data: partnersData } = usePartners();
   const { mutate: requestRevision } = useRequestRevision();
+
+  const { data: activityResponse } = useRequirementActivities(reqId);
+  const documentsActivityData = useMemo(() => {
+    if (!activityResponse?.result) return [];
+    return activityResponse.result.map((act: any) => ({
+      id: act.id,
+      type: act.type,
+      user: act.user.name,
+      avatar: '',
+      date: format(new Date(act.created_at), 'MMM d, h:mm a'),
+      message: act.message,
+      isSystem: false,
+      attachments: act.attachments.map((a: any) => a.file_name),
+    }));
+  }, [activityResponse]);
 
   const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
   const [revisionNotes, setRevisionNotes] = useState('');
   const [targetTaskId, setTargetTaskId] = useState<number | null>(null);
 
 
-  const handleAcceptRequirement = () => {
-     if (!selectedReceiverWorkspace) {
-        message.error("Please select a workspace to import this requirement into.");
-        return;
-     }
-     if (!requirement) return;
 
-     updateRequirement({
-        id: reqId,
-        workspace_id: requirement.workspace_id,
-        title: requirement.title,
-        status: 'Assigned',
-        receiver_workspace_id: Number(selectedReceiverWorkspace)
-     } as unknown as any, {
-        onSuccess: () => {
-           message.success("Requirement accepted and assigned to workspace.");
-           setIsAcceptModalOpen(false);
-        },
-        onError: (err: Error) => {
-           message.error((err as any).message || "Failed to accept requirement");
-        }
-     });
-  };
 
   const workspace = useMemo(() => {
     if (!workspaceData?.result) return null;
@@ -175,135 +156,7 @@ export function RequirementDetailsPage() {
   const isPending = ctaConfig.isPending;
   const displayStatus = ctaConfig.displayStatus;
 
-  const formatActivityMessage = (msg: string) => {
-    if (!msg) return '';
-    const allNames = mentionOptions.map(o => o.value);
-    const taskNames = taskOptions.map(o => o.value);
-    
-    if (allNames.length === 0 && taskNames.length === 0) return msg;
 
-    // Simpler approach for React grouping
-    const parts: React.ReactNode[] = [];
-    let lastIndex = 0;
-    
-    // Combine both prefixes into one regex for systematic parsing
-    const mentionRegex = new RegExp(`(@(?:${allNames.map(escapeRegExp).join('|')}))|(#(?:${taskNames.map(escapeRegExp).join('|')}))`, 'g');
-    let match;
-
-    while ((match = mentionRegex.exec(msg)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(msg.substring(lastIndex, match.index));
-      }
-      
-      const isTask = match[0].startsWith('#');
-      if (isTask) {
-        parts.push(
-          <span key={match.index} className="task-token-highlight cursor-pointer hover:underline text-[#2F80ED] bg-[#EBF3FF] px-1.5 py-0.5 rounded-md text-[12px] font-['Inter:Medium',sans-serif]">
-            {match[0]}
-          </span>
-        );
-      } else {
-        parts.push(
-          <span key={match.index} className="mention-token-highlight cursor-pointer hover:underline">
-            {match[0]}
-          </span>
-        );
-      }
-      lastIndex = match.index + match[0].length;
-    }
-    if (lastIndex < msg.length) {
-      parts.push(msg.substring(lastIndex));
-    }
-    
-    return parts;
-  };
-
-  const escapeRegExp = (string: string) => string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-  const taskOptions = useMemo(() => {
-    return tasks.map(t => ({
-      value: t.name || t.title || 'Untitled',
-      label: t.name || t.title || 'Untitled',
-      key: `task-${t.id}`
-    }));
-  }, [tasks]);
-
-  const mentionOptions = useMemo(() => {
-    const options: { value: string; label: string; key: string }[] = [];
-    
-    // Internal Employees
-    if (employeesData?.result) {
-      employeesData.result.forEach(emp => {
-        options.push({
-          value: emp.name,
-          label: emp.name,
-          key: `emp-${emp.id}`
-        });
-      });
-    }
-
-    // Partners
-    if (partnersData?.result) {
-      partnersData.result.forEach(partner => {
-        options.push({
-          value: partner.name,
-          label: partner.name,
-          key: `partner-${partner.id}`
-        });
-      });
-    }
-
-    // Deduplicate by value (name) to avoid UI confusion if a user is in both lists
-    const seen = new Set();
-    return options.filter(opt => {
-      if (seen.has(opt.value)) return false;
-      seen.add(opt.value);
-      return true;
-    });
-  }, [employeesData, partnersData]);
-
-  // Initialize active options when mentionOptions are ready
-  useEffect(() => {
-    if (mentionOptions.length > 0 && activeMentionOptions.length === 0) {
-      setActiveMentionOptions(mentionOptions);
-    }
-  }, [mentionOptions]);
-
-  const activityData = useMemo(() => {
-    if (!activityResponse?.result) return [];
-    return activityResponse.result.map(act => ({
-      id: act.id,
-      type: act.type.toLowerCase(),
-      user: act.user.name,
-      avatar: act.user.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2),
-      date: format(new Date(act.created_at), 'MMM d, h:mm a'),
-      message: formatActivityMessage(act.message),
-      isSystem: act.type === 'SYSTEM',
-      attachments: act.attachments.map(a => a.file_name),
-      time: act.metadata && typeof act.metadata === 'object' && 'time' in act.metadata ? String((act.metadata as Record<string, unknown>).time) : undefined,
-      category: act.metadata && typeof act.metadata === 'object' && 'category' in act.metadata ? String((act.metadata as Record<string, unknown>).category) : undefined,
-      task: act.metadata && typeof act.metadata === 'object' && 'task' in act.metadata ? String((act.metadata as Record<string, unknown>).task) : undefined,
-      raw: act
-    }));
-  }, [activityResponse, mentionOptions, taskOptions]);
-
-  const handleMentionSearch = (text: string, prefix: string) => {
-    if (prefix === '@') {
-      setActiveMentionOptions(mentionOptions.filter(opt => 
-        opt.value.toLowerCase().includes(text.toLowerCase())
-      ));
-    } else if (prefix === '#') {
-      setActiveMentionOptions(taskOptions.filter(opt => 
-        opt.value.toLowerCase().includes(text.toLowerCase())
-      ));
-    }
-  };
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [activityResponse]);
 
   if (isLoadingWorkspace || isLoadingRequirements) {
     return (
@@ -441,116 +294,9 @@ export function RequirementDetailsPage() {
 
 
 
-  const handleSendMessage = async () => {
-    if (messageText.trim() || attachments.length > 0) {
-      try {
-        let uploadedAttachmentIds: number[] = [];
 
-        // Upload files if any
-        if (attachments.length > 0) {
-          message.loading({ content: 'Uploading attachments...', key: 'chat-upload' });
-          
-          const uploadPromises = attachments.map(file => 
-            fileService.uploadFile(file, 'REQUIREMENT', reqId)
-          );
-          
-          const uploadedFiles = await Promise.all(uploadPromises);
-          uploadedAttachmentIds = uploadedFiles.map(f => f.id);
-          
-          message.success({ content: 'Attachments uploaded!', key: 'chat-upload' });
-        }
 
-        await createActivity.mutateAsync({
-          requirement_id: reqId,
-          message: messageText,
-          type: attachments.length > 0 ? 'FILE' : 'CHAT',
-          attachment_ids: uploadedAttachmentIds.length > 0 ? uploadedAttachmentIds : undefined
-        });
-        
-        setMessageText('');
-        setAttachments([]);
-      } catch (err: unknown) {
-        console.error(err);
-        const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
-        message.error({ content: errorMessage, key: 'chat-upload' });
-      }
-    }
-  };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setAttachments([...attachments, ...Array.from(e.target.files)]);
-    }
-  };
-
-  const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    } else if (e.key === 'Backspace') {
-      const { selectionStart, selectionEnd } = e.currentTarget;
-      
-      // Atomic deletion of mentions like WhatsApp
-      if (selectionStart === selectionEnd && selectionStart > 0) {
-        const text = messageText;
-        const textBefore = text.slice(0, selectionStart);
-        
-        // Find if the cursor is at the end of a mention or task tag
-        const lastAtIndex = textBefore.lastIndexOf('@');
-        const lastHashIndex = textBefore.lastIndexOf('#');
-        const lastTriggerIndex = Math.max(lastAtIndex, lastHashIndex);
-        
-        if (lastTriggerIndex !== -1) {
-          const prefix = text[lastTriggerIndex];
-          const namePart = textBefore.slice(lastTriggerIndex + 1);
-          
-          let matchedOption;
-          if (prefix === '@') {
-            matchedOption = mentionOptions.find(opt => 
-              namePart === opt.value + ' ' || namePart === opt.value
-            );
-          } else if (prefix === '#') {
-            matchedOption = taskOptions.find(opt => 
-              namePart === opt.value + ' ' || namePart === opt.value
-            );
-          }
-          
-          if (matchedOption) {
-            e.preventDefault();
-            const newText = text.slice(0, lastTriggerIndex) + text.slice(selectionStart);
-            setMessageText(newText);
-          }
-        }
-      }
-    }
-  };
-
-  const handleEditorSelectionJump = (e: React.SyntheticEvent<HTMLTextAreaElement> | React.KeyboardEvent<HTMLTextAreaElement> | React.MouseEvent<HTMLTextAreaElement>) => {
-    const textarea = e.currentTarget as HTMLTextAreaElement;
-    const { selectionStart, selectionEnd } = textarea;
-    
-    if (selectionStart !== selectionEnd) return; 
-
-    const text = messageText;
-    const allMentions = [
-      ...mentionOptions.map(opt => `@${opt.value}`),
-      ...taskOptions.map(opt => `#${opt.value}`)
-    ];
-
-    for (const mentionStr of allMentions) {
-      let pos = text.indexOf(mentionStr);
-      while (pos !== -1) {
-        const end = pos + mentionStr.length;
-        if (selectionStart > pos && selectionStart < end) {
-          const mid = pos + (mentionStr.length / 2);
-          const newPos = selectionStart < mid ? pos : end;
-          textarea.setSelectionRange(newPos, newPos);
-          return;
-        }
-        pos = text.indexOf(mentionStr, pos + 1);
-      }
-    }
-  };
 
 
 
@@ -559,416 +305,29 @@ export function RequirementDetailsPage() {
 
   return (
     <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] flex overflow-hidden">
-      {/* Main Content */}
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="px-6 pt-6 pb-0">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Breadcrumb
-                separator={<span className="text-[20px] font-['Manrope:SemiBold',sans-serif] text-[#999999]">/</span>}
-                items={[
-                  {
-                    title: (
-                      <span
-                        onClick={() => router.push(`/dashboard/workspace/${workspace.id}/requirements`)}
-                        className="cursor-pointer font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#999999] hover:text-[#666666] transition-colors"
-                      >
-                        {workspace.name}
-                      </span>
-                    ),
-                  },
-                  {
-                    title: (
-                      <span className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111] line-clamp-1 max-w-[300px]">
-                        {requirement.title || requirement.name || 'Untitled Requirement'}
-                      </span>
-                    ),
-                  },
-                ]}
-              />
-            </div>
+        
+        <RequirementHeader 
+           workspace={workspace} 
+           requirement={requirement}
+           ctaConfig={ctaConfig}
+           requirementStatus={requirementStatus}
+           assignedTo={assignedTo}
+           router={router}
+           myWorkspacesData={myWorkspacesData}
+           updateRequirement={updateRequirement}
+           activeTab={activeTab}
+           setActiveTab={setActiveTab}
+        />
 
-            <div className="flex items-center gap-4">
-              {/* Standardized Requirement Action CTA */}
-              {ctaConfig.primaryAction && (
-                <div className="flex items-center gap-2">
-                   {ctaConfig.primaryAction.modal === 'mapping' && (
-                     <Button 
-                       type="primary" 
-                       className="bg-[#111111] hover:bg-[#000000]/90"
-                       onClick={() => setIsAcceptModalOpen(true)}
-                     >
-                       {ctaConfig.primaryAction.label}
-                     </Button>
-                   )}
-                   {ctaConfig.primaryAction.modal === 'quotation' && (
-                      <Button 
-                        type="primary" 
-                        className="bg-[#111111]"
-                        onClick={() => {
-                           message.info("Please use the 'Edit' action in the requirements list to resubmit your quote.");
-                        }}
-                      >
-                        {ctaConfig.primaryAction.label}
-                      </Button>
-                   )}
-                   {ctaConfig.primaryAction.modal === 'none' && (
-                      <Button 
-                        type="primary" 
-                        className="bg-[#111111]"
-                        onClick={() => {
-                           // RequirementsPage handleReqAccept logic
-                           const newStatus = requirement.status === 'Submitted' ? 'Assigned' : 'Completed';
-                           updateRequirement({
-                              id: reqId,
-                              workspace_id: requirement.workspace_id,
-                              status: newStatus
-                           } as any, {
-                              onSuccess: () => message.success("Requirement accepted successfully")
-                           });
-                        }}
-                      >
-                        {ctaConfig.primaryAction.label}
-                      </Button>
-                   )}
-                   {ctaConfig.primaryAction.modal === 'edit' && (
-                      <Button 
-                        type="primary" 
-                        className="bg-[#111111]"
-                        onClick={() => {
-                           // Edit action - could open edit modal or navigate
-                           message.info("Edit functionality");
-                        }}
-                      >
-                        {ctaConfig.primaryAction.label}
-                      </Button>
-                   )}
-                </div>
-              )}
-
-              {/* Reject Action (Secondary) */}
-              {ctaConfig.secondaryAction?.type === 'danger' && (
-                 <Button 
-                   danger 
-                   icon={<X className="w-4 h-4" />}
-                   onClick={() => {
-                      Modal.confirm({
-                         title: 'Reject Requirement',
-                         content: 'Are you sure you want to reject this requirement?',
-                         onOk: () => {
-                            updateRequirement({
-                              id: reqId,
-                              workspace_id: requirement.workspace_id,
-                              status: 'Rejected'
-                            } as any);
-                         }
-                      });
-                   }}
-                 >
-                   {ctaConfig.secondaryAction.label || 'Reject'}
-                 </Button>
-              )}
-
-              {/* Accept Modal (Internal to the action trigger) */}
-              <Modal
-                  open={isAcceptModalOpen}
-                  onCancel={() => setIsAcceptModalOpen(false)}
-                  title="Accept Requirement"
-                  onOk={handleAcceptRequirement}
-                  okText="Accept & Import"
-                  okButtonProps={{ className: "bg-[#111111]" }}
-              >
-                  <div className="py-4">
-                      <p className="text-sm text-gray-600 mb-2">
-                        Select one of your existing workspaces to assign this requirement to.
-                      </p>
-                      <Select
-                        className="w-full"
-                        placeholder="Select your workspace"
-                        value={selectedReceiverWorkspace}
-                        onChange={setSelectedReceiverWorkspace}
-                      >
-                        {myWorkspacesData?.result?.workspaces?.map((w: { id: number; name: string }) => (
-                            <Option key={w.id} value={String(w.id)}>{w.name}</Option>
-                        ))}
-                      </Select>
-                  </div>
-              </Modal>
-
-              <StatusBadge status={requirementStatus} showLabel />
-              {requirement.is_high_priority && (
-                <span className="px-3 py-1.5 rounded-full text-[11px] font-['Manrope:SemiBold',sans-serif] uppercase tracking-wide bg-[#FFF5F5] text-[#ff3b3b]">
-                  HIGH PRIORITY
-                </span>
-              )}
-              <div className="flex -space-x-2">
-                {Array.isArray(assignedTo) && assignedTo.slice(0, 3).map((person: { name: string } | string, i: number) => {
-                  const name = typeof person === 'string' ? person : person?.name || 'U';
-                  return (
-                    <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center shadow-sm" title={name}>
-                      <span className="text-[10px] text-white font-['Manrope:Bold',sans-serif]">
-                        {name.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="border-b border-[#EEEEEE]">
-            <div className="flex items-center gap-8">
-              <TabButton
-                active={activeTab === 'details'}
-                onClick={() => setActiveTab('details')}
-                icon={FileText}
-                label="Details"
-              />
-              <TabButton
-                active={activeTab === 'tasks'}
-                onClick={() => setActiveTab('tasks')}
-                icon={ListTodo}
-                label="Tasks & Revisions"
-              />
-              <TabButton
-                active={activeTab === 'gantt'}
-                onClick={() => setActiveTab('gantt')}
-                icon={BarChart2}
-                label="Gantt Chart"
-              />
-              <TabButton
-                active={activeTab === 'kanban'}
-                onClick={() => setActiveTab('kanban')}
-                icon={Columns}
-                label="Kanban Board"
-              />
-              <TabButton
-                active={activeTab === 'pnl'}
-                onClick={() => setActiveTab('pnl')}
-                icon={TrendingUp}
-                label="P&L"
-              />
-              <TabButton
-                active={activeTab === 'documents'}
-                onClick={() => setActiveTab('documents')}
-                icon={Paperclip}
-                label="Documents"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Content */}
+        {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-8 bg-[#FAFAFA]">
-          {activeTab === 'details' && (
-            <div className="max-w-5xl mx-auto space-y-8">
-              {/* Description Section */}
-              <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
-                <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-[#ff3b3b]" />
-                  Description
-                </h3>
+           {activeTab === 'details' && (
+              <RequirementInfoCard requirement={requirement} workspace={workspace} tasks={tasks} />
+           )}
 
-                {/* Parse description to extract sections */}
-                {(() => {
-                  const desc = requirement.description || '';
-                  // Create a clean version without HTML tags for parsing logic
-                  const cleanDesc = desc.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-
-                  const overviewMatch = cleanDesc.match(/Overview:\s*(.+?)(?=\s*Key Deliverables:|$)/i);
-                  const deliverablesMatch = cleanDesc.match(/Key Deliverables:\s*([\s\S]+?)(?=\s*Technical Requirements:|$)/i);
-                  const technicalMatch = cleanDesc.match(/Technical Requirements:\s*([\s\S]+?)$/i);
-
-                  const overview = overviewMatch ? overviewMatch[1].trim() : '';
-                  const listPattern = /•|\s-\s|\s-|-\s|\d+\./;
-                  const deliverables = deliverablesMatch
-                    ? deliverablesMatch[1].split(listPattern).filter(line => line.trim())
-                    : [];
-                  const technical = technicalMatch
-                    ? technicalMatch[1].split(listPattern).filter(line => line.trim())
-                    : [];
-
-                  return (
-                    <div className="space-y-6">
-                      {/* Overview */}
-                      {overview && (
-                        <div>
-                          <h4 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-2">Overview</h4>
-                          <p className="text-[14px] text-[#444444] font-['Inter:Regular',sans-serif] leading-relaxed">
-                            {overview}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Key Deliverables */}
-                      {deliverables.length > 0 && (
-                        <div>
-                          <h4 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-2">Key Deliverables</h4>
-                          <ul className="space-y-2">
-                            {deliverables.map((item, idx) => {
-                              const cleanItem = item.replace(/^[•\-*]\s*/, '').trim();
-                              return (
-                                <li key={idx} className="text-[14px] text-[#444444] font-['Inter:Regular',sans-serif] leading-relaxed flex items-start">
-                                  <span className="text-[#ff3b3b] mr-2">•</span>
-                                  <span>{cleanItem}</span>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Technical Requirements */}
-                      {technical.length > 0 && (
-                        <div>
-                          <h4 className="text-[14px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-2">Technical Requirements</h4>
-                          <ul className="space-y-2">
-                            {technical.map((item, idx) => {
-                              const cleanItem = item.replace(/^[•\-*]\s*/, '').trim();
-                              return (
-                                <li key={idx} className="text-[14px] text-[#444444] font-['Inter:Regular',sans-serif] leading-relaxed flex items-start">
-                                  <span className="text-[#ff3b3b] mr-2">•</span>
-                                  <span>{cleanItem}</span>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Fallback: if no structured format, show as-is but render as sanitized HTML */}
-                      {!overview && deliverables.length === 0 && technical.length === 0 && (
-                        <div
-                          className="text-[14px] text-[#444444] font-['Inter:Regular',sans-serif] leading-relaxed prose prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ __html: sanitizeRichText(requirement.description || '') }}
-                        />
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Requirement Details Section */}
-              <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
-                <h3 className="text-[16px] font-['Manrope:Bold',sans-serif] text-[#111111] mb-6 flex items-center gap-2">
-                  <Briefcase className="w-5 h-5 text-[#ff3b3b]" />
-                  Requirement Details
-                </h3>
-
-                {/* Details Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  {/* Type */}
-                  <div>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Type</p>
-                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                      {workspace?.in_house ? 'In-house' : 'Client Project'}
-                    </p>
-                  </div>
-
-
-
-                  {/* Partner / Company */}
-                  <div>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Partner / Company</p>
-                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                      {requirement.sender_company?.name || 'In-house'}
-                    </p>
-                  </div>
-
-
-
-                  {/* Start Date */}
-                  <div>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Start Date</p>
-                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                      {requirement.start_date ? format(new Date(requirement.start_date), 'MMM d, yyyy') : 'Not set'}
-                    </p>
-                  </div>
-
-                  {/* End Date */}
-                  <div>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Due Date</p>
-                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                      {requirement.end_date ? format(new Date(requirement.end_date), 'MMM d, yyyy') : 'Not set'}
-                    </p>
-                  </div>
-
-                  {/* Contact Person */}
-                  <div>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Contact Person</p>
-                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                      {requirement.contact_person?.name || 'Unknown'}
-                    </p>
-                  </div>
-
-                  {/* Quoted Price */}
-                  <div>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Quoted Price</p>
-                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                      ${requirement.quoted_price ? Number(requirement.quoted_price).toFixed(2) : '0.00'}
-                    </p>
-                  </div>
-
-                  {/* Total Tasks */}
-                  <div>
-                    <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Total Tasks</p>
-                    <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                      {requirement.total_task || tasks.length || 0}
-                    </p>
-                  </div>
-
-                  {/* Leader */}
-                  {requirement.leader_user && (
-                    <div>
-                      <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Leader</p>
-                      <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                        {requirement.leader_user.name || 'N/A'}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Manager */}
-                  {requirement.manager_user && (
-                    <div>
-                      <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Manager</p>
-                      <p className="text-[14px] font-['Inter:Medium',sans-serif] text-[#111111]">
-                        {requirement.manager_user.name || 'N/A'}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Document Link */}
-                  {requirement.document_link && (
-                    <div>
-                      <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Document</p>
-                      <a
-                        href={requirement.document_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[14px] font-['Inter:Medium',sans-serif] text-[#2F80ED] hover:underline truncate block"
-                      >
-                        View Document
-                      </a>
-                    </div>
-                  )}
-
-                  {/* Priority */}
-                  {requirement.is_high_priority && (
-                    <div>
-                      <p className="text-[11px] font-['Manrope:Bold',sans-serif] text-[#999999] uppercase tracking-wider mb-2">Priority</p>
-                      <span className="px-2 py-1 bg-[#FFF5F5] text-[#ff3b3b] text-[12px] font-['Manrope:Bold',sans-serif] rounded-full">
-                        High Priority
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'tasks' && (
+           {activeTab === 'tasks' && (
             <div className="max-w-5xl mx-auto space-y-8">
               {/* Tasks Section */}
               <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
@@ -987,7 +346,7 @@ export function RequirementDetailsPage() {
                   </Button>
                 </div>
 
-                {/* Table Header - matches TaskRow grid (without requirements) */}
+                {/* Table Header */}
                 <div className="px-4 pb-3 mb-2">
                   <div className="grid grid-cols-[40px_2.5fr_1.1fr_1fr_0.8fr_1.5fr_0.6fr_40px] gap-4 items-center">
                     <div className="flex justify-center">
@@ -1013,7 +372,6 @@ export function RequirementDetailsPage() {
                 <div className="space-y-3">
                   {tasks.length > 0 ? (
                     tasks.map((task: Task) => {
-                      // Map task data to TaskRow expected format
                       const mappedTask = {
                         id: String(task.id),
                         name: task.name || task.title || 'Untitled',
@@ -1047,9 +405,8 @@ export function RequirementDetailsPage() {
                               setSelectedTasks([...selectedTasks, String(task.id)]);
                             }
                           }}
-                          onStatusChange={() => {}} // Handle if needed
+                          onStatusChange={() => {}} 
                           hideRequirements={true}
-
                           onRequestRevision={() => {
                             setTargetTaskId(task.id as any);
                             setIsRevisionModalOpen(true);
@@ -1060,45 +417,43 @@ export function RequirementDetailsPage() {
                   ) : (
                     <div className="text-center py-8 text-[#999999] text-[13px]">No tasks created yet</div>
                   )}
-              </div>
-
-              {/* Revision Confirmation Modal */}
-              <Modal
-                title="Request Revision"
-                open={isRevisionModalOpen}
-                onCancel={() => {
-                   setIsRevisionModalOpen(false);
-                   setRevisionNotes('');
-                }}
-                onOk={() => {
-                  if (!targetTaskId || !revisionNotes.trim()) return;
-                  requestRevision({ id: targetTaskId, revisionNotes }, {
-                    onSuccess: () => {
-                      message.success("Revision requested successfully");
-                      setIsRevisionModalOpen(false);
-                      setRevisionNotes('');
-                    },
-                    onError: (err: Error) => {
-                      message.error((err as any).message || "Failed to request revision");
-                    }
-                  });
-                }}
-                okText="Submit Revision"
-                okButtonProps={{ className: "bg-[#111111]" }}
-              >
-                <div className="py-4">
-                  <p className="text-sm text-gray-600 mb-2">
-                    Describe exactly what needs to be changed. This will create a new revision task for the team.
-                  </p>
-                  <Input.TextArea 
-                    rows={4}
-                    placeholder="Revision details..."
-                    value={revisionNotes}
-                    onChange={(e) => setRevisionNotes(e.target.value)}
-                  />
                 </div>
-              </Modal>
 
+                <Modal
+                  title="Request Revision"
+                  open={isRevisionModalOpen}
+                  onCancel={() => {
+                     setIsRevisionModalOpen(false);
+                     setRevisionNotes('');
+                  }}
+                  onOk={() => {
+                    if (!targetTaskId || !revisionNotes.trim()) return;
+                    requestRevision({ id: targetTaskId, revisionNotes }, {
+                      onSuccess: () => {
+                        message.success("Revision requested successfully");
+                        setIsRevisionModalOpen(false);
+                        setRevisionNotes('');
+                      },
+                      onError: (err: Error) => {
+                        message.error((err as any).message || "Failed to request revision");
+                      }
+                    });
+                  }}
+                  okText="Submit Revision"
+                  okButtonProps={{ className: "bg-[#111111]" }}
+                >
+                  <div className="py-4">
+                    <p className="text-sm text-gray-600 mb-2">
+                      Describe exactly what needs to be changed. This will create a new revision task for the team.
+                    </p>
+                    <Input.TextArea 
+                      rows={4}
+                      placeholder="Revision details..."
+                      value={revisionNotes}
+                      onChange={(e) => setRevisionNotes(e.target.value)}
+                    />
+                  </div>
+                </Modal>
               </div>
 
               {/* Revisions Section */}
@@ -1108,7 +463,6 @@ export function RequirementDetailsPage() {
                     <RotateCcw className="w-5 h-5 text-[#ff3b3b]" />
                     Revisions
                   </h3>
-                  {/* Table Header */}
                   <div className="grid grid-cols-[40px_1fr_200px_150px_120px_40px] gap-4 px-4 pb-3 mb-2 border-b border-[#EEEEEE] items-center">
                     <div className="flex justify-center">
                       <Checkbox disabled className="border-[#DDDDDD]" />
@@ -1133,48 +487,38 @@ export function RequirementDetailsPage() {
                 </div>
               )}
             </div>
-          )}
+           )}
 
-          {activeTab === 'gantt' && (
-            <GanttChartTab
-              tasks={tasks}
-              revisions={revisions}
-              ganttView={ganttView}
-              setGanttView={setGanttView}
-            />
-          )}
+           {activeTab === 'gantt' && (
+             <GanttChartTab
+               tasks={tasks}  
+               revisions={revisions}
+               ganttView={ganttView}
+               setGanttView={setGanttView}
+             />
+           )}
 
-          {activeTab === 'kanban' && (
-            <KanbanBoardTab tasks={tasks} revisions={revisions} />
-          )}
+           {activeTab === 'kanban' && (
+             <KanbanBoardTab tasks={tasks} revisions={revisions} />
+           )}
 
-          {activeTab === 'pnl' && (
-            <PnLTab requirement={requirement} tasks={tasks} />
-          )}
-          
-          {activeTab === 'documents' && (
-            <DocumentsTab activityData={activityData} />
-          )}
+           {activeTab === 'pnl' && (
+             <PnLTab requirement={requirement} tasks={tasks} />
+           )}
+           
+           {activeTab === 'documents' && (
+             <DocumentsTab activityData={documentsActivityData} />
+           )}
         </div>
       </div>
 
-      {/* Right Drawer - Activity & Chat */}
-      <ChatPanel
-        activityData={activityData}
-        isLoadingActivities={isLoadingActivities}
-        messageText={messageText}
-        setMessageText={setMessageText}
-        attachments={attachments}
-        setAttachments={setAttachments}
-        mentionOptions={mentionOptions}
-        taskOptions={taskOptions}
-        activeMentionOptions={activeMentionOptions}
-        onMentionSearch={handleMentionSearch}
-        onSendMessage={handleSendMessage}
-        onFileSelect={handleFileSelect}
-        onEditorKeyDown={handleEditorKeyDown}
-        onEditorSelectionJump={handleEditorSelectionJump}
+      <ActivitySidebar 
+         reqId={reqId} 
+         employeesData={employeesData} 
+         partnersData={partnersData} 
+         tasks={tasks}
       />
+
       <Modal
         open={isTaskModalOpen}
         onCancel={() => setIsTaskModalOpen(false)}
@@ -1250,148 +594,5 @@ export function RequirementDetailsPage() {
         />
       </Modal>
     </div>
-  );
-}
-
-function TabButton({ active, onClick, icon: Icon, label }: { active: boolean; onClick: () => void; icon: any; label: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        flex items-center gap-2 pb-3 relative transition-colors
-        ${active ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'}
-      `}
-    >
-      <Icon className="w-4 h-4" />
-      <span className="text-[13px] font-['Manrope:Bold',sans-serif]">{label}</span>
-      {active && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
-    </button>
-  );
-}
-
-function SubTaskRow({
-  task,
-  isRevision,
-  selected = false,
-  onSelect
-}: Readonly<{
-  task: any;
-  isRevision?: boolean;
-  selected?: boolean;
-  onSelect?: () => void;
-}>) {
-  const assignedName = task.assigned_to ? `User ${task.assigned_to}` : 'Unassigned';
-  const initials = assignedName.split(' ').map((n: string) => n[0]).join('').toUpperCase();
-
-  return (
-    <div
-      onClick={onSelect}
-      className={`
-        group bg-white border rounded-[16px] p-4 transition-all duration-300 cursor-pointer relative z-10
-        ${selected
-          ? 'border-[#ff3b3b] shadow-[0_0_0_1px_#ff3b3b] bg-[#FFF5F5]'
-          : 'border-[#EEEEEE] hover:border-[#ff3b3b]/20 hover:shadow-lg'
-        }
-      `}
-    >
-      <div className="grid grid-cols-[40px_2fr_1fr_1fr_0.6fr_0.3fr] gap-4 items-center">
-        {/* Checkbox */}
-        <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
-          <Checkbox
-            checked={selected}
-            onChange={onSelect}
-            disabled={isRevision}
-            className="border-[#DDDDDD] [&.ant-checkbox-checked]:bg-[#ff3b3b] [&.ant-checkbox-checked]:border-[#ff3b3b]"
-          />
-        </div>
-
-        {/* Task Info */}
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-['Manrope:Bold',sans-serif] text-[14px] text-[#111111] group-hover:text-[#ff3b3b] transition-colors">
-              {task.title || task.name}
-            </h3>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] text-[#999999] font-['Inter:Regular',sans-serif]">
-              #{task.id}
-            </span>
-          </div>
-        </div>
-
-        {/* Assigned To */}
-        <div className="flex items-center justify-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#ff3b3b] to-[#ff6b6b] flex items-center justify-center">
-            <span className="text-[11px] text-white font-['Manrope:Bold',sans-serif]">
-              {initials}
-            </span>
-          </div>
-        </div>
-
-        {/* Due Date */}
-        <div className="flex justify-center">
-          <span className="text-[13px] text-[#666666] font-['Inter:Medium',sans-serif]">
-            {task.due_date ? format(new Date(task.due_date), 'MMM d, yyyy') : 'N/A'}
-          </span>
-        </div>
-
-        {/* Status */}
-        <div className="flex justify-center">
-          <StatusBadge status={task.status || 'todo'} />
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-          <button className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#F7F7F7] transition-colors">
-            <MoreVertical className="w-4 h-4 text-[#666666]" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({ status, showLabel }: { status: string; showLabel?: boolean }) {
-  let color = "bg-[#F7F7F7] text-[#666666]";
-  let icon = <Clock className="w-3.5 h-3.5" />;
-  let label = status;
-
-  switch (status?.toLowerCase()) {
-    case 'completed':
-    case 'done':
-      color = "bg-[#E8F5E9] text-[#0F9D58]";
-      icon = <CheckCircle2 className="w-3.5 h-3.5" />;
-      label = "Completed";
-      break;
-    case 'delayed':
-      color = "bg-[#FFF5F5] text-[#ff3b3b]";
-      icon = <AlertCircle className="w-3.5 h-3.5" />;
-      label = "Delayed";
-      break;
-    case 'in-progress':
-    case 'in_progress':
-      color = "bg-[#E3F2FD] text-[#2F80ED]";
-      icon = <Loader2 className="w-3.5 h-3.5 animate-spin" />;
-      label = "In Progress";
-      break;
-    case 'todo':
-    case 'pending':
-      color = "bg-[#F7F7F7] text-[#666666]";
-      icon = <Clock className="w-3.5 h-3.5" />;
-      label = "To Do";
-      break;
-    case 'impediment':
-      color = "bg-[#FFF5F5] text-[#ff3b3b]";
-      icon = <AlertCircle className="w-3.5 h-3.5" />;
-      label = "Impediment";
-      break;
-  }
-
-  return (
-    <Tooltip title={label}>
-      <div className={`flex items-center justify-center w-7 h-7 rounded-full ${color} border border-current/10 cursor-help transition-transform hover:scale-110`}>
-        {icon}
-      </div>
-    </Tooltip>
   );
 }
