@@ -8,6 +8,7 @@ import { getErrorMessage } from '@/types/api-utils';
 import { DEFAULT_DOCUMENT_TYPES, DOCUMENT_TYPES_STORAGE_KEY } from '@/constants/documentTypes';
 import { useDocumentSettings } from '@/hooks/useDocumentSettings';
 import { getRoleFromUser } from '@/utils/roleUtils';
+import { useAccountType } from '@/utils/accountTypeUtils';
 import { People24Filled } from "@fluentui/react-icons";
 import { commonCountries } from '@/data/defaultData';
 import dayjs from 'dayjs';
@@ -24,10 +25,10 @@ const { Option } = Select;
 const getTimezones = (): Array<{ value: string; label: string }> => {
   // Mapping of deprecated timezone aliases to their canonical names
   const deprecatedToCanonical: Record<string, string> = {
-    'Asia/Calcutta': 'Asia/Kolkata',      // India - Calcutta deprecated, use Kolkata
-    'America/Godthab': 'America/Nuuk',    // Greenland - Godthab deprecated, use Nuuk
-    'Europe/Kiev': 'Europe/Kyiv',         // Ukraine - Kiev deprecated, use Kyiv
-    'US/Alaska': 'America/Anchorage',     // US timezone aliases
+    'Asia/Calcutta': 'Asia/Kolkata',      
+    'America/Godthab': 'America/Nuuk',    
+    'Europe/Kiev': 'Europe/Kyiv',        
+    'US/Alaska': 'America/Anchorage',     
     'US/Aleutian': 'America/Adak',
     'US/Arizona': 'America/Phoenix',
     'US/Central': 'America/Chicago',
@@ -218,6 +219,15 @@ export function SettingsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { isIndividual } = useAccountType();
+  
+  // Redirect individual accounts to profile page (matching reference implementation)
+  useEffect(() => {
+    if (isIndividual) {
+      router.replace('/dashboard/profile');
+      return;
+    }
+  }, [isIndividual, router]);
   
   const [activeTab, setActiveTab] = useState<'company' | 'leaves' | 'working-hours' | 'integrations' | 'notifications' | 'security' | 'access-management'>('company');
 
@@ -551,9 +561,6 @@ export function SettingsPage() {
     setIsEditing(true);
   };
 
-  const accountType = companyData?.result?.account_type || 'ORGANIZATION';
-  const isIndividual = accountType === 'INDIVIDUAL';
-
   // Determine if the user is an employee (not Admin/Owner)
   const permissions = userDetails?.result?.permissions?.['Settings'] || {};
   
@@ -570,6 +577,27 @@ export function SettingsPage() {
   const canEditAccessManagement = isAdmin || permissions['EDIT_ACCESS_MANAGEMENT'];
   const canViewIntegrations = isAdmin || permissions['VIEW_INTEGRATIONS'];
   const canEditIntegrations = isAdmin || permissions['EDIT_INTEGRATIONS'];
+
+  /* Helper to determine tab visibility */
+  const showTab = (tabId: string) => {
+    if (isIndividual) {
+      // Individual User Tabs
+      return ['company', 'financials', 'notifications', 'security', 'integrations'].includes(tabId);
+    }
+    
+    // Organization User Tabs (Permission Check)
+    switch(tabId) {
+      case 'company': return isAdmin || canViewCompany;
+      case 'leaves': return isAdmin || canViewLeaves;
+      case 'working-hours': return isAdmin || canViewWorkingHours;
+      case 'integrations': return isAdmin || canViewIntegrations;
+      case 'notifications': return isAdmin || canViewNotifications;
+      case 'security': return isAdmin || canViewSecurity;
+      case 'access-management': return isAdmin || canViewAccessManagement;
+      case 'financials': return isAdmin; 
+      default: return true;
+    }
+  };
 
   return (
     <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] p-8 flex flex-col overflow-hidden relative font-['Manrope',sans-serif]">
@@ -612,21 +640,18 @@ export function SettingsPage() {
 
         {/* Tabs */}
         <div className="flex items-center gap-8 border-b border-[#EEEEEE] overflow-x-auto">
-          {(isIndividual || canViewCompany) && (
-            <button
-              onClick={() => handleTabChange('company')}
-              className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'company' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
-                }`}
-            >
-              {isIndividual ? 'Details' : 'Company Details'}
-              {activeTab === 'company' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
-            </button>
-          )}
+            {showTab('company') && (
+              <button
+                onClick={() => handleTabChange('company')}
+                className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'company' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
+                  }`}
+              >
+                {isIndividual ? 'Details' : 'Company Details'}
+                {activeTab === 'company' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
+              </button>
+            )}
 
-          {/* Hide other tabs based on permissions */}
-          {!isIndividual && (
-            <>
-              {canViewNotifications && (
+            {showTab('notifications') && (
               <button
                 onClick={() => handleTabChange('notifications')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'notifications' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
@@ -635,9 +660,9 @@ export function SettingsPage() {
                 Notifications
                 {activeTab === 'notifications' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
               </button>
-              )}
-              
-              {canViewSecurity && (
+            )}
+            
+            {showTab('security') && (
               <button
                 onClick={() => handleTabChange('security')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'security' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
@@ -646,9 +671,9 @@ export function SettingsPage() {
                 Security
                 {activeTab === 'security' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
               </button>
-              )}
+            )}
 
-              {canViewLeaves && (
+            {showTab('leaves') && (
               <button
                 onClick={() => handleTabChange('leaves')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'leaves' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
@@ -657,9 +682,9 @@ export function SettingsPage() {
                 Leaves
                 {activeTab === 'leaves' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
               </button>
-              )}
-              
-              {canViewWorkingHours && (
+            )}
+            
+            {showTab('working-hours') && (
               <button
                 onClick={() => handleTabChange('working-hours')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'working-hours' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
@@ -668,20 +693,20 @@ export function SettingsPage() {
                 Working Hours
                 {activeTab === 'working-hours' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
               </button>
-              )}
-              
-              {canViewAccessManagement && (
-                <button
-                  onClick={() => handleTabChange('access-management')}
-                  className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'access-management' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
-                    }`}
-                >
-                  Access Management
-                  {activeTab === 'access-management' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
-                </button>
-              )}
-              
-              {canViewIntegrations && (
+            )}
+            
+            {showTab('access-management') && (
+              <button
+                onClick={() => handleTabChange('access-management')}
+                className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'access-management' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
+                  }`}
+              >
+                Access Management
+                {activeTab === 'access-management' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
+              </button>
+            )}
+            
+            {showTab('integrations') && (
               <button
                 onClick={() => handleTabChange('integrations')}
                 className={`pb-3 px-1 relative font-['Manrope:SemiBold',sans-serif] text-[14px] transition-colors whitespace-nowrap ${activeTab === 'integrations' ? 'text-[#ff3b3b]' : 'text-[#666666] hover:text-[#111111]'
@@ -690,9 +715,7 @@ export function SettingsPage() {
                 Integrations
                 {activeTab === 'integrations' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#ff3b3b]" />}
               </button>
-              )}
-            </>
-          )}
+            )}
         </div>
       </div>
 

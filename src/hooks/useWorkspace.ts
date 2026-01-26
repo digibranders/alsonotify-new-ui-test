@@ -18,47 +18,55 @@ import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDt
 import { getTasks } from "../services/task";
 export { usePartners } from "./useUser";
 
+import { ApiResponse } from "../types/api";
+import { Workspace, Task, Requirement } from "../types/domain";
 import { mapWorkspaceDtoToDomain } from "../utils/mappers/workspace";
 import { queryKeys } from "../lib/queryKeys";
 
 // Workspaces
+const selectWorkspaces = (data: ApiResponse<{ workspaces: WorkspaceDto[] }>): ApiResponse<{ workspaces: Workspace[] }> => ({
+  ...data,
+  result: {
+    ...data.result,
+    workspaces: data.result && data.result.workspaces ? data.result.workspaces.map(mapWorkspaceDtoToDomain) : []
+  }
+});
+
 export const useWorkspaces = (options: string = "") => {
   return useQuery({
     queryKey: queryKeys.workspaces.list(options),
     queryFn: () => getWorkspace(options),
-    select: (data) => ({
-      ...data,
-      result: {
-        ...data.result,
-        workspaces: data.result && data.result.workspaces ? data.result.workspaces.map(mapWorkspaceDtoToDomain) : []
-      }
-    })
+    select: selectWorkspaces
   });
 };
 
 import { mapTaskDtoToDomain } from "../utils/mappers/task";
+
+const selectWorkspaceTasks = (data: ApiResponse<any[]>): ApiResponse<Task[]> => ({
+  ...data,
+  result: data.result ? data.result.map(mapTaskDtoToDomain) : []
+});
 
 export const useWorkspaceTasks = (workspaceId: number) => {
   return useQuery({
     queryKey: queryKeys.tasks.byWorkspace(workspaceId),
     queryFn: () => getTasks(`workspace_id=${workspaceId}`),
     enabled: !!workspaceId,
-    select: (data) => ({
-      ...data,
-      result: data.result ? data.result.map(mapTaskDtoToDomain) : []
-    })
+    select: selectWorkspaceTasks
   });
 };
+
+const selectWorkspace = (data: ApiResponse<WorkspaceDto>): ApiResponse<Workspace> => ({
+  ...data,
+  result: data.result ? mapWorkspaceDtoToDomain(data.result) : undefined as any
+});
 
 export const useWorkspace = (id: number) => {
   return useQuery({
     queryKey: queryKeys.workspaces.detail(id),
     queryFn: () => getWorkspaceById(id),
     enabled: !!id,
-    select: (data) => ({
-      ...data,
-      result: data.result ? mapWorkspaceDtoToDomain(data.result) : undefined
-    })
+    select: selectWorkspace
   });
 };
 
@@ -98,16 +106,18 @@ export const useDeleteWorkspace = () => {
 
 import { mapRequirementDtoToDomain } from "../utils/mappers/requirement";
 
+const selectRequirements = (data: ApiResponse<RequirementDto[]>): ApiResponse<Requirement[]> => ({
+  ...data,
+  result: data.result ? data.result.map(mapRequirementDtoToDomain) : []
+});
+
 // Requirements
 export const useRequirements = (workspaceId: number) => {
   return useQuery({
     queryKey: queryKeys.requirements.byWorkspace(workspaceId),
     queryFn: () => getRequirementsByWorkspaceId(workspaceId),
     enabled: !!workspaceId,
-    select: (data) => ({
-      ...data,
-      result: data.result ? data.result.map(mapRequirementDtoToDomain) : []
-    })
+    select: selectRequirements
   });
 };
 

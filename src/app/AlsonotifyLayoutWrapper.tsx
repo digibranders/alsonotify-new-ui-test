@@ -56,7 +56,7 @@ function AlsonotifyLayoutContent({ children }: Readonly<AlsonotifyLayoutWrapperP
 
     // Handle different API response structures or localStorage fallback if needed
     // useUserDetails now maps to a flattened Employee object, so use result directly.
-    let user = userDetailsData?.result;
+    const user = userDetailsData?.result;
 
     // Fallback to localStorage removed for security (PII protection)
     // We rely on React Query hydration. If not ready, we default to Employee/undefined which is safe.
@@ -159,7 +159,7 @@ function AlsonotifyLayoutContent({ children }: Readonly<AlsonotifyLayoutWrapperP
         </div>
       </div>
       {/* FloatingProductivityWidget removed - FloatingTimerBar handles all timer functionality */}
-      <FloatingTimerBar />
+      {!pathname?.startsWith('/dashboard/mail') && <FloatingTimerBar />}
       <InvitationPopup />
     </TimerProvider>
   );

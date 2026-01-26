@@ -11,7 +11,10 @@ export interface RequirementDto {
   start_date?: string;
   end_date?: string;
   quoted_price?: number;
+  currency?: string;
   total_task?: number;
+  updated_user?: number;
+  created_user?: number | { name: string; id: number }; // Accommodate both scalar and object
   
   sender_company_id?: number;
   sender_company?: { name: string; id?: number };
@@ -62,7 +65,6 @@ export interface RequirementDto {
   
   // Relations
   receiver_company?: { name: string; id: number };
-  created_user?: { name: string; id: number };
   created_user_data?: { name: string; id: number };
   approved_by?: { id: number; name?: string };
   invoice?: { status: string; id?: number };
@@ -90,6 +92,7 @@ export interface CreateRequirementRequestDto {
   estimated_hours?: number;
   quoted_price?: number;
   rejection_reason?: string;
+  currency?: string;
 }
 
 export interface UpdateRequirementRequestDto extends Partial<CreateRequirementRequestDto> {

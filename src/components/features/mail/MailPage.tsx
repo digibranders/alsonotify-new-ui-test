@@ -320,7 +320,7 @@ export function MailPage() {
         icon: <Send className="w-4 h-4" />,
         onClick: () => setComposeOpen(true),
       }}
-      action={
+      titleExtra={
         <Space>
           <Segmented
             options={[

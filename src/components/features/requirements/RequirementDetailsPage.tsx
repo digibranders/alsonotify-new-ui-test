@@ -25,7 +25,20 @@ import { useRequirementActivities, useCreateRequirementActivity } from '@/hooks/
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 import { TaskRow } from '@/components/features/tasks/rows/TaskRow';
-import { Requirement, Task } from '@/types/domain';
+import { Requirement, Task, Employee } from '@/types/domain';
+import {
+  getRequirementCTAConfig,
+  getRequirementTab,
+  type RequirementStatus,
+  type TabContext,
+} from '@/lib/workflow';
+import {
+  mapRequirementToStatus,
+  mapRequirementToRole,
+  mapRequirementToContext,
+  mapRequirementToType,
+} from './utils/requirementState.utils';
+import { Archive } from 'lucide-react';
 
 // Extracted components
 import { ChatPanel, GanttChartTab, PnLTab, DocumentsTab, KanbanBoardTab } from './components';
@@ -129,6 +142,38 @@ export function RequirementDetailsPage() {
     if (!tasksData?.result || !requirement) return [];
     return tasksData.result.filter((t: Task & { type?: string }) => t.requirement_id === reqId && t.type === 'revision');
   }, [tasksData, requirement, reqId]);
+
+  const ctaConfig = useMemo(() => {
+    if (!requirement) {
+      return {
+        isPending: false,
+        displayStatus: '',
+        primaryAction: undefined,
+        secondaryAction: undefined,
+        tab: 'draft' as const,
+      };
+    }
+    
+    const status = mapRequirementToStatus(requirement);
+    const type = mapRequirementToType(requirement);
+    const role = mapRequirementToRole(requirement);
+    const context = mapRequirementToContext(requirement, user?.id, role);
+    
+    if (status === 'draft') {
+      return {
+        isPending: false,
+        displayStatus: 'Draft',
+        primaryAction: undefined,
+        secondaryAction: undefined,
+        tab: 'draft' as const,
+      };
+    }
+    
+    return getRequirementCTAConfig(status as RequirementStatus, role, context, type);
+  }, [requirement, user?.id]);
+  
+  const isPending = ctaConfig.isPending;
+  const displayStatus = ctaConfig.displayStatus;
 
   const formatActivityMessage = (msg: string) => {
     if (!msg) return '';
@@ -508,7 +553,8 @@ export function RequirementDetailsPage() {
   };
 
 
-  const requirementStatus = mapRequirementStatus(requirement.status || 'in-progress');
+
+  const requirementStatus = mapRequirementStatus(displayStatus);
   const assignedTo = requirement.assignedTo || [];
 
   return (
@@ -544,42 +590,111 @@ export function RequirementDetailsPage() {
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Receiver Confirmation Action */}
-              {requirement.status === 'Waiting' && (
-                 <>
-                   <Button 
-                      type="primary" 
-                      className="bg-[#111111] hover:bg-[#000000]/90"
-                      onClick={() => setIsAcceptModalOpen(true)}
-                   >
-                     Accept & Assign Workspace
-                   </Button>
-                   <Modal
-                      open={isAcceptModalOpen}
-                      onCancel={() => setIsAcceptModalOpen(false)}
-                      title="Accept Requirement"
-                      onOk={handleAcceptRequirement}
-                      okText="Accept & Import"
-                      okButtonProps={{ className: "bg-[#111111]" }}
-                   >
-                      <div className="py-4">
-                         <p className="text-sm text-gray-600 mb-2">
-                           Select one of your existing workspaces to assign this requirement to.
-                         </p>
-                         <Select
-                            className="w-full"
-                            placeholder="Select your workspace"
-                            value={selectedReceiverWorkspace}
-                            onChange={setSelectedReceiverWorkspace}
-                         >
-                            {myWorkspacesData?.result?.workspaces?.map((w: { id: number; name: string }) => (
-                               <Option key={w.id} value={String(w.id)}>{w.name}</Option>
-                            ))}
-                         </Select>
-                      </div>
-                   </Modal>
-                 </>
+              {/* Standardized Requirement Action CTA */}
+              {ctaConfig.primaryAction && (
+                <div className="flex items-center gap-2">
+                   {ctaConfig.primaryAction.modal === 'mapping' && (
+                     <Button 
+                       type="primary" 
+                       className="bg-[#111111] hover:bg-[#000000]/90"
+                       onClick={() => setIsAcceptModalOpen(true)}
+                     >
+                       {ctaConfig.primaryAction.label}
+                     </Button>
+                   )}
+                   {ctaConfig.primaryAction.modal === 'quotation' && (
+                      <Button 
+                        type="primary" 
+                        className="bg-[#111111]"
+                        onClick={() => {
+                           message.info("Please use the 'Edit' action in the requirements list to resubmit your quote.");
+                        }}
+                      >
+                        {ctaConfig.primaryAction.label}
+                      </Button>
+                   )}
+                   {ctaConfig.primaryAction.modal === 'none' && (
+                      <Button 
+                        type="primary" 
+                        className="bg-[#111111]"
+                        onClick={() => {
+                           // RequirementsPage handleReqAccept logic
+                           const newStatus = requirement.status === 'Submitted' ? 'Assigned' : 'Completed';
+                           updateRequirement({
+                              id: reqId,
+                              workspace_id: requirement.workspace_id,
+                              status: newStatus
+                           } as any, {
+                              onSuccess: () => message.success("Requirement accepted successfully")
+                           });
+                        }}
+                      >
+                        {ctaConfig.primaryAction.label}
+                      </Button>
+                   )}
+                   {ctaConfig.primaryAction.modal === 'edit' && (
+                      <Button 
+                        type="primary" 
+                        className="bg-[#111111]"
+                        onClick={() => {
+                           // Edit action - could open edit modal or navigate
+                           message.info("Edit functionality");
+                        }}
+                      >
+                        {ctaConfig.primaryAction.label}
+                      </Button>
+                   )}
+                </div>
               )}
+
+              {/* Reject Action (Secondary) */}
+              {ctaConfig.secondaryAction?.type === 'danger' && (
+                 <Button 
+                   danger 
+                   icon={<X className="w-4 h-4" />}
+                   onClick={() => {
+                      Modal.confirm({
+                         title: 'Reject Requirement',
+                         content: 'Are you sure you want to reject this requirement?',
+                         onOk: () => {
+                            updateRequirement({
+                              id: reqId,
+                              workspace_id: requirement.workspace_id,
+                              status: 'Rejected'
+                            } as any);
+                         }
+                      });
+                   }}
+                 >
+                   {ctaConfig.secondaryAction.label || 'Reject'}
+                 </Button>
+              )}
+
+              {/* Accept Modal (Internal to the action trigger) */}
+              <Modal
+                  open={isAcceptModalOpen}
+                  onCancel={() => setIsAcceptModalOpen(false)}
+                  title="Accept Requirement"
+                  onOk={handleAcceptRequirement}
+                  okText="Accept & Import"
+                  okButtonProps={{ className: "bg-[#111111]" }}
+              >
+                  <div className="py-4">
+                      <p className="text-sm text-gray-600 mb-2">
+                        Select one of your existing workspaces to assign this requirement to.
+                      </p>
+                      <Select
+                        className="w-full"
+                        placeholder="Select your workspace"
+                        value={selectedReceiverWorkspace}
+                        onChange={setSelectedReceiverWorkspace}
+                      >
+                        {myWorkspacesData?.result?.workspaces?.map((w: { id: number; name: string }) => (
+                            <Option key={w.id} value={String(w.id)}>{w.name}</Option>
+                        ))}
+                      </Select>
+                  </div>
+              </Modal>
 
               <StatusBadge status={requirementStatus} showLabel />
               {requirement.is_high_priority && (
@@ -1095,8 +1210,8 @@ export function RequirementDetailsPage() {
             requirement: true
           }}
           workspaces={workspaceData?.result ? [{ id: workspaceData.result.id, name: workspaceData.result.name }] : []}
-          requirements={requirementsData?.result ? requirementsData.result.map(r => ({ id: r.id, name: r.title || r.name || `Requirement ${r.id}` })) : []}
-          users={employeesData?.result ? employeesData.result.map(u => ({ 
+          requirements={requirementsData?.result ? (requirementsData.result as Requirement[]).map((r: Requirement) => ({ id: r.id, name: r.title || r.name || `Requirement ${r.id}` })) : []}
+          users={employeesData?.result ? (employeesData.result as Employee[]).map((u: Employee) => ({ 
               id: u.user_id || u.id || 0, 
               name: u.name || 'Unknown User',
               profile_pic: u.profile_pic || undefined 

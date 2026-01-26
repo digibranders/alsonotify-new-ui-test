@@ -14,7 +14,8 @@ import { industryToBusinessType, commonCountries, commonTimezones } from "@/data
 import AuthLayout from "@/components/auth/AuthLayout";
 import PhoneNumberInput from "@/components/ui/PhoneNumberInput";
 import { fileService } from "@/services/file.service";
-import { useUpdateProfile, useUpdateCompany } from "@/hooks/useUser"; 
+import { useUpdateProfile, useUpdateCompany } from "@/hooks/useUser";
+import { getErrorMessage } from "@/types/api-utils"; 
 // Assuming useUpdateCompany exists, checking file next.
 
 const { Option } = Select;
@@ -51,17 +52,52 @@ function CompanyDetailsForm() {
     photo: null as File | null,
   });
 
-  // Auto-fill for Individual
+  // Auto-fill for Individual (only if user manually navigates to this page)
   useEffect(() => {
-    if (isIndividual) {
+    if (isIndividual && userData?.success && userData.result) {
+      const userName = userData.result.name || "My Account";
       setCompanyData((prev) => ({
         ...prev,
-        companyName: "My Workspace",
+        companyName: userName, // Use user's name instead of "My Workspace"
         industry: "other",
         companySize: "1-10",
       }));
     }
-  }, [isIndividual]);
+  }, [isIndividual, userData]);
+
+  // Auto-complete signup for individual accounts when they land on this page via email link
+  useEffect(() => {
+    if (isIndividual && token && userData?.success && userData.result && !completeSignupMutation.isPending) {
+      // Check if user already has a company (already completed signup)
+      // If not, auto-complete the signup
+      const autoCompleteIndividual = async () => {
+        try {
+          // Use default values for individual accounts
+          const businessType = 21; // Default to "Others"
+          
+          // For individual accounts, use user's name as the "company" name (required by backend structure)
+          const userName = userData.result.name || "My Account";
+          
+          await completeSignupMutation.mutateAsync({
+            registerToken: token,
+            companyName: userName,
+            businessType: String(businessType),
+            accountType: "INDIVIDUAL",
+            country: "", // Default country for individual accounts
+            timezone: "", // Default timezone for individual accounts
+          });
+          
+          message.success("Account activated successfully!");
+          router.push("/dashboard");
+        } catch (error: unknown) {
+          const errorMessage = getErrorMessage(error, "Failed to activate account. Please try again.");
+          message.error(errorMessage);
+        }
+      };
+
+      autoCompleteIndividual();
+    }
+  }, [isIndividual, token, userData, completeSignupMutation.isPending, completeSignupMutation, message, router]);
 
   // Pre-fill Admin Details from token data
   useEffect(() => {
@@ -147,6 +183,7 @@ function CompanyDetailsForm() {
     const businessType = industryToBusinessType[companyData.industry] || 21;
 
     try {
+      console.log("Submitting complete signup mutation...");
       const response = await completeSignupMutation.mutateAsync({
         registerToken: token,
         companyName: companyData.companyName,
@@ -159,7 +196,10 @@ function CompanyDetailsForm() {
         phone: adminData.phone,
       });
 
+      console.log("Complete Signup Response:", response);
+
       if (response && response.success) {
+        console.log("Signup success, processing uploads...");
         const user = response.result.user;
         const companyId = user?.company_id || (user?.companies && user.companies[0]?.id);
         const userId = user?.id;
@@ -208,7 +248,10 @@ function CompanyDetailsForm() {
           }
         }
 
+        console.log("Redirecting to dashboard...");
         router.push("/dashboard");
+      } else {
+        console.error("Signup response indicated failure or missing data:", response);
       }
     } catch (error: any) {
       const errorMessage =
@@ -216,6 +259,22 @@ function CompanyDetailsForm() {
       message.error(errorMessage);
     }
   };
+
+  // Show loading state for individual accounts while auto-completing
+  if (isIndividual && token && userData?.success && (completeSignupMutation.isPending || !userData.result)) {
+    return (
+      <AuthLayout>
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          className="w-full max-w-[680px] space-y-8 flex flex-col items-center justify-center min-h-[400px]"
+        >
+          <Loader2 className="w-8 h-8 animate-spin text-[#ff3b3b] mb-4" />
+          <p className="text-[#666666]">Activating your account...</p>
+        </motion.div>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout>

@@ -20,6 +20,8 @@ export interface RequirementFormData {
     contact_person_id?: number;
     dueDate: string;
     budget?: string;
+    quoted_price?: string;
+    currency?: string;
     is_high_priority?: boolean;
     description: string;
     status?: string;
@@ -139,6 +141,8 @@ export function RequirementsForm({
             contact_person: formData.contactPerson,
             receiver_company_id: selectedPartner?.company_id,
             budget: Number(formData.budget) || 0,
+            quoted_price: Number(formData.quoted_price) || undefined,
+            currency: formData.currency || 'USD',
             end_date: formData.dueDate ? dayjs(formData.dueDate).toISOString() : undefined,
             start_date: new Date().toISOString(),
             // Note: priority enum removed - backend uses is_high_priority boolean directly
@@ -285,22 +289,7 @@ export function RequirementsForm({
                 </div>
             </div>
 
-            {/* Row 4: Budget (Outsourced only) - Only show when editing */}
-            {formData.type === 'outsourced' && isEditing && (
-                <div className="grid grid-cols-2 gap-x-6 gap-y-4 mb-4">
-                    <div className="space-y-1.5">
-                        <span className="text-[13px] font-['Manrope:Bold',sans-serif] text-[#111111]">Target Budget</span>
-                        <Input
-                            type="number"
-                            prefix="$"
-                            placeholder="0.00"
-                            className="h-11 rounded-lg border border-[#EEEEEE]"
-                            value={formData.budget}
-                            onChange={(e) => setFormData({ ...formData, budget: e.target.value })}
-                        />
-                    </div>
-                </div>
-            )}
+
 
             {/* Description */}
             <div className="space-y-1.5 mb-4">

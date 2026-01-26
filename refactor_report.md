@@ -368,3 +368,155 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
 
 - **Typecheck**: `npm run typecheck` Passed.
 - **Build**: `npm run build` Passed.
+
+## 2026-01-22: Requirements Workflow & CTA Refinement
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Finalize Archive/Delete logic and standardize CTAs in Requirement Details.
+
+### Changes
+
+- **Backend**:
+    - Enhanced `approveRequirementService` with semantic activity logging (differentiating Requirement vs Quote rejection).
+- **Frontend Utilities**:
+    - **`requirementState.utils.ts`**:
+        - Refined `getRequirementActionState` to accurately distinguish between Sender and Receiver roles and their respective rejection/approval contexts.
+- **Components**:
+    - **`RequirementsPage.tsx`**:
+        - Standardized `onDelete` handler using `getRequirementTab`.
+        - Dynamically switch between "Archive" (Active/Completed) and "Delete" (Draft/Archived) UI labels/icons.
+    - **`RequirementDetailsPage.tsx`**:
+        - Synchronized Header CTAs with `getRequirementActionState`.
+        - Implemented "Accept & Assign Workspace" modal for Receivers.
+        - Integrated standardized "Approve" and "Reject" actions for Senders.
+- **Domain**:
+    - Expanded `Requirement` status union in `src/types/domain.ts` to include all workflow statuses (`Submitted`, `Rejected`, `Revision`, etc.).
+
+## 2026-01-24: Fix Topbar TypeScript Error
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Fix Property 'title' does not exist on type error in Topbar.tsx.
+
+### Changes
+
+- **Services**: Updated `Notification` interface in `src/services/notification.ts` to include `link?: string`.
+- **Components**: Removed restrictive inline type definition for notifications map callback in `src/components/common/Topbar.tsx` to allow proper type inference.
+
+### Verification
+
+- **Automated**: `npm run typecheck` failed due to missing environment binaries.
+- **Manual**:
+    - Confirmed no new `any` types introduced.
+    - Confirmed no `console.log` introduced.
+    - Logic verified via code analysis (property access now valid via interface update).
+
+## 2026-01-24: Build Verification
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Verify system integrity by running full builds for both Frontend and Backend.
+
+### Changes
+
+- **Backend**: Fixed `unused variable 'messagePreview'` error in `requirement-activity.controller.ts`.
+- **Frontend**: Commented out invalid `@config` directive in `globals.css` that was causing Turbopack errors.
+
+### Verification
+
+- **Backend**: `tsc --noEmit` Passed.
+- **Frontend**: `next build` Passed (Output: `○ (Static) ... ƒ (Dynamic)`).
+
+**Note**: Servers were manually stopped by user request.
+
+## 2026-01-24: Fix Dark Skeleton UI
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Fix the skeleton UI loading placeholders which were appearing too dark on the light dashboard background.
+
+### Changes
+
+- **Component**: `src/components/ui/Skeleton.tsx`
+    - Lightened background colors to provide more subtle, premium loading states.
+    - Updated Light Mode background to `bg-gray-200/50`.
+    - Updated Dark Mode background to `bg-muted/20`.
+    - Preserved `animate-pulse` and `rounded-md` styles.
+
+### Verification
+
+- **Automated**: `npm run build` Passed successfully.
+
+## 2026-01-24: Remove Quoted Price & Currency Fields
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Remove "Quoted Price" and "Currency" fields from the Edit Requirement modal as they are no longer needed in the form view.
+
+### Changes
+
+- **Component**: `src/components/modals/RequirementsForm.tsx`
+    - Removed the conditional rendering block that displayed "Quoted Price" and "Currency" inputs for outsourced requirements in edit mode.
+
+### Verification
+
+## 2026-01-24: Fix Currency Display Mismatch
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Ensure the correct currency symbol (e.g., €) is displayed for Receivers instead of defaulting to $.
+
+### Changes
+
+- **Component**: `src/components/features/requirements/RequirementsPage.tsx`
+    - Enhanced mapping logic to only default to 'USD' if `req.currency` is falsy AND empty string.
+- **Component**: `src/components/features/requirements/components/RequirementCard.tsx`
+    - Improved `getCostDisplay` to handle case-insensitive currency codes.
+    - Added fallback to display the currency code (e.g., "EUR") if the symbol map lookup fails, rather than incorrect default.
+
+### Verification
+
+- **Automated**: `npm run build` Passed successfully.
+- **Manual**: Reviewed code logic to ensure robust handling of currency fields.
+
+## 2026-01-25: Integrate Mail Page
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Expose the new Mail page in the sidebar navigation for all user roles.
+
+### Changes
+
+- **Component**: `src/components/common/Sidebar.tsx`
+    - Added `Mail` icon import.
+    - Added `mail` navigation item pointing to `/dashboard/mail`.
+    - Configured access for all roles: `['Admin', 'Manager', 'Head', 'Finance', 'HR', 'Employee']`.
+
+### Verification
+
+- **Manual**: Verified file existence of `src/components/features/mail/MailPage.tsx` and `src/app/dashboard/mail/page.tsx`.
+- **Logic**: Confirmed route configuration matches existing patterns.
+
+## 2026-01-25: Refactor Mail Page Header
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Move Mail page controls (refresh, segments) to the top header row for better space utilization.
+
+### Changes
+
+- **Component**: `src/components/features/mail/MailPage.tsx`
+    - Moved controls from `action` prop to `titleExtra` prop in `PageLayout` component.
+
+### Verification
+
+- **Automated**: `npm run build` Passed successfully.
+- **Manual**: Logic check confirms `titleExtra` renders in the header row vs `action` in the secondary row.
+
+## 2026-01-25: Hide Task Timer on Mail Page
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Improve Mail Page usability by removing the global "Select Task" timer bar.
+
+### Changes
+
+- **Component**: `src/app/AlsonotifyLayoutWrapper.tsx`
+    - Conditionally render `<FloatingTimerBar />` only if pathname does not start with `/dashboard/mail`.
+
+### Verification
+
+- **Automated**: `npm run build` Passed successfully.
+- **Manual**: Verified conditional logic uses `pathname` correctly.

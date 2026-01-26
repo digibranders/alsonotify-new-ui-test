@@ -233,6 +233,24 @@ function NotificationItemComponent({
               </button>
             </div>
           )}
+          
+          {/* Show action button for rejected requirements (Revision) */}
+          {(notification.type === 'REQUIREMENT_REJECTED' && notification.metadata?.actions?.includes('revise')) && (
+            <div className="flex justify-start gap-2 mt-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  markAsRead(notification.id);
+                  if (notification.actionLink) navigate(notification.actionLink);
+                }}
+                className="h-8 px-4 flex items-center justify-center rounded-full bg-[#FF9800] text-white hover:bg-[#F57C00] transition-colors shadow-sm ring-1 ring-[#FF9800]/10 text-xs font-semibold"
+                title="Revise Quote"
+              >
+                <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                Revise Quote
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -257,10 +275,21 @@ export function NotificationPanel({
 
   const filteredNotifications = useMemo(() => {
     switch (activeTab) {
-      case 'unread':
-        return notifications.filter((n) => n.unread);
+      case 'requirements':
+        return notifications.filter((n) => 
+          n.type === 'REQUIREMENT_RECEIVED' ||
+          n.type === 'REQUIREMENT_ACCEPTED' ||
+          n.type === 'REQUIREMENT_REJECTED' ||
+          n.type === 'REQUIREMENT_REVIEW' ||
+          n.type === 'REQUIREMENT_COMPLETED' ||
+          n.type === 'REQUIREMENT_REVISION' ||
+          n.type === 'requirement'
+        );
       case 'tasks':
-        return notifications.filter((n) => n.type === 'task');
+        return notifications.filter((n) => 
+          n.type === 'task' || 
+          n.type === 'TODO_REMINDER'
+        );
       default:
         return notifications;
     }
@@ -272,8 +301,8 @@ export function NotificationPanel({
       label: 'All',
     },
     {
-      key: 'unread',
-      label: 'Unread',
+      key: 'requirements',
+      label: 'Requirements',
     },
     {
       key: 'tasks',
@@ -358,8 +387,8 @@ export function NotificationPanel({
         ) : filteredNotifications.length === 0 ? (
           <EmptyState
             message={
-              activeTab === 'unread'
-                ? 'No unread notifications'
+              activeTab === 'requirements'
+                ? 'No requirement notifications'
                 : activeTab === 'tasks'
                   ? 'No task notifications'
                   : 'No notifications'

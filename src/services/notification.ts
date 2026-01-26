@@ -11,6 +11,13 @@ export interface Notification {
   created_at: string;
   reference_id?: number;
   reference_type?: string;
+  link?: string;
+  metadata?: {
+    requirement_id?: number;
+    actions?: string[];
+    sender_company_id?: number;
+    [key: string]: any;
+  };
 }
 
 // Fetch notifications
