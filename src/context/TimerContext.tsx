@@ -68,12 +68,17 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     // Local Ticking
+    // Local Ticking using Date delta to prevent drift
     useEffect(() => {
-        if (timerState.isRunning) {
+        if (timerState.isRunning && timerState.startTime) {
             intervalRef.current = setInterval(() => {
+                const now = new Date();
+                const start = new Date(timerState.startTime!);
+                const diffSeconds = Math.floor((now.getTime() - start.getTime()) / 1000);
+                
                 setTimerState((prev) => ({
                     ...prev,
-                    elapsedSeconds: prev.elapsedSeconds + 1,
+                    elapsedSeconds: diffSeconds,
                 }));
             }, 1000);
         } else if (intervalRef.current) {
@@ -83,7 +88,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
-    }, [timerState.isRunning]);
+    }, [timerState.isRunning, timerState.startTime]);
 
     const startTimer = async (taskId: number, taskName: string, projectName: string) => {
         if (timerState.isRunning) {
