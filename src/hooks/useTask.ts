@@ -12,7 +12,24 @@ import {
   updateWorklog,
   getAssignedTaskDetail,
   requestRevision,
+  updateTaskMemberStatus,
 } from "../services/task";
+
+// ... imports remain the same
+
+export const useUpdateMemberStatus = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ taskId, status }: { taskId: number; status: string }) => updateTaskMemberStatus(taskId, status),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(variables.taskId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.assigned() });
+    },
+  });
+};
+
 import { TaskDto, CreateTaskRequestDto, UpdateTaskRequestDto } from '@/types/dto/task.dto';
 
 // Re-export useClients for convenience

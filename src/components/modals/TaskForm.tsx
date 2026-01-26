@@ -18,6 +18,7 @@ export interface TaskFormData {
   execution_mode: "parallel" | "sequential"; // New: Execution Mode
   leader_id: string; // Leader
   end_date: string; // Due Date (replaced start_date)
+  start_date?: string; // Preserve start_date
   estimated_time: string; // Estimated Time (in hours)
   is_high_priority: boolean; // Priority boolean
   description: string; // Description
@@ -123,7 +124,7 @@ export function TaskForm({
       requirement_id: formData.requirement_id ? parseInt(formData.requirement_id) : null,
       leader_id: parseInt(currentUserId), // STRICTLY current user
       end_date: formData.end_date, // Map to end_date
-      start_date: new Date().toISOString(), // Default start_date to now if required by backend/schema (user said remove from UI only)
+      start_date: formData.start_date || new Date().toISOString(), // Preserve existing start_date or default to now
       estimated_time: (formData.estimated_time && isCurrentUserAssigned) ? parseFloat(formData.estimated_time) : 0,
       is_high_priority: formData.is_high_priority,
       description: formData.description || "",

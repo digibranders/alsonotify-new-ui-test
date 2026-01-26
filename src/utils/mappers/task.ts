@@ -96,6 +96,10 @@ export function mapTaskToDomain(dto: TaskDto): Task {
       active_worklog_start_time: tm.active_worklog_start_time,
       isCurrentTurn: tm.is_current_turn,
       is_current_turn: tm.is_current_turn,
+      queueOrder: tm.queue_order,
+      queue_order: tm.queue_order,
+      executionMode: tm.execution_mode,
+      execution_mode: tm.execution_mode,
       user: {
         ...tm.user,
         profilePic: tm.user.profile_pic,
