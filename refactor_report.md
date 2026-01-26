@@ -683,3 +683,36 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
 
 - **Automated**: `npm run build` Passed successfully.
 - **Manual**: Verified focus behavior on drawer open and after quick action selection.
+
+## [2026-01-26] Mail Modal Scrolling Fix
+
+- **Problem**: Mail Compose modal content was not scrollable, leading to truncated content and "broken" feel.
+- **Root Cause**: `RichTextEditor` was wrapped in an `overflow-hidden` container while trying to handle scrolling internally, which conflicted with the flex layout and `contentEditable` behavior.
+- **Solution**: 
+    - Moved `overflow-y-auto` to the parent container.
+    - Updated `RichTextEditor` to grow with content (`minHeight: 100%`) instead of having fixed height and internal scroll.
+- **Verification**: Code analysis and layout logic verification. Manual verification planned by user.
+- **Files Changed**: `src/components/features/mail/EmailComposeModal.tsx`.
+
+## [2026-01-26] Mail UX: Gmail-like Improvements
+
+- **Objective**: Implement Gmail-style Inline Reply and enhance Compose Modal size.
+- **Changes**:
+    - **Inline Reply**: Created `InlineReply` component and integrated it into `MailPage`. 
+        - Located at the bottom of the reading pane.
+        - Supports Smart Reply logic (Quoted text hidden by default).
+        - Integrated with `handleSendMail` and uses real user avatar.
+    - **Compose Modal**: Updated `EmailComposeModal` to be larger (800px width, 80vh height) and centered, strictly following user preference against "docked" mode.
+- **Verification**: 
+    - `npm run build` passed.
+    - Verified Type Safety for `currentUser` prop.
+
+## [2026-01-26] Mail UX: Wired Header Buttons to Inline Reply
+
+- **Objective**: Ensure "Reply" / "Reply All" / "Forward" buttons in the reading pane header trigger the new Inline Reply box.
+- **Changes**:
+    - **UI Logic**: Updated `MailPage.tsx` to use a React Ref to control `InlineReply`.
+    - **UX**: Clicking header buttons now smoothly scrolls to and focuses the Inline Reply box instead of opening a modal.
+    - **Refactor**: Exposed `activate(type)` method in `InlineReply.tsx` via `useImperativeHandle`.
+- **Verification**: 
+    - `npm run build` passed.
