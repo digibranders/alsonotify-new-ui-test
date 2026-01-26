@@ -46,7 +46,10 @@ import {
   sendMail,
 } from "@/services/mail";
 import { EmailComposeModal } from "./EmailComposeModal";
+import { InlineReply, InlineReplyRef } from "./InlineReply";
+import { useUserDetails } from "@/hooks/useUser";
 import type { ContactOption } from "./EmailInput";
+import { useRef } from "react";
 
 const { Sider, Content } = Layout;
 const { Text, Title } = Typography;
@@ -138,6 +141,14 @@ function findGraphFolderForWellKnownId(wellKnownId: string, graphFolders: any[])
 
 export function MailPage() {
   const { message } = App.useApp();
+  const { data: userDetails } = useUserDetails();
+  const inlineReplyRef = useRef<InlineReplyRef>(null);
+
+  const currentUser = userDetails?.result ? {
+    name: userDetails.result.name,
+    email: userDetails.result.email,
+    avatar: userDetails.result.profile_pic
+  } : { name: "Me", email: "" };
 
   const [folder, setFolder] = useState<string>("inbox");
   const [unreadOnly, setUnreadOnly] = useState(false);
@@ -312,38 +323,12 @@ export function MailPage() {
   
   const handleQuickAction = (type: 'reply' | 'replyAll' | 'forward') => {
       if (!current) return;
-      
-      let subject = current.subject || "";
-      if (!subject.toLowerCase().startsWith("re:") && (type === 'reply' || type === 'replyAll')) {
-          subject = `Re: ${subject}`;
-      } else if (!subject.toLowerCase().startsWith("fwd:") && type === 'forward') {
-          subject = `Fwd: ${subject}`;
-      }
-
-      let to: string[] = [];
-      let cc: string[] = [];
-      let bodyPrefix = `<br/><br/><hr/>From: ${formatFrom(current)}<br/>Date: ${dayjs(current.receivedDateTime).format("MMM D, YYYY • h:mm A")}<br/>Subject: ${current.subject}<br/><br/>`;
-      
-      if (type === 'reply') {
-          if (current.from?.emailAddress?.address) to.push(current.from.emailAddress.address);
-      } else if (type === 'replyAll') {
-          if (current.from?.emailAddress?.address) to.push(current.from.emailAddress.address);
-          (current.toRecipients || []).forEach((r: any) => {
-             if (r.emailAddress?.address) to.push(r.emailAddress.address);
-          });
-          (current.ccRecipients || []).forEach((r: any) => {
-             if (r.emailAddress?.address) cc.push(r.emailAddress.address);
-          });
-      }
-      // For forward, 'to' is empty
-
-      openCompose({
-          to,
-          cc,
-          subject,
-          body: bodyPrefix + (current.body?.content || "") 
-      });
+      // Scroll to and activate inline reply
+      inlineReplyRef.current?.activate(type);
   };
+   
+  /* Old quick action logic removed for standard Reply/Forward to use inline. */
+  /* If you still want the modal fallback for complex actions, you can keep it or use a separate button. */
 
   const htmlBody = useMemo(() => {
     if (current?.body?.contentType !== "html") return "";
@@ -754,6 +739,25 @@ export function MailPage() {
                       overflow: auto;
                     }
                   `}</style>
+                  
+                  {/* Inline Reply Box */}
+                  <div className="mt-8 mb-4">
+                     <InlineReply 
+                        ref={inlineReplyRef}
+                        originalMessage={current}
+                        currentUser={currentUser}
+                        onSend={async (data) => {
+                            await handleSendMail({
+                                ...data,
+                                bcc: [] // Inline usually doesn't show BCC initially
+                            });
+                        }}
+                        onDiscard={() => {
+                            // Maybe clear? Or just do nothing as it resets itself
+                        }}
+                     />
+                  </div>
+
                   </div>
                 </>
               )}

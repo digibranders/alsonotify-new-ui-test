@@ -69,15 +69,17 @@ export function EmailComposeModal({ open, onClose, onSend, initialData, autocomp
       };
     }
 
-    // Normal State (Now centered as requested)
+    // Normal State (Now centered and larger as requested)
     return {
       top: undefined,
       margin: '0 auto',
-      maxWidth: '100vw',
-      width: 600
+      maxWidth: '96vw', 
+      width: 800, // Increased from 600
+      height: '80vh', // Fixed height for spacious feel
+      paddingBottom: 0
     };
   };
-
+  
   const modalStyles = getModalStyles();
 
   // Initialize with data when opened
@@ -167,7 +169,7 @@ export function EmailComposeModal({ open, onClose, onSend, initialData, autocomp
         className={`flex flex-col bg-white overflow-hidden transition-all duration-200 pointer-events-auto
           ${isMobile ? 'h-[100vh] w-full rounded-none' : ''}
           ${!isMobile && isMaximized ? 'h-[85vh] rounded-xl shadow-2xl border border-gray-200' : ''}
-          ${!isMobile && !isMaximized ? 'h-[600px] rounded-xl shadow-xl border border-gray-200' : ''}
+          ${!isMobile && !isMaximized ? 'h-[80vh] rounded-xl shadow-xl border border-gray-200' : ''}
         `}
       >
         {/* Header */}
@@ -239,18 +241,15 @@ export function EmailComposeModal({ open, onClose, onSend, initialData, autocomp
         </div>
 
         {/* Editor Area */}
-        <div className="flex-1 overflow-hidden flex flex-col relative" onClick={() => document.querySelector<HTMLElement>('.rich-text-editor')?.focus()}>
+        <div className="flex-1 overflow-y-auto flex flex-col relative" onClick={() => document.querySelector<HTMLElement>('.rich-text-editor')?.focus()}>
            <RichTextEditor
              value={body}
              onChange={setBody}
              placeholder=""
              style={{ 
-               height: '100%', 
-               maxHeight: 'none', 
-               overflowY: 'auto',
+               minHeight: '100%',
                padding: '16px',
-               fontSize: '14px',
-               minHeight: '100%'
+               fontSize: '14px'
              }}
            />
         </div>
