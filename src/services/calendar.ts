@@ -75,6 +75,12 @@ export const MicrosoftUserOAuth = async (): Promise<ApiResponse<string>> => {
   return data;
 };
 
+// Disconnect from Microsoft Teams
+export const disconnectMicrosoft = async (): Promise<ApiResponse<void>> => {
+  const { data } = await axiosApi.delete<ApiResponse<void>>("/calendar/connection");
+  return data;
+};
+
 // Create Event Payload Interface
 export interface CreateEventPayload {
   subject: string;
