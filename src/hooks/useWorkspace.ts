@@ -123,23 +123,39 @@ export const useRequirements = (workspaceId: number) => {
   });
 };
 
-export const useWorkspaceRequirementsDropdown = () => {
+export const useWorkspaceRequirementsDropdown = (workspaceId?: number) => {
   return useQuery({
-    queryKey: ['requirements', 'dropdown', 'all'],
+    queryKey: ['requirements', 'dropdown', 'all', workspaceId],
     queryFn: async () => {
-      // 1. Fetch all workspaces
+      // 1. Fetch all workspaces dynamically to avoid hook dependency race condition
       const { getWorkspace, getRequirementsDropdownByWorkspaceId } = await import('../services/workspace');
-      const wsResponse = await getWorkspace(""); 
-      if (!wsResponse.result?.workspaces) return [];
 
-      // 2. Fetch requirements for each workspace in parallel
-      const workspaces = wsResponse.result.workspaces;
-      const reqPromises = workspaces.map(ws => 
+      let workspaces = [];
+      if (workspaceId) {
+        workspaces = [{ id: workspaceId }];
+      } else {
+        const wsResponse = await getWorkspace("");
+        workspaces = wsResponse.result?.workspaces || [];
+      }
+
+      if (workspaces.length === 0) return [];
+
+      // 2. Fetch requirements for each workspace using the DROPDOWN endpoint
+      // We verified this endpoint returns 'type' and uses safer 'findMany' logic
+      const reqPromises = workspaces.map((ws: { id: number }) =>
         getRequirementsDropdownByWorkspaceId(ws.id)
-          .then(res => res.result || [])
-          .catch(() => []) 
+          .then(res => {
+            if (res.success && res.result) {
+              // Return result directly as it matches expected shape (or is compatible enough)
+              // Dropping explicit mapping if format matches, to reduce risk of typos unless necessary.
+              // Using explicit return res.result which is array of { id, name, type, ... }
+              return res.result;
+            }
+            return [];
+          })
+          .catch(() => [])
       );
-      
+
       const results = await Promise.all(reqPromises);
       return results.flat();
     },
@@ -152,6 +168,7 @@ export const useCollaborativeRequirements = () => {
   return useQuery({
     queryKey: queryKeys.requirements.collaborative(),
     queryFn: () => getCollaborativeRequirements(),
+    refetchInterval: 5000,
   });
 };
 
