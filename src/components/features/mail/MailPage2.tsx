@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -320,7 +321,7 @@ export function MailPage() {
         icon: <Send className="w-4 h-4" />,
         onClick: () => setComposeOpen(true),
       }}
-      titleExtra={
+      action={
         <Space>
           <Segmented
             options={[

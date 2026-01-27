@@ -472,3 +472,28 @@ export const requestRevision = async (id: number, revisionNotes: string): Promis
     throw new NetworkError(getErrorMessage(error));
   }
 };
+
+/**
+ * Update task member status (Baton Passing)
+ */
+export const updateTaskMemberStatus = async (taskId: number, status: string): Promise<ApiResponse<{ computedStatus: string }>> => {
+  try {
+    validateTaskId(taskId);
+    if (!status) throw new ApiError('Status is required', 400);
+
+    const { data } = await axiosApi.post<ApiResponse<{ computedStatus: string }>>(`/task/${taskId}/member-status/${status}`);
+
+    if (!data || typeof data !== 'object') {
+      throw new ApiError('Invalid response format from server', 500);
+    }
+
+    return data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      const statusCode = error.response?.status || 500;
+      const message = getErrorMessage(error);
+      throw new ApiError(message, statusCode, error.response?.data);
+    }
+    throw new NetworkError(getErrorMessage(error));
+  }
+};

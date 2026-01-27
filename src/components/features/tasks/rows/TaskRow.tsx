@@ -8,8 +8,7 @@ import { provideEstimate } from "../../../../services/task";
 import { SegmentedProgressBar } from "./SegmentedProgressBar";
 import { useTimer } from "../../../../context/TimerContext";
 import { Task } from "../../../../types/domain";
-
-
+import { TaskStatusBadge } from "../components/TaskStatusBadge"; 
 
 interface TaskRowProps {
   task: Task;
@@ -20,7 +19,6 @@ interface TaskRowProps {
   onStatusChange?: (status: string) => void;
   currentUserId?: number;
   hideRequirements?: boolean;
-
   onRequestRevision?: () => void;
 }
 
@@ -33,7 +31,6 @@ const TaskRowComponent = memo(function TaskRow({
   onStatusChange,
   currentUserId,
   hideRequirements = false,
-
   onRequestRevision
 }: TaskRowProps) {
   const router = useRouter();
@@ -77,8 +74,6 @@ const TaskRowComponent = memo(function TaskRow({
 
     if (isCurrentUser && isContextActive) {
       // Use the global context elapsed time for perfect sync
-      // Context elapsedSeconds = Duration of active log
-      // Seconds Spent (backend) = Closed Logs Sum
       liveSeconds += elapsedSeconds;
     } else if (m.active_worklog_start_time) {
       // For other members (or fallback), calculate from start time
@@ -91,7 +86,6 @@ const TaskRowComponent = memo(function TaskRow({
       ...m,
       seconds_spent: liveSeconds,
       // Status overrides for SegmentedProgressBar color logic:
-      // If active (live seconds increasing), ensure status reflects 'In Progress' for color blue
       isWorking: (isCurrentUser && isContextActive) || !!m.active_worklog_start_time
     };
   });
@@ -107,14 +101,7 @@ const TaskRowComponent = memo(function TaskRow({
     return num % 1 === 0 ? num.toString() : num.toFixed(1);
   };
 
-  // Determine row-level status (Aggregated)
-  // Priority: Stuck > Impediment > Delayed > Review > In_Progress > Assigned > Completed
-  // Or simply use the task.status which backend might already compute?
-  // User req: "Show the Aggregated Status (e.g., if Mayur is "Blocked", the status badge for the whole row..."
-  // Backend `task.status` is already computed by `calculateAggregatedTaskStatus`. We should trust it.
-
   // Play/Stop Logic
-  // Disable if: Sequential & Not My Turn
   const myMember = task.task_members?.find(m => m.user_id === currentUserId);
   const isMyTurn = task.execution_mode === 'sequential' ? myMember?.is_current_turn : true;
   const isPlayDisabled = task.execution_mode === 'sequential' && !isMyTurn;
@@ -130,23 +117,17 @@ const TaskRowComponent = memo(function TaskRow({
     }
   };
 
-  // Handle Stuck action - stop timer and show worklog modal
+  // Handle Stuck action
   const handleStuckClick = async () => {
-    // If timer is running on this task, stop it first
-    if (isActive) {
-      await stopTimer();
-    }
+    if (isActive) await stopTimer();
     setWorklogAction('stuck');
     setWorklogDescription('');
     setShowWorklogModal(true);
   };
 
-  // Handle Complete action - stop timer and show worklog modal  
+  // Handle Complete action 
   const handleCompleteClick = async () => {
-    // If timer is running on this task, stop it first
-    if (isActive) {
-      await stopTimer();
-    }
+    if (isActive) await stopTimer();
     setWorklogAction('complete');
     setWorklogDescription('');
     setShowWorklogModal(true);
@@ -155,15 +136,10 @@ const TaskRowComponent = memo(function TaskRow({
   // Handle worklog modal submission
   const handleWorklogSubmit = async () => {
     if (!worklogAction) return;
-
     setWorklogSubmitting(true);
     try {
-      // Determine the new status based on action
       const newStatus = worklogAction === 'stuck' ? 'Stuck' : 'Review';
-
-      // Call the status change handler passed from parent
       onStatusChange?.(newStatus);
-
       message.success(worklogAction === 'stuck' ? 'Task marked as blocked' : 'Task marked for review');
       setShowWorklogModal(false);
       setWorklogAction(null);
@@ -175,7 +151,7 @@ const TaskRowComponent = memo(function TaskRow({
     }
   };
 
-  // Progress/Styling Logic (Moved to top level scope)
+  // Progress/Styling Logic
   const percentage = task.estTime > 0 ? (totalSeconds / (task.estTime * 3600)) * 100 : 0;
   const isOvertime = percentage > 100;
   const isBlockedOrDelayed = ['Stuck', 'Impediment', 'Delayed'].includes(task.status);
@@ -300,8 +276,6 @@ const TaskRowComponent = memo(function TaskRow({
           </span>
         </div>
 
-
-
         {/* Progress Bar - Always Show */}
         <div className="flex flex-col gap-1 w-full justify-center">
           <div className="flex flex-col gap-0.5">
@@ -368,9 +342,7 @@ const TaskRowComponent = memo(function TaskRow({
               </button>
             </Popover>
           ) : (
-            <StatusBadge
-              status={task.status}
-            />
+            <TaskStatusBadge status={task.status} showLabel={false} />
           )}
         </div>
 
@@ -452,95 +424,3 @@ const TaskRowComponent = memo(function TaskRow({
 });
 
 export const TaskRow = TaskRowComponent;
-
-function StatusBadge({
-  status,
-}: {
-  status: string;
-}) {
-  // Map backend statuses to UI configuration with icons and colors matching old frontend
-  // User Req: "Map both Stuck and Impediment to a single visual 'Blocked' badge"
-
-  // Normalize status for UI
-  let uiStatus = status;
-  if (status === 'Stuck' || status === 'Impediment') {
-    uiStatus = 'Blocked';
-  }
-
-  const config: Record<string, {
-    icon: any;
-    bgColor: string;
-    iconColor: string;
-    label: string;
-    showCircle: boolean;
-    animate?: boolean;
-    pulse?: boolean;
-    val: string;
-  }> = {
-    'Assigned': {
-      icon: Clock,
-      bgColor: 'bg-transparent',
-      iconColor: 'text-[#0284c7]',
-      label: 'Assigned',
-      showCircle: false,
-      val: 'Assigned'
-    },
-    'In_Progress': {
-      icon: Loader2,
-      bgColor: 'bg-transparent',
-      iconColor: 'text-[#0284c7]',
-      label: 'In Progress',
-      showCircle: false,
-      animate: true,
-      val: 'In_Progress'
-    },
-    'Completed': {
-      icon: CheckCircle2,
-      bgColor: 'bg-[#16a34a]',
-      iconColor: 'text-white',
-      label: 'Completed',
-      showCircle: true,
-      val: 'Completed'
-    },
-    'Delayed': {
-      icon: AlertCircle,
-      bgColor: 'bg-[#dc2626]',
-      iconColor: 'text-white',
-      label: 'Delayed',
-      showCircle: true,
-      val: 'Delayed'
-    },
-    'Blocked': {
-      icon: XCircle,
-      bgColor: 'bg-[#ef4444]',
-      iconColor: 'text-white',
-      label: 'Blocked',
-      showCircle: true,
-      pulse: true,
-      val: 'Stuck'
-    },
-    'Review': {
-      icon: Eye,
-      bgColor: 'bg-transparent',
-      iconColor: 'text-[#fbbf24]',
-      label: 'Review',
-      showCircle: false,
-      val: 'Review'
-    }
-  };
-
-  const style = config[uiStatus] || config['Assigned'];
-  const Icon = style.icon;
-
-  return (
-    <div className="flex items-center justify-center">
-      {style.showCircle ? (
-        <div className={`w-5 h-5 rounded-full ${style.bgColor} flex items-center justify-center ${style.pulse ? 'animate-pulse' : ''}`}>
-          <Icon className={`w-3 h-3 ${style.iconColor}`} />
-        </div>
-      ) : (
-        <Icon className={`w-4 h-4 ${style.iconColor} ${(style as any).animate ? 'animate-spin' : ''}`} />
-      )}
-    </div>
-  );
-}

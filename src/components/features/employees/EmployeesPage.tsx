@@ -43,14 +43,12 @@ export function EmployeesPage() {
     validTabs: ['active', 'inactive']
   });
 
-  // Build query parameters based on active tab
+  // Fetch all employees (both active and inactive) to prevent re-fetches on tab switch
+  // Filtering by status is done client-side in filteredEmployees useMemo
   const queryParams = useMemo(() => {
-    const params = new URLSearchParams();
-    if (activeTab === 'inactive') {
-      params.append('is_active', 'false');
-    }
-    return params.toString();
-  }, [activeTab]);
+    // No is_active filter - fetch all employees for flicker-free tab switching
+    return '';
+  }, []);
 
   const { data: rolesData } = useRoles();
   const createEmployeeMutation = useCreateEmployee();

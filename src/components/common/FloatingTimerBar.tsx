@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { usePathname } from 'next/navigation';
 import { 
   Play,
@@ -24,6 +24,8 @@ interface TaskOption {
   name: string;
   project: string;
   estimatedTime: number;
+  disabled?: boolean;
+  secondsSpent: number; // Accumulated time from history
 }
 
 export function FloatingTimerBar() {
@@ -87,19 +89,25 @@ export function FloatingTimerBar() {
     if (!timerLoading && timerState.taskId) {
       setSelectedTaskId(timerState.taskId);
       setSelectedTaskName(timerState.taskName || "Unknown Task");
-      setLocalTime(timerState.elapsedSeconds);
+      // Don't setLocalTime to just elapsed. It's handled by display logic now.
+      // But we can init it to prevent jump if needed.
     }
   }, [timerLoading]); // Only run on load
 
   // ✅ FIX BUG #21: Update local time ONLY when timer stops
   useEffect(() => {
     if (!timerState.isRunning) {
-      setLocalTime(timerState.elapsedSeconds);
+       // When stopped, reset local time to 0 because we will rely on fetching fresh "secondsSpent" from backend
+       // However, to prevent split-second flash of 0 before refetch, we might want to keep it.
+       // But our improved displayTime logic handles "baseSeconds" from props.
+       // So we can safely reset localTime to 0 OR keep it as the "just finished" value until the user selects another task.
+       // Let's NOT reset it here, but rely on the handlePlayPause to set it correctly.
+       // But if it stopped externally?
+       // Let's leave it, but handleTaskSelect will reset it.
     }
   }, [timerState.isRunning, timerState.elapsedSeconds]);
 
-  // ✅ FIX BUG #21: Use context as single source of truth
-  const displayTime = timerState.isRunning ? timerState.elapsedSeconds : localTime;
+
 
   const { data: userDetailsData } = useUserDetails();
   // Using flattened Employee object from useUserDetails
@@ -111,21 +119,59 @@ export function FloatingTimerBar() {
     enabled: !!userId,
   });
 
-  // Filter tasks that can have timer started (Assigned, In_Progress, Impediment)
-  const tasks: TaskOption[] = (assignedTasksData?.result || [])
+  // Filter tasks logic:
+  // 1. Must be Assigned/Active (not completed)
+  // 2. Must be the user's turn (backend sends disabled=true for sequential out-of-turn)
+  // 3. Must be a member (User request: "show only the tasks that logged in user is a member")
+  const tasks: TaskOption[] = useMemo(() => {
+    return (assignedTasksData?.result || [])
     .filter((t) => {
       const status = (t.status || '').toLowerCase();
-      // Filter out completed tasks to show only active, review, or workable items
-      return !status.includes('completed');
+      
+      // 1. Status Filter
+      if (status.includes('completed')) return false;
+
+      // 2. Disabled/Sequential Filter (Backend Logic)
+      if (t.disabled) return false;
+
+      // 3. Membership Filter (Frontend Check)
+      // Leader sees all tasks in backend response, but might not be a "working member"
+      // If task_members is present, verify userId is in it.
+      if (t.task_members && Array.isArray(t.task_members) && t.task_members.length > 0) {
+        const isMember = t.task_members.some(m => m.user_id === userId);
+        if (!isMember) return false;
+      }
+
+      return true;
     })
-    .map((t) => ({
-      id: t.id,
-      name: t.name || t.title || "Untitled Task",
-      project: t.task_workspace?.name || 
-               t.task_project?.company?.name || 
-               "Unknown Project",
-      estimatedTime: t.estimated_time || 0
-    }));
+    .map((t) => {
+      // Find user's specific member record for correct time tracking
+      const memberRecord = t.task_members?.find(m => m.user_id === userId);
+      const secondsSpent = memberRecord?.seconds_spent || t.time_spent || 0; // Use user-specific time or total task time as fallback
+
+      return {
+        id: t.id,
+        name: t.name || t.title || "Untitled Task",
+        project: t.task_workspace?.name || 
+                 t.task_project?.company?.name || 
+                 "Unknown Project",
+        estimatedTime: t.estimated_time || 0,
+        disabled: t.disabled,
+        secondsSpent: secondsSpent
+      };
+    });
+  }, [assignedTasksData, userId]);
+
+  // ✅ FIX BUG #21: Use context as single source of truth
+  // Calculate display time: Base (Historical) + Current Session
+  const currentActiveTask = tasks.find(t => t.id === (timerState.taskId || selectedTaskId));
+  const baseSeconds = currentActiveTask?.secondsSpent || 0;
+  
+  // If running and matching task: Base + Session. Else: just Base (unless we have a local override/simulated time)
+  // We use localTime when strictly not running to show the "last known" or "static" time.
+  const displayTime = timerState.isRunning && timerState.taskId === selectedTaskId 
+    ? baseSeconds + timerState.elapsedSeconds 
+    : (localTime > 0 ? localTime : baseSeconds);
 
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -141,6 +187,12 @@ export function FloatingTimerBar() {
     }
 
     if (timerState.isRunning) {
+      // Capture current total time before stopping to prevent 00:00:00 glitch
+      const currentTask = tasks.find(t => t.id === timerState.taskId);
+      const baseTime = currentTask?.secondsSpent || 0;
+      const totalCurrentTime = baseTime + timerState.elapsedSeconds;
+      setLocalTime(totalCurrentTime);
+
       await stopTimer();
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
@@ -180,6 +232,8 @@ export function FloatingTimerBar() {
     
     setSelectedTaskId(task.id);
     setSelectedTaskName(task.name);
+    // Reset local time so we start showing the new task's base time immediately
+    setLocalTime(0); 
     setShowTaskSelector(false);
   };
 
@@ -214,9 +268,68 @@ export function FloatingTimerBar() {
 
   return (
     <div 
-      className="fixed left-1/2 -translate-x-1/2 z-[9999] transition-all duration-300 ease-out"
-      style={{ bottom: '24px' }}
+      className="fixed left-1/2 -translate-x-1/2 z-[9999] transition-all duration-300 ease-out flex flex-col items-center"
+      style={{ bottom: '30px' }}
     >
+      {/* Dropdown Menu - Now outside the overflow-hidden container */}
+      {showTaskSelector && (
+        <>
+          {/* Backdrop to close dropdown */}
+          <div 
+            className="fixed inset-0 z-[9998]" 
+            onClick={() => setShowTaskSelector(false)}
+          />
+          <div className="absolute bottom-full mb-3 bg-white rounded-[20px] shadow-xl border border-[#EEEEEE] p-3 animate-in slide-in-from-bottom-2 duration-200 z-[10000] w-[320px]">
+            <div className="flex items-center gap-2 mb-2 px-2">
+              <span className="text-[10px] text-[#999999] font-['Inter:SemiBold',sans-serif] uppercase tracking-wide">
+                Select Task
+              </span>
+              <div className="flex-1 h-px bg-[#EEEEEE]" />
+            </div>
+            <div className="space-y-1 max-h-[240px] overflow-y-auto">
+              {tasksLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-5 h-5 text-[#999999] animate-spin" />
+                </div>
+              ) : tasks.length > 0 ? (
+                tasks.map((task) => (
+                  <button
+                    key={task.id}
+                    onClick={() => handleTaskSelect(task)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-[12px] text-left transition-all ${
+                      selectedTaskId === task.id
+                        ? 'bg-gradient-to-br from-[#ff3b3b] to-[#cc2f2f] text-white shadow-sm'
+                        : 'hover:bg-[#F7F7F7] text-[#111111]'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-[13px] font-['Manrope:SemiBold',sans-serif] truncate ${
+                        selectedTaskId === task.id ? 'text-white' : 'text-[#111111]'
+                      }`}>
+                        {task.name}
+                      </p>
+                      <p className={`text-[10px] font-['Inter:Regular',sans-serif] mt-0.5 truncate ${
+                        selectedTaskId === task.id ? 'text-white/80' : 'text-[#999999]'
+                      }`}>
+                        {task.project || "Unknown Project"}
+                      </p>
+                    </div>
+                    {selectedTaskId === task.id && (
+                      <CheckCircle className="w-4 h-4 text-white flex-shrink-0 ml-2" />
+                    )}
+                  </button>
+                ))
+              ) : (
+                <div className="p-3 text-center text-[#999999] text-xs">
+                  No assigned tasks found
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Main Bar (Pill) */}
       <div 
         className={`
           bg-[#111111] text-white rounded-full shadow-2xl flex items-center border border-[#111111]
@@ -266,64 +379,6 @@ export function FloatingTimerBar() {
               </>
             )}
           </button>
-
-          {/* Task Selector Dropdown */}
-          {showTaskSelector && (
-            <>
-              {/* Backdrop to close dropdown */}
-              <div 
-                className="fixed inset-0 z-[9998]" 
-                onClick={() => setShowTaskSelector(false)}
-              />
-              <div className="absolute bottom-full left-0 mb-3 bg-white rounded-[20px] shadow-xl border border-[#EEEEEE] p-3 animate-in slide-in-from-bottom-2 duration-200 z-[9999] w-[320px]">
-                <div className="flex items-center gap-2 mb-2 px-2">
-                  <span className="text-[10px] text-[#999999] font-['Inter:SemiBold',sans-serif] uppercase tracking-wide">
-                    Select Task
-                  </span>
-                  <div className="flex-1 h-px bg-[#EEEEEE]" />
-                </div>
-                <div className="space-y-1 max-h-[240px] overflow-y-auto">
-                  {tasksLoading ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="w-5 h-5 text-[#999999] animate-spin" />
-                    </div>
-                  ) : tasks.length > 0 ? (
-                    tasks.map((task) => (
-                      <button
-                        key={task.id}
-                        onClick={() => handleTaskSelect(task)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-[12px] text-left transition-all ${
-                          selectedTaskId === task.id
-                            ? 'bg-gradient-to-br from-[#ff3b3b] to-[#cc2f2f] text-white shadow-sm'
-                            : 'hover:bg-[#F7F7F7] text-[#111111]'
-                        }`}
-                      >
-                        <div className="flex-1">
-                          <p className={`text-[13px] font-['Manrope:SemiBold',sans-serif] ${
-                            selectedTaskId === task.id ? 'text-white' : 'text-[#111111]'
-                          }`}>
-                            {task.name}
-                          </p>
-                          <p className={`text-[10px] font-['Inter:Regular',sans-serif] mt-0.5 ${
-                            selectedTaskId === task.id ? 'text-white/80' : 'text-[#999999]'
-                          }`}>
-                            {task.project}
-                          </p>
-                        </div>
-                        {selectedTaskId === task.id && (
-                          <CheckCircle className="w-4 h-4 text-white flex-shrink-0 ml-2" />
-                        )}
-                      </button>
-                    ))
-                  ) : (
-                    <div className="p-3 text-center text-[#999999] text-xs">
-                      No assigned tasks found
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
         </div>
 
         {/* Timer Controls - Centered */}

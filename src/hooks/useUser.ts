@@ -49,6 +49,33 @@ const selectEmployee = (data: ApiResponse<UserDto>): ApiResponse<Employee> => ({
   result: data.result ? mapUserDtoToEmployee(data.result) : undefined as any
 });
 
+// Search partners dropdown
+export const useSearchPartners = () => {
+  return useQuery({
+    queryKey: ['users', 'partners', 'dropdown'],
+    queryFn: () => getPartners(""), // Using getPartners as searchPartners wasn't imported or didn't exist in previous view
+    staleTime: 5 * 60 * 1000,
+    select: (data) => data.result?.map(u => ({ label: u.name, value: u.id })) || []
+  });
+};
+
+export const useEmployeesDropdown = () => {
+  return useQuery({
+    queryKey: queryKeys.users.employees('dropdown'),
+    queryFn: async () => {
+       // We import searchEmployees dynamically or assume it's available. 
+       // Based on file read, searchEmployees IS in services/user.ts
+       const { searchEmployees } = await import('../services/user'); 
+       return searchEmployees();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    select: (data) => (data.result || []).map((item: any) => ({
+      id: item.value,
+      name: item.label
+    }))
+  });
+};
+
 export const useEmployee = (id: number) => {
   return useQuery({
     queryKey: queryKeys.users.detail(id),

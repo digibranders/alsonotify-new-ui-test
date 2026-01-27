@@ -57,6 +57,7 @@ export interface TaskDto {
   estimated_time?: number;
   time_spent?: number;
   execution_mode?: 'parallel' | 'sequential';
+  disabled?: boolean;
   
   // Relations/Nested objects often returned by different endpoints
   worklogs?: WorklogDto[];
@@ -78,6 +79,8 @@ export interface TaskDto {
     seconds_spent: number;
     active_worklog_start_time?: string | null;
     is_current_turn: boolean;
+    queue_order: number;
+    execution_mode: 'parallel' | 'sequential';
     user: {
       id: number;
       name: string;

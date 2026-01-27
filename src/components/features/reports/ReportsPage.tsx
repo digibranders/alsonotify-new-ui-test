@@ -1,8 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import {
-  Download,
-  Clock, CheckCircle2, AlertCircle, Loader2,
-  ChevronDown, ArrowUp, ArrowDown
+  Download, Clock, CheckCircle2, AlertCircle, Loader2, ArrowUp, ArrowDown
 } from 'lucide-react';
 import BrandLogo from '@/assets/images/logo.png';
 import { PageLayout } from '../../layout/PageLayout';
@@ -224,9 +222,12 @@ export function ReportsPage() {
   };
 
   // --- Queries ---
+  // All queries fetch upfront (no `enabled` flags) to prevent loading states on tab switch
+  // staleTime prevents re-fetches when switching tabs
+  // placeholderData keeps previous data visible while refetching (prevents flicker)
 
   // Requirements Query
-  const { data: requirementData, isLoading: isLoadingRequirements } = useQuery({
+  const { data: requirementData, isLoading: isLoadingRequirements, isPlaceholderData: isReqPlaceholder } = useQuery({
     queryKey: ['requirement-reports', filters, searchQuery, dateRange],
     queryFn: () => getRequirementReports({
       search: searchQuery,
@@ -238,12 +239,13 @@ export function ReportsPage() {
       start_date: dateRange && dateRange[0] ? dateRange[0].toISOString() : undefined,
       end_date: dateRange && dateRange[1] ? dateRange[1].toISOString() : undefined,
     }),
-    enabled: activeTab === 'requirement'
+    staleTime: 5 * 60 * 1000, // 5 minutes - prevents re-fetches on tab switch
+    placeholderData: (previousData) => previousData, // Keep previous data while fetching
   });
 
 
   // Tasks Query
-  const { data: taskData, isLoading: isLoadingTasks } = useQuery({
+  const { data: taskData, isLoading: isLoadingTasks, isPlaceholderData: isTaskPlaceholder } = useQuery({
     queryKey: ['task-reports', filters, searchQuery, dateRange],
     queryFn: () => getTaskReports({
       search: searchQuery,
@@ -253,11 +255,12 @@ export function ReportsPage() {
       start_date: dateRange && dateRange[0] ? dateRange[0].toISOString() : undefined,
       end_date: dateRange && dateRange[1] ? dateRange[1].toISOString() : undefined,
     }),
-    enabled: activeTab === 'task'
+    staleTime: 5 * 60 * 1000, // 5 minutes - prevents re-fetches on tab switch
+    placeholderData: (previousData) => previousData, // Keep previous data while fetching
   });
 
   // Employees Query
-  const { data: employeeData, isLoading: isLoadingEmployees } = useQuery({
+  const { data: employeeData, isLoading: isLoadingEmployees, isPlaceholderData: isEmpPlaceholder } = useQuery({
     queryKey: ['employee-reports', filters, searchQuery, dateRange],
     queryFn: () => getEmployeeReports({
       search: searchQuery,
@@ -266,7 +269,8 @@ export function ReportsPage() {
       start_date: dateRange && dateRange[0] ? dateRange[0].toISOString() : undefined,
       end_date: dateRange && dateRange[1] ? dateRange[1].toISOString() : undefined,
     }),
-    enabled: activeTab === 'member'
+    staleTime: 5 * 60 * 1000, // 5 minutes - prevents re-fetches on tab switch
+    placeholderData: (previousData) => previousData, // Keep previous data while fetching
   });
 
   console.log('Reports Debug:', { 

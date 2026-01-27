@@ -155,6 +155,10 @@ export interface Task {
      active_worklog_start_time?: string | null;
      isCurrentTurn: boolean;
      is_current_turn: boolean;
+     queueOrder: number;
+     queue_order: number;
+     executionMode: 'parallel' | 'sequential';
+     execution_mode: 'parallel' | 'sequential';
      user: {
        id: number;
        name: string;
@@ -170,6 +174,8 @@ export interface Task {
     seconds_spent: number;
     active_worklog_start_time?: string | null;
     is_current_turn: boolean;
+    queue_order: number;
+    execution_mode: 'parallel' | 'sequential';
     user: {
       id: number;
       name: string;

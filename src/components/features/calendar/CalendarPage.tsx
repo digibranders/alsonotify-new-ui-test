@@ -3,10 +3,10 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTabSync } from '@/hooks/useTabSync';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Video, X, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, MapPin, Video, X, Plus, LogOut } from 'lucide-react';
 import { Skeleton } from '../../ui/Skeleton';
 import { PageLayout } from '../../layout/PageLayout';
-import { Popover, Spin, Tag, Button, Modal, Input, Select, DatePicker, App, Avatar, Tooltip, Segmented, Radio } from 'antd';
+import { Popover, Spin, Tag, Button, Modal, Input, Select, DatePicker, App, Avatar, Tooltip, Segmented, Radio, Popconfirm } from 'antd';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -22,7 +22,7 @@ dayjs.extend(customParseFormat);
 import { useTasks } from '@/hooks/useTask';
 import { useMeetings } from '@/hooks/useMeeting';
 import { useLeaves, useApplyForLeave, useCompanyLeaves } from '@/hooks/useLeave';
-import { useTeamsConnectionStatus, useCalendarEvents } from '@/hooks/useCalendar';
+import { useTeamsConnectionStatus, useCalendarEvents, useDisconnectTeams } from '@/hooks/useCalendar';
 import { usePublicHolidays } from '@/hooks/useHoliday';
 import { MicrosoftUserOAuth, createCalendarEvent, CreateEventPayload, GraphEvent } from '@/services/calendar';
 import { useEmployees, useCurrentUserCompany, useUserDetails } from '@/hooks/useUser';
@@ -51,7 +51,13 @@ export function CalendarPage() {
   const router = useRouter();
   
   const [currentDate, setCurrentDate] = useState(dayjs());
-  const [activeView, setActiveView] = useState<'month' | 'week' | 'day'>('month');
+  // Use standardized tab sync hook for consistent URL handling
+  type CalendarView = 'month' | 'week' | 'day';
+  const [activeView, setActiveView] = useTabSync<CalendarView>({
+    defaultTab: 'month',
+    validTabs: ['month', 'week', 'day'],
+    paramName: 'view'
+  });
   const [selectedDate, setSelectedDate] = useState<string | null>(dayjs().format('YYYY-MM-DD'));
   const [connecting, setConnecting] = useState(false);
   const [showEventDialog, setShowEventDialog] = useState(false);
@@ -76,6 +82,7 @@ export function CalendarPage() {
   const { data: leaves, isLoading: isLoadingLeaves } = useLeaves();
   const { data: holidays, isLoading: isLoadingHolidays } = usePublicHolidays();
   const { data: teamsStatus, isLoading: isLoadingTeamsStatus, refetch: refetchTeamsStatus } = useTeamsConnectionStatus();
+  const { mutate: disconnectTeams, isPending: isDisconnecting } = useDisconnectTeams();
   const { data: leavesData } = useCompanyLeaves();
   const applyLeaveMutation = useApplyForLeave();
 
@@ -332,7 +339,32 @@ export function CalendarPage() {
           {!isLoadingTeamsStatus && (
             <>
               {isConnected ? (
-                <Tag color="green" className="m-0 font-['Manrope:SemiBold',sans-serif] text-[12px]">Connected to Teams</Tag>
+                <Popconfirm
+                  title="Disconnect Teams"
+                  description="Are you sure you want to disconnect your Microsoft Teams account?"
+                  onConfirm={() => {
+                    disconnectTeams(undefined, {
+                      onSuccess: () => {
+                        message.success("Disconnected from Microsoft Teams");
+                      },
+                      onError: () => {
+                        message.error("Failed to disconnect");
+                      }
+                    });
+                  }}
+                  okText="Yes"
+                  cancelText="No"
+                  okButtonProps={{ loading: isDisconnecting, danger: true }}
+                >
+                  <Button 
+                    type="default" 
+                    className="h-9 px-4 text-[13px] font-['Manrope:SemiBold',sans-serif] text-[#111111] border-[#EEEEEE] hover:text-red-500 hover:border-red-200 flex items-center gap-2 group transition-all"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-green-500 group-hover:bg-red-500 transition-colors" />
+                    Connected
+                    <LogOut className="w-3.5 h-3.5 ml-1 text-[#CCCCCC] group-hover:text-red-500 transition-colors" />
+                  </Button>
+                </Popconfirm>
               ) : (
                 <Button type="primary" icon={<Video className="w-4 h-4" />} loading={connecting} onClick={connectToTeams} className="h-9 px-4 text-[13px] font-['Manrope:SemiBold',sans-serif] bg-[#111111] hover:bg-[#000000]/90 border-none">Connect to Teams</Button>
               )}
@@ -344,8 +376,9 @@ export function CalendarPage() {
       <div className="flex flex-col h-full"> 
         <div className="flex-1 grid grid-cols-[1fr_280px] gap-6 overflow-hidden min-h-0">
           
+          {/* Using CSS visibility to prevent DOM unmounting and flickering */}
           <div className="overflow-hidden h-full flex flex-col">
-              {activeView === 'month' && (
+              <div style={{ display: activeView === 'month' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
                   <MonthView
                       currentDate={currentDate}
                       events={events}
@@ -353,24 +386,23 @@ export function CalendarPage() {
                       selectedDate={selectedDate}
                       onSelectDate={setSelectedDate}
                   />
-              )}
-              {activeView === 'week' && (
+              </div>
+              <div style={{ display: activeView === 'week' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
                   <WeekView 
                       currentDate={currentDate}
                       events={events}
                       isLoading={isLoading}
                       onTimeSlotClick={handleTimeSlotClick}
                   />
-              )}
-              {activeView === 'day' && (
+              </div>
+              <div style={{ display: activeView === 'day' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
                   <DayView
                       currentDate={currentDate}
                       events={events}
                       isLoading={isLoading}
                       onTimeSlotClick={handleTimeSlotClick}
                   />
-              )}
-
+              </div>
           </div>
 
           <div className="flex flex-col gap-4 overflow-y-auto scrollbar-hide">

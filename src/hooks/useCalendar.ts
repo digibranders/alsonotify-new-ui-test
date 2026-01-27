@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { getTeamsConnectionStatus, getCalendarEvents } from "../services/calendar";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getTeamsConnectionStatus, getCalendarEvents, disconnectMicrosoft } from "../services/calendar";
 import { queryKeys } from "../lib/queryKeys";
 import dayjs from "dayjs";
 
@@ -23,5 +23,23 @@ export const useCalendarEvents = (startISO?: string, endISO?: string) => {
     enabled: !!start && !!end,
     staleTime: 0, // Always consider data stale to allow refetching
     refetchOnWindowFocus: true, // Refetch when window regains focus
+  });
+};
+
+export const useDisconnectTeams = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => disconnectMicrosoft(),
+    onSuccess: () => {
+      // Invalidate connection status and all calendar keys to be safe
+      // We assume the root key is 'calendar' based on common patterns
+      // Even if specific keys are used, invalidating the connection status is key
+      queryClient.invalidateQueries({ queryKey: queryKeys.calendar.teamsConnection() });
+      // Invalidate all events queries
+      // Requires knowing the exact key structure, but commonly react-query matches partial keys
+      // If queryKeys.calendar.events returns ['calendar', 'events', ...], this works:
+      queryClient.invalidateQueries({ queryKey: ['calendar'] }); 
+    },
   });
 };

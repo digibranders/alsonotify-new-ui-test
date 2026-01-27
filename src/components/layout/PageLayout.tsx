@@ -39,6 +39,7 @@ interface PageLayoutProps {
   action?: ReactNode;
   sideContent?: ReactNode;
   titleExtra?: ReactNode;
+  className?: string;
 }
 
 export function PageLayout({
@@ -60,15 +61,16 @@ export function PageLayout({
   customTabRender,
   action,
   sideContent,
-  titleExtra
+  titleExtra,
+  className
 }: PageLayoutProps) {
   return (
-    <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] flex overflow-hidden">
-      <div className="flex-1 p-8 flex flex-col overflow-hidden">
+    <div className={`w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] flex overflow-hidden ${className || ''}`}>
+      <div className="flex-1 p-6 md:p-6 flex flex-col overflow-hidden">
         {/* Header Section */}
-        <div className={tabs || onSearchChange || showFilter || customFilters || secondaryActions || showExport || action ? "mb-6" : "mb-2"}>
+        <div className={(tabs && tabs.length > 0) || onSearchChange || showFilter || customFilters || secondaryActions || showExport || action ? "mb-5" : "mb-3"}>
           {/* Title Row */}
-          <div className={`flex items-center justify-between ${tabs || onSearchChange || showFilter || customFilters || secondaryActions || showExport || action ? "mb-4" : "mb-1"}`}>
+          <div className={`flex items-center justify-between ${(tabs && tabs.length > 0) || onSearchChange || showFilter || customFilters || secondaryActions || showExport || action ? "mb-4" : "mb-1"}`}>
             <div className="flex items-center gap-2">
               <h2 className="font-['Manrope:SemiBold',sans-serif] text-[20px] text-[#111111]">
                 {title}

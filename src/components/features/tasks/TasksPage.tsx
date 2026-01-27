@@ -9,16 +9,17 @@ import { DateRangeSelector } from '../../common/DateRangeSelector';
 import { useFloatingMenu } from '../../../context/FloatingMenuContext';
 import { TaskForm } from '../../modals/TaskForm';
 import { TaskRow } from './rows/TaskRow';
-import { useTasks, useCreateTask, useDeleteTask, useUpdateTask } from '@/hooks/useTask';
-import { useWorkspaces } from '@/hooks/useWorkspace';
-import { searchEmployees } from '@/services/user';
-import { getRoleFromUser } from '@/utils/roleUtils';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { Skeleton } from '../../ui/Skeleton';
 
-import { useUserDetails, useCurrentUserCompany } from '@/hooks/useUser';
-import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
+import { useTasks, useCreateTask, useDeleteTask, useUpdateTask, useUpdateTaskStatus } from '@/hooks/useTask';
+import { useWorkspaces, useWorkspaceRequirementsDropdown } from '@/hooks/useWorkspace';
+import { useEmployeesDropdown, useUserDetails, useCurrentUserCompany } from '@/hooks/useUser';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { getTaskStatusUI } from '@/lib/workflow';
+import { getRoleFromUser } from '@/utils/roleUtils';
+import { Skeleton } from '../../ui/Skeleton';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTabSync } from '@/hooks/useTabSync';
+
 import dayjs, { Dayjs } from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
@@ -50,7 +51,13 @@ export function TasksPage() {
   const updateTaskMutation = useUpdateTask();
   const { data: workspacesData } = useWorkspaces();
   
-  // Use new centralized hook
+  // Use new centralized hooks for dropdowns
+  const { data: usersDropdownData } = useEmployeesDropdown();
+  const { data: requirementsDropdownData } = useWorkspaceRequirementsDropdown();
+  
+  const usersDropdown = usersDropdownData || [];
+  const requirementsDropdown = requirementsDropdownData || [];
+
   const { user: currentUser } = useCurrentUser();
   
   const { data: userDetailsData } = useUserDetails(); // Keep for legacy/edge cases if needed, but prefer currentUser
@@ -80,22 +87,11 @@ export function TasksPage() {
     return null;
   }, [currentUser]);
 
-  // Read tab from URL params
-  const tabFromUrl = searchParams.get('tab');
-  const initialTab = (tabFromUrl === 'In_Progress' || tabFromUrl === 'Completed' || tabFromUrl === 'Delayed')
-    ? tabFromUrl as StatusTab
-    : 'all';
-  const [activeTab, setActiveTab] = useState<StatusTab>(initialTab);
-
-  // Update tab when URL changes
-  useEffect(() => {
-    const tabFromUrl = searchParams.get('tab');
-    if (tabFromUrl === 'In_Progress' || tabFromUrl === 'Completed' || tabFromUrl === 'Delayed') {
-      setActiveTab(tabFromUrl as StatusTab);
-    } else if (tabFromUrl === null) {
-      setActiveTab('all');
-    }
-  }, [searchParams]);
+  // Use standardized tab sync hook for consistent URL handling
+  const [activeTab, setActiveTab] = useTabSync<StatusTab>({
+    defaultTab: 'all',
+    validTabs: ['all', 'In_Progress', 'Completed', 'Delayed']
+  });
   const [searchQuery, setSearchQuery] = useState('');
 
   const [filters, setFilters] = useState<Record<string, string>>({
@@ -127,10 +123,6 @@ export function TasksPage() {
 
   // Modal State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  // Fetch users and requirements for form dropdowns
-  const [usersDropdown, setUsersDropdown] = useState<Array<{ id: number; name: string }>>([]);
-  const [requirementsDropdown, setRequirementsDropdown] = useState<Array<{ id: number; name: string }>>([]);
 
   // Set initial filter to current user when page loads (only once)
   // Skip auto-filter for Admin users - they should see all tasks by default
@@ -183,16 +175,9 @@ export function TasksPage() {
         params.requirement_id = selectedReq.id;
       }
     }
-    // Add tab filter (status-based) - only if status filter is not explicitly set
-
-    if (activeTab !== 'all' && filters.status === 'All') {
-      if (activeTab === 'Completed') {
-        params.status = 'Completed';
-      }
-      // Note: In_Progress tab shows all tasks except Assigned and Completed - filter client-side
-      // Note: Delayed tab doesn't use status filter - it's time-based (end_date < today)
-      // We'll filter client-side after fetching all tasks
-    } else if (filters.status !== 'All') {
+    // Tab-based filtering is done client-side to prevent re-fetches on tab switch
+    // Only apply status filter from explicit filter dropdown
+    if (filters.status !== 'All') {
       // Map UI status to backend status
       const statusMap: Record<string, string> = {
         'Assigned': 'Assigned',
@@ -217,7 +202,7 @@ export function TasksPage() {
 
 
     return toQueryParams(params);
-  }, [pagination.limit, pagination.skip, filters, searchQuery, dateRange, activeTab, workspacesData]);
+  }, [pagination.limit, pagination.skip, filters, searchQuery, dateRange, workspacesData]);
 
   // Build query params for STATS (without status filter to get global counts)
   const statsQueryParams = useMemo(() => {
@@ -263,47 +248,7 @@ export function TasksPage() {
   // Fetch stats separately (without status filter)
   const { data: statsData } = useTasks(statsQueryParams);
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await searchEmployees();
-        if (response.success) {
-          const transformed = (response.result || []).map((item: { label: string; value: number }) => ({
-            id: item.value,
-            name: item.label,
-          }));
-          setUsersDropdown(transformed);
-        }
-      } catch (error) {
-        // Failed to fetch users
-      }
-    };
-    fetchUsers();
-  }, []);
 
-  useEffect(() => {
-    const fetchRequirements = async () => {
-      try {
-        if (!workspacesData?.result?.workspaces) return;
-        const allRequirements: Array<{ id: number; name: string }> = [];
-
-        for (const workspace of workspacesData.result.workspaces) {
-          try {
-            const response = await getRequirementsDropdownByWorkspaceId(workspace.id);
-            if (response.success && response.result) {
-              allRequirements.push(...response.result);
-            }
-          } catch (error) {
-            // Failed to fetch requirements for workspace
-          }
-        }
-        setRequirementsDropdown(allRequirements);
-      } catch (error) {
-        // Failed to fetch requirements
-      }
-    };
-    fetchRequirements();
-  }, [workspacesData]);
 
   // Transform backend data to UI format
   // Backend statuses: 'Assigned', 'In_Progress', 'Completed', 'Delayed', 'Impediment', 'Review', 'Stuck'
@@ -707,10 +652,16 @@ export function TasksPage() {
         }
       }
 
+      // Tab-based filtering (all filtering done client-side to prevent re-fetches on tab switch)
       // In Progress tab: show all tasks except Assigned and Completed
       if (activeTab === 'In_Progress') {
         const isActiveTask = task.status !== 'Assigned' && task.status !== 'Completed';
         if (!isActiveTask) return false;
+      }
+
+      // Completed tab: show only completed tasks
+      if (activeTab === 'Completed') {
+        if (task.status !== 'Completed') return false;
       }
 
       // Delayed tab: show tasks where end_date has passed and task is NOT completed

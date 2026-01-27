@@ -111,6 +111,8 @@ const selectRequirements = (data: ApiResponse<RequirementDto[]>): ApiResponse<Re
   result: data.result ? data.result.map(mapRequirementDtoToDomain) : []
 });
 
+
+
 // Requirements
 export const useRequirements = (workspaceId: number) => {
   return useQuery({
@@ -118,6 +120,30 @@ export const useRequirements = (workspaceId: number) => {
     queryFn: () => getRequirementsByWorkspaceId(workspaceId),
     enabled: !!workspaceId,
     select: selectRequirements
+  });
+};
+
+export const useWorkspaceRequirementsDropdown = () => {
+  return useQuery({
+    queryKey: ['requirements', 'dropdown', 'all'],
+    queryFn: async () => {
+      // 1. Fetch all workspaces
+      const { getWorkspace, getRequirementsDropdownByWorkspaceId } = await import('../services/workspace');
+      const wsResponse = await getWorkspace(""); 
+      if (!wsResponse.result?.workspaces) return [];
+
+      // 2. Fetch requirements for each workspace in parallel
+      const workspaces = wsResponse.result.workspaces;
+      const reqPromises = workspaces.map(ws => 
+        getRequirementsDropdownByWorkspaceId(ws.id)
+          .then(res => res.result || [])
+          .catch(() => []) 
+      );
+      
+      const results = await Promise.all(reqPromises);
+      return results.flat();
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 };
 
