@@ -6,15 +6,22 @@ import { Skeleton } from '../../ui/Skeleton';
 import { useCompanyLeaves, useUpdateLeaveStatus, useApplyForLeave } from '../../../hooks/useLeave';
 import { LeaveType } from '../../../services/leave';
 import { LeaveRow, Leave } from './rows/LeaveRow';
+import { useTabSync } from '@/hooks/useTabSync';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
+type LeaveTab = 'all' | 'pending' | 'approved' | 'rejected';
+
 export function LeavesPage() {
   const { message } = App.useApp();
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  // Use standardized tab sync hook for consistent URL handling
+  const [activeTab, setActiveTab] = useTabSync<LeaveTab>({
+    defaultTab: 'all',
+    validTabs: ['all', 'pending', 'approved', 'rejected']
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({
     leaveType: 'All',
