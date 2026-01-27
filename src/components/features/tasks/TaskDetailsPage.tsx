@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTabSync } from '@/hooks/useTabSync';
 import {
   FileText, ListTodo, Calendar, Clock, CheckCircle2,
   Loader2, AlertCircle, Briefcase, FolderOpen,
@@ -30,7 +31,12 @@ export function TaskDetailsPage() {
   const task = taskData?.result;
   const timer = timerData?.result;
 
-  const [activeTab, setActiveTab] = useState<'details' | 'steps'>('details');
+  // Use standardized tab sync hook for consistent URL handling
+  type TaskDetailsTab = 'details' | 'steps';
+  const [activeTab, setActiveTab] = useTabSync<TaskDetailsTab>({
+    defaultTab: 'details',
+    validTabs: ['details', 'steps']
+  });
   const [selectedSteps, setSelectedSteps] = useState<string[]>([]);
   
   const { mutate: updateMemberStatus, isPending: isUpdatingStatus } = useUpdateMemberStatus();
@@ -211,11 +217,12 @@ export function TaskDetailsPage() {
         { id: 'steps', label: `Steps (${steps.length})` }
       ]}
       activeTab={activeTab}
-      onTabChange={(id) => setActiveTab(id as 'details' | 'steps')}
+      onTabChange={(id) => setActiveTab(id as TaskDetailsTab)}
       sideContent={<TaskChatPanel taskId={taskId} />}
     >
+      {/* Using CSS visibility to prevent DOM unmounting and flickering */}
       <div className="h-full overflow-y-auto p-0 bg-[#FAFAFA]">
-        {activeTab === 'details' && (
+        <div style={{ display: activeTab === 'details' ? 'block' : 'none' }}>
           <div className="space-y-8 p-8 max-w-5xl mx-auto">
             {/* Description Section */}
             <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
@@ -369,9 +376,9 @@ export function TaskDetailsPage() {
               </div>
             </div>
           </div>
-        )}
+        </div>
 
-        {activeTab === 'steps' && (
+        <div style={{ display: activeTab === 'steps' ? 'block' : 'none' }}>
           <div className="space-y-8 p-8 max-w-5xl mx-auto">
             <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
               <div className="flex items-center justify-between mb-8">
@@ -423,7 +430,7 @@ export function TaskDetailsPage() {
               </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
       <TaskActionPanel 
         task={task as any} 
