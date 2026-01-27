@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useTabSync } from '@/hooks/useTabSync';
 import { Plus, X, Pencil } from 'lucide-react';
 import { Button, Input, App, Modal, DatePicker } from "antd";
 import { useUpdateCompany, useCurrentUserCompany, useRoles, useRolePermissions, useUpsertRole, useUpdateRolePermissions, useUserDetails } from '@/hooks/useUser';
@@ -22,11 +23,11 @@ import { AccessManagementTab } from './tabs/AccessManagementTab';
 import { IntegrationsTab } from './tabs/IntegrationsTab';
 
 
+type SettingsTab = 'company' | 'leaves' | 'working-hours' | 'integrations' | 'notifications' | 'security' | 'access-management';
+
 export function SettingsPage() {
   const { message } = App.useApp();
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname();
   const { isIndividual } = useAccountType();
   
   // Redirect individual accounts to profile page (matching reference implementation)
@@ -37,22 +38,16 @@ export function SettingsPage() {
     }
   }, [isIndividual, router]);
   
-  const [activeTab, setActiveTab] = useState<'company' | 'leaves' | 'working-hours' | 'integrations' | 'notifications' | 'security' | 'access-management'>('company');
-
-  // Sync state with URL on mount and param change
-  useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam && ['company', 'leaves', 'working-hours', 'integrations', 'notifications', 'security', 'access-management'].includes(tabParam)) {
-      setActiveTab(tabParam as any);
-    }
-  }, [searchParams]);
+  // Use standardized tab sync hook for consistent URL handling
+  const [activeTab, setActiveTab] = useTabSync<SettingsTab>({
+    defaultTab: 'company',
+    validTabs: ['company', 'leaves', 'working-hours', 'integrations', 'notifications', 'security', 'access-management']
+  });
 
   const handleTabChange = useCallback((tab: string) => {
-    setActiveTab(tab as 'company' | 'leaves' | 'working-hours' | 'integrations' | 'notifications' | 'security' | 'access-management');
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('tab', tab);
-    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [searchParams, pathname, router]);
+    // useTabSync handles URL updates automatically
+    setActiveTab(tab as SettingsTab);
+  }, [setActiveTab]);
   const [isEditing, setIsEditing] = useState(false);
 
   // State for new tabs
@@ -526,11 +521,11 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {/* Content Area */}
+      {/* Content Area - Using CSS visibility to prevent DOM unmounting and flickering */}
       <div className="flex-1 overflow-y-auto pr-2 pb-10">
 
         {/* Company Details Tab */}
-        {activeTab === 'company' && (
+        <div style={{ display: activeTab === 'company' ? 'block' : 'none' }}>
           <CompanyDetailsTab
             isIndividual={isIndividual}
             isAdmin={isAdmin}
@@ -568,10 +563,10 @@ export function SettingsPage() {
             handleDeleteDocument={handleDeleteDocument}
             toggleDocumentRequired={toggleDocumentRequired}
           />
-        )}
+        </div>
 
         {/* Leaves Tab */}
-        {activeTab === 'leaves' && (
+        <div style={{ display: activeTab === 'leaves' ? 'block' : 'none' }}>
           <LeavesTab
             leaves={leaves}
             handleUpdateLeaveCount={handleUpdateLeaveCount}
@@ -582,10 +577,10 @@ export function SettingsPage() {
             handleEditHoliday={handleEditHoliday}
             handleDeleteHoliday={handleDeleteHoliday}
           />
-        )}
+        </div>
 
         {/* Working Hours Tab */}
-        {activeTab === 'working-hours' && (
+        <div style={{ display: activeTab === 'working-hours' ? 'block' : 'none' }}>
           <WorkingHoursTab
             workingDays={workingDays}
             toggleWorkingDay={toggleWorkingDay}
@@ -597,15 +592,15 @@ export function SettingsPage() {
             breakTime={breakTime}
             setBreakTime={setBreakTime}
           />
-        )}
+        </div>
 
-        {/* Integrations Tab Placeholder */}
-        {activeTab === 'integrations' && (
+        {/* Integrations Tab */}
+        <div style={{ display: activeTab === 'integrations' ? 'block' : 'none' }}>
           <IntegrationsTab />
-        )}
+        </div>
 
         {/* Access Management Tab */}
-        {activeTab === 'access-management' && (
+        <div style={{ display: activeTab === 'access-management' ? 'block' : 'none' }}>
           <AccessManagementTab
             canEditAccessManagement={canEditAccessManagement}
             rolesData={rolesData}
@@ -622,17 +617,15 @@ export function SettingsPage() {
             selectedPermissionIds={selectedPermissionIds}
             setSelectedPermissionIds={setSelectedPermissionIds}
           />
-        )}
-
-
+        </div>
 
         {/* Notifications Tab */}
-        {activeTab === 'notifications' && (
+        <div style={{ display: activeTab === 'notifications' ? 'block' : 'none' }}>
           <NotificationsTab notifications={notifications} setNotifications={setNotifications} />
-        )}
+        </div>
 
         {/* Security Tab */}
-        {activeTab === 'security' && (
+        <div style={{ display: activeTab === 'security' ? 'block' : 'none' }}>
           <SecurityTab
             isAdmin={isAdmin}
             canEditSecurity={canEditSecurity}
@@ -642,9 +635,7 @@ export function SettingsPage() {
             defaultEmployeePassword={defaultEmployeePassword}
             setDefaultEmployeePassword={setDefaultEmployeePassword}
           />
-        )}
-
-        {/* Data Tab */}
+        </div>
 
       </div>
 
