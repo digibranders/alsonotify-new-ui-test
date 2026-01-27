@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTabSync } from '@/hooks/useTabSync';
 import {
   ListTodo, BarChart2, Columns,
   Plus, RotateCcw,
@@ -61,7 +62,12 @@ export function RequirementDetailsPage() {
 
 
 
-  const [activeTab, setActiveTab] = useState<'details' | 'tasks' | 'gantt' | 'kanban' | 'pnl' | 'documents'>('details');
+  // Use standardized tab sync hook for consistent URL handling
+  type ReqDetailsTab = 'details' | 'tasks' | 'gantt' | 'kanban' | 'pnl' | 'documents';
+  const [activeTab, setActiveTab] = useTabSync<ReqDetailsTab>({
+    defaultTab: 'details',
+    validTabs: ['details', 'tasks', 'gantt', 'kanban', 'pnl', 'documents']
+  });
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [messageText, setMessageText] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -321,13 +327,13 @@ export function RequirementDetailsPage() {
            setActiveTab={setActiveTab}
         />
 
-        {/* Content Area */}
+        {/* Content Area - Using CSS visibility to prevent DOM unmounting and flickering */}
         <div className="flex-1 overflow-y-auto p-8 bg-[#FAFAFA]">
-           {activeTab === 'details' && (
+           <div style={{ display: activeTab === 'details' ? 'block' : 'none' }}>
               <RequirementInfoCard requirement={requirement} workspace={workspace} tasks={tasks} />
-           )}
+           </div>
 
-           {activeTab === 'tasks' && (
+           <div style={{ display: activeTab === 'tasks' ? 'block' : 'none' }}>
             <div className="max-w-5xl mx-auto space-y-8">
               {/* Tasks Section */}
               <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
@@ -487,28 +493,28 @@ export function RequirementDetailsPage() {
                 </div>
               )}
             </div>
-           )}
+           </div>
 
-           {activeTab === 'gantt' && (
+           <div style={{ display: activeTab === 'gantt' ? 'block' : 'none' }}>
              <GanttChartTab
                tasks={tasks}  
                revisions={revisions}
                ganttView={ganttView}
                setGanttView={setGanttView}
              />
-           )}
+           </div>
 
-           {activeTab === 'kanban' && (
+           <div style={{ display: activeTab === 'kanban' ? 'block' : 'none' }}>
              <KanbanBoardTab tasks={tasks} revisions={revisions} />
-           )}
+           </div>
 
-           {activeTab === 'pnl' && (
+           <div style={{ display: activeTab === 'pnl' ? 'block' : 'none' }}>
              <PnLTab requirement={requirement} tasks={tasks} />
-           )}
+           </div>
            
-           {activeTab === 'documents' && (
+           <div style={{ display: activeTab === 'documents' ? 'block' : 'none' }}>
              <DocumentsTab activityData={documentsActivityData} />
-           )}
+           </div>
         </div>
       </div>
 

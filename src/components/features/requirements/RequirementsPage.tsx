@@ -20,7 +20,8 @@ import { getRequirementsByWorkspaceId } from '@/services/workspace';
 import { fileService } from '@/services/file.service';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { format, isPast, isToday, differenceInDays } from 'date-fns';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useTabSync } from '@/hooks/useTabSync';
 import dayjs, { Dayjs } from 'dayjs';
 import Masonry, { ResponsiveMasonry } from "react-responsive-masonry";
 
@@ -380,23 +381,12 @@ export function RequirementsPage() {
 
   }, [allRequirements, workspaceMap, currentUser]);
 
-  // Read tab from URL params
-  const searchParams = useSearchParams();
-  const tabFromUrl = searchParams.get('tab');
-  const initialTab = (tabFromUrl === 'draft' || tabFromUrl === 'pending' || tabFromUrl === 'active' || tabFromUrl === 'completed' || tabFromUrl === 'delayed' || tabFromUrl === 'archived')
-    ? tabFromUrl
-    : 'active';
-  const [activeStatusTab, setActiveStatusTab] = useState<string>(initialTab);
-
-  // Update tab when URL changes
-  useEffect(() => {
-    const tabFromUrl = searchParams.get('tab');
-    if (tabFromUrl === 'draft' || tabFromUrl === 'pending' || tabFromUrl === 'active' || tabFromUrl === 'completed' || tabFromUrl === 'delayed' || tabFromUrl === 'archived') {
-      setActiveStatusTab(tabFromUrl);
-    } else if (tabFromUrl === null) {
-      setActiveStatusTab('active');
-    }
-  }, [searchParams]);
+  // Use standardized tab sync hook for consistent URL handling
+  type RequirementTab = 'draft' | 'pending' | 'active' | 'completed' | 'delayed' | 'archived';
+  const [activeStatusTab, setActiveStatusTab] = useTabSync<RequirementTab>({
+    defaultTab: 'active',
+    validTabs: ['draft', 'pending', 'active', 'completed', 'delayed', 'archived']
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedReqs, setSelectedReqs] = useState<number[]>([]);
 
@@ -1155,14 +1145,8 @@ export function RequirementsPage() {
       tabs={tabs}
       activeTab={activeStatusTab}
       onTabChange={(tabId) => {
-        setActiveStatusTab(tabId);
-        const params = new URLSearchParams(searchParams.toString());
-        if (tabId === 'active') {
-          params.delete('tab');
-        } else {
-          params.set('tab', tabId);
-        }
-        router.push(`?${params.toString()}`);
+        // useTabSync handles URL updates automatically
+        setActiveStatusTab(tabId as RequirementTab);
       }}
       titleExtra={
         <DateRangeSelector
