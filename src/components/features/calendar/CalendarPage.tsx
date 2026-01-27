@@ -51,7 +51,13 @@ export function CalendarPage() {
   const router = useRouter();
   
   const [currentDate, setCurrentDate] = useState(dayjs());
-  const [activeView, setActiveView] = useState<'month' | 'week' | 'day'>('month');
+  // Use standardized tab sync hook for consistent URL handling
+  type CalendarView = 'month' | 'week' | 'day';
+  const [activeView, setActiveView] = useTabSync<CalendarView>({
+    defaultTab: 'month',
+    validTabs: ['month', 'week', 'day'],
+    paramName: 'view'
+  });
   const [selectedDate, setSelectedDate] = useState<string | null>(dayjs().format('YYYY-MM-DD'));
   const [connecting, setConnecting] = useState(false);
   const [showEventDialog, setShowEventDialog] = useState(false);
@@ -370,8 +376,9 @@ export function CalendarPage() {
       <div className="flex flex-col h-full"> 
         <div className="flex-1 grid grid-cols-[1fr_280px] gap-6 overflow-hidden min-h-0">
           
+          {/* Using CSS visibility to prevent DOM unmounting and flickering */}
           <div className="overflow-hidden h-full flex flex-col">
-              {activeView === 'month' && (
+              <div style={{ display: activeView === 'month' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
                   <MonthView
                       currentDate={currentDate}
                       events={events}
@@ -379,24 +386,23 @@ export function CalendarPage() {
                       selectedDate={selectedDate}
                       onSelectDate={setSelectedDate}
                   />
-              )}
-              {activeView === 'week' && (
+              </div>
+              <div style={{ display: activeView === 'week' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
                   <WeekView 
                       currentDate={currentDate}
                       events={events}
                       isLoading={isLoading}
                       onTimeSlotClick={handleTimeSlotClick}
                   />
-              )}
-              {activeView === 'day' && (
+              </div>
+              <div style={{ display: activeView === 'day' ? 'flex' : 'none', flexDirection: 'column', height: '100%' }}>
                   <DayView
                       currentDate={currentDate}
                       events={events}
                       isLoading={isLoading}
                       onTimeSlotClick={handleTimeSlotClick}
                   />
-              )}
-
+              </div>
           </div>
 
           <div className="flex flex-col gap-4 overflow-y-auto scrollbar-hide">
