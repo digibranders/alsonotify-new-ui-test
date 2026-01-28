@@ -30,16 +30,15 @@ describe('TimerContext Verification', () => {
         success: true,
         message: 'Success',
         result: {
-            active_timer: {
-                id: 101, // worklogId
-                user_id: 1,
-                task_id: 5,
-                task_name: 'Test Task',
-                project_name: 'Test Project',
-                start_datetime: new Date(Date.now() - 60000).toISOString(), // Started 1 min ago
-                workspace_name: 'Test Workspace',
-                ...override
-            }
+            // Flat structure matching Backend Service logic
+            worklog_id: 101,
+            user_id: 1,
+            task_id: 5,
+            task_name: 'Test Task',
+            project_name: 'Test Project',
+            start_datetime: new Date(Date.now() - 60000).toISOString(),
+            workspace_name: 'Test Workspace',
+            ...override
         }
     });
 
@@ -79,7 +78,7 @@ describe('TimerContext Verification', () => {
         activeTimerSpy.mockResolvedValue({
             success: true,
             message: 'No timer',
-            result: { active_timer: null }
+            result: null
         });
 
         // 1. First "Null" Response (Debounce 1/2) - Should NOT stop yet
@@ -147,7 +146,7 @@ describe('TimerContext Verification', () => {
         activeTimerSpy.mockResolvedValue({
             success: true,
             message: 'No timer',
-            result: { active_timer: null }
+            result: null
         });
 
         const { result } = renderHook(() => useTimer(), { wrapper });
@@ -195,7 +194,7 @@ describe('TimerContext Verification', () => {
         activeTimerSpy.mockResolvedValueOnce({
             success: true,
             message: 'No timer',
-            result: { active_timer: null }
+            result: null
         });
 
         await act(async () => {
@@ -209,7 +208,7 @@ describe('TimerContext Verification', () => {
         activeTimerSpy.mockResolvedValueOnce({
             success: true,
             message: 'No timer',
-            result: { active_timer: null }
+            result: null
         });
 
         await act(async () => {
