@@ -240,7 +240,9 @@ export function TaskForm({
               let targetWorkspaceId = formData.workspace_id;
 
               if (selectedReq) {
-                targetWorkspaceId = String(selectedReq.workspace_id);
+                // If receiver_workspace_id is present (outsourced task where I am receiver), use it.
+                // Otherwise use workspace_id (in-house task or I am the owner).
+                targetWorkspaceId = String(selectedReq.receiver_workspace_id || selectedReq.workspace_id);
               }
 
               setFormData(prev => ({
