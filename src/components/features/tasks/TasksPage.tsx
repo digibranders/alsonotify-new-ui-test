@@ -516,7 +516,7 @@ export function TasksPage() {
     });
   };
 
-  const handleCreateTask = async (data: Partial<Task>) => {
+  const handleCreateTask = async (data: CreateTaskRequestDto) => {
     // `TaskForm` already validates all required fields, but we keep a
     // defensive check here to avoid sending an incomplete payload.
     if (!data?.start_date) {
@@ -528,7 +528,7 @@ export function TasksPage() {
       name: data.name || '',
       start_date: data.start_date,
       end_date: data.end_date,
-      assigned_to: typeof data.assigned_to === 'object' ? data.assigned_to.id : undefined,
+      assigned_to: data.assigned_to,
       workspace_id: data.workspace_id,
       requirement_id: data.requirement_id,
       description: data.description,
@@ -536,9 +536,12 @@ export function TasksPage() {
       estimated_time: data.estimated_time,
       priority: data.is_high_priority ? 'HIGH' : 'NORMAL', // Must match backend enum: HIGH | NORMAL
       status: 'Assigned', // Default status for new task
+      leader_id: data.leader_id,
+      assigned_members: data.assigned_members,
+      execution_mode: data.execution_mode
     };
 
-    createTaskMutation.mutate(payload, {
+    return createTaskMutation.mutateAsync(payload, {
       onSuccess: () => {
         message.success("Task created successfully!");
         setIsDialogOpen(false);
@@ -898,7 +901,7 @@ export function TasksPage() {
         }}
       >
         <TaskForm
-          key={editingTask ? `edit-${editingTask.id}` : `new-${Date.now()}`}
+          key={editingTask ? `edit-${editingTask.id}` : `new-task-form`}
           initialData={editingTask ? {
             name: editingTask.name,
             workspace_id: String(editingTask.workspace_id || ''),
@@ -935,6 +938,11 @@ export function TasksPage() {
             } else {
               // Create task
               handleCreateTask(data);
+              // Switch to 'All Tasks' tab to ensure visibility of the new 'Assigned' task
+              setActiveTab('all');
+              const params = new URLSearchParams(searchParams.toString());
+              params.delete('tab');
+              router.push(`?${params.toString()}`);
             }
           }}
           onCancel={() => {

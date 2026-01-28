@@ -8,6 +8,8 @@ import { FormLayout } from '@/components/common/FormLayout';
 const { TextArea } = Input;
 const { Option } = Select;
 
+import { CreateTaskRequestDto } from '@/types/dto/task.dto';
+
 // Backend fields based on TaskCreateSchema
 export interface TaskFormData {
   name: string;
@@ -26,7 +28,7 @@ export interface TaskFormData {
 
 interface TaskFormProps {
   initialData?: TaskFormData;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: CreateTaskRequestDto) => Promise<unknown> | void;
   onCancel: () => void;
   isEditing?: boolean;
   users?: Array<{ id: number; name: string; profile_pic?: string }>;
@@ -102,7 +104,7 @@ export function TaskForm({
     }
   }, [workspaces, formData.workspace_id]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Validate required fields
     const missingFields: string[] = [];
     if (!formData.name) missingFields.push('Task Title');
@@ -128,10 +130,10 @@ export function TaskForm({
     }
 
     // Transform form data to backend format
-    const backendData = {
+    const backendData: CreateTaskRequestDto = {
       name: formData.name,
       workspace_id: formData.workspace_id ? parseInt(formData.workspace_id) : undefined,
-      requirement_id: formData.requirement_id ? parseInt(formData.requirement_id) : null,
+      requirement_id: formData.requirement_id ? parseInt(formData.requirement_id) : undefined,
       leader_id: parseInt(currentUserId), // STRICTLY current user
       end_date: formData.end_date, // Map to end_date
       start_date: formData.start_date || new Date().toISOString(), // Preserve existing start_date or default to now
@@ -140,10 +142,17 @@ export function TaskForm({
       description: formData.description || "",
       execution_mode: formData.execution_mode,
       assigned_members: formData.assigned_members,
-      member_id: formData.assigned_members.length > 0 ? formData.assigned_members[0] : null // Legacy fallback
+      member_id: formData.assigned_members.length > 0 ? formData.assigned_members[0] : undefined // Legacy fallback
     };
 
-    onSubmit(backendData);
+    try {
+      await onSubmit(backendData);
+      handleReset();
+    } catch (error) {
+      // Error is handled by the parent component's query mutation onError, 
+      // but we catch here to prevent reset if submission fails.
+      console.error("Task submission failed", error);
+    }
   };
 
   const handleReset = () => {

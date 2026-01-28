@@ -7,6 +7,7 @@ import * as CookieService from '@/services/cookies';
 import * as AxiosConfig from '@/config/axios';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
+import { LoginResponseDTO } from '@/types/dto/auth.dto';
 
 // Mock next/navigation
 const mockPush = vi.fn();
@@ -77,7 +78,7 @@ describe('useAuth Hooks', () => {
         },
       };
       vi.spyOn(AuthService, 'doLogin').mockResolvedValue(mockResponse);
-      vi.spyOn(CookieService, 'setToken').mockImplementation(() => {});
+      vi.spyOn(CookieService, 'setToken').mockImplementation(() => { });
 
       const { result } = renderHook(() => useLogin(), {
         wrapper: createWrapper(queryClient),
@@ -105,7 +106,7 @@ describe('useAuth Hooks', () => {
         result: { token: 'test-token', user: { id: 1, name: 'Test', email: 'test@example.com' } },
       };
       vi.spyOn(AuthService, 'doLogin').mockResolvedValue(mockResponse);
-      vi.spyOn(CookieService, 'setToken').mockImplementation(() => {});
+      vi.spyOn(CookieService, 'setToken').mockImplementation(() => { });
 
       const { result } = renderHook(() => useLogin(), {
         wrapper: createWrapper(queryClient),
@@ -127,7 +128,7 @@ describe('useAuth Hooks', () => {
       vi.spyOn(AuthService, 'doLogin').mockResolvedValue({
         success: false,
         message: 'Invalid credentials',
-        result: null as any,
+        result: null as unknown as LoginResponseDTO,
       });
 
       const { result } = renderHook(() => useLogin(), {

@@ -79,7 +79,7 @@ export function RequirementsPage() {
   // userData.result is the Employee/User object directly
   // We need company_id for role detection
   const currentUser = userData?.result;
-  
+
   console.log('CurrentUser DEBUG:', {
     rawUserData: userData,
     resultUser: userData?.result?.user,
@@ -107,18 +107,18 @@ export function RequirementsPage() {
   const mapRequirementStatus = (status: string): 'in-progress' | 'completed' | 'delayed' | 'draft' => {
     // Backend sends Prisma enum values: Assigned, In_Progress, Waiting, Review, Completed, etc.
     // Map to frontend display statuses
-    
+
     switch (status) {
       case 'Completed':
         return 'completed';
-      
+
       case 'On_Hold':
       case 'Delayed':
         return 'delayed';
-      
+
       case 'draft':
         return 'draft';
-      
+
       // Active work states - show as in-progress
       case 'Assigned':
       case 'In_Progress':
@@ -129,14 +129,14 @@ export function RequirementsPage() {
       case 'Impediment':
       case 'Stuck':
         return 'in-progress';
-      
+
       case 'Rejected':
         return 'draft';
 
       case 'Archived':
       case 'archived':
         return 'archived' as any;
-      
+
       default:
         return 'in-progress';
     }
@@ -160,7 +160,7 @@ export function RequirementsPage() {
     if (collaborativeData?.result) {
       collaborativeData.result.forEach((collab: RequirementDto) => {
         if (collab.title === 'Test 2' || collab.id === 3) {
-            console.log('DEBUG COLLAB REQ:', { id: collab.id, title: collab.title, currency: collab.currency, raw: collab });
+          console.log('DEBUG COLLAB REQ:', { id: collab.id, title: collab.title, currency: collab.currency, raw: collab });
         }
         if (!combined.some(req => req.id === collab.id)) {
           combined.push(collab);
@@ -198,11 +198,11 @@ export function RequirementsPage() {
       const reqSenderCompanyId = req.sender_company_id ? Number(req.sender_company_id) : null;
       const isReceiver = myCompanyId !== null && reqReceiverCompanyId === myCompanyId;
       const isSender = myCompanyId !== null && reqSenderCompanyId === myCompanyId;
-      
-      const effectiveWorkspaceId = (isReceiver && req.receiver_workspace_id) 
-        ? req.receiver_workspace_id 
+
+      const effectiveWorkspaceId = (isReceiver && req.receiver_workspace_id)
+        ? req.receiver_workspace_id
         : req.workspace_id;
-        
+
       const workspace = workspaceMap.get(effectiveWorkspaceId || 0);
 
       // PLACEHOLDER DATA: Invoice status - not directly available in requirement API
@@ -214,7 +214,7 @@ export function RequirementsPage() {
       // Contact Person: Use the name from the joined user record (or placeholder if missing)
       const contactPersonName = req.contact_person?.name || null;
       const mockContactPerson = req.type === 'outsourced' && !contactPersonName
-        ? 'External Vendor' 
+        ? 'External Vendor'
         : contactPersonName;
 
       // PLACEHOLDER DATA: Pricing model - infer from available data if not explicitly set
@@ -241,59 +241,76 @@ export function RequirementsPage() {
       // A is Sender: sender_company_id matches current user's company
       // B is Receiver: receiver_company_id matches current user's company
 
-      
+
       // For outsourced requirements:
       // - Sender sees: OUTSOURCED badge, shows Receiver's name/company
       // - Receiver sees: INHOUSE badge, shows Sender's name/company
-      
+
       // Header Contact: Who is on the OTHER end of this requirement?
       // - If I'm Sender (A): Show Receiver's info (partner company name or contact person from receiver side)
       // - If I'm Receiver (B): Show Sender's info (the person who created/sent the requirement)
       let headerContact: string | undefined;
       let headerCompany: string | undefined;
-      
+
       if (req.type === 'outsourced') {
         if (isSender) {
-          // Sender (A) views: Show receiver info (B's company/contact)
-          // Sender (A) views: Show receiver info (B's contact and company)
+          // Sender (A) views: Show receiver info (B's company)
+          // Show contact person only if it's explicitly assigned and DIFFERENT from the creator (internal user)
+          // Otherwise fall back to partner company
           const contactName = req.contact_person?.name;
-          const creatorName = req.created_user_data?.name;
+          // Fix: backend returns created_user object, not created_user_data
+          const creatorName = (typeof req.created_user === 'object' ? req.created_user?.name : undefined) || req.created_user_data?.name;
           const receiverCompanyName = req.receiver_company?.name;
 
-          // Avoid showing creator as contact if it accidentally matches (outsourced should always have distinct receiver contact)
-          const isContactSameAsCreator = (!!contactName && !!creatorName && contactName === creatorName);
-          
-          if (isContactSameAsCreator) {
+          const isContactExternal = !!contactName && !!creatorName && contactName !== creatorName;
+
+          if (isContactExternal) {
+            headerContact = contactName;
+            headerCompany = receiverCompanyName || 'Partner';
+          } else {
             headerContact = receiverCompanyName || 'Partner';
             headerCompany = undefined;
-          } else {
-            headerContact = contactName || receiverCompanyName || 'Partner';
-            headerCompany = (receiverCompanyName && receiverCompanyName !== headerContact) ? receiverCompanyName : undefined;
           }
         } else if (isReceiver) {
           // Receiver (B) views: Show sender info (A's name and A's company)
-          headerContact = req.created_user_data?.name || req.sender_company?.name || 'Sender';
+          // Prioritize Sender Name (Created User) over Contact Person to ensure B sees A
+          headerContact = req.created_user_data?.name ||
+            (typeof req.created_user === 'object' ? req.created_user?.name : undefined) ||
+            req.contact_person?.name ||
+            req.sender_company?.name ||
+            'Sender';
+
           headerCompany = req.sender_company?.name;
-          
+
           if (headerContact === headerCompany) {
             headerCompany = undefined;
           }
         }
- else {
+        else {
           // Not directly involved (shouldn't happen for outsourced)
           headerContact = undefined;
           headerCompany = undefined;
         }
       } else {
-        // Inhouse requirements - show contact person or manager/leader
-        headerContact = req.contact_person?.name || req.manager?.name || req.leader?.name || clientName || undefined;
-        // For client workspaces, show the client company name as the company
-        // If no client (internal workspace), show the workspace owner company name
-        headerCompany = workspace?.client_company_name || workspace?.company_name || undefined;
-        
+        // Inhouse requirements
+        // Check if this is a mapped requirement (I am the receiver of an originally outsourced req that is now "inhouse" locally)
+        if (isReceiver && req.sender_company) {
+          // Treat like Receiver View: Show Sender Info
+          headerContact = req.created_user_data?.name ||
+            (typeof req.created_user === 'object' ? req.created_user?.name : undefined) ||
+            req.contact_person?.name ||
+            req.sender_company?.name ||
+            'Sender';
+          headerCompany = req.sender_company?.name;
+        } else {
+          // Standard Inhouse - show assigned internal people
+          headerContact = req.contact_person?.name || req.manager?.name || req.leader?.name || clientName || undefined;
+          headerCompany = workspace?.client_company_name || workspace?.company_name || undefined;
+        }
+
         // Don't show company if it's the same as contact
         if (headerContact && headerCompany && headerContact === headerCompany) {
-            headerCompany = undefined;
+          headerCompany = undefined;
         }
       }
 
@@ -342,6 +359,7 @@ export function RequirementsPage() {
         receiver_workspace_id: req.receiver_workspace_id,
         receiver_project_id: req.receiver_workspace_id, // Backward compat if needed, but safer to rely on new field
         negotiation_reason: req.negotiation_reason,
+        is_archived: req.is_archived,
       };
 
 
@@ -366,12 +384,12 @@ export function RequirementsPage() {
       });
 
       if (req.id === 3 || mappedReq.title === 'Test 2') {
-         console.log('DEBUG MAPPED REQ:', { 
-            id: mappedReq.id, 
-            currency: mappedReq.currency, 
-            rawCurrency: req.currency,
-            isReceiver: mappedReq.isReceiver 
-         });
+        console.log('DEBUG MAPPED REQ:', {
+          id: mappedReq.id,
+          currency: mappedReq.currency,
+          rawCurrency: req.currency,
+          isReceiver: mappedReq.isReceiver
+        });
       }
 
       return mappedReq;
@@ -463,16 +481,16 @@ export function RequirementsPage() {
       // estimated_hours: hours, // Not in DTO interface? Check DTO. 
       // DTO has budget, pricing_model etc. `estimated_hours` might not be in UpdateRequirementRequestDto.
       // Assuming it is for now or I will add it if needed.
-      status: 'Submitted' 
+      status: 'Submitted'
     };
-    
+
     // Check if estimated_hours is supported in DTO, if not we might need to cast or update DTO.
     // Use 'as any' only if key is missing in strictly typed DTO but backed supports it.
     // For now, let's assume strictness.
-    
+
     updateRequirementMutation.mutate({
-        ...payload,
-        estimated_hours: hours // Adding it here, assuming backend supports it even if DTO missing
+      ...payload,
+      estimated_hours: hours // Adding it here, assuming backend supports it even if DTO missing
     } as UpdateRequirementRequestDto, {
       onSuccess: () => {
         messageApi.success("Quotation submitted successfully");
@@ -497,8 +515,8 @@ export function RequirementsPage() {
     };
 
     updateRequirementMutation.mutate({
-        ...payload,
-        rejection_reason: reason
+      ...payload,
+      rejection_reason: reason
     } as UpdateRequirementRequestDto, {
       onSuccess: () => {
         messageApi.success("Requirement rejected");
@@ -525,19 +543,19 @@ export function RequirementsPage() {
 
         // Handle file uploads if any
         if (files && files.length > 0 && response?.result?.id) {
-           const reqId = response.result.id;
-           messageApi.loading({ content: 'Uploading documents...', key: 'req-upload' });
-           try {
-             // Upload files sequentially or parallel
-             const uploadPromises = files.map(file => 
-               fileService.uploadFile(file, 'REQUIREMENT', reqId)
-             );
-             await Promise.all(uploadPromises);
-             messageApi.success({ content: 'Documents uploaded successfully', key: 'req-upload' });
-           } catch (err) {
-             console.error(err);
-             messageApi.error({ content: 'Failed to upload documents', key: 'req-upload' });
-           }
+          const reqId = response.result.id;
+          messageApi.loading({ content: 'Uploading documents...', key: 'req-upload' });
+          try {
+            // Upload files sequentially or parallel
+            const uploadPromises = files.map(file =>
+              fileService.uploadFile(file, 'REQUIREMENT', reqId)
+            );
+            await Promise.all(uploadPromises);
+            messageApi.success({ content: 'Documents uploaded successfully', key: 'req-upload' });
+          } catch (err) {
+            console.error(err);
+            messageApi.error({ content: 'Failed to upload documents', key: 'req-upload' });
+          }
         }
       },
       onError: (error: unknown) => {
@@ -559,7 +577,7 @@ export function RequirementsPage() {
     // INTELLIGENT WORKFLOW: If editing a Rejected Outsourced Requirement, treat it as "Resending" -> Move to Waiting
     // This triggers the backend logic to clear old quotes and rejection reasons
     if (editingReq.type === 'outsourced' && editingReq.rawStatus === 'Rejected') {
-        updatePayload.status = 'Waiting';
+      updatePayload.status = 'Waiting';
     }
 
     updateRequirementMutation.mutate(updatePayload, {
@@ -599,7 +617,7 @@ export function RequirementsPage() {
     }
 
     // Priority
-    const priorityMatch = filters.priority === 'All' || 
+    const priorityMatch = filters.priority === 'All' ||
       (filters.priority === 'High Priority' && req.is_high_priority) ||
       (filters.priority === 'Normal Priority' && !req.is_high_priority);
 
@@ -644,7 +662,7 @@ export function RequirementsPage() {
     const baseContext = mapRequirementToContext(req, undefined, role);
     const tabContext: TabContext = {
       ...baseContext,
-      isArchived: req.rawStatus === 'Archived' || req.rawStatus === 'archived',
+      isArchived: !!req.is_archived,
       approvalStatus: req.approvalStatus,
     };
     const reqTab = getRequirementTab(status, type, role, tabContext);
@@ -856,7 +874,7 @@ export function RequirementsPage() {
         return updateRequirementMutation.mutateAsync({
           id,
           workspace_id: req.workspaceId,
-          status: 'Assigned', 
+          status: 'Assigned',
         } as any);
       });
       await Promise.all(updatePromises);
@@ -915,9 +933,9 @@ export function RequirementsPage() {
       messageApi.error("Requirement not found");
       return;
     }
-    
+
     setPendingReqId(id);
-    
+
     // Intelligent routing based on requirement type, status, and user role
     if (req.type === 'outsourced') {
       // RECEIVER ACTIONS (Company B - Vendor)
@@ -928,19 +946,19 @@ export function RequirementsPage() {
           setIsQuotationOpen(true);
           return;
         }
-        
+
         // Scenario 2: Quote accepted, need to map to internal workspace
         if (req.rawStatus === 'Assigned' && !req.receiver_workspace_id) {
           // Open workspace mapping modal
           setIsMappingOpen(true);
           return;
         }
-        
+
         // Scenario 3: Other receiver states - should not show accept button
         messageApi.info("No action required at this stage");
         return;
       }
-      
+
       // SENDER ACTIONS (Company A - Client)
       if (req.isSender) {
         // Scenario 1: Reviewing QUOTE submission (Status: Submitted)
@@ -963,7 +981,7 @@ export function RequirementsPage() {
         }
 
         // Scenario 2: Reviewing WORK submission (Status: Review)
-         if (req.rawStatus === 'Review') {
+        if (req.rawStatus === 'Review') {
           // Approve Work -> Completed
           // Might need feedback dialog later? For now direct approval.
           updateRequirementMutation.mutate({
@@ -981,13 +999,13 @@ export function RequirementsPage() {
           });
           return;
         }
-        
+
         // Scenario 3: Other sender states
         messageApi.info("No action required at this stage");
         return;
       }
     }
-    
+
     // Fallback for non-outsourced requirements or unclear states
     // For in-house requirements, approval might still use quotation dialog for budget confirmation
     setIsQuotationOpen(true);
@@ -1022,108 +1040,108 @@ export function RequirementsPage() {
     },
     { id: 'completed', label: 'Completed' },
     {
-       id: 'archived', label: 'Archive'
+      id: 'archived', label: 'Archive'
     }
   ];
 
 
-  
-  
+
+
   const floatingMenuContent = useMemo(() => {
     if (selectedReqs.length === 0) return null;
-    
+
     return (
-        <>
-            <div className="flex items-center gap-2 border-r border-white/20 pr-6">
-              <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
-                {selectedReqs.length}
-              </div>
-              <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
-            </div>
+      <>
+        <div className="flex items-center gap-2 border-r border-white/20 pr-6">
+          <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
+            {selectedReqs.length}
+          </div>
+          <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
+        </div>
 
-            <div className="flex items-center gap-2">
-              {/* Context Aware Actions */}
-              {activeStatusTab === 'draft' && (
-                <Tooltip title="Submit for Approval">
-                  <button onClick={handleBulkSubmit} className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#4CAF50]">
-                    <Play className="w-4 h-4" />
-                  </button>
-                </Tooltip>
-              )}
+        <div className="flex items-center gap-2">
+          {/* Context Aware Actions */}
+          {activeStatusTab === 'draft' && (
+            <Tooltip title="Submit for Approval">
+              <button onClick={handleBulkSubmit} className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#4CAF50]">
+                <Play className="w-4 h-4" />
+              </button>
+            </Tooltip>
+          )}
 
-              {activeStatusTab === 'pending' && (
-                <>
-                  <Tooltip title="Approve">
-                    <button onClick={handleBulkApprove} className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#4CAF50]">
-                      <CheckCircle className="w-4 h-4" />
-                    </button>
-                  </Tooltip>
-                  <Tooltip title="Reject">
-                    <button onClick={handleBulkReject} className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]">
-                      <XCircle className="w-4 h-4" />
-                    </button>
-                  </Tooltip>
-                </>
-              )}
-
-              {activeStatusTab === 'active' && (
-                <Tooltip title="Mark as Completed">
-                  <button onClick={handleBulkComplete} className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#4CAF50]">
-                    <CheckSquare className="w-4 h-4" />
-                  </button>
-                </Tooltip>
-              )}
-
-              {activeStatusTab === 'completed' && (
-                <Tooltip title="Reopen">
-                  <button onClick={handleBulkReopen} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                    <RotateCcw className="w-4 h-4" />
-                  </button>
-                </Tooltip>
-              )}
-
-              {/* Common Actions */}
-              <Popover
-                content={
-                  <div className="w-48">
-                    {employeesData?.result && employeesData.result.length > 0 ? (
-                      employeesData.result.map((emp: { user_id?: number; id?: number; name?: string }) => (
-                        <button
-                          key={String(emp.user_id || emp.id || '')}
-                          onClick={() => handleBulkAssign(emp)}
-                          className="w-full text-left px-3 py-2 text-[13px] hover:bg-gray-50 rounded"
-                        >
-                          {emp.name}
-                        </button>
-                      ))
-                    ) : (
-                      <div className="px-3 py-2 text-[13px] text-[#999999]">
-                        No employees available
-                      </div>
-                    )}
-                  </div>
-                }
-                trigger="click"
-                placement="top"
-              >
-                <Tooltip title="Assign To">
-                  <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                    <Users className="w-4 h-4" />
-                  </button>
-                </Tooltip>
-              </Popover>
-
-              <Tooltip title="Delete Requirements">
-                <button onClick={handleBulkDelete} className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]">
-                  <Trash2 className="w-4 h-4" />
+          {activeStatusTab === 'pending' && (
+            <>
+              <Tooltip title="Approve">
+                <button onClick={handleBulkApprove} className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#4CAF50]">
+                  <CheckCircle className="w-4 h-4" />
                 </button>
               </Tooltip>
+              <Tooltip title="Reject">
+                <button onClick={handleBulkReject} className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]">
+                  <XCircle className="w-4 h-4" />
+                </button>
+              </Tooltip>
+            </>
+          )}
 
-              <button onClick={() => setSelectedReqs([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
-                Cancel
+          {activeStatusTab === 'active' && (
+            <Tooltip title="Mark as Completed">
+              <button onClick={handleBulkComplete} className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#4CAF50]">
+                <CheckSquare className="w-4 h-4" />
               </button>
-            </div>
-        </>
+            </Tooltip>
+          )}
+
+          {activeStatusTab === 'completed' && (
+            <Tooltip title="Reopen">
+              <button onClick={handleBulkReopen} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            </Tooltip>
+          )}
+
+          {/* Common Actions */}
+          <Popover
+            content={
+              <div className="w-48">
+                {employeesData?.result && employeesData.result.length > 0 ? (
+                  employeesData.result.map((emp: { user_id?: number; id?: number; name?: string }) => (
+                    <button
+                      key={String(emp.user_id || emp.id || '')}
+                      onClick={() => handleBulkAssign(emp)}
+                      className="w-full text-left px-3 py-2 text-[13px] hover:bg-gray-50 rounded"
+                    >
+                      {emp.name}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-[13px] text-[#999999]">
+                    No employees available
+                  </div>
+                )}
+              </div>
+            }
+            trigger="click"
+            placement="top"
+          >
+            <Tooltip title="Assign To">
+              <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <Users className="w-4 h-4" />
+              </button>
+            </Tooltip>
+          </Popover>
+
+          <Tooltip title="Delete Requirements">
+            <button onClick={handleBulkDelete} className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </Tooltip>
+
+          <button onClick={() => setSelectedReqs([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
+            Cancel
+          </button>
+        </div>
+      </>
     );
   }, [selectedReqs, activeStatusTab, employeesData, handleBulkSubmit, handleBulkApprove, handleBulkReject, handleBulkComplete, handleBulkReopen, handleBulkAssign, handleBulkDelete]);
 
@@ -1172,37 +1190,37 @@ export function RequirementsPage() {
       <div className="flex-1 min-h-0 relative flex flex-col">
         <div className="flex-1 overflow-y-auto pb-6">
           <div className="flex items-center justify-between mb-4">
-             <div className="flex items-center gap-2">
-                <Checkbox 
-                  checked={sortedRequirements.length > 0 && selectedReqs.length === sortedRequirements.length}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedReqs(sortedRequirements.map(r => r.id));
-                    } else {
-                      setSelectedReqs([]);
-                    }
-                  }}
-                  className="red-checkbox"
-                />
-                <span className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif]">Select All</span>
-             </div>
-             
-             <div className="flex items-center gap-4">
-                <span className="text-[12px] text-[#999999] font-['Manrope:Medium',sans-serif]">Sort by:</span>
-                <Select 
-                  value={sortColumn || undefined} 
-                  placeholder="Sort by"
-                  onChange={handleSort} 
-                  className="w-40 h-8"
-                  variant="borderless"
-                >
-                  <Option value="title">Requirement</Option>
-                  <Option value="timeline">Timeline</Option>
-                  <Option value="budget">Budget</Option>
-                  <Option value="progress">Progress</Option>
-                  <Option value="status">Status</Option>
-                </Select>
-             </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                checked={sortedRequirements.length > 0 && selectedReqs.length === sortedRequirements.length}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedReqs(sortedRequirements.map(r => r.id));
+                  } else {
+                    setSelectedReqs([]);
+                  }
+                }}
+                className="red-checkbox"
+              />
+              <span className="text-[13px] text-[#666666] font-['Manrope:Medium',sans-serif]">Select All</span>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-[12px] text-[#999999] font-['Manrope:Medium',sans-serif]">Sort by:</span>
+              <Select
+                value={sortColumn || undefined}
+                placeholder="Sort by"
+                onChange={handleSort}
+                className="w-40 h-8"
+                variant="borderless"
+              >
+                <Option value="title">Requirement</Option>
+                <Option value="timeline">Timeline</Option>
+                <Option value="budget">Budget</Option>
+                <Option value="progress">Progress</Option>
+                <Option value="status">Status</Option>
+              </Select>
+            </div>
           </div>
 
           {isLoading ? (
@@ -1233,9 +1251,9 @@ export function RequirementsPage() {
           ) : (
             <div className="pb-6">
               <ResponsiveMasonry
-                  columnsCountBreakPoints={{350: 1, 750: 2, 1200: 3}}
+                columnsCountBreakPoints={{ 350: 1, 750: 2, 1200: 3 }}
               >
-                  <Masonry gutter="16px">
+                <Masonry gutter="16px">
                   {sortedRequirements.slice((currentPage - 1) * pageSize, (currentPage - 1) * pageSize + pageSize).map((requirement) => (
                     <RequirementCard
                       key={requirement.id}
@@ -1256,67 +1274,67 @@ export function RequirementsPage() {
                       onEdit={() => handleEditDraft({
                         ...requirement,
                       } as any)}
-                       onDelete={() => {
-                          const status = mapRequirementToStatus(requirement);
-                          const type = mapRequirementToType(requirement);
-                          const role = mapRequirementToRole(requirement);
-                          const baseContext = mapRequirementToContext(requirement, undefined, role);
-                          const tabContext: TabContext = {
-                            ...baseContext,
-                            isArchived: requirement.rawStatus === 'Archived' || requirement.rawStatus === 'archived',
-                            approvalStatus: requirement.approvalStatus,
-                          };
-                          const tab = getRequirementTab(status, type, role, tabContext);
-                          const isActive = tab === 'active' || tab === 'completed' || tab === 'delayed';
-                          const isArchived = tab === 'archived';
-                          const canDelete = tab === 'draft' || tab === 'pending' || isArchived;
-                          
-                          if (!canDelete) {
-                             // Archive Action
-                             modalApi.confirm({
-                               title: 'Archive Requirement',
-                               content: 'This requirement is active and cannot be permanently deleted. Do you want to archive it instead?',
-                               okText: 'Archive',
-                               cancelText: 'Cancel',
-                               okButtonProps: { className: 'bg-[#F59E0B] hover:bg-[#D97706]' },
-                               onOk: () => {
-                                 updateRequirementMutation.mutate({
-                                   id: requirement.id,
-                                   workspace_id: requirement.workspaceId || 0,
-                                   status: 'Archived'
-                                 } as any, {
-                                    onSuccess: () => messageApi.success("Requirement archived")
-                                 });
-                               },
-                             });
-                          } else {
-                             // Delete Action
-                             modalApi.confirm({
-                               title: 'Delete Requirement',
-                               content: 'Are you sure you want to permanently delete this requirement? This action cannot be undone.',
-                               okText: 'Delete',
-                               cancelText: 'Cancel',
-                               okButtonProps: { danger: true },
-                               onOk: () => {
-                                 deleteRequirement({ id: requirement.id, workspace_id: requirement.workspaceId });
-                               },
-                             });
-                          }
-                       }}
-                       deleteLabel={(activeStatusTab === 'active' || activeStatusTab === 'completed' || activeStatusTab === 'delayed') ? 'Archive' : 'Delete'}
-                       deleteIcon={(activeStatusTab === 'active' || activeStatusTab === 'completed' || activeStatusTab === 'delayed') ? <Archive className="w-3.5 h-3.5" /> : undefined}
-                       onDuplicate={() => {
-                          handleDuplicateRequirement({
-                            ...requirement,
-                            workspaceId: requirement.workspaceId,
+                      onDelete={() => {
+                        const status = mapRequirementToStatus(requirement);
+                        const type = mapRequirementToType(requirement);
+                        const role = mapRequirementToRole(requirement);
+                        const baseContext = mapRequirementToContext(requirement, undefined, role);
+                        const tabContext: TabContext = {
+                          ...baseContext,
+                          isArchived: !!requirement.is_archived,
+                          approvalStatus: requirement.approvalStatus,
+                        };
+                        const tab = getRequirementTab(status, type, role, tabContext);
+                        const isActive = tab === 'active' || tab === 'completed' || tab === 'delayed';
+                        const isArchived = tab === 'archived';
+                        const canDelete = tab === 'draft' || tab === 'pending' || isArchived;
+
+                        if (!canDelete) {
+                          // Archive Action
+                          modalApi.confirm({
+                            title: 'Archive Requirement',
+                            content: 'This requirement is active and cannot be permanently deleted. Do you want to archive it instead?',
+                            okText: 'Archive',
+                            cancelText: 'Cancel',
+                            okButtonProps: { className: 'bg-[#F59E0B] hover:bg-[#D97706]' },
+                            onOk: () => {
+                              updateRequirementMutation.mutate({
+                                id: requirement.id,
+                                workspace_id: requirement.workspaceId || 0,
+                                is_archived: true
+                              } as any, {
+                                onSuccess: () => messageApi.success("Requirement archived")
+                              });
+                            },
                           });
+                        } else {
+                          // Delete Action
+                          modalApi.confirm({
+                            title: 'Delete Requirement',
+                            content: 'Are you sure you want to permanently delete this requirement? This action cannot be undone.',
+                            okText: 'Delete',
+                            cancelText: 'Cancel',
+                            okButtonProps: { danger: true },
+                            onOk: () => {
+                              deleteRequirement({ id: requirement.id, workspace_id: requirement.workspaceId });
+                            },
+                          });
+                        }
+                      }}
+                      deleteLabel={(activeStatusTab === 'active' || activeStatusTab === 'completed' || activeStatusTab === 'delayed') ? 'Archive' : 'Delete'}
+                      deleteIcon={(activeStatusTab === 'active' || activeStatusTab === 'completed' || activeStatusTab === 'delayed') ? <Archive className="w-3.5 h-3.5" /> : undefined}
+                      onDuplicate={() => {
+                        handleDuplicateRequirement({
+                          ...requirement,
+                          workspaceId: requirement.workspaceId,
+                        });
                       }}
                       onNavigate={() =>
                         router.push(`/dashboard/workspace/${requirement.workspaceId}/requirements/${requirement.id}`)
                       }
                     />
                   ))}
-                  </Masonry>
+                </Masonry>
               </ResponsiveMasonry>
             </div>
           )}
@@ -1345,7 +1363,8 @@ export function RequirementsPage() {
       {/* Create/Edit Requirement Modal - Using existing modal structure */}
       <Modal
         open={isDialogOpen}
-        destroyOnClose
+        destroyOnClose={false}
+        destroyOnHidden={true}
         onCancel={() => {
           setIsDialogOpen(false);
           setEditingReq(undefined);
