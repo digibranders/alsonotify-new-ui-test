@@ -363,7 +363,7 @@ export function TaskForm({
             value={null}
             onChange={(val) => val && addMember(parseInt(val))}
             suffixIcon={null}
-            dropdownStyle={{ borderRadius: '8px', padding: '8px' }}
+            styles={{ popup: { root: { borderRadius: '8px', padding: '8px' } } }}
             showSearch={{
               filterOption: (input, option) => {
                 const label = String(option?.label ?? '').toLowerCase();
