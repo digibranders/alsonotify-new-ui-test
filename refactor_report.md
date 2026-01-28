@@ -762,3 +762,31 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
 
 - **Automated**: `npm run build` passed successfully.
 - **Manual**: Logic verified to ensure `initialData` changes trigger appropriate state updates or resets.
+
+## [2026-01-27] Requirements Polling Fix
+
+- **Objective**: enable automatic polling for collaborative requirements so users see new incoming requirements without refreshing.
+- **Changes**:
+    - **Frontend**: Added `refetchInterval: 5000` to `useCollaborativeRequirements` hook in `src/hooks/useWorkspace.ts`.
+- **Verification**:
+    - `bun run build` passed successfully.
+
+## [2026-01-27] TasksForm Refactor
+
+- **Objective**: Simplify task creation by inferring workspace from requirement and removing outsourced requirements.
+- **Changes**:
+    - **Backend**: Updated `getRequirementDropdownbyWorkspaceIdService` to include `type` and `workspace_id`.
+    - **Frontend TasksPage**: Filtered out `outsourced` requirements from the dropdown passed to `TaskForm`.
+    - **Frontend TaskForm**: Removed workspace selector and implemented logic to auto-set workspace based on selected requirement.
+- **Verification**:
+    - `bun run build` passed.
+
+## [2026-01-27] TasksForm UI Refinement
+
+- **Objective**: Improve alignment and visual balance of the Task creation modal.
+- **Changes**:
+    - **Grid Layout**: Adjusted "Requirement", "Due Date", "Priority", and "My Hours" to use a consistent `col-span-6` (50% width) layout for better alignment.
+    - **Visuals**: Enhanced the "Priority" checkbox with a border/background container to match input fields style.
+- **Verification**:
+    - `bun run build` passed.
+

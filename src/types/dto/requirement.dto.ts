@@ -98,3 +98,16 @@ export interface CreateRequirementRequestDto {
 export interface UpdateRequirementRequestDto extends Partial<CreateRequirementRequestDto> {
   id: number;
 }
+
+/**
+ * Requirement dropdown item returned by the /requirement/:workspace_id/requirement/dropdown endpoint
+ */
+export interface RequirementDropdownItem {
+  id: number;
+  name: string;
+  type: string;
+  status: string;
+  workspace_id: number;
+  receiver_workspace_id: number | null;
+  receiver_company_id: number | null;
+}

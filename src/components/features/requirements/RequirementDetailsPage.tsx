@@ -580,7 +580,7 @@ export function RequirementDetailsPage() {
                 description: data.description,
                 is_high_priority: data.is_high_priority,
                 estimated_time: data.estimated_time,
-                priority: data.is_high_priority ? 'High' : 'Normal',
+                priority: data.is_high_priority ? 'HIGH' : 'NORMAL',
                 status: 'Assigned',
                 assigned_members: data.assigned_members,
                 execution_mode: data.execution_mode
