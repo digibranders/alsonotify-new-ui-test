@@ -17,9 +17,7 @@ export interface WorklogDto {
   workspace_name?: string;
 }
 
-export interface ActiveTimerResponseDto {
-  active_timer: WorklogDto | null;
-}
+export type ActiveTimerResponseDto = WorklogDto | null;
 
 export interface RevisionResponseDto {
   success: boolean;
@@ -58,7 +56,9 @@ export interface TaskDto {
   time_spent?: number;
   execution_mode?: 'parallel' | 'sequential';
   disabled?: boolean;
-  
+  is_revision?: boolean;
+  revision_round?: number;
+
   // Relations/Nested objects often returned by different endpoints
   worklogs?: WorklogDto[];
   comments?: CommentDto[];
@@ -87,7 +87,7 @@ export interface TaskDto {
       profile_pic?: string;
     };
   }>;
-  
+
   // Additional fields observed in usage or responses
   client?: { name: string };
   client_name?: string;
@@ -97,7 +97,7 @@ export interface TaskDto {
   total_seconds_spent?: number;
   company?: { name: string };
   company_name?: string;
-  
+
   // Requirement relations
   requirement_relation?: { name: string; id: number };
   requirement_name?: string;

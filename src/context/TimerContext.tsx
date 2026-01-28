@@ -55,8 +55,8 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         try {
             const { result } = await getCurrentActiveTimer();
 
-            if (result && result.active_timer) {
-                const timer = result.active_timer;
+            if (result && (result as any).worklog_id) {
+                const timer = result as any; // Treat result as the timer object directly
                 const start = new Date(timer.start_datetime || "");
                 const now = new Date();
 
@@ -67,19 +67,16 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
                 const elapsed = Math.floor((now.getTime() - start.getTime()) / 1000);
 
                 setTimerState(prev => {
-                    console.log(`[${new Date().toISOString()}] Server returned Active Timer ID: ${timer.id}`);
+                    console.log(`[${new Date().toISOString()}] Server returned Active Timer ID: ${timer.worklog_id}`);
                     // Avoid unnecessary re-renders if state matches
-                    if (prev.worklogId === timer.id && prev.isRunning) {
-                        // Just correct the drift if significant? 
-                        // Actually, 'elapsedSeconds' drives the UI, so updating it constitutes a re-render anyway.
-                        // We also check if we need to switch tasks (Remote Switch)
+                    if (prev.worklogId === timer.worklog_id && prev.isRunning) {
                         return {
                             ...prev,
                             isRunning: true,
                             taskId: timer.task_id,
                             taskName: timer.task_name || null,
                             projectName: timer.project_name || timer.workspace_name || null,
-                            worklogId: timer.id,
+                            worklogId: timer.worklog_id,
                             startTime: start,
                             elapsedSeconds: elapsed,
                         };
@@ -90,7 +87,7 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
                         taskId: timer.task_id,
                         taskName: timer.task_name || null,
                         projectName: timer.project_name || timer.workspace_name || null,
-                        worklogId: timer.id,
+                        worklogId: timer.worklog_id,
                         startTime: start,
                         elapsedSeconds: elapsed,
                     };

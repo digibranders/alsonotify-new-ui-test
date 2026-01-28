@@ -12,7 +12,7 @@ import {
 import { useFloatingMenu } from '../../context/FloatingMenuContext';
 import { useTimer } from '../../context/TimerContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getAssignedTasks } from '../../services/task';
+import { getAssignedTasks, updateTaskStatusById } from '../../services/task';
 import { useUserDetails } from '../../hooks/useUser';
 import { App, Tooltip } from 'antd';
 import { queryKeys } from '../../lib/queryKeys';
@@ -123,7 +123,19 @@ export function FloatingTimerBar() {
     return (assignedTasksData?.result || [])
       .filter((t) => {
         const status = (t.status || '').toLowerCase();
+
+        // Debugging Filter
+        const shouldHideReview = status === 'review' && !t.is_revision;
+        // console.log(`Task ${t.name}: Status=${status}, IsRevision=${t.is_revision}, Hide=${shouldHideReview}`);
+
+        // Visibility Logic:
+        // 1. Hide if 'Completed'
         if (status.includes('completed')) return false;
+
+        // 2. Hide if 'Review', UNLESS it is a Revision task
+        //    (Revisions should stay visible until explicitly completed/approved again)
+        if (status === 'review' && !t.is_revision) return false;
+
         if (t.disabled) return false;
 
         // Check if user is a member OR a leader
@@ -233,10 +245,37 @@ export function FloatingTimerBar() {
       message.warning("No active timer to complete");
       return;
     }
+
+    // 1. Stop the Timer (Log time) - Optimistic update handled in TimerContext
     await stopTimer();
+
+    // 2. Update Status to 'Review' (Submit for Review)
+    if (currentDisplayTaskId) {
+      try {
+        await updateTaskStatusById(currentDisplayTaskId, 'Review');
+        message.success("Task worklog saved and submitted for Review!");
+
+        // CLEAR SELECTION immediately to reset UI status
+        setSelectedTaskId(null);
+      } catch (e: any) {
+        console.error("Failed to update status", e);
+        // Specialized error handling
+        if (e.message?.includes('Review to Review')) {
+          // Task is already in review, likely a race condition or double click
+          // Treat as success for UI purposes (hide it)
+          setSelectedTaskId(null);
+          message.info("Task is already in Review.");
+        } else {
+          message.warning("Worklog saved, but failed to update status.");
+        }
+      }
+    } else {
+      message.success("Worklog saved!");
+    }
+
+    // 3. Refresh Data
     queryClient.invalidateQueries({ queryKey: queryKeys.tasks.listRoot() });
     queryClient.invalidateQueries({ queryKey: queryKeys.tasks.assigned() });
-    message.success("Worklog saved!");
   };
 
   if (isHidden) return null;

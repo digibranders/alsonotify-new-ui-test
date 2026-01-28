@@ -4,6 +4,7 @@ import '../styles/globals.css';
 import { AntDesignProvider } from '../components/AntDesignProvider';
 import ReactQueryProvider from '../provider/ReactQueryClient';
 import BrowserPolyfills from '../components/BrowserPolyfills';
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -30,6 +31,7 @@ export default function RootLayout({
         <ReactQueryProvider>
           <AntDesignProvider>
             {children}
+            <SpeedInsights />
           </AntDesignProvider>
         </ReactQueryProvider>
       </body>
