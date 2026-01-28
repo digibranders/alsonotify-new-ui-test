@@ -2,7 +2,7 @@
 import axiosApi from "../config/axios";
 import { ApiResponse } from "../types/api";
 import { WorkspaceDto, ProjectCommentDto, CreateWorkspaceRequestDto, UpdateWorkspaceRequestDto } from "../types/dto/workspace.dto";
-import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDto } from "../types/dto/requirement.dto";
+import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDto, RequirementDropdownItem } from "../types/dto/requirement.dto";
 
 // Create workspace
 export const createWorkspace = async (params: CreateWorkspaceRequestDto): Promise<ApiResponse<WorkspaceDto>> => {
@@ -91,8 +91,8 @@ export const getCollaborativeRequirements = async (): Promise<ApiResponse<Requir
 };
 
 // Get requirements dropdown by workspace ID
-export const getRequirementsDropdownByWorkspaceId = async (workspaceId: number): Promise<ApiResponse<{ name: string; id: number; type: string; workspace_id: number; receiver_workspace_id: number; receiver_company_id: number }[]>> => {
-  const { data } = await axiosApi.get<ApiResponse<{ name: string; id: number; type: string; workspace_id: number; receiver_workspace_id: number; receiver_company_id: number }[]>>(`/requirement/${workspaceId}/requirement/dropdown`);
+export const getRequirementsDropdownByWorkspaceId = async (workspaceId: number): Promise<ApiResponse<RequirementDropdownItem[]>> => {
+  const { data } = await axiosApi.get<ApiResponse<RequirementDropdownItem[]>>(`/requirement/${workspaceId}/requirement/dropdown`);
   return data;
 };
 

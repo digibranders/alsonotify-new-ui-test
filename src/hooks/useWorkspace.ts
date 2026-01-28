@@ -14,7 +14,7 @@ import {
   reactivateWorkspace,
 } from "../services/workspace";
 import { WorkspaceDto, CreateWorkspaceRequestDto, UpdateWorkspaceRequestDto } from "../types/dto/workspace.dto";
-import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDto } from "../types/dto/requirement.dto";
+import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDto, RequirementDropdownItem } from "../types/dto/requirement.dto";
 import { getTasks } from "../services/task";
 export { usePartners } from "./useUser";
 
@@ -124,13 +124,13 @@ export const useRequirements = (workspaceId: number) => {
 };
 
 export const useWorkspaceRequirementsDropdown = (workspaceId?: number) => {
-  return useQuery({
+  return useQuery<RequirementDropdownItem[]>({
     queryKey: ['requirements', 'dropdown', 'all', workspaceId],
-    queryFn: async () => {
+    queryFn: async (): Promise<RequirementDropdownItem[]> => {
       // 1. Fetch all workspaces dynamically to avoid hook dependency race condition
       const { getWorkspace, getRequirementsDropdownByWorkspaceId } = await import('../services/workspace');
 
-      let workspaces = [];
+      let workspaces: { id: number }[] = [];
       if (workspaceId) {
         workspaces = [{ id: workspaceId }];
       } else {
@@ -141,23 +141,21 @@ export const useWorkspaceRequirementsDropdown = (workspaceId?: number) => {
       if (workspaces.length === 0) return [];
 
       // 2. Fetch requirements for each workspace using the DROPDOWN endpoint
-      // We verified this endpoint returns 'type' and uses safer 'findMany' logic
-      const reqPromises = workspaces.map((ws: { id: number }) =>
+      const reqPromises = workspaces.map((ws) =>
         getRequirementsDropdownByWorkspaceId(ws.id)
           .then(res => {
             if (res.success && res.result) {
-              // Return result directly as it matches expected shape (or is compatible enough)
-              // Dropping explicit mapping if format matches, to reduce risk of typos unless necessary.
-              // Using explicit return res.result which is array of { id, name, type, ... }
               return res.result;
             }
-            return [];
+            return [] as RequirementDropdownItem[];
           })
-          .catch(() => [])
+          .catch(() => [] as RequirementDropdownItem[])
       );
 
       const results = await Promise.all(reqPromises);
-      return results.flat();
+      const allRequirements: RequirementDropdownItem[] = results.flat();
+      
+      return allRequirements;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

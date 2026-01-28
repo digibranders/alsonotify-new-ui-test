@@ -34,7 +34,8 @@ import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead 
 import { useWorkspaces } from '@/hooks/useWorkspace';
 import { useEmployees } from '@/hooks/useUser';
 import { searchEmployees } from '@/services/user';
-import { getRequirementsDropdownByWorkspaceId, getRequirementsByWorkspaceId } from '@/services/workspace';
+import { getRequirementsByWorkspaceId } from '@/services/workspace';
+import { RequirementDropdownItem } from '@/types/dto/requirement.dto';
 import { useCreateTask } from '@/hooks/useTask';
 import { useCreateRequirement } from '@/hooks/useWorkspace';
 import { useCreateNote } from '@/hooks/useNotes';
@@ -88,7 +89,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
 
   const { data: employeesData } = useEmployees();
   const [usersDropdown, setUsersDropdown] = useState<Array<{ id: number; name: string }>>([]);
-  const [requirementsDropdown, setRequirementsDropdown] = useState<Array<{ id: number; name: string; type?: string; workspace_id?: number }>>([]);
+  const [requirementsDropdown, setRequirementsDropdown] = useState<RequirementDropdownItem[]>([]);
 
   // Dialogs state
   // Mutations
@@ -174,39 +175,39 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
     const fetchRequirements = async () => {
       try {
         if (!workspacesData?.result?.workspaces) return;
-        const allRequirements: Array<{ id: number; name: string; type?: string; workspace_id?: number }> = [];
-
-        // Import the service dynamically or ensure it is imported at top
-        // But here we rely on existing import. We need to change the import at top if it's different.
-        // Checking imports: import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
-        // We need getRequirementsByWorkspaceId.
-
-        // Wait, I need to add the import first.
-        // Let's assume I will do that in a separate edit or verify imports.
-        // Actually, let's look at the file content again.
-        // Lines 37: import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
-        // I need to change that import too.
+        const allRequirements: RequirementDropdownItem[] = [];
 
         for (const workspace of workspacesData.result.workspaces) {
           try {
-            // Use full fetch to ensure we get 'type' even if backend dropdown endpoint isn't updated
+            // Use full fetch to ensure we get 'type' and 'status'
             const response = await getRequirementsByWorkspaceId(workspace.id);
             if (response.success && response.result) {
-              // Map Result to expected shape if needed, but the Result is RequirementDto which has id, name, type.
-              const mapped = response.result.map((r: any) => ({
+              // Map RequirementDto to RequirementDropdownItem
+              const mapped: RequirementDropdownItem[] = response.result.map((r) => ({
                 id: r.id,
-                name: r.name,
-                type: r.type,
-                workspace_id: r.workspace_id
+                name: r.name || r.title || '',
+                type: r.type || 'inhouse',
+                status: r.status || 'Assigned',
+                workspace_id: r.workspace_id,
+                receiver_workspace_id: r.receiver_workspace_id ?? null,
+                receiver_company_id: r.receiver_company_id ?? null
               }));
               allRequirements.push(...mapped);
             }
-          } catch (error) {
-            // Failed to fetch requirements for workspace
+          } catch {
+            // Failed to fetch requirements for workspace - continue with others
           }
         }
-        setRequirementsDropdown(allRequirements);
-      } catch (error) {
+        
+        // Filter: Only include active requirements
+        // The getRequirementsByWorkspaceId returns ALL requirements, so we filter by status
+        const activeStatuses = ['Assigned', 'In_Progress', 'Review', 'Revision', 'On_Hold', 'Impediment', 'Stuck'];
+        const filteredRequirements = allRequirements.filter(req => {
+          return activeStatuses.includes(req.status);
+        });
+        
+        setRequirementsDropdown(filteredRequirements);
+      } catch {
         message.error('Failed to fetch requirements');
       }
     };
@@ -570,7 +571,13 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
           }}
           onCancel={() => setShowTaskDialog(false)}
           users={usersDropdown}
-          requirements={requirementsDropdown.filter(req => req.type !== 'outsourced')}
+          requirements={(() => {
+            // requirementsDropdown is already filtered by status in useEffect
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Topbar.tsx:TaskForm-requirements-prop',message:'Requirements passed to TaskForm in Topbar (status filtered)',data:{count:requirementsDropdown.length,requirements:requirementsDropdown.map((r)=>({id:r.id,name:r.name,type:r.type,status:r.status}))},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'FIX'})}).catch(()=>{});
+            // #endregion
+            return requirementsDropdown;
+          })()}
           workspaces={workspacesData?.result?.workspaces?.map((p: { id: number; name: string }) => ({ id: p.id, name: p.name })) || []}
         />
       </Modal>

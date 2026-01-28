@@ -92,6 +92,16 @@ export function TaskForm({
     }
   }, [initialData, currentUserId]);
 
+  // Auto-select first workspace if no workspace is set and workspaces are available
+  useEffect(() => {
+    if (!formData.workspace_id && workspaces.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        workspace_id: String(workspaces[0].id)
+      }));
+    }
+  }, [workspaces, formData.workspace_id]);
+
   const handleSubmit = () => {
     // Validate required fields
     const missingFields: string[] = [];

@@ -534,7 +534,7 @@ export function TasksPage() {
       description: data.description,
       is_high_priority: data.is_high_priority,
       estimated_time: data.estimated_time,
-      priority: data.is_high_priority ? 'High' : 'Normal', // Mapping priority based on flag
+      priority: data.is_high_priority ? 'HIGH' : 'NORMAL', // Must match backend enum: HIGH | NORMAL
       status: 'Assigned', // Default status for new task
     };
 
@@ -942,8 +942,8 @@ export function TasksPage() {
             setEditingTask(null);
           }}
           users={usersDropdown}
-          requirements={requirementsDropdown.filter(req => req.type !== 'outsourced')}
-          workspaces={workspacesData?.result?.workspaces?.map((p: any) => ({
+          requirements={requirementsDropdown}
+          workspaces={workspacesData?.result?.workspaces?.map((p) => ({
             id: p.id,
             name: p.name,
           })) || []}
