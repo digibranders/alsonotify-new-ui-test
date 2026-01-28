@@ -9,10 +9,10 @@ import {
   Alert24Filled,
   Add24Filled
 } from '@fluentui/react-icons';
-import { 
-  UserCog, 
-  Settings, 
-  LogOut, 
+import {
+  UserCog,
+  Settings,
+  LogOut,
   MessageCircle,
   ScrollText,
   Briefcase,
@@ -34,7 +34,8 @@ import { useNotifications, useMarkAllNotificationsRead, useMarkNotificationRead 
 import { useWorkspaces } from '@/hooks/useWorkspace';
 import { useEmployees } from '@/hooks/useUser';
 import { searchEmployees } from '@/services/user';
-import { getRequirementsDropdownByWorkspaceId } from '@/services/workspace';
+import { getRequirementsByWorkspaceId } from '@/services/workspace';
+import { RequirementDropdownItem } from '@/types/dto/requirement.dto';
 import { useCreateTask } from '@/hooks/useTask';
 import { useCreateRequirement } from '@/hooks/useWorkspace';
 import { useCreateNote } from '@/hooks/useNotes';
@@ -88,7 +89,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
 
   const { data: employeesData } = useEmployees();
   const [usersDropdown, setUsersDropdown] = useState<Array<{ id: number; name: string }>>([]);
-  const [requirementsDropdown, setRequirementsDropdown] = useState<Array<{ id: number; name: string }>>([]);
+  const [requirementsDropdown, setRequirementsDropdown] = useState<RequirementDropdownItem[]>([]);
 
   // Dialogs state
   // Mutations
@@ -174,20 +175,39 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
     const fetchRequirements = async () => {
       try {
         if (!workspacesData?.result?.workspaces) return;
-        const allRequirements: Array<{ id: number; name: string }> = [];
+        const allRequirements: RequirementDropdownItem[] = [];
 
         for (const workspace of workspacesData.result.workspaces) {
           try {
-            const response = await getRequirementsDropdownByWorkspaceId(workspace.id);
+            // Use full fetch to ensure we get 'type' and 'status'
+            const response = await getRequirementsByWorkspaceId(workspace.id);
             if (response.success && response.result) {
-              allRequirements.push(...response.result);
+              // Map RequirementDto to RequirementDropdownItem
+              const mapped: RequirementDropdownItem[] = response.result.map((r) => ({
+                id: r.id,
+                name: r.name || r.title || '',
+                type: r.type || 'inhouse',
+                status: r.status || 'Assigned',
+                workspace_id: r.workspace_id,
+                receiver_workspace_id: r.receiver_workspace_id ?? null,
+                receiver_company_id: r.receiver_company_id ?? null
+              }));
+              allRequirements.push(...mapped);
             }
-          } catch (error) {
-            // Failed to fetch requirements for workspace
+          } catch {
+            // Failed to fetch requirements for workspace - continue with others
           }
         }
-        setRequirementsDropdown(allRequirements);
-      } catch (error) {
+        
+        // Filter: Only include active requirements
+        // The getRequirementsByWorkspaceId returns ALL requirements, so we filter by status
+        const activeStatuses = ['Assigned', 'In_Progress', 'Review', 'Revision', 'On_Hold', 'Impediment', 'Stuck'];
+        const filteredRequirements = allRequirements.filter(req => {
+          return activeStatuses.includes(req.status);
+        });
+        
+        setRequirementsDropdown(filteredRequirements);
+      } catch {
         message.error('Failed to fetch requirements');
       }
     };
@@ -242,19 +262,19 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
     }
 
     const requirementPayload: CreateRequirementRequestDto = {
-        workspace_id: Number(data.workspace || data.workspace_id),
-        project_id: Number(data.workspace || data.workspace_id), // Backward compatibility
-        name: data.title as string,
-        description: (data.description || '') as string,
-        start_date: new Date().toISOString(),
-        end_date: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
-        status: 'Assigned',
-        is_high_priority: data.priority === 'HIGH' || Boolean(data.is_high_priority) || false,
-        type: data.type as string | undefined,
-        contact_person: data.contactPerson as string | undefined,
-        contact_person_id: data.contact_person_id as number | undefined,
-        receiver_company_id: data.receiver_company_id as number | undefined,
-        budget: Number(data.budget) || 0,
+      workspace_id: Number(data.workspace || data.workspace_id),
+      project_id: Number(data.workspace || data.workspace_id), // Backward compatibility
+      name: data.title as string,
+      description: (data.description || '') as string,
+      start_date: new Date().toISOString(),
+      end_date: data.dueDate ? new Date(data.dueDate).toISOString() : undefined,
+      status: 'Assigned',
+      is_high_priority: data.priority === 'HIGH' || Boolean(data.is_high_priority) || false,
+      type: data.type as string | undefined,
+      contact_person: data.contactPerson as string | undefined,
+      contact_person_id: data.contact_person_id as number | undefined,
+      receiver_company_id: data.receiver_company_id as number | undefined,
+      budget: Number(data.budget) || 0,
     };
 
     createRequirementMutation.mutate(
@@ -348,7 +368,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
     const userData = userDetailsData?.result || {};
     return getRoleFromUser(userData) === 'Admin';
   }, [userDetailsData]);
-  
+
   const isDeveloper = useMemo(() => {
     const userData = userDetailsData?.result || {};
     return isSuperAdmin(userData);
@@ -447,11 +467,11 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
               className="w-9 h-9 rounded-full bg-[#F7F7F7] hover:bg-[#EEEEEE] flex items-center justify-center transition-colors cursor-pointer"
               title="Give Feedback"
             >
-              <svg 
-                className="w-5 h-5 text-[#666666]" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor" 
+              <svg
+                className="w-5 h-5 text-[#666666]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
                 strokeWidth={2}
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -551,7 +571,13 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
           }}
           onCancel={() => setShowTaskDialog(false)}
           users={usersDropdown}
-          requirements={requirementsDropdown}
+          requirements={(() => {
+            // requirementsDropdown is already filtered by status in useEffect
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Topbar.tsx:TaskForm-requirements-prop',message:'Requirements passed to TaskForm in Topbar (status filtered)',data:{count:requirementsDropdown.length,requirements:requirementsDropdown.map((r)=>({id:r.id,name:r.name,type:r.type,status:r.status}))},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'FIX'})}).catch(()=>{});
+            // #endregion
+            return requirementsDropdown;
+          })()}
           workspaces={workspacesData?.result?.workspaces?.map((p: { id: number; name: string }) => ({ id: p.id, name: p.name })) || []}
         />
       </Modal>
@@ -609,9 +635,9 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         availableLeaveTypes={['Sick Leave', 'Casual Leave', 'Vacation']} // We can fetch this if needed
       />
 
-      <AIAssistantDrawer 
-        open={aiDrawerOpen} 
-        onClose={() => setAiDrawerOpen(false)} 
+      <AIAssistantDrawer
+        open={aiDrawerOpen}
+        onClose={() => setAiDrawerOpen(false)}
       />
       <style jsx global>{`
         /* Gray background for all Select dropdowns (default) */

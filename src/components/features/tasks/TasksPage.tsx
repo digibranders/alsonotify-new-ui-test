@@ -37,7 +37,7 @@ import { toQueryParams } from '@/utils/queryParams';
 
 // Local alias if needed to avoid massive rename, or just use Task
 // transforming UITask -> Task in the code
-type UITask = Task; 
+type UITask = Task;
 type ITaskStatus = TaskStatus;
 
 type StatusTab = 'all' | 'In_Progress' | 'Completed' | 'Delayed';
@@ -50,16 +50,16 @@ export function TasksPage() {
   const deleteTaskMutation = useDeleteTask();
   const updateTaskMutation = useUpdateTask();
   const { data: workspacesData } = useWorkspaces();
-  
+
   // Use new centralized hooks for dropdowns
   const { data: usersDropdownData } = useEmployeesDropdown();
   const { data: requirementsDropdownData } = useWorkspaceRequirementsDropdown();
-  
+
   const usersDropdown = usersDropdownData || [];
   const requirementsDropdown = requirementsDropdownData || [];
 
   const { user: currentUser } = useCurrentUser();
-  
+
   const { data: userDetailsData } = useUserDetails(); // Keep for legacy/edge cases if needed, but prefer currentUser
   const { data: companyData } = useCurrentUserCompany();
 
@@ -71,7 +71,7 @@ export function TasksPage() {
     }
     // Fallback to centralized user hook
     if (currentUser?.company?.name) {
-        return currentUser.company.name;
+      return currentUser.company.name;
     }
     return null;
   }, [companyData, currentUser]);
@@ -79,10 +79,10 @@ export function TasksPage() {
   // Get current user name
   const currentUserName = useMemo(() => {
     if (currentUser?.name) {
-        return currentUser.name;
+      return currentUser.name;
     }
     if (currentUser?.user_profile?.first_name) {
-        return currentUser.user_profile.first_name;
+      return currentUser.user_profile.first_name;
     }
     return null;
   }, [currentUser]);
@@ -354,7 +354,7 @@ export function TasksPage() {
         t.client ||
         t.client_company_name ||
         null;
-        
+
       if (clientCompanyName === 'Unknown') clientCompanyName = null;
 
       // For in-house tasks, get company name from task's company relation, project's company, or current user's company
@@ -364,7 +364,7 @@ export function TasksPage() {
         // t.task_project?.company_name || // removed as not in DTO
         currentUserCompanyName ||
         null;
-      
+
       if (inHouseCompanyName === 'Unknown') inHouseCompanyName = null;
 
       // If there's a client company, it's client work; otherwise show in-house company name
@@ -534,7 +534,7 @@ export function TasksPage() {
       description: data.description,
       is_high_priority: data.is_high_priority,
       estimated_time: data.estimated_time,
-      priority: data.is_high_priority ? 'High' : 'Normal', // Mapping priority based on flag
+      priority: data.is_high_priority ? 'HIGH' : 'NORMAL', // Must match backend enum: HIGH | NORMAL
       status: 'Assigned', // Default status for new task
     };
 
@@ -617,14 +617,14 @@ export function TasksPage() {
       message.success(`${selectedTasks.length} tasks marked as completed`);
       setSelectedTasks([]);
     } catch (error) {
-       message.error('Failed to complete some tasks');
+      message.error('Failed to complete some tasks');
     }
   };
 
   // Get total count from API response
   const totalTasks = useMemo(() => {
     const firstTask = tasksData?.result?.[0] as TaskDto | undefined;
-    
+
     return firstTask?.total_count ?? tasks.length ?? 0;
   }, [tasksData, tasks.length]);
 
@@ -732,7 +732,7 @@ export function TasksPage() {
   // Use statsData (global counts) instead of tasksData (filtered)
   const stats = useMemo(() => {
     // Stats usually come as metadata or first item. Using TaskDto to access potential extra fields
-    const firstTask = statsData?.result?.[0] as unknown as { status_counts?: Record<string, number> }; 
+    const firstTask = statsData?.result?.[0] as unknown as { status_counts?: Record<string, number> };
     const backendCounts = firstTask?.status_counts || {};
     const allTasks = (statsData?.result || []) as Task[];
 
@@ -765,15 +765,15 @@ export function TasksPage() {
   // ✅ FIX BUG #2 Frontend: Permission check for status changes
   const canChangeTaskStatus = useCallback((task: UITask): boolean => {
     if (!currentUserId) return false;
-    
+
     // Check if user is task leader
     const isLeader = task.leader_id === Number(currentUserId);
-    
+
     // Check if user is a task member
     const isMember = task.task_members?.some(
       (member) => member.user_id === Number(currentUserId) || member.user?.id === Number(currentUserId)
     );
-    
+
     return isLeader || (isMember ?? false);
   }, [currentUserId]);
 
@@ -784,42 +784,42 @@ export function TasksPage() {
     if (selectedTasks.length > 0) {
       setExpandedContent(
         <>
-            <div className="flex items-center gap-2 border-r border-white/20 pr-6">
-              <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
-                {selectedTasks.length}
-              </div>
-              <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
+          <div className="flex items-center gap-2 border-r border-white/20 pr-6">
+            <div className="bg-[#ff3b3b] text-white text-[12px] font-bold px-2 py-0.5 rounded-full">
+              {selectedTasks.length}
             </div>
+            <span className="text-[14px] font-['Manrope:SemiBold',sans-serif]">Selected</span>
+          </div>
 
-            <div className="flex items-center gap-2">
-              <Tooltip title="Mark as Completed">
-                <button 
-                  onClick={handleBulkComplete}
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                >
-                  <CheckSquare className="w-4 h-4" />
-                </button>
-              </Tooltip>
-              {/* Assign To - Future implementation 
+          <div className="flex items-center gap-2">
+            <Tooltip title="Mark as Completed">
+              <button
+                onClick={handleBulkComplete}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              >
+                <CheckSquare className="w-4 h-4" />
+              </button>
+            </Tooltip>
+            {/* Assign To - Future implementation 
               <Tooltip title="Assign To">
                 <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
                   <Users className="w-4 h-4" />
                 </button>
               </Tooltip>
               */}
-              <Tooltip title="Delete">
-                <button 
-                  onClick={handleBulkDelete}
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </Tooltip>
-            </div>
+            <Tooltip title="Delete">
+              <button
+                onClick={handleBulkDelete}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors text-[#ff3b3b]"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </Tooltip>
+          </div>
 
-            <button onClick={() => setSelectedTasks([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
-              Cancel
-            </button>
+          <button onClick={() => setSelectedTasks([])} className="ml-2 text-[12px] text-[#999999] hover:text-white transition-colors">
+            Cancel
+          </button>
         </>
       );
     } else {
@@ -943,7 +943,7 @@ export function TasksPage() {
           }}
           users={usersDropdown}
           requirements={requirementsDropdown}
-          workspaces={workspacesData?.result?.workspaces?.map((p: any) => ({
+          workspaces={workspacesData?.result?.workspaces?.map((p) => ({
             id: p.id,
             name: p.name,
           })) || []}
@@ -980,7 +980,7 @@ export function TasksPage() {
               className="red-checkbox"
             />
           </div>
-          
+
           <button
             className="flex items-center gap-1 group outline-none cursor-pointer"
             onClick={() => handleSort('name')}
@@ -1044,7 +1044,7 @@ export function TasksPage() {
             </span>
             {getSortIcon('status')}
           </button>
-          
+
           <div />
         </div>
 
@@ -1071,9 +1071,9 @@ export function TasksPage() {
               key={task.id}
               task={{
                 ...task,
-                 status: (task.status === 'In Progress' ? 'In_Progress' : 
-                         task.status === 'Todo' ? 'Assigned' : 
-                         task.status) as unknown as TaskStatus
+                status: (task.status === 'In Progress' ? 'In_Progress' :
+                  task.status === 'Todo' ? 'Assigned' :
+                    task.status) as unknown as TaskStatus
               }}
               selected={selectedTasks.includes(task.id)}
               onSelect={() => toggleSelect(task.id)}

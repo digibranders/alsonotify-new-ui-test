@@ -688,7 +688,7 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
 
 - **Problem**: Mail Compose modal content was not scrollable, leading to truncated content and "broken" feel.
 - **Root Cause**: `RichTextEditor` was wrapped in an `overflow-hidden` container while trying to handle scrolling internally, which conflicted with the flex layout and `contentEditable` behavior.
-- **Solution**: 
+- **Solution**:
     - Moved `overflow-y-auto` to the parent container.
     - Updated `RichTextEditor` to grow with content (`minHeight: 100%`) instead of having fixed height and internal scroll.
 - **Verification**: Code analysis and layout logic verification. Manual verification planned by user.
@@ -698,12 +698,12 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
 
 - **Objective**: Implement Gmail-style Inline Reply and enhance Compose Modal size.
 - **Changes**:
-    - **Inline Reply**: Created `InlineReply` component and integrated it into `MailPage`. 
+    - **Inline Reply**: Created `InlineReply` component and integrated it into `MailPage`.
         - Located at the bottom of the reading pane.
         - Supports Smart Reply logic (Quoted text hidden by default).
         - Integrated with `handleSendMail` and uses real user avatar.
     - **Compose Modal**: Updated `EmailComposeModal` to be larger (800px width, 80vh height) and centered, strictly following user preference against "docked" mode.
-- **Verification**: 
+- **Verification**:
     - `npm run build` passed.
     - Verified Type Safety for `currentUser` prop.
 
@@ -714,5 +714,79 @@ Restored the original "Card" layout and styles for the Requirements Page (mimick
     - **UI Logic**: Updated `MailPage.tsx` to use a React Ref to control `InlineReply`.
     - **UX**: Clicking header buttons now smoothly scrolls to and focuses the Inline Reply box instead of opening a modal.
     - **Refactor**: Exposed `activate(type)` method in `InlineReply.tsx` via `useImperativeHandle`.
-- **Verification**: 
+- **Verification**:
     - `npm run build` passed.
+
+## [2026-01-27] Requirement Activity User Name Fix
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Fix the issue where requirement activities were showing "User" instead of the actual user name.
+
+### Changes
+
+- **Backend**:
+    - `alsonotify-backend-new/service/requirement.service.ts`: Updated `createRequirementService` and `updateRequirementService` to fetch the user's name from the database instead of relying on the potentially missing name in the JWT payload.
+    - `alsonotify-backend-new/service/task.service.ts`: Updated `createTaskService` to also fetch the user name before logging linked requirement activities.
+- **Verification**:
+    - Backend build (`npm run build`) passed successfully.
+
+## [2026-01-27] Fix Ant Design Deprecation Warning
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Resolve console warning regarding deprecated `dropdownStyle` in the `Select` component.
+
+### Changes
+
+- **Component**: `src/components/modals/TaskForm.tsx`
+    - Replaced the deprecated `dropdownStyle` prop with the new `styles` prop pattern (`styles={{ popup: { root: { ... } } }}`).
+    - This aligns with Ant Design 5.x/6.x CSS-in-JS style configuration and eliminates the console warning.
+
+### Verification
+
+- **Automated**: `npm run build` passed successfully in the frontend workspace.
+
+## [2026-01-27] Fix Requirement Form Reset Issue
+
+**Author**: Senior Developer / CTO Agent
+**Objective**: Ensure the requirement form resets to default values when opening for a new requirement, especially after editing an existing one.
+
+### Changes
+
+- **Component**: `src/components/modals/RequirementsForm.tsx`
+    - Defined `defaultFormData` for consistent reset state.
+    - Updated `useEffect` to explicitly reset `formData` and `selectedFiles` when `initialData` is falsy.
+- **Page**: `src/components/features/requirements/RequirementsPage.tsx`
+    - Added `destroyOnClose` prop to the Requirement Modal to ensure the form component is unmounted and its state cleared when the modal is closed.
+
+### Verification
+
+- **Automated**: `npm run build` passed successfully.
+- **Manual**: Logic verified to ensure `initialData` changes trigger appropriate state updates or resets.
+
+## [2026-01-27] Requirements Polling Fix
+
+- **Objective**: enable automatic polling for collaborative requirements so users see new incoming requirements without refreshing.
+- **Changes**:
+    - **Frontend**: Added `refetchInterval: 5000` to `useCollaborativeRequirements` hook in `src/hooks/useWorkspace.ts`.
+- **Verification**:
+    - `bun run build` passed successfully.
+
+## [2026-01-27] TasksForm Refactor
+
+- **Objective**: Simplify task creation by inferring workspace from requirement and removing outsourced requirements.
+- **Changes**:
+    - **Backend**: Updated `getRequirementDropdownbyWorkspaceIdService` to include `type` and `workspace_id`.
+    - **Frontend TasksPage**: Filtered out `outsourced` requirements from the dropdown passed to `TaskForm`.
+    - **Frontend TaskForm**: Removed workspace selector and implemented logic to auto-set workspace based on selected requirement.
+- **Verification**:
+    - `bun run build` passed.
+
+## [2026-01-27] TasksForm UI Refinement
+
+- **Objective**: Improve alignment and visual balance of the Task creation modal.
+- **Changes**:
+    - **Grid Layout**: Adjusted "Requirement", "Due Date", "Priority", and "My Hours" to use a consistent `col-span-6` (50% width) layout for better alignment.
+    - **Visuals**: Enhanced the "Priority" checkbox with a border/background container to match input fields style.
+- **Verification**:
+    - `bun run build` passed.
+

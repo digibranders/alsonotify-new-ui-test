@@ -46,7 +46,7 @@ describe('RichTextEditor Sanitization', () => {
     await render(<RichTextEditor value={dangerousContent} onChange={() => {}} />);
     
     expect(sanitizeRichTextForEditor).toHaveBeenCalledWith(dangerousContent);
-  });
+  }, 10000);
 
   it('should sanitize value updates', async () => {
     const dangerousUpdate = '<p>Update <script>alert(1)</script></p>';

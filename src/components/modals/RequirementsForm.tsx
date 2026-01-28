@@ -82,7 +82,7 @@ export function RequirementsForm({
         })
         .filter((e: { id?: number }) => e.id !== undefined);
 
-    const [formData, setFormData] = useState<RequirementFormData>({
+    const defaultFormData: RequirementFormData = {
         title: '',
         workspace: undefined,
         type: 'inhouse',
@@ -91,12 +91,16 @@ export function RequirementsForm({
         budget: '',
         is_high_priority: false,
         description: '',
+    };
+
+    const [formData, setFormData] = useState<RequirementFormData>({
+        ...defaultFormData,
         ...initialData,
     });
 
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     
-    // Reset form when initialData changes (for editing mode switching)
+    // Reset form when initialData changes (for editing mode switching or new creation)
     useEffect(() => {
         if (initialData) {
             setFormData((prev) => ({ 
@@ -106,6 +110,10 @@ export function RequirementsForm({
                 workspace: initialData.workspace ?? undefined
             }));
             setSelectedFiles([]); // Reset files on edit mode change or reopen
+        } else {
+            // Explicitly reset to defaults when no initialData is provided (New Requirement mode)
+            setFormData(defaultFormData);
+            setSelectedFiles([]);
         }
     }, [initialData]);
 

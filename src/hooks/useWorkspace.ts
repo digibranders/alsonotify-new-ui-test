@@ -14,7 +14,7 @@ import {
   reactivateWorkspace,
 } from "../services/workspace";
 import { WorkspaceDto, CreateWorkspaceRequestDto, UpdateWorkspaceRequestDto } from "../types/dto/workspace.dto";
-import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDto } from "../types/dto/requirement.dto";
+import { RequirementDto, CreateRequirementRequestDto, UpdateRequirementRequestDto, RequirementDropdownItem } from "../types/dto/requirement.dto";
 import { getTasks } from "../services/task";
 export { usePartners } from "./useUser";
 
@@ -123,25 +123,39 @@ export const useRequirements = (workspaceId: number) => {
   });
 };
 
-export const useWorkspaceRequirementsDropdown = () => {
-  return useQuery({
-    queryKey: ['requirements', 'dropdown', 'all'],
-    queryFn: async () => {
-      // 1. Fetch all workspaces
+export const useWorkspaceRequirementsDropdown = (workspaceId?: number) => {
+  return useQuery<RequirementDropdownItem[]>({
+    queryKey: ['requirements', 'dropdown', 'all', workspaceId],
+    queryFn: async (): Promise<RequirementDropdownItem[]> => {
+      // 1. Fetch all workspaces dynamically to avoid hook dependency race condition
       const { getWorkspace, getRequirementsDropdownByWorkspaceId } = await import('../services/workspace');
-      const wsResponse = await getWorkspace(""); 
-      if (!wsResponse.result?.workspaces) return [];
 
-      // 2. Fetch requirements for each workspace in parallel
-      const workspaces = wsResponse.result.workspaces;
-      const reqPromises = workspaces.map(ws => 
+      let workspaces: { id: number }[] = [];
+      if (workspaceId) {
+        workspaces = [{ id: workspaceId }];
+      } else {
+        const wsResponse = await getWorkspace("");
+        workspaces = wsResponse.result?.workspaces || [];
+      }
+
+      if (workspaces.length === 0) return [];
+
+      // 2. Fetch requirements for each workspace using the DROPDOWN endpoint
+      const reqPromises = workspaces.map((ws) =>
         getRequirementsDropdownByWorkspaceId(ws.id)
-          .then(res => res.result || [])
-          .catch(() => []) 
+          .then(res => {
+            if (res.success && res.result) {
+              return res.result;
+            }
+            return [] as RequirementDropdownItem[];
+          })
+          .catch(() => [] as RequirementDropdownItem[])
       );
-      
+
       const results = await Promise.all(reqPromises);
-      return results.flat();
+      const allRequirements: RequirementDropdownItem[] = results.flat();
+      
+      return allRequirements;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
@@ -152,6 +166,7 @@ export const useCollaborativeRequirements = () => {
   return useQuery({
     queryKey: queryKeys.requirements.collaborative(),
     queryFn: () => getCollaborativeRequirements(),
+    refetchInterval: 5000,
   });
 };
 
