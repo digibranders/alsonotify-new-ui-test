@@ -901,7 +901,7 @@ export function TasksPage() {
         }}
       >
         <TaskForm
-          key={editingTask ? `edit-${editingTask.id}` : `new-${Date.now()}`}
+          key={editingTask ? `edit-${editingTask.id}` : `new-task-form`}
           initialData={editingTask ? {
             name: editingTask.name,
             workspace_id: String(editingTask.workspace_id || ''),
@@ -938,6 +938,11 @@ export function TasksPage() {
             } else {
               // Create task
               handleCreateTask(data);
+              // Switch to 'All Tasks' tab to ensure visibility of the new 'Assigned' task
+              setActiveTab('all');
+              const params = new URLSearchParams(searchParams.toString());
+              params.delete('tab');
+              router.push(`?${params.toString()}`);
             }
           }}
           onCancel={() => {

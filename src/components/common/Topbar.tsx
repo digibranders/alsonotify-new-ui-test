@@ -536,6 +536,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         footer={null}
         width={600}
         centered
+        destroyOnHidden={true} // Ensure form resets on close (replaced deprecated destroyOnClose)
         className="rounded-[16px] overflow-hidden"
         styles={{
           body: {
@@ -563,6 +564,8 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
               onSuccess: () => {
                 setShowTaskDialog(false);
                 message.success("Task created successfully");
+                // Redirect to tasks page to show the new task
+                router.push('/dashboard/tasks?tab=all');
               },
               onError: (error: unknown) => {
                 const errorMessage = (error as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message || (error as { message?: string })?.message || "Failed to create task";
@@ -574,9 +577,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
           users={usersDropdown}
           requirements={(() => {
             // requirementsDropdown is already filtered by status in useEffect
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Topbar.tsx:TaskForm-requirements-prop', message: 'Requirements passed to TaskForm in Topbar (status filtered)', data: { count: requirementsDropdown.length, requirements: requirementsDropdown.map((r) => ({ id: r.id, name: r.name, type: r.type, status: r.status })) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'FIX' }) }).catch(() => { });
-            // #endregion
+
             return requirementsDropdown;
           })()}
           workspaces={workspacesData?.result?.workspaces?.map((p: { id: number; name: string }) => ({ id: p.id, name: p.name })) || []}

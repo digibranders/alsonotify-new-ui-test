@@ -1363,7 +1363,8 @@ export function RequirementsPage() {
       {/* Create/Edit Requirement Modal - Using existing modal structure */}
       <Modal
         open={isDialogOpen}
-        destroyOnClose
+        destroyOnClose={false}
+        destroyOnHidden={true}
         onCancel={() => {
           setIsDialogOpen(false);
           setEditingReq(undefined);
