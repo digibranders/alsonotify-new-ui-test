@@ -1,11 +1,11 @@
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, MockInstance } from 'vitest';
 import * as authService from './auth';
 import axiosApi from '../config/axios';
 
 // Mock axios
 vi.mock('../config/axios', async (importOriginal) => {
-  const actual = await importOriginal<any>();
+  const actual = await importOriginal<typeof import('../config/axios')>();
   return {
     ...actual,
     default: {
@@ -24,7 +24,7 @@ describe('Auth Service', () => {
   describe('doLogin', () => {
     it('should return data on successful login', async () => {
       const mockResponse = { data: { success: true, result: { token: 'abc', user: { id: 1, name: 'Test' } } } };
-      (axiosApi.post as any).mockResolvedValue(mockResponse);
+      (axiosApi.post as unknown as MockInstance).mockResolvedValue(mockResponse);
 
       const result = await authService.doLogin({ email: 'test@example.com', password: 'password' });
       expect(result).toEqual(mockResponse.data);
@@ -35,7 +35,7 @@ describe('Auth Service', () => {
   describe('doSignup', () => {
     it('should call register endpoint with correct payload', async () => {
       const mockResponse = { data: { success: true, result: { token: 'xyz' } } };
-      (axiosApi.post as any).mockResolvedValue(mockResponse);
+      (axiosApi.post as unknown as MockInstance).mockResolvedValue(mockResponse);
 
       const result = await authService.doSignup('John', 'Doe', 'john@example.com', 'password', 'token123');
       expect(result).toEqual(mockResponse.data);
@@ -52,7 +52,7 @@ describe('Auth Service', () => {
   describe('verifyRegisterToken', () => {
     it('should verify token via get request', async () => {
       const mockResponse = { data: { success: true, result: { valid: true } } };
-      (axiosApi.get as any).mockResolvedValue(mockResponse);
+      (axiosApi.get as unknown as MockInstance).mockResolvedValue(mockResponse);
 
       const result = await authService.verifyRegisterToken('valid-token');
       expect(result).toEqual(mockResponse.data);

@@ -4,6 +4,7 @@ import { useTaskActivities, useCreateTaskActivity } from './useTaskActivity';
 import * as TaskActivityService from '@/services/task-activity';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
+import { TaskActivityDto } from '@/services/task-activity';
 
 vi.mock('@/services/task-activity');
 
@@ -26,8 +27,21 @@ describe('useTaskActivity Hooks', () => {
   });
 
   it('useTaskActivities should fetch and return data', async () => {
-    const mockData = { success: true, result: [{ id: 1, message: 'Test' }] };
-    vi.spyOn(TaskActivityService, 'getTaskActivities').mockResolvedValue(mockData as any);
+    const mockData = {
+      success: true,
+      message: 'Success',
+      result: [{
+        id: 1,
+        message: 'Test',
+        type: 'CHAT',
+        user_id: 1,
+        task_id: 123,
+        created_at: new Date().toISOString(),
+        user: { id: 1, name: 'User' },
+        attachments: []
+      } as unknown as TaskActivityDto]
+    };
+    vi.spyOn(TaskActivityService, 'getTaskActivities').mockResolvedValue(mockData);
 
     const { result } = renderHook(() => useTaskActivities(123), { wrapper });
 
@@ -36,8 +50,21 @@ describe('useTaskActivity Hooks', () => {
   });
 
   it('useCreateTaskActivity should call service and invalidate queries', async () => {
-    const mockResult = { success: true, result: { id: 1, message: 'New' } };
-    const createSpy = vi.spyOn(TaskActivityService, 'createTaskActivity').mockResolvedValue(mockResult as any);
+    const mockResult = {
+      success: true,
+      message: 'Created',
+      result: {
+        id: 1,
+        message: 'New',
+        type: 'CHAT',
+        user_id: 1,
+        task_id: 123,
+        created_at: new Date().toISOString(),
+        user: { id: 1, name: 'User' },
+        attachments: []
+      } as unknown as TaskActivityDto
+    };
+    const createSpy = vi.spyOn(TaskActivityService, 'createTaskActivity').mockResolvedValue(mockResult);
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
 
     const { result } = renderHook(() => useCreateTaskActivity(), { wrapper });

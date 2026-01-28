@@ -6,7 +6,7 @@ import {
   Plus, RotateCcw,
   Paperclip, TrendingUp,
 } from 'lucide-react';
-import { Checkbox, Button, App, Input, Modal, Select } from 'antd'; 
+import { Checkbox, Button, App, Input, Modal, Select } from 'antd';
 import { Skeleton } from '../../ui/Skeleton';
 import { useWorkspace, useRequirements, useUpdateRequirement, useWorkspaces } from '@/hooks/useWorkspace';
 import { useTasks, useRequestRevision, useCreateTask } from '@/hooks/useTask';
@@ -140,12 +140,12 @@ export function RequirementDetailsPage() {
         tab: 'draft' as const,
       };
     }
-    
+
     const status = mapRequirementToStatus(requirement);
     const type = mapRequirementToType(requirement);
     const role = mapRequirementToRole(requirement);
     const context = mapRequirementToContext(requirement, user?.id, role);
-    
+
     if (status === 'draft') {
       return {
         isPending: false,
@@ -155,10 +155,10 @@ export function RequirementDetailsPage() {
         tab: 'draft' as const,
       };
     }
-    
+
     return getRequirementCTAConfig(status as RequirementStatus, role, context, type);
   }, [requirement, user?.id]);
-  
+
   const isPending = ctaConfig.isPending;
   const displayStatus = ctaConfig.displayStatus;
 
@@ -177,7 +177,7 @@ export function RequirementDetailsPage() {
               <span className="text-[#CCCCCC]">/</span>
               <Skeleton className="h-4 w-48 rounded" />
             </div>
-            
+
             {/* Title Row with Status & Priority */}
             <div className="flex items-center justify-between mb-6">
               <Skeleton className="h-7 w-80 rounded" />
@@ -226,7 +226,7 @@ export function RequirementDetailsPage() {
                   <Skeleton className="w-5 h-5 rounded" />
                   <Skeleton className="h-5 w-44 rounded" />
                 </div>
-                
+
                 {/* Details Grid - 4 columns, 3 rows */}
                 <div className="grid grid-cols-4 gap-x-8 gap-y-6">
                   {[
@@ -313,27 +313,27 @@ export function RequirementDetailsPage() {
     <div className="w-full h-full bg-white rounded-[24px] border border-[#EEEEEE] flex overflow-hidden">
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        
-        <RequirementHeader 
-           workspace={workspace} 
-           requirement={requirement}
-           ctaConfig={ctaConfig}
-           requirementStatus={requirementStatus}
-           assignedTo={assignedTo}
-           router={router}
-           myWorkspacesData={myWorkspacesData}
-           updateRequirement={updateRequirement}
-           activeTab={activeTab}
-           setActiveTab={setActiveTab}
+
+        <RequirementHeader
+          workspace={workspace}
+          requirement={requirement}
+          ctaConfig={ctaConfig}
+          requirementStatus={requirementStatus}
+          assignedTo={assignedTo}
+          router={router}
+          myWorkspacesData={myWorkspacesData}
+          updateRequirement={updateRequirement}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
         />
 
         {/* Content Area - Using CSS visibility to prevent DOM unmounting and flickering */}
         <div className="flex-1 overflow-y-auto p-8 bg-[#FAFAFA]">
-           <div style={{ display: activeTab === 'details' ? 'block' : 'none' }}>
-              <RequirementInfoCard requirement={requirement} workspace={workspace} tasks={tasks} />
-           </div>
+          <div style={{ display: activeTab === 'details' ? 'block' : 'none' }}>
+            <RequirementInfoCard requirement={requirement} workspace={workspace} tasks={tasks} />
+          </div>
 
-           <div style={{ display: activeTab === 'tasks' ? 'block' : 'none' }}>
+          <div style={{ display: activeTab === 'tasks' ? 'block' : 'none' }}>
             <div className="max-w-5xl mx-auto space-y-8">
               {/* Tasks Section */}
               <div className="bg-white rounded-[16px] p-8 border border-[#EEEEEE] shadow-sm">
@@ -342,9 +342,9 @@ export function RequirementDetailsPage() {
                     <ListTodo className="w-5 h-5 text-[#ff3b3b]" />
                     Tasks Breakdown
                   </h3>
-                  <Button 
-                    type="default" 
-                    size="small" 
+                  <Button
+                    type="default"
+                    size="small"
                     className="h-8 text-[12px] border-[#EEEEEE]"
                     onClick={() => setIsTaskModalOpen(true)}
                   >
@@ -411,7 +411,7 @@ export function RequirementDetailsPage() {
                               setSelectedTasks([...selectedTasks, String(task.id)]);
                             }
                           }}
-                          onStatusChange={() => {}} 
+                          onStatusChange={() => { }}
                           hideRequirements={true}
                           onRequestRevision={() => {
                             setTargetTaskId(task.id as any);
@@ -429,8 +429,8 @@ export function RequirementDetailsPage() {
                   title="Request Revision"
                   open={isRevisionModalOpen}
                   onCancel={() => {
-                     setIsRevisionModalOpen(false);
-                     setRevisionNotes('');
+                    setIsRevisionModalOpen(false);
+                    setRevisionNotes('');
                   }}
                   onOk={() => {
                     if (!targetTaskId || !revisionNotes.trim()) return;
@@ -452,7 +452,7 @@ export function RequirementDetailsPage() {
                     <p className="text-sm text-gray-600 mb-2">
                       Describe exactly what needs to be changed. This will create a new revision task for the team.
                     </p>
-                    <Input.TextArea 
+                    <Input.TextArea
                       rows={4}
                       placeholder="Revision details..."
                       value={revisionNotes}
@@ -493,36 +493,36 @@ export function RequirementDetailsPage() {
                 </div>
               )}
             </div>
-           </div>
+          </div>
 
-           <div style={{ display: activeTab === 'gantt' ? 'block' : 'none' }}>
-             <GanttChartTab
-               tasks={tasks}  
-               revisions={revisions}
-               ganttView={ganttView}
-               setGanttView={setGanttView}
-             />
-           </div>
+          <div style={{ display: activeTab === 'gantt' ? 'block' : 'none' }}>
+            <GanttChartTab
+              tasks={tasks}
+              revisions={revisions}
+              ganttView={ganttView}
+              setGanttView={setGanttView}
+            />
+          </div>
 
-           <div style={{ display: activeTab === 'kanban' ? 'block' : 'none' }}>
-             <KanbanBoardTab tasks={tasks} revisions={revisions} />
-           </div>
+          <div style={{ display: activeTab === 'kanban' ? 'block' : 'none' }}>
+            <KanbanBoardTab tasks={tasks} revisions={revisions} />
+          </div>
 
-           <div style={{ display: activeTab === 'pnl' ? 'block' : 'none' }}>
-             <PnLTab requirement={requirement} tasks={tasks} />
-           </div>
-           
-           <div style={{ display: activeTab === 'documents' ? 'block' : 'none' }}>
-             <DocumentsTab activityData={documentsActivityData} />
-           </div>
+          <div style={{ display: activeTab === 'pnl' ? 'block' : 'none' }}>
+            <PnLTab requirement={requirement} tasks={tasks} />
+          </div>
+
+          <div style={{ display: activeTab === 'documents' ? 'block' : 'none' }}>
+            <DocumentsTab activityData={documentsActivityData} />
+          </div>
         </div>
       </div>
 
-      <ActivitySidebar 
-         reqId={reqId} 
-         employeesData={employeesData} 
-         partnersData={partnersData} 
-         tasks={tasks}
+      <ActivitySidebar
+        reqId={reqId}
+        employeesData={employeesData}
+        partnersData={partnersData}
+        tasks={tasks}
       />
 
       <Modal
@@ -561,41 +561,42 @@ export function RequirementDetailsPage() {
           }}
           workspaces={workspaceData?.result ? [{ id: workspaceData.result.id, name: workspaceData.result.name }] : []}
           requirements={requirementsData?.result ? (requirementsData.result as Requirement[]).map((r: Requirement) => ({ id: r.id, name: r.title || r.name || `Requirement ${r.id}` })) : []}
-          users={employeesData?.result ? (employeesData.result as Employee[]).map((u: Employee) => ({ 
-              id: u.user_id || u.id || 0, 
-              name: u.name || 'Unknown User',
-              profile_pic: u.profile_pic || undefined 
+          users={employeesData?.result ? (employeesData.result as Employee[]).map((u: Employee) => ({
+            id: u.user_id || u.id || 0,
+            name: u.name || 'Unknown User',
+            profile_pic: u.profile_pic || undefined
           })) : []}
           onCancel={() => setIsTaskModalOpen(false)}
-          onSubmit={(data) => {
-              const payload: CreateTaskRequestDto = {
-                name: data.name,
-                workspace_id: data.workspace_id,
-                requirement_id: data.requirement_id,
-                start_date: data.start_date || new Date().toISOString(),
-                end_date: data.end_date,
-                assigned_to: data.assigned_members.length > 0 ? data.assigned_members[0] : undefined,
-                member_id: data.member_id ? Number(data.member_id) : undefined,
-                leader_id: data.leader_id,
-                description: data.description,
-                is_high_priority: data.is_high_priority,
-                estimated_time: data.estimated_time,
-                priority: data.is_high_priority ? 'HIGH' : 'NORMAL',
-                status: 'Assigned',
-                assigned_members: data.assigned_members,
-                execution_mode: data.execution_mode
-              };
+          onSubmit={(data: CreateTaskRequestDto) => {
+            const assignedMembers = data.assigned_members || [];
+            const payload: CreateTaskRequestDto = {
+              name: data.name,
+              workspace_id: data.workspace_id,
+              requirement_id: data.requirement_id,
+              start_date: data.start_date || new Date().toISOString(),
+              end_date: data.end_date,
+              assigned_to: assignedMembers.length > 0 ? assignedMembers[0] : undefined,
+              member_id: data.member_id ? Number(data.member_id) : undefined,
+              leader_id: data.leader_id,
+              description: data.description,
+              is_high_priority: data.is_high_priority,
+              estimated_time: data.estimated_time,
+              priority: data.is_high_priority ? 'HIGH' : 'NORMAL',
+              status: 'Assigned',
+              assigned_members: assignedMembers,
+              execution_mode: data.execution_mode
+            };
 
-              createTaskMutation.mutate(payload, {
-                onSuccess: () => {
-                    message.success("Task created successfully!");
-                    setIsTaskModalOpen(false);
-                },
-                onError: (error) => {
-                    const errorMessage = getErrorMessage(error, "Failed to create task");
-                    message.error(errorMessage);
-                }
-              });
+            return createTaskMutation.mutateAsync(payload, {
+              onSuccess: () => {
+                message.success("Task created successfully!");
+                setIsTaskModalOpen(false);
+              },
+              onError: (error) => {
+                const errorMessage = getErrorMessage(error, "Failed to create task");
+                message.error(errorMessage);
+              }
+            });
           }}
         />
       </Modal>

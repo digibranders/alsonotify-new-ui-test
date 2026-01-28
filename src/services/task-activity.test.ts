@@ -1,10 +1,10 @@
-  import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, MockInstance } from 'vitest';
 import { getTaskActivities, createTaskActivity } from './task-activity';
 import axiosApi from '../config/axios';
 
 // Mock axiosApi
 vi.mock('../config/axios', async (importOriginal) => {
-  const actual = await importOriginal<any>();
+  const actual = await importOriginal<typeof import('../config/axios')>();
   return {
     ...actual,
     default: {
@@ -27,10 +27,10 @@ describe('Task Activity Service', () => {
         result: [{ id: 1, message: 'Test message' }]
       }
     };
-    (axiosApi.get as any).mockResolvedValueOnce(mockResponse);
+    (axiosApi.get as unknown as MockInstance).mockResolvedValueOnce(mockResponse);
 
     const result = await getTaskActivities(123);
-    
+
     expect(axiosApi.get).toHaveBeenCalledWith('/task/123/activity');
     expect(result).toEqual(mockResponse.data);
   });
@@ -47,10 +47,10 @@ describe('Task Activity Service', () => {
         result: { id: 1, ...mockRequest }
       }
     };
-    (axiosApi.post as any).mockResolvedValueOnce(mockResponse);
+    (axiosApi.post as unknown as MockInstance).mockResolvedValueOnce(mockResponse);
 
     const result = await createTaskActivity(mockRequest);
-    
+
     expect(axiosApi.post).toHaveBeenCalledWith('/task/activity', mockRequest);
     expect(result).toEqual(mockResponse.data);
   });

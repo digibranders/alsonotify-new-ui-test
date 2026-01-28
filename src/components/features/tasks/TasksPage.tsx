@@ -516,7 +516,7 @@ export function TasksPage() {
     });
   };
 
-  const handleCreateTask = async (data: Partial<Task>) => {
+  const handleCreateTask = async (data: CreateTaskRequestDto) => {
     // `TaskForm` already validates all required fields, but we keep a
     // defensive check here to avoid sending an incomplete payload.
     if (!data?.start_date) {
@@ -528,7 +528,7 @@ export function TasksPage() {
       name: data.name || '',
       start_date: data.start_date,
       end_date: data.end_date,
-      assigned_to: typeof data.assigned_to === 'object' ? data.assigned_to.id : undefined,
+      assigned_to: data.assigned_to,
       workspace_id: data.workspace_id,
       requirement_id: data.requirement_id,
       description: data.description,
@@ -536,9 +536,12 @@ export function TasksPage() {
       estimated_time: data.estimated_time,
       priority: data.is_high_priority ? 'HIGH' : 'NORMAL', // Must match backend enum: HIGH | NORMAL
       status: 'Assigned', // Default status for new task
+      leader_id: data.leader_id,
+      assigned_members: data.assigned_members,
+      execution_mode: data.execution_mode
     };
 
-    createTaskMutation.mutate(payload, {
+    return createTaskMutation.mutateAsync(payload, {
       onSuccess: () => {
         message.success("Task created successfully!");
         setIsDialogOpen(false);

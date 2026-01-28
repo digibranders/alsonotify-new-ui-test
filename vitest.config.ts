@@ -8,5 +8,6 @@ export default defineConfig({
     environment: 'jsdom',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     exclude: ['node_modules', '.next'],
+    setupFiles: ['./src/tests/setup.ts'],
   },
 });

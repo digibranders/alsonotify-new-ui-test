@@ -56,11 +56,12 @@ export interface Requirement {
   receiver_workspace_id?: number;
   negotiationReason?: string;
   negotiation_reason?: string;
+  is_archived?: boolean;
   isReceiver?: boolean;
   isSender?: boolean;
   receiverProjectId?: number;
   receiver_project_id?: number;
-  
+
   // These fields might be needed based on usage in other files, 
   // keeping them optional for now as we discover them
   projectId?: number;
@@ -68,7 +69,7 @@ export interface Requirement {
   manager?: { name: string; id?: number };
   leader?: { name: string; id?: number };
   department?: { name: string; id?: number };
-  
+
   // Backend fields used in RequirementDetailsPage (snake_case)
   pricing_model?: 'hourly' | 'project'; // covered by pricingModel
   start_date?: string; // covered by startDate
@@ -85,7 +86,7 @@ export interface Requirement {
   sender_company?: { name: string; id?: number };
   documentLink?: string;
   document_link?: string;
-  
+
   // Expanded fields for UI usage
   // 'title' is already defined above
   totalTasks?: number;
@@ -143,29 +144,29 @@ export interface Task {
   totalSecondsSpent: number;
   total_seconds_spent: number;
   taskMembers?: {
-     id: number;
-     userId: number;
-     user_id: number;
-     status: string;
-     estimatedTime: number | null;
-     estimated_time: number | null;
-     secondsSpent: number;
-     seconds_spent: number;
-     activeWorklogStartTime?: string | null;
-     active_worklog_start_time?: string | null;
-     isCurrentTurn: boolean;
-     is_current_turn: boolean;
-     queueOrder: number;
-     queue_order: number;
-     executionMode: 'parallel' | 'sequential';
-     execution_mode: 'parallel' | 'sequential';
-     user: {
-       id: number;
-       name: string;
-       profilePic?: string;
-       profile_pic?: string;
-     };
-   }[];
+    id: number;
+    userId: number;
+    user_id: number;
+    status: string;
+    estimatedTime: number | null;
+    estimated_time: number | null;
+    secondsSpent: number;
+    seconds_spent: number;
+    activeWorklogStartTime?: string | null;
+    active_worklog_start_time?: string | null;
+    isCurrentTurn: boolean;
+    is_current_turn: boolean;
+    queueOrder: number;
+    queue_order: number;
+    executionMode: 'parallel' | 'sequential';
+    execution_mode: 'parallel' | 'sequential';
+    user: {
+      id: number;
+      name: string;
+      profilePic?: string;
+      profile_pic?: string;
+    };
+  }[];
   task_members?: {
     id: number;
     user_id: number;
@@ -184,7 +185,7 @@ export interface Task {
   }[];
   // Expanded fields for UI usage
   start_date?: string;
-  end_date?: string; 
+  end_date?: string;
   estimatedTime?: number;
   estimated_time?: number;
   // timeSpent already defined as number
@@ -197,7 +198,7 @@ export interface Task {
   clientCompanyName?: string;
   client_company_name?: string; // Added for TasksPage
   title?: string; // Added for TasksPage compatibility
-  
+
   // Relations used in TasksPage
   taskProject?: {
     clientUser?: { company?: { name: string } };
@@ -220,7 +221,7 @@ export interface Task {
   // assignedTo already defined as string, but UI usage suggests object or string
   // Changing base definition to union
   assigned_to?: { name: string; id: number } | string; // Sometimes string in older parts
-  
+
   // Requirement relation aliases
   taskRequirement?: { name: string; id: number };
   task_requirement?: { name: string; id: number };
@@ -306,7 +307,7 @@ export interface Employee {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   timezone?: string;
-  
+
   // Extended fields for EmployeesPage mapping
   userId?: number;
   user_id?: number;
@@ -331,10 +332,10 @@ export interface Employee {
   is_active?: boolean;
   employee_id?: string;
   documents?: any[];
-  permissions?: UserPermissions; 
-  user_employee?: { 
+  permissions?: UserPermissions;
+  user_employee?: {
     is_active?: boolean;
-    role?: any; 
+    role?: any;
     role_id?: number | null;
   };
 }

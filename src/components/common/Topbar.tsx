@@ -198,14 +198,14 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
             // Failed to fetch requirements for workspace - continue with others
           }
         }
-        
+
         // Filter: Only include active requirements
         // The getRequirementsByWorkspaceId returns ALL requirements, so we filter by status
         const activeStatuses = ['Assigned', 'In_Progress', 'Review', 'Revision', 'On_Hold', 'Impediment', 'Stuck'];
         const filteredRequirements = allRequirements.filter(req => {
           return activeStatuses.includes(req.status);
         });
-        
+
         setRequirementsDropdown(filteredRequirements);
       } catch {
         message.error('Failed to fetch requirements');
@@ -548,17 +548,18 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
         }}
       >
         <TaskForm
-          onSubmit={(data) => {
+          onSubmit={(data: CreateTaskRequestDto) => {
             if (!data.start_date) {
               message.error("Start Date is required");
               return;
             }
+            // data is already CreateTaskRequestDto, so no need to map 'title' -> 'name' if TaskForm outputs 'name'
+            // TaskForm constructs backendData with 'name', so 'data.name' is correct.
             const formattedData: CreateTaskRequestDto = {
               ...data,
-              start_date: data.start_date,
-              name: data.title || data.name, // Ensure name is present
+              start_date: data.start_date, // redundant but safe
             };
-            createTaskMutation.mutate(formattedData, {
+            return createTaskMutation.mutateAsync(formattedData, {
               onSuccess: () => {
                 setShowTaskDialog(false);
                 message.success("Task created successfully");
@@ -574,7 +575,7 @@ export function Header({ userRole = 'Admin', roleColor, setUserRole }: HeaderPro
           requirements={(() => {
             // requirementsDropdown is already filtered by status in useEffect
             // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Topbar.tsx:TaskForm-requirements-prop',message:'Requirements passed to TaskForm in Topbar (status filtered)',data:{count:requirementsDropdown.length,requirements:requirementsDropdown.map((r)=>({id:r.id,name:r.name,type:r.type,status:r.status}))},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'FIX'})}).catch(()=>{});
+            fetch('http://127.0.0.1:7242/ingest/a27d8fc8-5e4d-46bf-abf1-bbebf7394887', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'Topbar.tsx:TaskForm-requirements-prop', message: 'Requirements passed to TaskForm in Topbar (status filtered)', data: { count: requirementsDropdown.length, requirements: requirementsDropdown.map((r) => ({ id: r.id, name: r.name, type: r.type, status: r.status })) }, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: 'FIX' }) }).catch(() => { });
             // #endregion
             return requirementsDropdown;
           })()}
