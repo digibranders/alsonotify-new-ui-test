@@ -152,11 +152,12 @@ export function FloatingTimerBar() {
         // Usually safe to default to 0 for personal tracking, or t.time_spent for task total. 
         // Showing personal time (0) is safer for the "My Timer" context.
         const secondsSpent = memberRecord?.seconds_spent || 0;
+        const estimatedTime = memberRecord ? (memberRecord.estimated_time || t.estimated_time || 0) : (t.estimated_time || 0);
         return {
           id: t.id,
           name: t.name || t.title || "Untitled Task",
           project: t.task_workspace?.name || t.task_project?.company?.name || "Unknown Project",
-          estimatedTime: t.estimated_time || 0,
+          estimatedTime: Number(estimatedTime), // Ensure it is a number
           disabled: t.disabled,
           secondsSpent: secondsSpent
         };
@@ -350,9 +351,9 @@ export function FloatingTimerBar() {
         {/* Progress Bar */}
         {(() => {
           const estimatedSeconds = (currentTask?.estimatedTime || 0) * 3600;
-          const progress = (isRunningTask && estimatedSeconds > 0)
+          const progress = (estimatedSeconds > 0)
             ? Math.min((displayTime / estimatedSeconds) * 100, 100)
-            : (isRunningTask ? (displayTime % 60) * (100 / 60) : 0);
+            : 0; // Remove the 60s loop as requested. Bar stays at 0 if no estimate provided.
 
           return (
             <div
