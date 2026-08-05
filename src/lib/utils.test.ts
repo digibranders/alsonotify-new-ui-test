@@ -8,7 +8,11 @@ describe('utils', () => {
     });
 
     it('should handle conditional classes', () => {
-      expect(cn('foo', false && 'bar', 'baz')).toBe('foo baz');
+      // Typed as boolean rather than inlining `false` so the condition is not
+      // a constant expression (no-constant-binary-expression), while still
+      // exercising the falsy-argument path that cn() must drop.
+      const isActive: boolean = false;
+      expect(cn('foo', isActive && 'bar', 'baz')).toBe('foo baz');
     });
 
     it('should handle Tailwind conflicts', () => {
