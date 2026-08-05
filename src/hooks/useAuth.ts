@@ -6,6 +6,7 @@ import { getUserDetails } from "../services/user";
 import { UpgradeOrgDto } from "@/types/dto/user.dto";
 import { queryKeys } from "../lib/queryKeys";
 import { useUserDetails } from "./useUser";
+import { safeRedirectPath } from '@/utils/security/redirect';
 
 export const useLogin = () => {
   const router = useRouter();
@@ -21,8 +22,8 @@ export const useLogin = () => {
           queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
         }
 
-        const redirect = variables.redirect || "/dashboard";
-        router.push(redirect);
+        // Never push an unvalidated query param — that is an open redirect.
+        router.push(safeRedirectPath(variables.redirect));
       }
     },
   });
