@@ -37,9 +37,16 @@ if [ "${ENVIRONMENT}" = "production" ]; then
 fi
 
 # 2. Explicit on-demand opt-in for any non-production branch.
-case "${MESSAGE}" in
+#
+#    Only the SUBJECT (first line) is searched, not the whole message. The
+#    first version scanned the entire body and promptly matched the commit
+#    that documented this very feature — writing "[vercel deploy]" in prose
+#    triggered a deploy. Restricting to the subject keeps the token usable in
+#    documentation, comments and PR descriptions without side effects.
+SUBJECT="$(printf '%s\n' "${MESSAGE}" | head -n 1)"
+case "${SUBJECT}" in
   *"[vercel deploy]"*)
-    echo "  -> BUILD ([vercel deploy] found in commit message)"
+    echo "  -> BUILD ([vercel deploy] found in commit subject)"
     exit 1
     ;;
 esac
