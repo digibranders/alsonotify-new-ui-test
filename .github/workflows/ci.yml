@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install pnpm
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v4
@@ -25,13 +25,37 @@ jobs:
           version: latest
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Guard — verify dependency build scripts actually ran
+        run: |
+          # pnpm 10+ skips dependency build scripts unless allowlisted in
+          # pnpm-workspace.yaml. That file existed but was untracked, which
+          # broke CI from 2026-07-01 to 2026-08-05. sharp in particular must
+          # build or next/image optimisation silently degrades in production.
+          if [ ! -f pnpm-workspace.yaml ]; then
+            echo "❌ pnpm-workspace.yaml is missing."
+            echo "   Fix: run 'pnpm approve-builds' and COMMIT pnpm-workspace.yaml."
+            exit 1
+          fi
+          node -e "require('sharp')" || { echo "❌ sharp failed to build."; exit 1; }
+          echo "✅ Dependency build scripts ran."
+
+      - name: Guard — reject a stray npm lockfile
+        run: |
+          # This project installs with pnpm. A tracked package-lock.json lets a
+          # local `npm install` resolve a different tree than CI and production.
+          if [ -f package-lock.json ]; then
+            echo "❌ package-lock.json present. This project uses pnpm only."
+            exit 1
+          fi
+          echo "✅ No conflicting lockfile."
 
       - name: Run lint
         run: pnpm run lint
