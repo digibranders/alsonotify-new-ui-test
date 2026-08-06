@@ -6,6 +6,7 @@ import { getUserDetails } from "../services/user";
 import { UpgradeOrgDto } from "@/types/dto/user.dto";
 import { queryKeys } from "../lib/queryKeys";
 import { useUserDetails } from "./useUser";
+import { safeRedirectPath } from '@/utils/security/redirect';
 
 export const useLogin = () => {
   const router = useRouter();
@@ -21,9 +22,11 @@ export const useLogin = () => {
           queryClient.invalidateQueries({ queryKey: queryKeys.users.me() });
         }
 
-        const redirect = variables.redirect || "/dashboard";
-        const safeRedirect = (redirect.startsWith("/") && !redirect.startsWith("//")) ? redirect : "/dashboard";
-        router.push(safeRedirect);
+        // Never push an unvalidated query param — that is an open redirect.
+        // safeRedirectPath is used rather than an inline startsWith("//") check:
+        // it decodes first, so it also rejects %2F%2F, backslash variants like
+        // /\evil.com, and embedded control characters.
+        router.push(safeRedirectPath(variables.redirect));
       }
     },
   });

@@ -57,4 +57,14 @@ refactor_report.md
 *.zip
 
 # Sentry Config File
+# Sentry build-plugin token — MUST NEVER be tracked.
+# Was committed 3x before (0d5640b, 07c5443, bd2aa77) and kept returning:
+# a .gitignore entry does nothing for an already-tracked file, so those
+# "removal" commits never actually untracked it. Untracked for real in #393.
+# CI/CD should read SENTRY_AUTH_TOKEN from GitHub Actions / Vercel env vars.
 .env.sentry-build-plugin
+
+# This project uses pnpm exclusively (see pnpm-lock.yaml).
+# A stray package-lock.json resolves a different tree than CI and production.
+package-lock.json
+bundle-report-*.txt

@@ -84,4 +84,3 @@ export const resendVerificationEmail = async (email: string): Promise<ApiRespons
 export const doLogout = async (): Promise<void> => {
     await axiosApi.post("/auth/logout");
 };
-
