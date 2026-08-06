@@ -37,6 +37,9 @@ export const usePresences = (azureUserIds: string[]) => {
     enabled: azureUserIds.length > 0,
     staleTime: 60_000,
     refetchInterval: 60_000,
+    // Never poll in a hidden tab: a backgrounded dashboard otherwise hits
+    // the API on this interval indefinitely, for data nobody is looking at.
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
 };
@@ -72,6 +75,9 @@ export const useTeamsChats = () => {
     queryFn: () => listTeamsChats(),
     staleTime: 30_000,
     refetchInterval: 30_000,
+    // Never poll in a hidden tab: a backgrounded dashboard otherwise hits
+    // the API on this interval indefinitely, for data nobody is looking at.
+    refetchIntervalInBackground: false,
   });
 };
 
@@ -82,6 +88,9 @@ export const useTeamsChatMessages = (chatId: string | null) => {
     enabled: !!chatId,
     staleTime: 15_000,
     refetchInterval: 15_000,
+    // Never poll in a hidden tab: a backgrounded dashboard otherwise hits
+    // the API on this interval indefinitely, for data nobody is looking at.
+    refetchIntervalInBackground: false,
   });
 };
 
@@ -138,6 +147,9 @@ export const useChannelMessages = (
     enabled: !!teamId && !!channelId,
     staleTime: 15_000,
     refetchInterval: 15_000,
+    // Never poll in a hidden tab: a backgrounded dashboard otherwise hits
+    // the API on this interval indefinitely, for data nobody is looking at.
+    refetchIntervalInBackground: false,
   });
 };
 
