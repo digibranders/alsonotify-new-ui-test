@@ -1,7 +1,16 @@
 'use client';
 
 import { motion } from "framer-motion";
-import Lottie from "lottie-react";
+import dynamic from "next/dynamic";
+
+// Purely decorative, and only on the post-registration screen — a page most
+// users see exactly once. No reason to put ~40KB in the auth bundle for every
+// visitor who never registers. The placeholder matches the 200x200 wrapper, so
+// the copy below it does not move when the animation swaps in.
+const Lottie = dynamic(() => import("lottie-react"), {
+  ssr: false,
+  loading: () => <div className="w-full h-full" aria-hidden="true" />,
+});
 import Link from "next/link";
 import emailAnimation from "@/assets/email-sent-animation.json";
 
