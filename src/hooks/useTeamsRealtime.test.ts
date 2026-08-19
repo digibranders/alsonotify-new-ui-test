@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
-import { applyTeamsEvent, type TeamsEvent } from './useTeamsRealtime';
+import { applyTeamsEvent, parseTeamsEvent, type TeamsEvent } from './useTeamsRealtime';
 import { queryKeys } from '../lib/queryKeys';
 import type { ApiResponse } from '../types/api';
 import type { TeamsChatMessage } from '../services/teams';
@@ -30,7 +30,22 @@ const event = (over: Record<string, unknown> = {}): TeamsEvent => ({
 });
 
 let qc: QueryClient;
-beforeEach(() => { qc = new QueryClient(); });
+/**
+ * The contract-break diagnostics are dev-only console warnings (NODE_ENV is
+ * 'test' here, so they are live). Several tests below deliberately feed
+ * malformed frames in, so silence the channel by default and assert against
+ * this spy where the warning itself is the thing under test.
+ */
+let warnSpy: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+  qc = new QueryClient();
+  warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  warnSpy.mockRestore();
+});
 
 describe('applyTeamsEvent', () => {
   it('prepends a new message to the cached chat (API order is newest-first)', () => {
@@ -206,5 +221,115 @@ describe('applyTeamsEvent', () => {
     expect(
       qc.getQueryData<ApiResponse<TeamsChatMessage[]>>(chanKey)?.result.map((m) => m.id),
     ).toEqual(['c0']);
+  });
+});
+
+describe('parseTeamsEvent', () => {
+  // The socket frame arrives as `JSON.parse(event.data)` — genuinely unknown
+  // data. It used to be asserted straight to the frame type and narrowed on
+  // `type` alone, so `{"type":"TEAMS_MESSAGE"}` with no message at all was
+  // handed downstream typed as a complete event. It only survived because
+  // applyTeamsEvent re-checks at runtime: the type was decorative and the
+  // inner guards were load-bearing. Validating here inverts that.
+  const frame = (over: Record<string, unknown> = {}) => ({
+    type: 'TEAMS_MESSAGE',
+    changeType: 'created',
+    message: {
+      id: 'm1', chatId: '19:abc', channelId: null, teamId: null,
+      body: 'hello', contentType: 'text',
+      from: { id: 'oid-1', displayName: 'Priya' },
+      createdDateTime: '2026-08-06T10:00:00Z',
+      lastEditedDateTime: null, replyToId: null,
+      ...over,
+    },
+  });
+
+  it('accepts a well-formed frame', () => {
+    expect(parseTeamsEvent(frame())).toEqual(frame());
+  });
+
+  it('accepts a channel frame, where chatId is null and the channel ids are set', () => {
+    const channelFrame = frame({ chatId: null, teamId: 'team-1', channelId: 'chan-1' });
+    expect(parseTeamsEvent(channelFrame)).toEqual(channelFrame);
+  });
+
+  it('returns only the known fields, so nothing unreviewed can ride along', () => {
+    const parsed = parseTeamsEvent({
+      ...frame({ mentions: [{ id: 0 }] }),
+      clientState: 'the per-subscription secret',
+    });
+
+    expect(parsed).toEqual(frame());
+    expect(parsed).not.toHaveProperty('clientState');
+    expect(parsed?.message).not.toHaveProperty('mentions');
+  });
+
+  it.each([
+    ['a non-object', 'TEAMS_MESSAGE'],
+    ['null', null],
+    ['a frame with no type', { changeType: 'created', message: frame().message }],
+    ['a frame of another type', { ...frame(), type: 'TEAMS_REACTION' }],
+    ['a frame with a non-string changeType', { ...frame(), changeType: 3 }],
+    ['a TEAMS_MESSAGE with no message', { type: 'TEAMS_MESSAGE', changeType: 'created' }],
+    ['a message with a missing id', frame({ id: undefined })],
+    ['a message with an empty id', frame({ id: '' })],
+    ['a message with a non-string id', frame({ id: 42 })],
+    ['a message with a non-string body', frame({ body: null })],
+    ['a message with no from', frame({ from: undefined })],
+    ['a message with a non-string createdDateTime', frame({ createdDateTime: 0 })],
+    ['a message with a non-string, non-null replyToId', frame({ replyToId: 7 })],
+  ])('rejects %s', (_label, input) => {
+    expect(parseTeamsEvent(input)).toBeNull();
+  });
+
+  it('warns when a TEAMS_MESSAGE frame fails validation, instead of dropping it in silence', () => {
+    // A contract break here means realtime is dead and nothing anywhere says
+    // so: pushToUser's return value is discarded on the backend, and the
+    // frontend would just stop applying events. The 120s poll hides it well
+    // enough that it could ship unnoticed.
+    expect(parseTeamsEvent({ type: 'TEAMS_MESSAGE', changeType: 'created' })).toBeNull();
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays silent for frames that were never Teams events', () => {
+    // Every notification on the shared socket would otherwise log a warning.
+    expect(parseTeamsEvent({ type: 'TASK_ASSIGNED', message: 'You have a task' })).toBeNull();
+
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('never puts the message body in a warning', () => {
+    // Chat content is the one thing on this socket that must not end up in a
+    // console log or a Sentry breadcrumb.
+    parseTeamsEvent(frame({ id: 42, body: 'SECRET-CHAT-CONTENT' }));
+
+    expect(warnSpy).toHaveBeenCalled();
+    expect(JSON.stringify(warnSpy.mock.calls)).not.toContain('SECRET-CHAT-CONTENT');
+  });
+});
+
+describe('applyTeamsEvent diagnostics', () => {
+  it('warns when an event routes to no conversation at all', () => {
+    // If Graph ever stops populating chatId, keyFor returns null and EVERY
+    // realtime message is dropped forever, silently -- nothing in the
+    // console, nothing in Sentry, and no backend log either.
+    applyTeamsEvent(qc, event({ chatId: null, teamId: null, channelId: null }));
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('warns when the event carries no usable id', () => {
+    applyTeamsEvent(qc, event({ id: '' }));
+
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays silent for a conversation the user simply has not opened', () => {
+    // Routine and expected: there is nothing cached to update, and it will be
+    // fetched fresh when they open it. Warning here would fire constantly.
+    applyTeamsEvent(qc, event());
+
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });

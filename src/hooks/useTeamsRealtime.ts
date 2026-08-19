@@ -60,6 +60,104 @@ interface CachedMessage {
 
 type MessagesResponse = ApiResponse<CachedMessage[]>;
 
+/**
+ * Report a broken contract on the realtime channel.
+ *
+ * These are "the shape we agreed on changed" conditions, not routine ones,
+ * and they are otherwise completely invisible: the backend discards
+ * `pushToUser`'s return value, so nothing is logged there either, and the
+ * 120s poll papers over the symptom well enough that realtime could be dead
+ * for everyone without a single signal. Dev-only, because in production the
+ * useful action is a Sentry issue rather than a console line, and there is no
+ * client-side reporter wired to this module.
+ *
+ * Never pass message bodies: chat content must not reach a console log or a
+ * Sentry breadcrumb.
+ */
+function warnContractBreak(reason: string, detail: Record<string, unknown>): void {
+  if (process.env.NODE_ENV === 'production') return;
+  console.warn(`[teams-realtime] dropped an event: ${reason}`, detail);
+}
+
+const isString = (value: unknown): value is string => typeof value === 'string';
+const isNullableString = (value: unknown): value is string | null =>
+  value === null || typeof value === 'string';
+
+/**
+ * Validate one inbound socket frame.
+ *
+ * The frame is `JSON.parse(event.data)` — genuinely unknown data crossing a
+ * trust boundary. Asserting it to `TeamsEvent` and narrowing on `type` alone
+ * (what useWebSocket used to do) let `{"type":"TEAMS_MESSAGE"}` with no
+ * `message` through, typed as a complete event: the type annotation was
+ * decorative and `applyTeamsEvent`'s runtime re-checks were load-bearing.
+ * With this, the type means something and those checks become defence in
+ * depth.
+ *
+ * Returns a fresh literal with fixed keys rather than the parsed object, so
+ * no field we have not reviewed — the backend's `clientState` secret, say, if
+ * its own allowlist ever regressed — can ride along into the cache.
+ *
+ * Strict on purpose: the backend's `toTeamsEvent` normalises every field to a
+ * string or null with defaults, so a real frame always satisfies this. The
+ * one field it does not check is `id`, which is exactly the drift this
+ * catches.
+ */
+export function parseTeamsEvent(raw: unknown): TeamsEvent | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const frame = raw as Record<string, unknown>;
+  // Not a Teams frame at all (a notification, a future control frame): not a
+  // contract break, and warning would fire on every notification.
+  if (frame.type !== 'TEAMS_MESSAGE') return null;
+
+  const reject = (reason: string): null => {
+    warnContractBreak(reason, { changeType: frame.changeType });
+    return null;
+  };
+
+  if (!isString(frame.changeType)) return reject('changeType is not a string');
+  if (typeof frame.message !== 'object' || frame.message === null) {
+    return reject('frame carries no message');
+  }
+
+  const message = frame.message as Record<string, unknown>;
+  if (typeof message.from !== 'object' || message.from === null) {
+    return reject('message carries no sender');
+  }
+  const from = message.from as Record<string, unknown>;
+
+  if (!isString(message.id) || message.id === '') return reject('message id is missing');
+  if (!isNullableString(message.chatId)) return reject('chatId is not a string or null');
+  if (!isNullableString(message.channelId)) return reject('channelId is not a string or null');
+  if (!isNullableString(message.teamId)) return reject('teamId is not a string or null');
+  if (!isString(message.body)) return reject('body is not a string');
+  if (!isString(message.contentType)) return reject('contentType is not a string');
+  if (!isNullableString(from.id)) return reject('sender id is not a string or null');
+  if (!isNullableString(from.displayName)) return reject('sender name is not a string or null');
+  if (!isString(message.createdDateTime)) return reject('createdDateTime is not a string');
+  if (!isNullableString(message.lastEditedDateTime)) {
+    return reject('lastEditedDateTime is not a string or null');
+  }
+  if (!isNullableString(message.replyToId)) return reject('replyToId is not a string or null');
+
+  return {
+    type: 'TEAMS_MESSAGE',
+    changeType: frame.changeType,
+    message: {
+      id: message.id,
+      chatId: message.chatId,
+      channelId: message.channelId,
+      teamId: message.teamId,
+      body: message.body,
+      contentType: message.contentType,
+      from: { id: from.id, displayName: from.displayName },
+      createdDateTime: message.createdDateTime,
+      lastEditedDateTime: message.lastEditedDateTime,
+      replyToId: message.replyToId,
+    },
+  };
+}
+
 function keyFor(message: TeamsEventMessage) {
   if (message.chatId) return queryKeys.teams.chatMessages(message.chatId);
   if (message.teamId && message.channelId) {
@@ -97,10 +195,22 @@ export function applyTeamsEvent(queryClient: QueryClient, event: TeamsEvent): vo
   // already in the cache (silent overwrite) and produce a duplicate React
   // key in TeamsChatView/TeamsChannelView. Best-effort realtime channel: a
   // bad frame should be a silent no-op, not corrupt the cache.
-  if (typeof event.message.id !== 'string' || !event.message.id) return;
+  if (typeof event.message.id !== 'string' || !event.message.id) {
+    warnContractBreak('message id is missing', { changeType: event.changeType });
+    return;
+  }
 
   const key = keyFor(event.message);
-  if (!key) return;
+  if (!key) {
+    // Neither a chat nor a complete channel identity. If Graph ever stops
+    // populating chatId, EVERY realtime message lands here and chat silently
+    // reverts to the poll — the exact degradation this feature replaced.
+    warnContractBreak('event belongs to no conversation', {
+      changeType: event.changeType,
+      id: event.message.id,
+    });
+    return;
+  }
 
   const existing = queryClient.getQueryData<MessagesResponse>(key);
   if (!existing?.result) return;
