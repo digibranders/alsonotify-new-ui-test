@@ -110,6 +110,100 @@ describe('retry after a failed send', () => {
     expect(cached!.result[0].id).toBe('real-1');
     expect(cached!.result[0].__status).toBeUndefined();
   });
+
+  it('flips back to failed correctly if the retry itself fails again', () => {
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    markMessageFailed(qc, '19:abc', 't1');
+    markMessagePending(qc, '19:abc', 't1'); // user clicks Retry
+    markMessageFailed(qc, '19:abc', 't1'); // the retry also fails
+
+    const cached = qc.getQueryData<ApiResponse<LocalRow[]>>(KEY());
+    expect(cached!.result).toHaveLength(1);
+    expect(cached!.result[0].__tempId).toBe('t1');
+    expect(cached!.result[0].__status).toBe('failed');
+    expect(cached!.result[0].body.content).toBe('hello');
+  });
+
+  it('keeps the row keyed on the same __tempId after reconciliation, so the UI does not remount it', () => {
+    // __tempId is deliberately NOT cleared by reconcilePendingMessage (only
+    // __status is): TeamsChatView keys rows on `__tempId ?? id` so the row's
+    // React key stays stable across the pending -> reconciled transition,
+    // even though `id` itself changes from the temp id to the real one.
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+
+    reconcilePendingMessage(qc, '19:abc', 't1', { id: 'real-1', body: { content: 'hello' } });
+
+    const cached = qc.getQueryData<ApiResponse<LocalRow[]>>(KEY());
+    expect(cached!.result[0].__tempId).toBe('t1');
+    expect(cached!.result[0].id).toBe('real-1');
+  });
+});
+
+describe('reconcile racing an independent delivery of the same message', () => {
+  it('drops the redundant row rather than leaving two entries with the same real id', () => {
+    // Simulates the race: the WebSocket push (applyTeamsEvent) or a poll
+    // (preservePendingMessages) learned about this message under its real id
+    // and already inserted a row for it, BEFORE this send's own onSuccess
+    // fired to reconcile the still-pending row.
+    qc.setQueryData(
+      KEY(),
+      wrap([
+        { id: 'real-1', body: { content: 'hello', contentType: 'text' } },
+      ]),
+    );
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+
+    reconcilePendingMessage(qc, '19:abc', 't1', { id: 'real-1', body: { content: 'hello' } });
+
+    const cached = qc.getQueryData<ApiResponse<LocalRow[]>>(KEY());
+    expect(cached!.result).toHaveLength(1);
+    expect(cached!.result.filter((m) => m.id === 'real-1')).toHaveLength(1);
+    // The reconciled row (which keeps a stable __tempId key) is the survivor,
+    // not the earlier server-only duplicate.
+    expect(cached!.result[0].__tempId).toBe('t1');
+  });
+});
+
+describe('no-op guards for an unknown tempId or an unseeded chat', () => {
+  it('reconcilePendingMessage is a no-op when the tempId is not in the cache', () => {
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    const before = qc.getQueryData(KEY());
+
+    reconcilePendingMessage(qc, '19:abc', 'does-not-exist', { id: 'real-1', body: { content: 'x' } });
+
+    expect(qc.getQueryData(KEY())).toEqual(before);
+  });
+
+  it('markMessageFailed is a no-op when the tempId is not in the cache', () => {
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    const before = qc.getQueryData(KEY());
+
+    markMessageFailed(qc, '19:abc', 'does-not-exist');
+
+    expect(qc.getQueryData(KEY())).toEqual(before);
+  });
+
+  it('markMessagePending is a no-op when the tempId is not in the cache', () => {
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    const before = qc.getQueryData(KEY());
+
+    markMessagePending(qc, '19:abc', 'does-not-exist');
+
+    expect(qc.getQueryData(KEY())).toEqual(before);
+  });
+
+  it('all three helpers no-op cleanly when the chat was never fetched (no cache entry at all)', () => {
+    const freshQc = new QueryClient();
+    const unseeded = queryKeys.teams.chatMessages('19:never-opened');
+
+    expect(() => {
+      reconcilePendingMessage(freshQc, '19:never-opened', 't1', { id: 'real-1', body: { content: 'x' } });
+      markMessageFailed(freshQc, '19:never-opened', 't1');
+      markMessagePending(freshQc, '19:never-opened', 't1');
+    }).not.toThrow();
+
+    expect(freshQc.getQueryData(unseeded)).toBeUndefined();
+  });
 });
 
 // Deferred from Task 8's review: the 120s background poll (see
@@ -146,5 +240,39 @@ describe('poll-vs-push race (preservePendingMessages)', () => {
     const merged = preservePendingMessages(qc, KEY(), serverResponse);
 
     expect(merged).toEqual(serverResponse);
+  });
+
+  it('a reconciled row (status cleared) is no longer carried forward as pending', () => {
+    // Regression guard for the __status-based predicate: previously this
+    // checked `__tempId` presence, and __tempId is now intentionally kept
+    // after reconciliation as a stable UI key (see reconcilePendingMessage),
+    // so the predicate must be __status, not __tempId, or every
+    // ever-optimistic row would be treated as still-pending forever.
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    reconcilePendingMessage(qc, '19:abc', 't1', { id: 'real-1', body: { content: 'hello' } });
+
+    const serverResponse = wrap([{ id: 'real-1', body: { content: 'hello', contentType: 'text' } }]);
+    const merged = preservePendingMessages(qc, KEY(), serverResponse);
+
+    expect(merged.result).toHaveLength(1);
+    expect(merged).toEqual(serverResponse);
+  });
+
+  it('prefers the fetched (server) copy over a local row sharing the same id', () => {
+    // Defensive dedup requested in review: even though a still-pending row's
+    // id is always its tempId and can never naturally collide with a real
+    // Graph id (so this exact path is not reachable through normal use
+    // today), preservePendingMessages must never hand back two rows sharing
+    // an id.
+    qc.setQueryData(
+      KEY(),
+      wrap([{ id: 'dup-1', __status: 'pending', body: { content: 'stale local copy', contentType: 'text' } }]),
+    );
+
+    const serverResponse = wrap([{ id: 'dup-1', body: { content: 'authoritative server copy', contentType: 'text' } }]);
+    const merged = preservePendingMessages(qc, KEY(), serverResponse);
+
+    expect(merged.result).toHaveLength(1);
+    expect(merged.result[0].body.content).toBe('authoritative server copy');
   });
 });

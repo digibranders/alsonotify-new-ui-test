@@ -78,8 +78,12 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
 
   const handleRetry = (message: TChatMessage) => {
     // Only failed, locally-generated rows carry a __tempId; a real server
-    // message can never be retried this way.
-    if (!chatId || !message.__tempId) return;
+    // message can never be retried this way. Also guard against a second
+    // send firing while one is already in flight -- the Retry button is
+    // disabled for the same reason (isSending below), this is defense in
+    // depth so a duplicate `sendTeamsChatMessage` call can't reach Graph
+    // even if triggered some other way.
+    if (!chatId || !message.__tempId || sendMessage.isPending) return;
     sendMessage.mutate({
       chatId,
       content: message.body.content,
@@ -128,12 +132,19 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
                 prevGroup?.type === 'message' ? prevGroup.message : undefined;
               return (
                 <TeamsChatMessage
-                  key={group.message.id}
+                  // A message that started as an optimistic row keeps its
+                  // __tempId after reconciliation specifically so the key
+                  // stays stable here: without this, `id` swapping from the
+                  // temp id to the real Graph id at reconcile time would
+                  // read as a different row to React and remount it instead
+                  // of patching in place.
+                  key={group.message.__tempId ?? group.message.id}
                   message={group.message}
                   previousMessage={prevMessage}
                   allMessages={messages}
                   onReply={handleReply}
                   onRetry={handleRetry}
+                  isSending={sendMessage.isPending}
                   currentUserAzureId={currentUserAzureId}
                 />
               );

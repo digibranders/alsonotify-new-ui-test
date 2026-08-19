@@ -45,9 +45,16 @@ interface CachedMessage {
   createdDateTime?: string;
   lastEditedDateTime?: string | null;
   replyToId?: string | null;
-  /** Local-only: present while a send is in flight or has failed. */
+  /** Local-only: present while a send is in flight or has failed. Cleared once reconciled. */
   __status?: 'pending' | 'failed';
-  /** Local-only: correlates an optimistic message with its server copy. */
+  /**
+   * Correlates an optimistic message with its eventual server copy, and with
+   * retries of the same send. Deliberately NOT cleared once reconciled (only
+   * `__status` is): the UI keys rows on `__tempId ?? id` so a message that
+   * started life as an optimistic row keeps the SAME React key through
+   * pending -> failed -> retried -> reconciled, instead of remounting when
+   * `id` swaps from the temp id to the real one.
+   */
   __tempId?: string;
 }
 
@@ -160,6 +167,18 @@ export function addPendingMessage(
  *
  * Position is preserved rather than moved to the front, so a slow first send
  * cannot jump behind a fast second one and reorder the conversation.
+ * `__tempId` is deliberately NOT cleared (only `__status` is): it stays as a
+ * stable React key across the pending -> reconciled transition (see
+ * `CachedMessage.__tempId`'s doc comment), and `applyTeamsEvent`'s
+ * already-present branch relies on the same convention.
+ *
+ * Also guards against a race with the WebSocket push or the 120s poll: either
+ * can independently learn about this same message under its real id BEFORE
+ * this reconcile runs (see `preservePendingMessages` / `applyTeamsEvent`),
+ * leaving a second, redundant row already sitting in the cache under
+ * `serverMessage.id`. Once this row is rewritten to that same id, any OTHER
+ * row that already carries it is dropped, so the conversation ends up with
+ * one entry (and one React key) for the message, not two.
  */
 export function reconcilePendingMessage(
   queryClient: QueryClient,
@@ -174,13 +193,16 @@ export function reconcilePendingMessage(
   const at = existing.result.findIndex((m) => m.__tempId === tempId);
   if (at < 0) return;
 
-  const nextResult = [...existing.result];
-  nextResult[at] = {
-    ...nextResult[at],
+  const reconciled: CachedMessage = {
+    ...existing.result[at],
     ...serverMessage,
     __status: undefined,
-    __tempId: undefined,
   };
+
+  const withReconciled = [...existing.result];
+  withReconciled[at] = reconciled;
+  const nextResult = withReconciled.filter((m, i) => i === at || m.id !== reconciled.id);
+
   queryClient.setQueryData<MessagesResponse>(key, { ...existing, result: nextResult });
 }
 
@@ -238,18 +260,35 @@ export function markMessagePending(
  *
  * Call this with the freshly fetched response INSIDE the query's `queryFn`,
  * before it is returned (and therefore before React Query writes it to the
- * cache): any row still carrying `__tempId` in the current cache is carried
+ * cache): any row still genuinely local-only (`__status` is `pending` or
+ * `failed` — NOT merely `__tempId` present, since that field now survives
+ * reconciliation as a stable key, see `CachedMessage.__tempId`) is carried
  * forward, newest-first ahead of the fetched page, matching the ordering
  * `addPendingMessage` uses.
+ *
+ * Deduped by `id`, fetched (server) rows winning over carried-forward local
+ * rows: a still-pending row's `id` is always its `tempId`, which can never
+ * collide with a real Graph id, so this cannot happen through this merge
+ * alone today. It is kept anyway as a cheap, defensive guarantee that this
+ * function never hands back two rows sharing an `id` — the actual fix for
+ * the id-collision race (a pending row's `tempId` being rewritten to an id
+ * that's already sitting in the cache from an independent poll/WebSocket
+ * delivery) lives in `reconcilePendingMessage`, which is the point where
+ * that collision can first occur.
  */
-export function preservePendingMessages<T extends { id: string; __tempId?: string }>(
+export function preservePendingMessages<T extends { id: string; __status?: 'pending' | 'failed' }>(
   queryClient: QueryClient,
   key: QueryKey,
   fetched: ApiResponse<T[]>,
 ): ApiResponse<T[]> {
   const existing = queryClient.getQueryData<ApiResponse<T[]>>(key);
-  const pendingOrFailed = existing?.result?.filter((m) => m.__tempId) ?? [];
+  const pendingOrFailed =
+    existing?.result?.filter((m) => m.__status === 'pending' || m.__status === 'failed') ?? [];
   if (pendingOrFailed.length === 0) return fetched;
 
-  return { ...fetched, result: [...pendingOrFailed, ...fetched.result] };
+  const fetchedIds = new Set(fetched.result.map((m) => m.id));
+  const localOnly = pendingOrFailed.filter((m) => !fetchedIds.has(m.id));
+  if (localOnly.length === 0) return fetched;
+
+  return { ...fetched, result: [...localOnly, ...fetched.result] };
 }

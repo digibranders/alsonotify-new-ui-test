@@ -17,6 +17,15 @@ interface TeamsChatMessageProps {
   onReply?: (message: TChatMessage) => void;
   /** Resend a message that failed to send. Only relevant when `message.__status === 'failed'`. */
   onRetry?: (message: TChatMessage) => void;
+  /**
+   * A send mutation (initial or retry) is currently in flight. Disables the
+   * Retry button so a second click cannot fire a second real
+   * `sendTeamsChatMessage` call against the same failed row -- two fast
+   * clicks would otherwise create two messages in the actual Teams
+   * conversation, not just a local rendering glitch (mirrors how
+   * TeamsMessageInput disables the composer via `isSending`).
+   */
+  isSending?: boolean;
   currentUserAzureId?: string | null;
 }
 
@@ -61,6 +70,7 @@ export function TeamsChatMessage({
   allMessages,
   onReply,
   onRetry,
+  isSending,
   currentUserAzureId,
 }: TeamsChatMessageProps) {
   // All hooks must be called before any early return
@@ -187,7 +197,12 @@ export function TeamsChatMessage({
               <button
                 type="button"
                 onClick={() => onRetry(message)}
-                className="underline hover:no-underline font-medium cursor-pointer"
+                disabled={isSending}
+                className={`font-medium ${
+                  isSending
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'underline hover:no-underline cursor-pointer'
+                }`}
               >
                 Retry
               </button>
