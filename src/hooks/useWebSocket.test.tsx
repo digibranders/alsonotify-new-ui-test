@@ -171,6 +171,56 @@ describe('useWebSocket — connection lifecycle', () => {
   });
 });
 
+describe('useWebSocket — the auth cookie is not readable at mount', () => {
+  /** Longer than the whole retry budget (1+2+4+8+16+30×5 = 181s). */
+  const runEveryRetry = () => {
+    act(() => {
+      vi.advanceTimersByTime(600_000);
+    });
+  };
+
+  const clearToken = () => {
+    document.cookie = '_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  };
+
+  it('opens no socket while there is no token', () => {
+    clearToken();
+
+    render();
+
+    expect(FakeWebSocket.instances).toHaveLength(0);
+  });
+
+  it('connects once the cookie shows up, instead of giving up for the whole session', () => {
+    // `if (!token) return` scheduled nothing, so a mount that raced the cookie
+    // -- a hard reload, or the redirect straight after login -- left that tab
+    // with no socket at all and no path back to one. The only symptom is chat
+    // running on the 120s poll, which is exactly what this feature replaced,
+    // so it would not be reported as broken.
+    clearToken();
+    render();
+    expect(FakeWebSocket.instances).toHaveLength(0);
+
+    document.cookie = '_token=a-jwt';
+    runEveryRetry();
+
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    expect(FakeWebSocket.latest().protocols).toBe('a-jwt');
+  });
+
+  it('stops after the retry budget rather than reading the cookie forever', () => {
+    // A genuinely logged-out tab must not spin for the rest of its life.
+    clearToken();
+    render();
+    runEveryRetry();
+
+    document.cookie = '_token=a-jwt';
+    runEveryRetry();
+
+    expect(FakeWebSocket.instances).toHaveLength(0);
+  });
+});
+
 describe('useWebSocket — frame routing', () => {
   it('applies a Teams message to the chat cache', () => {
     qc.setQueryData(CHAT_KEY(), { success: true, message: '', result: [] });

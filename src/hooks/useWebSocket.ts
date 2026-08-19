@@ -105,12 +105,38 @@ export function useWebSocket() {
 
   const connectRef = useRef<() => void>(() => {});
 
+  /**
+   * Queue another attempt on the shared backoff, or stop if the budget is
+   * spent. `onopen` resets the counter, so a working connection always starts
+   * from a full budget again.
+   */
+  const scheduleReconnect = useCallback(() => {
+    if (unmountedRef.current) return;
+    if (retryCountRef.current >= MAX_RETRIES) return;
+
+    const delay = Math.min(MIN_RETRY_DELAY * 2 ** retryCountRef.current, MAX_RETRY_DELAY);
+    retryCountRef.current += 1;
+    clearRetryTimer();
+    retryTimerRef.current = setTimeout(() => connectRef.current(), delay);
+  }, []);
+
   const connect = useCallback(() => {
     if (unmountedRef.current) return;
 
     const cookies = new Cookies();
     const token: string | undefined = cookies.get('_token');
-    if (!token) return; // Not authenticated yet
+    if (!token) {
+      // Not readable yet. This used to return outright, which meant a mount
+      // that raced the cookie -- a hard reload, or the redirect immediately
+      // after login -- got no socket for the entire session and had no way
+      // back to one. The only symptom is chat silently running on its 120s
+      // poll, i.e. the degraded behaviour this feature exists to replace, so
+      // it would never be reported as broken. Retrying on the same backoff
+      // covers the race and still stops after MAX_RETRIES, so a genuinely
+      // logged-out tab does not read the cookie for the rest of its life.
+      scheduleReconnect();
+      return;
+    }
 
     // Close any existing connection
     if (wsRef.current) {
@@ -187,16 +213,9 @@ export function useWebSocket() {
       }
       if (event.code === CLOSE_POLICY_VIOLATION) return;
 
-      if (retryCountRef.current >= MAX_RETRIES) return;
-
-      const delay = Math.min(
-        MIN_RETRY_DELAY * 2 ** retryCountRef.current,
-        MAX_RETRY_DELAY
-      );
-      retryCountRef.current += 1;
-      retryTimerRef.current = setTimeout(() => connectRef.current(), delay);
+      scheduleReconnect();
     };
-  }, [queryClient]);
+  }, [queryClient, scheduleReconnect]);
 
   useEffect(() => {
     connectRef.current = connect;
@@ -225,6 +244,7 @@ export function useWebSocket() {
 
   useEffect(() => {
     unmountedRef.current = false;
+    retryCountRef.current = 0;
     connect();
 
     return () => {
