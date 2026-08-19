@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import Cookies from 'universal-cookie';
 import { NotificationToast } from '@/components/features/notifications/NotificationToast';
 import { getPriority } from '@/components/features/notifications/utils';
+import { applyTeamsEvent, type TeamsEvent } from './useTeamsRealtime';
 
 const WS_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000')
   .replace(/^http/, 'ws')
@@ -57,10 +58,20 @@ export function useWebSocket() {
           title?: string;
           message?: string;
           icon?: string;
+          changeType?: string;
         };
 
         // Ignore CONNECTED handshake
         if (data.type === 'CONNECTED') return;
+
+        // Teams messages share this socket (the backend keys connections by
+        // user id, so a second socket would close this one) but are NOT
+        // notifications: they must not invalidate the notification queries or
+        // raise a toast, only update the Teams chat/channel cache.
+        if (data.type === 'TEAMS_MESSAGE') {
+          applyTeamsEvent(queryClient, data as unknown as TeamsEvent);
+          return;
+        }
 
         // Invalidate all notification queries so panels refresh
         queryClient.invalidateQueries({ queryKey: ['notifications'] });

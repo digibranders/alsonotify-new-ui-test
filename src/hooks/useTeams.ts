@@ -87,7 +87,12 @@ export const useTeamsChatMessages = (chatId: string | null) => {
     queryFn: () => getTeamsChatMessages(chatId!),
     enabled: !!chatId,
     staleTime: 15_000,
-    refetchInterval: 15_000,
+    // Messages now arrive over the WebSocket (see useWebSocket.ts ->
+    // applyTeamsEvent), so this is a slow safety net, not the primary
+    // update path. Keep it rather than deleting it: if the socket drops
+    // (network blip, backend restart), chat degrades to slightly-stale
+    // instead of going silent until the user reloads.
+    refetchInterval: 120_000,
     // Never poll in a hidden tab: a backgrounded dashboard otherwise hits
     // the API on this interval indefinitely, for data nobody is looking at.
     refetchIntervalInBackground: false,
@@ -146,7 +151,12 @@ export const useChannelMessages = (
     queryFn: () => getChannelMessages(teamId!, channelId!),
     enabled: !!teamId && !!channelId,
     staleTime: 15_000,
-    refetchInterval: 15_000,
+    // Messages now arrive over the WebSocket (see useWebSocket.ts ->
+    // applyTeamsEvent), so this is a slow safety net, not the primary
+    // update path. Keep it rather than deleting it: if the socket drops
+    // (network blip, backend restart), chat degrades to slightly-stale
+    // instead of going silent until the user reloads.
+    refetchInterval: 120_000,
     // Never poll in a hidden tab: a backgrounded dashboard otherwise hits
     // the API on this interval indefinitely, for data nobody is looking at.
     refetchIntervalInBackground: false,
