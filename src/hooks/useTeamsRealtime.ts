@@ -153,7 +153,18 @@ export function applyTeamsEvent(queryClient: QueryClient, event: TeamsEvent): vo
 export function addPendingMessage(
   queryClient: QueryClient,
   chatId: string,
-  input: { tempId: string; body: string; authorId: string },
+  input: {
+    tempId: string;
+    body: string;
+    /**
+     * Required, not defaulted: the caller always knows what the composer
+     * produced, and guessing here is exactly the bug this replaced — a
+     * hardcoded 'text' rendered the raw `<div>` markup of any multi-line or
+     * formatted message in the sender's own bubble.
+     */
+    contentType: 'html' | 'text';
+    authorId: string;
+  },
 ): void {
   const key = queryKeys.teams.chatMessages(chatId);
   const cached = queryClient.getQueryData<MessagesResponse>(key);
@@ -166,7 +177,7 @@ export function addPendingMessage(
     __tempId: input.tempId,
     __status: 'pending',
     messageType: 'message',
-    body: { content: input.body, contentType: 'text' },
+    body: { content: input.body, contentType: input.contentType },
     from: { user: { id: input.authorId, displayName: null } },
     createdDateTime: new Date().toISOString(),
     lastEditedDateTime: null,

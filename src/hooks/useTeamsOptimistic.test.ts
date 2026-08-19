@@ -36,7 +36,7 @@ beforeEach(() => {
 
 describe('optimistic send', () => {
   it('shows the message immediately, marked pending', () => {
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', contentType: 'text', authorId: 'me' });
 
     const cached = qc.getQueryData<ApiResponse<LocalRow[]>>(KEY());
     const [msg] = cached!.result;
@@ -45,7 +45,7 @@ describe('optimistic send', () => {
   });
 
   it('replaces the pending copy when the real message arrives, without duplicating', () => {
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', contentType: 'text', authorId: 'me' });
 
     reconcilePendingMessage(qc, '19:abc', 't1', { id: 'real-1', body: { content: 'hello' } });
 
@@ -56,7 +56,7 @@ describe('optimistic send', () => {
   });
 
   it('marks the message failed rather than removing it, so the text is not lost', () => {
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', contentType: 'text', authorId: 'me' });
 
     markMessageFailed(qc, '19:abc', 't1');
 
@@ -74,8 +74,8 @@ describe('optimistic send', () => {
     // displays as "first" then "second". Reconciling `t1` replaces it IN
     // PLACE rather than moving it to the front, so a slow first send cannot
     // jump behind a fast second one and reorder the conversation.
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'first', authorId: 'me' });
-    addPendingMessage(qc, '19:abc', { tempId: 't2', body: 'second', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'first', contentType: 'text', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't2', body: 'second', contentType: 'text', authorId: 'me' });
 
     reconcilePendingMessage(qc, '19:abc', 't1', { id: 'r1', body: { content: 'first' } });
 
@@ -98,7 +98,7 @@ describe('a send into a chat that has no cache entry yet', () => {
   it('renders the message anyway, by seeding the envelope', () => {
     const fresh = new QueryClient();
 
-    addPendingMessage(fresh, UNSEEDED, { tempId: 't1', body: 'typed early', authorId: 'me' });
+    addPendingMessage(fresh, UNSEEDED, { tempId: 't1', body: 'typed early', contentType: 'text', authorId: 'me' });
 
     const cached = fresh.getQueryData<ApiResponse<LocalRow[]>>(unseededKey());
     expect(cached?.result).toHaveLength(1);
@@ -112,7 +112,7 @@ describe('a send into a chat that has no cache entry yet', () => {
     // reading `existing.result`) would break instead of merging.
     const fresh = new QueryClient();
 
-    addPendingMessage(fresh, UNSEEDED, { tempId: 't1', body: 'typed early', authorId: 'me' });
+    addPendingMessage(fresh, UNSEEDED, { tempId: 't1', body: 'typed early', contentType: 'text', authorId: 'me' });
 
     const cached = fresh.getQueryData<ApiResponse<LocalRow[]>>(unseededKey());
     expect(cached).toMatchObject({ success: true, message: '' });
@@ -122,7 +122,7 @@ describe('a send into a chat that has no cache entry yet', () => {
   it('can then be marked failed, so the text survives and offers a retry', () => {
     const fresh = new QueryClient();
 
-    addPendingMessage(fresh, UNSEEDED, { tempId: 't1', body: 'typed early', authorId: 'me' });
+    addPendingMessage(fresh, UNSEEDED, { tempId: 't1', body: 'typed early', contentType: 'text', authorId: 'me' });
     markMessageFailed(fresh, UNSEEDED, 't1');
 
     const cached = fresh.getQueryData<ApiResponse<LocalRow[]>>(unseededKey());
@@ -132,7 +132,7 @@ describe('a send into a chat that has no cache entry yet', () => {
 
   it('is carried forward, not duplicated, when the first real fetch finally lands', () => {
     const fresh = new QueryClient();
-    addPendingMessage(fresh, UNSEEDED, { tempId: 't1', body: 'typed early', authorId: 'me' });
+    addPendingMessage(fresh, UNSEEDED, { tempId: 't1', body: 'typed early', contentType: 'text', authorId: 'me' });
 
     const merged = preservePendingMessages(
       fresh,
@@ -146,7 +146,7 @@ describe('a send into a chat that has no cache entry yet', () => {
 
 describe('retry after a failed send', () => {
   it('flips the same row back to pending in place, rather than inserting a new one', () => {
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', contentType: 'text', authorId: 'me' });
     markMessageFailed(qc, '19:abc', 't1');
 
     markMessagePending(qc, '19:abc', 't1');
@@ -159,7 +159,7 @@ describe('retry after a failed send', () => {
   });
 
   it('can then be reconciled by the same tempId once the retry succeeds', () => {
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', contentType: 'text', authorId: 'me' });
     markMessageFailed(qc, '19:abc', 't1');
     markMessagePending(qc, '19:abc', 't1');
 
@@ -172,7 +172,7 @@ describe('retry after a failed send', () => {
   });
 
   it('flips back to failed correctly if the retry itself fails again', () => {
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', contentType: 'text', authorId: 'me' });
     markMessageFailed(qc, '19:abc', 't1');
     markMessagePending(qc, '19:abc', 't1'); // user clicks Retry
     markMessageFailed(qc, '19:abc', 't1'); // the retry also fails
@@ -216,7 +216,7 @@ describe('retry after a failed send', () => {
     // __status is): TeamsChatView keys rows on `__tempId ?? id` so the row's
     // React key stays stable across the pending -> reconciled transition,
     // even though `id` itself changes from the temp id to the real one.
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', contentType: 'text', authorId: 'me' });
 
     reconcilePendingMessage(qc, '19:abc', 't1', { id: 'real-1', body: { content: 'hello' } });
 
@@ -238,7 +238,7 @@ describe('reconcile racing an independent delivery of the same message', () => {
         { id: 'real-1', body: { content: 'hello', contentType: 'text' } },
       ]),
     );
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', contentType: 'text', authorId: 'me' });
 
     reconcilePendingMessage(qc, '19:abc', 't1', { id: 'real-1', body: { content: 'hello' } });
 
@@ -253,7 +253,7 @@ describe('reconcile racing an independent delivery of the same message', () => {
 
 describe('no-op guards for an unknown tempId or an unseeded chat', () => {
   it('reconcilePendingMessage is a no-op when the tempId is not in the cache', () => {
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', contentType: 'text', authorId: 'me' });
     const before = qc.getQueryData(KEY());
 
     reconcilePendingMessage(qc, '19:abc', 'does-not-exist', { id: 'real-1', body: { content: 'x' } });
@@ -262,7 +262,7 @@ describe('no-op guards for an unknown tempId or an unseeded chat', () => {
   });
 
   it('markMessageFailed is a no-op when the tempId is not in the cache', () => {
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', contentType: 'text', authorId: 'me' });
     const before = qc.getQueryData(KEY());
 
     markMessageFailed(qc, '19:abc', 'does-not-exist');
@@ -271,7 +271,7 @@ describe('no-op guards for an unknown tempId or an unseeded chat', () => {
   });
 
   it('markMessagePending is a no-op when the tempId is not in the cache', () => {
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', contentType: 'text', authorId: 'me' });
     const before = qc.getQueryData(KEY());
 
     markMessagePending(qc, '19:abc', 'does-not-exist');
@@ -300,7 +300,7 @@ describe('no-op guards for an unknown tempId or an unseeded chat', () => {
 // of those rows exists must not silently drop it from the cache.
 describe('poll-vs-push race (preservePendingMessages)', () => {
   it('keeps a pending message when a background poll response lands without it', () => {
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'still sending', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'still sending', contentType: 'text', authorId: 'me' });
 
     // Simulates what the poll's queryFn receives from the server: it knows
     // nothing about the optimistic row that only exists in the cache.
@@ -312,7 +312,7 @@ describe('poll-vs-push race (preservePendingMessages)', () => {
   });
 
   it('keeps a failed message across a poll too', () => {
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'oops', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'oops', contentType: 'text', authorId: 'me' });
     markMessageFailed(qc, '19:abc', 't1');
 
     const merged = preservePendingMessages(qc, KEY(), wrap([])) as ApiResponse<LocalRow[]>;
@@ -343,7 +343,7 @@ describe('poll-vs-push race (preservePendingMessages)', () => {
     // real scenario is a message deleted from the Teams desktop app between
     // the reconcile and the poll — it must stay deleted, not be resurrected
     // from the local cache.
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', contentType: 'text', authorId: 'me' });
     reconcilePendingMessage(qc, '19:abc', 't1', { id: 'real-1', body: { content: 'hello' } });
 
     const serverResponse = wrap([{ id: 'm0', body: { content: 'earlier', contentType: 'text' } }]);
@@ -356,7 +356,7 @@ describe('poll-vs-push race (preservePendingMessages)', () => {
   it('still carries a pending row forward when the fetched page shares no ids with it', () => {
     // The mirror of the test above, so neither one can be satisfied by a
     // predicate that simply never carries anything forward.
-    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'still sending', authorId: 'me' });
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'still sending', contentType: 'text', authorId: 'me' });
 
     const merged = preservePendingMessages(
       qc,

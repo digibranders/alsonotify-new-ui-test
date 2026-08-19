@@ -115,9 +115,30 @@ export const useTeamsChatMessages = (chatId: string | null) => {
   });
 };
 
+/**
+ * What the API is told when the caller does not say, and what the optimistic
+ * row is rendered as in that case.
+ *
+ * Matches `sendTeamsChatMessage`'s own default, so a call site that has not
+ * been threaded through yet keeps exactly the wire behaviour it has today —
+ * and the optimistic bubble now renders the way the server copy will come
+ * back, instead of contradicting it.
+ */
+const DEFAULT_SEND_CONTENT_TYPE = "html" as const;
+
 interface SendTeamsChatMessageVariables {
   chatId: string;
   content: string;
+  /**
+   * What `content` actually is. TeamsMessageInput reports 'html' whenever the
+   * contenteditable produced markup — which covers any bold/italic/list AND
+   * any two-line message, since later lines are wrapped in `<div>` — and
+   * 'text' otherwise. It must reach both the API (or plain text is posted to
+   * Graph as HTML) and the optimistic row (or the user reads the literal
+   * `<div>second line</div>` in their own bubble; harmless for the ~200-800ms
+   * before reconcile, permanent on a failed send).
+   */
+  contentType?: "html" | "text";
   /**
    * Present when retrying a previously failed send: reuses that row's
    * tempId so the retry flips it back to pending IN PLACE, instead of
@@ -134,8 +155,8 @@ export const useSendTeamsChatMessage = () => {
     | undefined;
 
   return useMutation({
-    mutationFn: ({ chatId, content }: SendTeamsChatMessageVariables) =>
-      sendTeamsChatMessage(chatId, content),
+    mutationFn: ({ chatId, content, contentType }: SendTeamsChatMessageVariables) =>
+      sendTeamsChatMessage(chatId, content, contentType ?? DEFAULT_SEND_CONTENT_TYPE),
 
     // Show it immediately. `tempId` is returned as mutation context so the
     // later callbacks can find this exact entry again. The author id must be
@@ -143,7 +164,12 @@ export const useSendTeamsChatMessage = () => {
     // compares against `currentUserAzureId` to decide "own message" styling
     // -- not `useUserDetails`'s internal numeric user id, which would render
     // the optimistic bubble as someone else's until it reconciles.
-    onMutate: async ({ chatId, content, retryTempId }: SendTeamsChatMessageVariables) => {
+    onMutate: async ({
+      chatId,
+      content,
+      contentType,
+      retryTempId,
+    }: SendTeamsChatMessageVariables) => {
       const tempId = retryTempId ?? `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       if (retryTempId) {
         markMessagePending(queryClient, chatId, retryTempId);
@@ -151,6 +177,7 @@ export const useSendTeamsChatMessage = () => {
         addPendingMessage(queryClient, chatId, {
           tempId,
           body: content,
+          contentType: contentType ?? DEFAULT_SEND_CONTENT_TYPE,
           authorId: currentUserAzureId ?? "",
         });
       }
