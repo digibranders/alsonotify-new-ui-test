@@ -367,6 +367,52 @@ describe('poll-vs-push race (preservePendingMessages)', () => {
     expect(merged.result.map((m) => m.id)).toEqual(['t1', 'm0']);
   });
 
+  // The envelope's `result` is typed `T[]`, but that is a claim about the API,
+  // not a guarantee: every consumer of these queries writes
+  // `messagesData?.result || []` precisely because a `{ success: true,
+  // result: null }` body is a shape the backend can and does return. Moving
+  // the merge INSIDE the queryFn moved it in front of those `|| []` guards,
+  // so the same body that used to render as an empty chat now throws out of
+  // the queryFn — and React Query retries a throwing queryFn three times
+  // before settling on exactly the empty render it would have produced
+  // straight away.
+  describe('a fetched envelope whose result is not an array', () => {
+    it('does not throw when a pending row has to be merged into it', () => {
+      addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'still sending', contentType: 'text', authorId: 'me' });
+
+      const nullResult = { success: true, message: '', result: null } as unknown as ApiResponse<
+        TeamsChatMessage[]
+      >;
+
+      expect(() => preservePendingMessages(qc, KEY(), nullResult)).not.toThrow();
+    });
+
+    it('keeps the pending row and normalises the result to an array', () => {
+      // Normalising rather than passing `null` back through matters beyond the
+      // crash: `applyTeamsEvent` bails on `!existing?.result`, so leaving null
+      // in the cache means realtime messages for this chat are dropped until a
+      // later poll happens to return a list.
+      addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'still sending', contentType: 'text', authorId: 'me' });
+
+      const nullResult = { success: true, message: '', result: null } as unknown as ApiResponse<
+        TeamsChatMessage[]
+      >;
+      const merged = preservePendingMessages(qc, KEY(), nullResult) as ApiResponse<LocalRow[]>;
+
+      expect(merged.result.map((m) => m.id)).toEqual(['t1']);
+    });
+
+    it('normalises to an empty array even when there is nothing pending to merge', () => {
+      const nullResult = { success: true, message: '', result: null } as unknown as ApiResponse<
+        TeamsChatMessage[]
+      >;
+
+      const merged = preservePendingMessages(qc, KEY(), nullResult);
+
+      expect(merged.result).toEqual([]);
+    });
+  });
+
   it('prefers the fetched (server) copy over a local row sharing the same id', () => {
     // Defensive dedup requested in review: even though a still-pending row's
     // id is always its tempId and can never naturally collide with a real

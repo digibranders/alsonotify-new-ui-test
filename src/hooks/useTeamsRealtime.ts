@@ -420,20 +420,29 @@ export function markMessagePending(
  * that's already sitting in the cache from an independent poll/WebSocket
  * delivery) lives in `reconcilePendingMessage`, which is the point where
  * that collision can first occur.
+ *
+ * `fetched.result` is typed `T[]` but treated as untrusted: the API can answer
+ * `{ success: true, result: null }`, which every consumer of these queries
+ * already absorbs with `messagesData?.result || []`. Running this merge inside
+ * the queryFn puts it AHEAD of those guards, where the same body would throw —
+ * and a throwing queryFn costs three React Query retries before settling on
+ * the empty render it would otherwise have produced immediately. Normalised to
+ * `[]` rather than passed through, so `applyTeamsEvent`'s `!existing?.result`
+ * bail-out does not then drop every realtime message for that conversation.
  */
 export function preservePendingMessages<T extends { id: string; __status?: 'pending' | 'failed' }>(
   queryClient: QueryClient,
   key: QueryKey,
   fetched: ApiResponse<T[]>,
 ): ApiResponse<T[]> {
+  const fetchedRows = Array.isArray(fetched.result) ? fetched.result : [];
+
   const existing = queryClient.getQueryData<ApiResponse<T[]>>(key);
   const pendingOrFailed =
     existing?.result?.filter((m) => m.__status === 'pending' || m.__status === 'failed') ?? [];
-  if (pendingOrFailed.length === 0) return fetched;
 
-  const fetchedIds = new Set(fetched.result.map((m) => m.id));
+  const fetchedIds = new Set(fetchedRows.map((m) => m.id));
   const localOnly = pendingOrFailed.filter((m) => !fetchedIds.has(m.id));
-  if (localOnly.length === 0) return fetched;
 
-  return { ...fetched, result: [...localOnly, ...fetched.result] };
+  return { ...fetched, result: [...localOnly, ...fetchedRows] };
 }
