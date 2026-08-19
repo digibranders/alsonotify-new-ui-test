@@ -43,6 +43,24 @@ const draw = (chatId: string | null = CHAT_ID) =>
     </App>,
   );
 
+/**
+ * jsdom lays nothing out, so the scroll heuristic has no geometry to read
+ * unless the test supplies it. These are the three numbers it uses.
+ */
+const pane = () => screen.getByRole('log');
+const layOut = (
+  el: HTMLElement,
+  geometry: { scrollHeight: number; clientHeight: number; scrollTop: number },
+) => {
+  Object.defineProperty(el, 'scrollHeight', { value: geometry.scrollHeight, configurable: true });
+  Object.defineProperty(el, 'clientHeight', { value: geometry.clientHeight, configurable: true });
+  el.scrollTop = geometry.scrollTop;
+  fireEvent.scroll(el);
+};
+
+const AT_BOTTOM = { scrollHeight: 1000, clientHeight: 400, scrollTop: 600 };
+const SCROLLED_UP = { scrollHeight: 1000, clientHeight: 400, scrollTop: 0 };
+
 /** Type into the contenteditable composer and press Enter. */
 const compose = (html: string, text = html) => {
   const editor = document.querySelector('.teams-input-editor') as HTMLElement;
@@ -92,4 +110,57 @@ describe('TeamsChatView — contentType reaches the mutation', () => {
     );
   });
 
+});
+
+describe('TeamsChatView — auto-scroll', () => {
+  // Under the old 15s poll a length change was rare. Under realtime it happens
+  // on every inbound message, so an unconditional scrollIntoView slides the
+  // view away from whatever the user was reading, mid-sentence.
+  it('follows a new message when the user is already at the bottom', () => {
+    seed([message({ id: 'm1' })]);
+    const { rerender } = draw();
+    layOut(pane(), AT_BOTTOM);
+
+    seed([message({ id: 'm1' }), message({ id: 'm2', body: { contentType: 'text', content: 'new' } })]);
+    rerender(
+      <App>
+        <TeamsChatView chatId={CHAT_ID} />
+      </App>,
+    );
+
+    expect(pane().scrollTop).toBe(1000);
+  });
+
+  it('leaves the view alone when the user has scrolled up to read history', () => {
+    seed([message({ id: 'm1' })]);
+    const { rerender } = draw();
+    layOut(pane(), SCROLLED_UP);
+
+    seed([message({ id: 'm1' }), message({ id: 'm2', body: { contentType: 'text', content: 'new' } })]);
+    rerender(
+      <App>
+        <TeamsChatView chatId={CHAT_ID} />
+      </App>,
+    );
+
+    expect(pane().scrollTop).toBe(0);
+  });
+
+  it('always follows the user\'s own send, even from up in the history', () => {
+    // Sending is an explicit request to be at the bottom. Not following it
+    // would put the user's own message somewhere they cannot see.
+    seed([message({ id: 'm1' })]);
+    const { rerender } = draw();
+    layOut(pane(), SCROLLED_UP);
+
+    compose('mine');
+    seed([message({ id: 'm1' }), message({ id: 'm2', body: { contentType: 'text', content: 'mine' } })]);
+    rerender(
+      <App>
+        <TeamsChatView chatId={CHAT_ID} />
+      </App>,
+    );
+
+    expect(pane().scrollTop).toBe(1000);
+  });
 });

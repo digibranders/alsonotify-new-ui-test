@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Skeleton } from 'antd';
 import { MessageCircle } from 'lucide-react';
 import { useTeamsChatMessages, useSendTeamsChatMessage, useTeamsChats } from '@/hooks/useTeams';
 import { getAzureOid, useCurrentUser } from '@/hooks/useCurrentUser';
+import { useMessagePaneScroll } from '@/hooks/useMessagePaneScroll';
 import { TeamsChatMessage as TChatMessage } from '@/services/teams';
 import { TeamsChatHeader } from './TeamsChatHeader';
 import { TeamsChatMessage } from './TeamsChatMessage';
@@ -36,7 +37,6 @@ function groupMessagesByDate(messages: TChatMessage[]): MessageGroup[] {
 
 export function TeamsChatView({ chatId }: TeamsChatViewProps) {
   const [replyingTo, setReplyingTo] = useState<TChatMessage | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { data: messagesData, isLoading } = useTeamsChatMessages(chatId);
   const { data: chatsData } = useTeamsChats();
   const sendMessage = useSendTeamsChatMessage();
@@ -56,12 +56,13 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
 
   const messageGroups = useMemo(() => groupMessagesByDate(messages), [messages]);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages.length]);
+  const { paneRef, onScroll, followNextUpdate } = useMessagePaneScroll(messages.length);
 
   const handleSend = (content: string, contentType: 'html' | 'text') => {
     if (!chatId || !content.trim()) return;
+    // Sending is an explicit request to be at the bottom, wherever the user
+    // happens to be reading.
+    followNextUpdate();
     // TeamsMessageInput has already worked out whether what it produced is
     // markup or plain text -- a contenteditable wraps every line after the
     // first in a <div>, so any two-line message is html. Discarding that
@@ -116,7 +117,13 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
       <TeamsChatHeader chat={currentChat} />
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto">
+      <div
+        ref={paneRef}
+        onScroll={onScroll}
+        role="log"
+        aria-label="Chat messages"
+        className="flex-1 overflow-y-auto"
+      >
         {isLoading ? (
           <div className="flex flex-col gap-4 p-4">
             {[1, 2, 3, 4].map((i) => (
@@ -159,7 +166,6 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
                 />
               );
             })}
-            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
