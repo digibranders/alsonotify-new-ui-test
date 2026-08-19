@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import {
   addPendingMessage,
@@ -81,6 +81,66 @@ describe('optimistic send', () => {
 
     const cached = qc.getQueryData<ApiResponse<LocalRow[]>>(KEY());
     expect(cached!.result.map((m) => m.body.content)).toEqual(['second', 'first']);
+  });
+});
+
+describe('the timestamp on an optimistic row', () => {
+  // Only the client clock is available here, and it is not trustworthy: a
+  // skewed one mislabels the bubble and, worse, makes groupMessagesByDate in
+  // TeamsChatView emit a whole spurious date separator above it. It vanishes
+  // on reconcile -- unless the send FAILS, in which case the row and its
+  // separator stay on screen.
+  const NEWEST_CACHED = '2026-08-19T10:00:00.000Z';
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    qc.setQueryData(KEY(), wrap([{ id: 'm0', createdDateTime: NEWEST_CACHED }]));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('uses the client clock when it is ahead of the newest cached message', () => {
+    vi.setSystemTime(new Date('2026-08-19T10:05:00.000Z'));
+
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hi', contentType: 'text', authorId: null });
+
+    const [row] = qc.getQueryData<ApiResponse<LocalRow[]>>(KEY())!.result;
+    expect(row.createdDateTime).toBe('2026-08-19T10:05:00.000Z');
+  });
+
+  it('does not date the row before the message it is being placed above', () => {
+    // Two days behind: the row would render above m0 while claiming to
+    // predate it, and TeamsChatView would draw an "August 17" separator in
+    // between. The newest cached message carries a server-assigned timestamp,
+    // so it is a hard lower bound on the real present.
+    vi.setSystemTime(new Date('2026-08-17T09:00:00.000Z'));
+
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hi', contentType: 'text', authorId: null });
+
+    const [row] = qc.getQueryData<ApiResponse<LocalRow[]>>(KEY())!.result;
+    expect(row.createdDateTime).toBe(NEWEST_CACHED);
+  });
+
+  it('falls back to the client clock when the chat has nothing cached to clamp against', () => {
+    vi.setSystemTime(new Date('2026-08-19T10:05:00.000Z'));
+    qc.setQueryData(KEY(), wrap([]));
+
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hi', contentType: 'text', authorId: null });
+
+    const [row] = qc.getQueryData<ApiResponse<LocalRow[]>>(KEY())!.result;
+    expect(row.createdDateTime).toBe('2026-08-19T10:05:00.000Z');
+  });
+
+  it('falls back to the client clock when the newest cached timestamp is unparseable', () => {
+    vi.setSystemTime(new Date('2026-08-19T10:05:00.000Z'));
+    qc.setQueryData(KEY(), wrap([{ id: 'm0', createdDateTime: 'not a date' }]));
+
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hi', contentType: 'text', authorId: null });
+
+    const [row] = qc.getQueryData<ApiResponse<LocalRow[]>>(KEY())!.result;
+    expect(row.createdDateTime).toBe('2026-08-19T10:05:00.000Z');
   });
 });
 

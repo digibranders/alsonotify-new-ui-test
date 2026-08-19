@@ -244,6 +244,28 @@ export function applyTeamsEvent(queryClient: QueryClient, event: TeamsEvent): vo
 }
 
 /**
+ * When to say an optimistic row was sent.
+ *
+ * The client clock is the only clock this module has, and it is not
+ * trustworthy: a skewed one mislabels the bubble's time and, worse, makes
+ * `groupMessagesByDate` in TeamsChatView draw an entire spurious
+ * TeamsDateSeparator above it. That is transient on a successful send, but a
+ * FAILED send leaves the row — and the separator — on screen indefinitely.
+ *
+ * Clamped so the row is never dated before the message it is being placed
+ * above. The newest cached message carries a server-assigned timestamp, which
+ * makes it a hard lower bound on the real present, so a clock running behind
+ * is fully corrected. A clock running ahead is not fixable from here: nothing
+ * in the cache bounds the present from above, and a server time reference
+ * would have to come from the transport. Left as-is rather than guessed at.
+ */
+function optimisticSentAt(newest: CachedMessage | undefined): string {
+  const now = Date.now();
+  const floor = newest?.createdDateTime ? Date.parse(newest.createdDateTime) : NaN;
+  return new Date(Number.isNaN(floor) ? now : Math.max(now, floor)).toISOString();
+}
+
+/**
  * Insert a message optimistically, before the server has confirmed it.
  *
  * Seeds the envelope when the chat has no cache entry, rather than no-opping
@@ -295,7 +317,7 @@ export function addPendingMessage(
     messageType: 'message',
     body: { content: input.body, contentType: input.contentType },
     from: { user: { id: input.authorId, displayName: null } },
-    createdDateTime: new Date().toISOString(),
+    createdDateTime: optimisticSentAt(existing.result[0]),
     lastEditedDateTime: null,
     replyToId: null,
   };
