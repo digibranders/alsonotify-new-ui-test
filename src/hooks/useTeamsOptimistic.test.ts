@@ -311,6 +311,41 @@ describe('reconcile racing an independent delivery of the same message', () => {
   });
 });
 
+describe('a message deleted while its own send was still in flight', () => {
+  // The full race, which the review flagged as leaving a resurrected message
+  // on screen forever: send -> the WebSocket delivers `created` under the real
+  // id while the POST is still open -> the user deletes it from the desktop
+  // app -> `deleted` removes the real-id row -> the late onSuccess rewrites
+  // the pending row to that same id, and its dedup finds nothing to drop.
+  //
+  // The message does come back. It is NOT permanent, and that is the reason
+  // this is pinned here rather than fixed with a set of recently-deleted ids:
+  // the reconciled row has no __status, so preservePendingMessages does not
+  // carry it forward, and the next poll -- at most 120s later -- drops it.
+  // Tracking deleted ids would trade a bounded, sub-second-race artefact for
+  // permanent module state with its own eviction policy.
+  it('reappears after the reconcile, and the next poll removes it again', () => {
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'oops', contentType: 'text', authorId: null });
+
+    // The WebSocket's `created` arrives under the real id, then the delete.
+    qc.setQueryData(KEY(), wrap([{ id: 'real-1' }, ...qc.getQueryData<ApiResponse<LocalRow[]>>(KEY())!.result]));
+    qc.setQueryData(KEY(), {
+      ...qc.getQueryData<ApiResponse<LocalRow[]>>(KEY())!,
+      result: qc.getQueryData<ApiResponse<LocalRow[]>>(KEY())!.result.filter((m) => m.id !== 'real-1'),
+    });
+
+    reconcilePendingMessage(qc, '19:abc', 't1', { id: 'real-1', body: { content: 'oops' } });
+    expect(qc.getQueryData<ApiResponse<LocalRow[]>>(KEY())!.result.map((m) => m.id)).toEqual([
+      'real-1',
+    ]);
+
+    // The very next fetch is authoritative and no longer contains it.
+    const merged = preservePendingMessages(qc, KEY(), wrap([{ id: 'm0' }]));
+
+    expect(merged.result.map((m) => m.id)).toEqual(['m0']);
+  });
+});
+
 describe('no-op guards for an unknown tempId or an unseeded chat', () => {
   it('reconcilePendingMessage is a no-op when the tempId is not in the cache', () => {
     addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', contentType: 'text', authorId: 'me' });

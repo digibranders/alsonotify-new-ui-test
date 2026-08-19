@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Skeleton } from 'antd';
 import { MessageCircle } from 'lucide-react';
 import { useTeamsChatMessages, useSendTeamsChatMessage, useTeamsChats } from '@/hooks/useTeams';
@@ -74,6 +74,11 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
 
   const messageGroups = useMemo(() => groupMessagesByDate(messages), [messages]);
 
+  // Resolved once for the whole list rather than by each row scanning the
+  // array: `messages` is a fresh array on every realtime cache write, so
+  // handing it to every row as a prop defeated their memoisation outright.
+  const byId = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
+
   const { paneRef, onScroll, followNextUpdate } = useMessagePaneScroll(messages.length);
 
   const handleSend = (content: string, contentType: 'html' | 'text') => {
@@ -96,11 +101,21 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
     );
   };
 
-  const handleReply = (message: TChatMessage) => {
+  // Stable identities, so an untouched TeamsChatMessage row is genuinely
+  // skipped by its memo. `sendMessage` is read through a ref because
+  // useMutation returns a new object whenever its own state changes, which
+  // would otherwise rebuild handleRetry on every send and re-render all ~50
+  // rows with it.
+  const handleReply = useCallback((message: TChatMessage) => {
     setReplyingTo(message);
-  };
+  }, []);
 
-  const handleRetry = (message: TChatMessage) => {
+  const sendMessageRef = useRef(sendMessage);
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
+
+  const handleRetry = useCallback((message: TChatMessage) => {
     // Only failed, locally-generated rows carry a __tempId; a real server
     // message can never be retried this way.
     const tempId = message.__tempId;
@@ -118,7 +133,7 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
     inFlightRetriesRef.current.add(tempId);
     publishRetries();
 
-    sendMessage.mutate(
+    sendMessageRef.current.mutate(
       {
         chatId,
         content: message.body.content,
@@ -136,7 +151,7 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
         },
       },
     );
-  };
+  }, [chatId, publishRetries]);
 
   if (!chatId) {
     return (
@@ -194,7 +209,9 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
                   key={group.message.__tempId ?? group.message.id}
                   message={group.message}
                   previousMessage={prevMessage}
-                  allMessages={messages}
+                  replyMessage={
+                    group.message.replyToId ? byId.get(group.message.replyToId) ?? null : null
+                  }
                   onReply={handleReply}
                   onRetry={handleRetry}
                   isRetrying={

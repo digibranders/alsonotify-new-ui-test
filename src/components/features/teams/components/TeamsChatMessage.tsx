@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { sanitizeRichText } from '@/utils/security/sanitizeHtml';
 import { Linkify } from '@/components/common/Linkify';
@@ -13,7 +13,14 @@ import dayjs from 'dayjs';
 interface TeamsChatMessageProps {
   message: TChatMessage;
   previousMessage?: TChatMessage;
-  allMessages?: TChatMessage[];
+  /**
+   * The message this one replies to, already resolved by the list.
+   *
+   * Resolved there rather than by handing every row the whole array: each
+   * realtime cache write produces a fresh array, so an `allMessages` prop
+   * changed identity on every update and defeated the memo below outright.
+   */
+  replyMessage?: TChatMessage | null;
   onReply?: (message: TChatMessage) => void;
   /** Resend a message that failed to send. Only relevant when `message.__status === 'failed'`. */
   onRetry?: (message: TChatMessage) => void;
@@ -66,21 +73,16 @@ function isSameSenderGroup(current: TChatMessage, previous?: TChatMessage): bool
   return Math.abs(diff) < 5;
 }
 
-export function TeamsChatMessage({
+function TeamsChatMessageRow({
   message,
   previousMessage,
-  allMessages,
+  replyMessage,
   onReply,
   onRetry,
   isRetrying,
   currentUserAzureId,
 }: TeamsChatMessageProps) {
   // All hooks must be called before any early return
-  const replyMessage = useMemo(() => {
-    if (!message.replyToId || !allMessages) return null;
-    return allMessages.find((m) => m.id === message.replyToId) || null;
-  }, [message.replyToId, allMessages]);
-
   const bodyHtml = useMemo(() => {
     if (message.body?.contentType === 'html' && message.body?.content) {
       return sanitizeRichText(message.body.content);
@@ -229,3 +231,17 @@ export function TeamsChatMessage({
     </div>
   );
 }
+
+/**
+ * Memoised because the list re-renders on every realtime cache write.
+ *
+ * setQueryData hands TeamsChatView a fresh array each time, but the row
+ * objects inside it are reused, so an untouched row's props are referentially
+ * identical and this skips it. Without that, a 50-message burst -- which
+ * arrives as 50 separate macrotasks -- re-rendered every row 50 times, each
+ * one parsing a dayjs date and running a regex strip.
+ *
+ * It only works while the handlers passed in are stable, which is why
+ * TeamsChatView wraps them in useCallback.
+ */
+export const TeamsChatMessage = memo(TeamsChatMessageRow);

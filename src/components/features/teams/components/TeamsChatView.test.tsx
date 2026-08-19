@@ -255,3 +255,25 @@ describe('TeamsChatView — retrying a failed send', () => {
     expect(screen.getByRole('button', { name: 'Send message' })).toBeEnabled();
   });
 });
+
+describe('TeamsChatView — quoted replies', () => {
+  it('resolves the replied-to message for the row that quotes it', () => {
+    // The lookup moved out of each row and into the list, so that a fresh
+    // `messages` array on every realtime write no longer changes a prop on
+    // every row. The feature has to survive the move.
+    seed([
+      message({ id: 'm1', body: { contentType: 'text', content: 'the original' } }),
+      message({
+        id: 'm2',
+        replyToId: 'm1',
+        body: { contentType: 'text', content: 'the reply' },
+      }),
+    ]);
+
+    draw();
+
+    // Twice: once as its own message, once quoted above the reply. Without
+    // the lookup it appears only once.
+    expect(screen.getAllByText('the original')).toHaveLength(2);
+  });
+});
