@@ -212,6 +212,26 @@ describe('useWebSocket — frame routing', () => {
     warn.mockRestore();
   });
 
+  it('drops a Teams frame with a malformed sender instead of throwing out of the handler', () => {
+    // Without validation at the boundary this reaches `toCached`, which reads
+    // `message.from.id` and throws a TypeError straight out of onmessage.
+    // There is no try/catch around the routing any more (only around the JSON
+    // parse), so an unhandled rejection here is what a schema drift on one
+    // field would actually look like.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    qc.setQueryData(CHAT_KEY(), { success: true, message: '', result: [] });
+    render();
+
+    expect(() =>
+      act(() => {
+        FakeWebSocket.latest().receive(teamsFrame({ from: null }));
+      }),
+    ).not.toThrow();
+
+    expect(qc.getQueryData<ApiResponse<TeamsChatMessage[]>>(CHAT_KEY())?.result).toHaveLength(0);
+    warn.mockRestore();
+  });
+
   it('ignores the CONNECTED handshake', () => {
     render();
 
