@@ -84,6 +84,66 @@ describe('optimistic send', () => {
   });
 });
 
+describe('a send into a chat that has no cache entry yet', () => {
+  // The composer is live while the message pane still shows its loading
+  // skeleton, and a chat whose fetch 401s (or whose user is not connected to
+  // Microsoft) never gets a cache entry at all. addPendingMessage used to
+  // no-op in both cases: nothing rendered, and because the row was never
+  // inserted, the later markMessageFailed had nothing to mark either. The
+  // composer clears itself synchronously on send, so the user's text was
+  // simply gone -- no bubble, no failed row, no retry, no toast.
+  const UNSEEDED = '19:not-fetched-yet';
+  const unseededKey = () => queryKeys.teams.chatMessages(UNSEEDED);
+
+  it('renders the message anyway, by seeding the envelope', () => {
+    const fresh = new QueryClient();
+
+    addPendingMessage(fresh, UNSEEDED, { tempId: 't1', body: 'typed early', authorId: 'me' });
+
+    const cached = fresh.getQueryData<ApiResponse<LocalRow[]>>(unseededKey());
+    expect(cached?.result).toHaveLength(1);
+    expect(cached?.result[0].body.content).toBe('typed early');
+    expect(cached?.result[0].__status).toBe('pending');
+  });
+
+  it('seeds an envelope of the same shape the query itself writes', () => {
+    // If the seeded entry were not a well-formed ApiResponse, the next thing
+    // to touch it (the component reading `.result`, preservePendingMessages
+    // reading `existing.result`) would break instead of merging.
+    const fresh = new QueryClient();
+
+    addPendingMessage(fresh, UNSEEDED, { tempId: 't1', body: 'typed early', authorId: 'me' });
+
+    const cached = fresh.getQueryData<ApiResponse<LocalRow[]>>(unseededKey());
+    expect(cached).toMatchObject({ success: true, message: '' });
+    expect(Array.isArray(cached?.result)).toBe(true);
+  });
+
+  it('can then be marked failed, so the text survives and offers a retry', () => {
+    const fresh = new QueryClient();
+
+    addPendingMessage(fresh, UNSEEDED, { tempId: 't1', body: 'typed early', authorId: 'me' });
+    markMessageFailed(fresh, UNSEEDED, 't1');
+
+    const cached = fresh.getQueryData<ApiResponse<LocalRow[]>>(unseededKey());
+    expect(cached?.result[0].__status).toBe('failed');
+    expect(cached?.result[0].body.content).toBe('typed early');
+  });
+
+  it('is carried forward, not duplicated, when the first real fetch finally lands', () => {
+    const fresh = new QueryClient();
+    addPendingMessage(fresh, UNSEEDED, { tempId: 't1', body: 'typed early', authorId: 'me' });
+
+    const merged = preservePendingMessages(
+      fresh,
+      unseededKey(),
+      wrap([{ id: 'm0', body: { content: 'earlier', contentType: 'text' } }]),
+    ) as ApiResponse<LocalRow[]>;
+
+    expect(merged.result.map((m) => m.id)).toEqual(['t1', 'm0']);
+  });
+});
+
 describe('retry after a failed send', () => {
   it('flips the same row back to pending in place, rather than inserting a new one', () => {
     addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });

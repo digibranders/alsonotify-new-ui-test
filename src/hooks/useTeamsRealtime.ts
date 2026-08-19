@@ -133,15 +133,33 @@ export function applyTeamsEvent(queryClient: QueryClient, event: TeamsEvent): vo
   });
 }
 
-/** Insert a message optimistically, before the server has confirmed it. */
+/**
+ * Insert a message optimistically, before the server has confirmed it.
+ *
+ * Seeds the envelope when the chat has no cache entry, rather than no-opping
+ * as the other helpers do. The composer clears the editor synchronously on
+ * send, so a no-op here loses the user's text outright: nothing renders, and
+ * because no row was inserted, the later `markMessageFailed` has nothing to
+ * mark either — no failed bubble, no retry affordance, no toast. Two ordinary
+ * paths reach it: typing during the 1-3s initial fetch (the composer is live
+ * while the message pane still shows its skeleton), and any chat whose fetch
+ * 401s or whose user is not connected to Microsoft, where EVERY send would be
+ * invisible.
+ *
+ * The seeded value is a well-formed `ApiResponse` envelope, the same shape
+ * the query writes, so the in-flight or next fetch merges over it through
+ * `preservePendingMessages` exactly as it would over a fetched page.
+ */
 export function addPendingMessage(
   queryClient: QueryClient,
   chatId: string,
   input: { tempId: string; body: string; authorId: string },
 ): void {
   const key = queryKeys.teams.chatMessages(chatId);
-  const existing = queryClient.getQueryData<MessagesResponse>(key);
-  if (!existing?.result) return;
+  const cached = queryClient.getQueryData<MessagesResponse>(key);
+  const existing: MessagesResponse = cached?.result
+    ? cached
+    : { success: true, message: '', result: [] };
 
   const pending: CachedMessage = {
     id: input.tempId,
@@ -211,6 +229,12 @@ export function reconcilePendingMessage(
  *
  * The message is kept, not removed: dropping it would throw away text the
  * user typed. The UI offers a retry against the same entry.
+ *
+ * Unlike `addPendingMessage` this does NOT seed a missing envelope, and must
+ * not: it is given a `tempId`, never the text, so the row it could invent
+ * would be a blank failed bubble with nothing to retry — strictly worse than
+ * no row. It does not need to, either: `addPendingMessage` now always inserts
+ * the row this marks, so by the time a send can fail the entry exists.
  */
 export function markMessageFailed(
   queryClient: QueryClient,
