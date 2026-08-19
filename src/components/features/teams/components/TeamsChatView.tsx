@@ -60,10 +60,15 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages.length]);
 
-  const handleSend = (content: string, _contentType: 'html' | 'text') => {
+  const handleSend = (content: string, contentType: 'html' | 'text') => {
     if (!chatId || !content.trim()) return;
+    // TeamsMessageInput has already worked out whether what it produced is
+    // markup or plain text -- a contenteditable wraps every line after the
+    // first in a <div>, so any two-line message is html. Discarding that
+    // answer let sendTeamsChatMessage fall back to its "html" default, which
+    // posted every plain-text message to Graph as HTML.
     sendMessage.mutate(
-      { chatId, content: content.trim() },
+      { chatId, content: content.trim(), contentType },
       {
         onSuccess: () => {
           setReplyingTo(null);
@@ -87,6 +92,11 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
     sendMessage.mutate({
       chatId,
       content: message.body.content,
+      // retryTempId skips addPendingMessage, so this is not needed for the
+      // optimistic row -- but it is still needed for the wire, or a retried
+      // plain-text message gets posted to Graph as HTML and `a < b` arrives
+      // mangled.
+      contentType: message.body.contentType,
       retryTempId: message.__tempId,
     });
   };
