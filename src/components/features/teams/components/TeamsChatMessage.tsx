@@ -185,8 +185,10 @@ function TeamsChatMessageRow({
           {/* Attachments */}
           {message.attachments && message.attachments.length > 0 && (
             <div className="flex flex-col gap-1 text-left">
-              {message.attachments.map((att) => (
-                <TeamsAttachmentCard key={att.id} attachment={att} />
+              {message.attachments.map((att, i) => (
+                // Graph does not guarantee an attachment id, and two nulls
+                // would be the same React key.
+                <TeamsAttachmentCard key={att.id ?? `${message.id}-att-${i}`} attachment={att} />
               ))}
             </div>
           )}

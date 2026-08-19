@@ -70,3 +70,25 @@ describe('TeamsChatMessage — whose message is it', () => {
     expect(screen.getByText('You')).toBeInTheDocument();
   });
 });
+
+describe('TeamsChatMessage — attachments Graph told us little about', () => {
+  it('renders an attachment with no name or contentType instead of throwing', () => {
+    // getFileIcon called .split on the name and isLinkPreview called .includes
+    // on the contentType, both declared non-nullable while Graph promises
+    // neither. A hero-card attachment has no name.
+    expect(() =>
+      draw(
+        <TeamsChatMessage
+          message={message({
+            body: { contentType: 'html', content: '<attachment id="a1"></attachment>' },
+            attachments: [
+              { id: null, name: null, contentType: null, contentUrl: null, content: null, thumbnailUrl: null },
+              { id: null, name: null, contentType: null, contentUrl: null, content: null, thumbnailUrl: null },
+            ],
+          })}
+          currentUserAzureId={null}
+        />,
+      ),
+    ).not.toThrow();
+  });
+});
