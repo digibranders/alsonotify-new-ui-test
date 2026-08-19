@@ -16,6 +16,14 @@ import {
   CreateOnlineMeetingPayload,
 } from "../services/teams";
 import { queryKeys } from "../lib/queryKeys";
+import { useCurrentUser } from "./useCurrentUser";
+import {
+  addPendingMessage,
+  markMessageFailed,
+  markMessagePending,
+  preservePendingMessages,
+  reconcilePendingMessage,
+} from "./useTeamsRealtime";
 
 // ─── People Search ───────────────────────────────────────────────────
 
@@ -82,9 +90,17 @@ export const useTeamsChats = () => {
 };
 
 export const useTeamsChatMessages = (chatId: string | null) => {
+  const queryClient = useQueryClient();
+  const queryKey = queryKeys.teams.chatMessages(chatId!);
   return useQuery({
-    queryKey: queryKeys.teams.chatMessages(chatId!),
-    queryFn: () => getTeamsChatMessages(chatId!),
+    queryKey,
+    queryFn: async () => {
+      const fetched = await getTeamsChatMessages(chatId!);
+      // Poll-vs-push race: this 120s poll's response is server data only, so
+      // writing it straight to the cache would silently erase any
+      // pending/failed optimistic row added by useSendTeamsChatMessage below.
+      return preservePendingMessages(queryClient, queryKey, fetched);
+    },
     enabled: !!chatId,
     staleTime: 15_000,
     // Messages now arrive over the WebSocket (see useWebSocket.ts ->
@@ -99,16 +115,61 @@ export const useTeamsChatMessages = (chatId: string | null) => {
   });
 };
 
+interface SendTeamsChatMessageVariables {
+  chatId: string;
+  content: string;
+  /**
+   * Present when retrying a previously failed send: reuses that row's
+   * tempId so the retry flips it back to pending IN PLACE, instead of
+   * inserting a second, duplicate row for the same text.
+   */
+  retryTempId?: string;
+}
+
 export const useSendTeamsChatMessage = () => {
   const queryClient = useQueryClient();
+  const { user: currentUser } = useCurrentUser();
+  const currentUserAzureId = (currentUser as Record<string, unknown>)?.azure_oid as
+    | string
+    | undefined;
+
   return useMutation({
-    mutationFn: ({ chatId, content }: { chatId: string; content: string }) =>
+    mutationFn: ({ chatId, content }: SendTeamsChatMessageVariables) =>
       sendTeamsChatMessage(chatId, content),
-    onSuccess: (_, { chatId }) => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.teams.chatMessages(chatId),
-      });
+
+    // Show it immediately. `tempId` is returned as mutation context so the
+    // later callbacks can find this exact entry again. The author id must be
+    // the Graph/Azure AD id (`azure_oid`), the same id TeamsChatMessage
+    // compares against `currentUserAzureId` to decide "own message" styling
+    // -- not `useUserDetails`'s internal numeric user id, which would render
+    // the optimistic bubble as someone else's until it reconciles.
+    onMutate: async ({ chatId, content, retryTempId }: SendTeamsChatMessageVariables) => {
+      const tempId = retryTempId ?? `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      if (retryTempId) {
+        markMessagePending(queryClient, chatId, retryTempId);
+      } else {
+        addPendingMessage(queryClient, chatId, {
+          tempId,
+          body: content,
+          authorId: currentUserAzureId ?? "",
+        });
+      }
+      return { tempId, chatId };
+    },
+
+    onSuccess: (response, _vars, context) => {
+      if (!context) return;
+      reconcilePendingMessage(queryClient, context.chatId, context.tempId, response.result);
+      // Deliberately NOT invalidating the message list: refetching would
+      // discard the optimistic update just reconciled above, and the
+      // realtime event will also arrive over the socket (applyTeamsEvent),
+      // which is a no-op once the id already matches.
       queryClient.invalidateQueries({ queryKey: queryKeys.teams.chats() });
+    },
+
+    onError: (_err, _vars, context) => {
+      if (!context) return;
+      markMessageFailed(queryClient, context.chatId, context.tempId);
     },
   });
 };
@@ -146,9 +207,16 @@ export const useChannelMessages = (
   teamId: string | null,
   channelId: string | null
 ) => {
+  const queryClient = useQueryClient();
+  const queryKey = queryKeys.teams.channelMessages(teamId!, channelId!);
   return useQuery({
-    queryKey: queryKeys.teams.channelMessages(teamId!, channelId!),
-    queryFn: () => getChannelMessages(teamId!, channelId!),
+    queryKey,
+    queryFn: async () => {
+      const fetched = await getChannelMessages(teamId!, channelId!);
+      // Same poll-vs-push guard as useTeamsChatMessages: don't let a
+      // server-only poll response silently erase a local pending/failed row.
+      return preservePendingMessages(queryClient, queryKey, fetched);
+    },
     enabled: !!teamId && !!channelId,
     staleTime: 15_000,
     // Messages now arrive over the WebSocket (see useWebSocket.ts ->

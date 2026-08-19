@@ -1,4 +1,4 @@
-import type { QueryClient } from '@tanstack/react-query';
+import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { queryKeys } from '../lib/queryKeys';
 import type { ApiResponse } from '../types/api';
 
@@ -203,4 +203,53 @@ export function markMessageFailed(
     ...existing,
     result: existing.result.map((m) => (m.__tempId === tempId ? { ...m, __status: 'failed' } : m)),
   });
+}
+
+/**
+ * Retry a failed send: flip the same row back to `pending` IN PLACE.
+ *
+ * The retry re-runs the mutation with the failed row's existing `tempId`
+ * rather than a freshly generated one, so this must find that row by
+ * `__tempId` and flip its status, not insert a new one — otherwise a retry
+ * would leave the stale failed row behind and add a second, duplicate entry
+ * for the same piece of text.
+ */
+export function markMessagePending(
+  queryClient: QueryClient,
+  chatId: string,
+  tempId: string,
+): void {
+  const key = queryKeys.teams.chatMessages(chatId);
+  const existing = queryClient.getQueryData<MessagesResponse>(key);
+  if (!existing?.result) return;
+
+  queryClient.setQueryData<MessagesResponse>(key, {
+    ...existing,
+    result: existing.result.map((m) => (m.__tempId === tempId ? { ...m, __status: 'pending' } : m)),
+  });
+}
+
+/**
+ * Guard against the poll-vs-push race: `useTeamsChatMessages` / `useChannelMessages`
+ * poll every 120s as a safety net behind the WebSocket (see useTeams.ts). That
+ * poll's response is server data only — it has no concept of a pending/failed
+ * row that exists only in the local cache — so writing it over the cache
+ * verbatim would silently erase any in-flight or failed optimistic send.
+ *
+ * Call this with the freshly fetched response INSIDE the query's `queryFn`,
+ * before it is returned (and therefore before React Query writes it to the
+ * cache): any row still carrying `__tempId` in the current cache is carried
+ * forward, newest-first ahead of the fetched page, matching the ordering
+ * `addPendingMessage` uses.
+ */
+export function preservePendingMessages<T extends { id: string; __tempId?: string }>(
+  queryClient: QueryClient,
+  key: QueryKey,
+  fetched: ApiResponse<T[]>,
+): ApiResponse<T[]> {
+  const existing = queryClient.getQueryData<ApiResponse<T[]>>(key);
+  const pendingOrFailed = existing?.result?.filter((m) => m.__tempId) ?? [];
+  if (pendingOrFailed.length === 0) return fetched;
+
+  return { ...fetched, result: [...pendingOrFailed, ...fetched.result] };
 }

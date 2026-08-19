@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { AlertCircle } from 'lucide-react';
 import { sanitizeRichText } from '@/utils/security/sanitizeHtml';
 import { Linkify } from '@/components/common/Linkify';
 import { TeamsAttachmentCard } from './TeamsAttachmentCard';
@@ -14,6 +15,8 @@ interface TeamsChatMessageProps {
   previousMessage?: TChatMessage;
   allMessages?: TChatMessage[];
   onReply?: (message: TChatMessage) => void;
+  /** Resend a message that failed to send. Only relevant when `message.__status === 'failed'`. */
+  onRetry?: (message: TChatMessage) => void;
   currentUserAzureId?: string | null;
 }
 
@@ -57,6 +60,7 @@ export function TeamsChatMessage({
   previousMessage,
   allMessages,
   onReply,
+  onRetry,
   currentUserAzureId,
 }: TeamsChatMessageProps) {
   // All hooks must be called before any early return
@@ -81,6 +85,8 @@ export function TeamsChatMessage({
   const showHeader = !isSameSenderGroup(message, previousMessage);
   const avatarColor = getAvatarColor(senderName);
   const plainText = message.body?.contentType === 'text' ? message.body.content : null;
+  const isPending = message.__status === 'pending';
+  const isFailed = message.__status === 'failed';
 
   // Skip empty messages
   const textContent = (message.body?.content || '').replace(/<[^>]*>/g, '').trim();
@@ -92,7 +98,7 @@ export function TeamsChatMessage({
         isOwnMessage
           ? 'flex-row-reverse hover:bg-[#E8F4FD]'
           : 'hover:bg-[#FAFAFA]'
-      }`}
+      } ${isPending ? 'opacity-60' : ''}`}
     >
       {/* Avatar column */}
       <div className="w-9 shrink-0 pt-0.5">
@@ -167,6 +173,27 @@ export function TeamsChatMessage({
         <div className={isOwnMessage ? 'text-left' : ''}>
           <ReactionPills reactions={message.reactions} />
         </div>
+
+        {/* Failed send: keep the text on screen, offer a retry rather than losing it */}
+        {isFailed && (
+          <div
+            className={`flex items-center gap-1 mt-0.5 text-xs text-[#D32F2F] ${
+              isOwnMessage ? 'justify-end' : ''
+            }`}
+          >
+            <AlertCircle size={12} strokeWidth={2} />
+            <span>Failed to send</span>
+            {onRetry && (
+              <button
+                type="button"
+                onClick={() => onRetry(message)}
+                className="underline hover:no-underline font-medium cursor-pointer"
+              >
+                Retry
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Hover actions toolbar */}

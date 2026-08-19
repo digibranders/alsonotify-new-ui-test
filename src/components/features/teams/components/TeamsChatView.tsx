@@ -76,6 +76,17 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
     setReplyingTo(message);
   };
 
+  const handleRetry = (message: TChatMessage) => {
+    // Only failed, locally-generated rows carry a __tempId; a real server
+    // message can never be retried this way.
+    if (!chatId || !message.__tempId) return;
+    sendMessage.mutate({
+      chatId,
+      content: message.body.content,
+      retryTempId: message.__tempId,
+    });
+  };
+
   if (!chatId) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-[#999999] gap-3 border border-[#EEEEEE] rounded-2xl bg-white">
@@ -122,6 +133,7 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
                   previousMessage={prevMessage}
                   allMessages={messages}
                   onReply={handleReply}
+                  onRetry={handleRetry}
                   currentUserAzureId={currentUserAzureId}
                 />
               );

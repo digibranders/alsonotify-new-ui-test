@@ -81,6 +81,10 @@ export interface TeamsChatMessage {
   attachments?: TeamsChatMessageAttachment[];
   reactions?: TeamsChatMessageReaction[];
   replyToId?: string;
+  /** Local-only: set while an optimistic send is in flight or has failed (see useTeamsRealtime.ts). Never present on server data. */
+  __status?: "pending" | "failed";
+  /** Local-only: correlates an optimistic message with its eventual server copy. Never present on server data. */
+  __tempId?: string;
 }
 
 export interface Team {
@@ -102,6 +106,10 @@ export interface ChannelMessage {
   createdDateTime: string;
   from?: { user?: { displayName: string; id: string } };
   body: { contentType: "html" | "text"; content: string };
+  /** Local-only: set while an optimistic send is in flight or has failed (see useTeamsRealtime.ts). Never present on server data. */
+  __status?: "pending" | "failed";
+  /** Local-only: correlates an optimistic message with its eventual server copy. Never present on server data. */
+  __tempId?: string;
 }
 
 export interface AttendanceReport {
