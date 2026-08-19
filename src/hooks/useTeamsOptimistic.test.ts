@@ -124,6 +124,33 @@ describe('retry after a failed send', () => {
     expect(cached!.result[0].body.content).toBe('hello');
   });
 
+  it('matches on __tempId, not id, so a row whose id has been rewritten is still found', () => {
+    // For a row that is still pending, `id` and `__tempId` are the same value,
+    // so a helper that matched on `id` would pass every other test in this
+    // file while being wrong. They diverge for any row reconcile has touched:
+    // reconcilePendingMessage rewrites `id` to the server's and deliberately
+    // keeps `__tempId`. `__tempId` is the correlation key by contract — it is
+    // the only field guaranteed stable for the whole life of a send — so pin
+    // it against a row in exactly that post-reconcile shape.
+    qc.setQueryData(
+      KEY(),
+      wrap([
+        {
+          id: 'real-9',
+          __tempId: 't1',
+          __status: 'failed',
+          body: { content: 'the failed send', contentType: 'text' },
+        } as Partial<TeamsChatMessage>,
+      ]),
+    );
+
+    markMessagePending(qc, '19:abc', 't1');
+    expect(qc.getQueryData<ApiResponse<LocalRow[]>>(KEY())!.result[0].__status).toBe('pending');
+
+    markMessageFailed(qc, '19:abc', 't1');
+    expect(qc.getQueryData<ApiResponse<LocalRow[]>>(KEY())!.result[0].__status).toBe('failed');
+  });
+
   it('keeps the row keyed on the same __tempId after reconciliation, so the UI does not remount it', () => {
     // __tempId is deliberately NOT cleared by reconcilePendingMessage (only
     // __status is): TeamsChatView keys rows on `__tempId ?? id` so the row's
@@ -248,14 +275,36 @@ describe('poll-vs-push race (preservePendingMessages)', () => {
     // after reconciliation as a stable UI key (see reconcilePendingMessage),
     // so the predicate must be __status, not __tempId, or every
     // ever-optimistic row would be treated as still-pending forever.
+    //
+    // The fetched page deliberately does NOT contain the reconciled row's id.
+    // Asserting against a response that DOES contain it proves nothing: the
+    // id-dedup below would drop the carried-forward copy anyway, so a
+    // `__tempId`-based predicate passes such a test while being wrong. The
+    // real scenario is a message deleted from the Teams desktop app between
+    // the reconcile and the poll — it must stay deleted, not be resurrected
+    // from the local cache.
     addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'hello', authorId: 'me' });
     reconcilePendingMessage(qc, '19:abc', 't1', { id: 'real-1', body: { content: 'hello' } });
 
-    const serverResponse = wrap([{ id: 'real-1', body: { content: 'hello', contentType: 'text' } }]);
+    const serverResponse = wrap([{ id: 'm0', body: { content: 'earlier', contentType: 'text' } }]);
     const merged = preservePendingMessages(qc, KEY(), serverResponse);
 
-    expect(merged.result).toHaveLength(1);
+    expect(merged.result.map((m) => m.id)).toEqual(['m0']);
     expect(merged).toEqual(serverResponse);
+  });
+
+  it('still carries a pending row forward when the fetched page shares no ids with it', () => {
+    // The mirror of the test above, so neither one can be satisfied by a
+    // predicate that simply never carries anything forward.
+    addPendingMessage(qc, '19:abc', { tempId: 't1', body: 'still sending', authorId: 'me' });
+
+    const merged = preservePendingMessages(
+      qc,
+      KEY(),
+      wrap([{ id: 'm0', body: { content: 'earlier', contentType: 'text' } }]),
+    ) as ApiResponse<LocalRow[]>;
+
+    expect(merged.result.map((m) => m.id)).toEqual(['t1', 'm0']);
   });
 
   it('prefers the fetched (server) copy over a local row sharing the same id', () => {
