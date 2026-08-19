@@ -9,9 +9,19 @@ import type { ApiResponse } from '../types/api';
 import type { TeamsChatMessage } from '../services/teams';
 
 vi.mock('../services/teams');
-vi.mock('./useCurrentUser', () => ({
-  useCurrentUser: () => ({ user: { id: 7, azure_oid: 'azure-me' }, isLoading: false, error: null }),
-}));
+
+/**
+ * `azure_oid` is nullable on the backend User model and is not written by any
+ * code path today, so tests must be able to run both states.
+ */
+let mockUser: Record<string, unknown> | null = { id: 7, azure_oid: 'azure-me' };
+vi.mock('./useCurrentUser', async () => {
+  const actual = await vi.importActual<typeof import('./useCurrentUser')>('./useCurrentUser');
+  return {
+    ...actual,
+    useCurrentUser: () => ({ user: mockUser, isLoading: false, error: null }),
+  };
+});
 
 const CHAT_ID = '19:abc';
 const KEY = () => queryKeys.teams.chatMessages(CHAT_ID);
@@ -32,6 +42,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockUser = { id: 7, azure_oid: 'azure-me' };
   qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -126,6 +137,41 @@ describe('useSendTeamsChatMessage — contentType', () => {
     expect(row.from?.user?.id).toBe('azure-me');
   });
 
+  it('writes a null author, not an empty string, when we have no azure_oid', () => {
+    // azure_oid is nullable and no backend code path writes it today, so this
+    // is the state every user is actually in. `?? ""` claimed the sender's
+    // Graph id IS the empty string, which then compares false against every
+    // real id -- so the row is neither identifiably the user's own nor
+    // honestly unknown. null is what we actually know.
+    mockUser = { id: 7 };
+    vi.mocked(TeamsService.sendTeamsChatMessage).mockResolvedValue(
+      wrap([]) as unknown as ApiResponse<TeamsChatMessage>,
+    );
+
+    const { result } = renderHook(() => useSendTeamsChatMessage(), { wrapper });
+    act(() => {
+      result.current.mutate({ chatId: CHAT_ID, content: 'hi', contentType: 'text' });
+    });
+
+    const [row] = qc.getQueryData<ApiResponse<LocalRow[]>>(KEY())!.result;
+    expect(row.from?.user?.id).toBeNull();
+  });
+
+  it('treats a blank azure_oid the same as a missing one', () => {
+    mockUser = { id: 7, azure_oid: '' };
+    vi.mocked(TeamsService.sendTeamsChatMessage).mockResolvedValue(
+      wrap([]) as unknown as ApiResponse<TeamsChatMessage>,
+    );
+
+    const { result } = renderHook(() => useSendTeamsChatMessage(), { wrapper });
+    act(() => {
+      result.current.mutate({ chatId: CHAT_ID, content: 'hi', contentType: 'text' });
+    });
+
+    const [row] = qc.getQueryData<ApiResponse<LocalRow[]>>(KEY())!.result;
+    expect(row.from?.user?.id).toBeNull();
+  });
+
   it('marks the row failed when the send rejects, keeping the text on screen', async () => {
     vi.mocked(TeamsService.sendTeamsChatMessage).mockRejectedValue(new Error('401'));
 
@@ -141,6 +187,35 @@ describe('useSendTeamsChatMessage — contentType', () => {
     expect(qc.getQueryData<ApiResponse<LocalRow[]>>(KEY())!.result[0].body.content).toBe(
       'will fail',
     );
+  });
+});
+
+describe('query keys while no conversation is selected', () => {
+  // The non-null assertions ran at runtime whether or not the value was there,
+  // so an unselected chat still registered `['teams','chats',null,'messages']`
+  // in the cache. `enabled` stops the fetch, so nothing breaks -- but the
+  // devtools cache fills with entries that look like real conversations, and
+  // the `!` was asserting something the signature says is false.
+  const keysIn = (client: QueryClient) =>
+    client.getQueryCache().getAll().map((q) => q.queryKey as unknown[]);
+
+  it('registers no chat-message key containing a literal null', () => {
+    renderHook(() => useTeamsChatMessages(null), { wrapper });
+
+    expect(keysIn(qc).some((key) => key.includes(null))).toBe(false);
+  });
+
+  it('registers no channel-message key containing a literal null', () => {
+    renderHook(() => useChannelMessages(null, null), { wrapper });
+
+    expect(keysIn(qc).some((key) => key.includes(null))).toBe(false);
+  });
+
+  it('still uses the real chat id once one is selected', () => {
+    // So the fix cannot be "never use the id".
+    renderHook(() => useTeamsChatMessages(CHAT_ID), { wrapper });
+
+    expect(keysIn(qc).some((key) => key.includes(CHAT_ID))).toBe(true);
   });
 });
 

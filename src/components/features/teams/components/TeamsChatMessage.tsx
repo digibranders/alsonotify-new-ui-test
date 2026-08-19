@@ -90,7 +90,16 @@ export function TeamsChatMessage({
 
   const senderName = message.from?.user?.displayName || 'Unknown';
   const senderId = message.from?.user?.id;
-  const isOwnMessage = !!(currentUserAzureId && senderId && currentUserAzureId === senderId);
+  // A row carrying __tempId came out of this tab's own composer, so its
+  // authorship is known first-hand and does not depend on ids matching. That
+  // matters because `azure_oid` is nullable on the backend User model and no
+  // code path writes it today, so `currentUserAzureId` is null for everyone
+  // and the comparison below can never succeed -- which rendered the user's
+  // own messages left-aligned under an "Unknown" avatar. __tempId survives
+  // reconciliation on purpose (see reconcilePendingMessage), so the row does
+  // not flip sides the moment the server copy lands either.
+  const isOwnMessage =
+    !!message.__tempId || !!(currentUserAzureId && senderId && currentUserAzureId === senderId);
   const time = dayjs(message.createdDateTime).format('h:mm A');
   const showHeader = !isSameSenderGroup(message, previousMessage);
   const avatarColor = getAvatarColor(senderName);

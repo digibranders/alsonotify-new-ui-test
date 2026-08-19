@@ -16,7 +16,7 @@ import {
   CreateOnlineMeetingPayload,
 } from "../services/teams";
 import { queryKeys } from "../lib/queryKeys";
-import { useCurrentUser } from "./useCurrentUser";
+import { getAzureOid, useCurrentUser } from "./useCurrentUser";
 import {
   addPendingMessage,
   markMessageFailed,
@@ -89,13 +89,25 @@ export const useTeamsChats = () => {
   });
 };
 
+/**
+ * Stand-in id for a hook rendered with nothing selected.
+ *
+ * React Query needs a key even for a query `enabled` has switched off, and
+ * `chatId!` used to hand it the literal value — registering
+ * `['teams','chats',null,'messages']` in the cache, which reads in the
+ * devtools exactly like a real conversation. Named so it plainly is not a
+ * Graph id, and never used for a fetch: `enabled` gates every call site below.
+ */
+const NO_CONVERSATION = "__none__";
+
 export const useTeamsChatMessages = (chatId: string | null) => {
   const queryClient = useQueryClient();
-  const queryKey = queryKeys.teams.chatMessages(chatId!);
+  const queryKey = queryKeys.teams.chatMessages(chatId ?? NO_CONVERSATION);
   return useQuery({
     queryKey,
     queryFn: async () => {
-      const fetched = await getTeamsChatMessages(chatId!);
+      if (!chatId) throw new Error("useTeamsChatMessages: fetched with no chat selected");
+      const fetched = await getTeamsChatMessages(chatId);
       // Poll-vs-push race: this 120s poll's response is server data only, so
       // writing it straight to the cache would silently erase any
       // pending/failed optimistic row added by useSendTeamsChatMessage below.
@@ -150,9 +162,7 @@ interface SendTeamsChatMessageVariables {
 export const useSendTeamsChatMessage = () => {
   const queryClient = useQueryClient();
   const { user: currentUser } = useCurrentUser();
-  const currentUserAzureId = (currentUser as Record<string, unknown>)?.azure_oid as
-    | string
-    | undefined;
+  const currentUserAzureId = getAzureOid(currentUser);
 
   return useMutation({
     mutationFn: ({ chatId, content, contentType }: SendTeamsChatMessageVariables) =>
@@ -164,6 +174,13 @@ export const useSendTeamsChatMessage = () => {
     // compares against `currentUserAzureId` to decide "own message" styling
     // -- not `useUserDetails`'s internal numeric user id, which would render
     // the optimistic bubble as someone else's until it reconciles.
+    //
+    // It is genuinely null for everyone today (no backend code path writes
+    // azure_oid), so it is passed through as null rather than coerced to "".
+    // An empty-string id is not a weaker claim than null, it is a false one:
+    // it compares unequal to every real sender id just the same, while
+    // looking like a value. TeamsChatMessage gets its own-message answer from
+    // __tempId for exactly this reason.
     onMutate: async ({
       chatId,
       content,
@@ -178,7 +195,7 @@ export const useSendTeamsChatMessage = () => {
           tempId,
           body: content,
           contentType: contentType ?? DEFAULT_SEND_CONTENT_TYPE,
-          authorId: currentUserAzureId ?? "",
+          authorId: currentUserAzureId,
         });
       }
       return { tempId, chatId };
@@ -223,8 +240,11 @@ export const useJoinedTeams = () => {
 
 export const useTeamChannels = (teamId: string | null) => {
   return useQuery({
-    queryKey: queryKeys.teams.channels(teamId!),
-    queryFn: () => listChannels(teamId!),
+    queryKey: queryKeys.teams.channels(teamId ?? NO_CONVERSATION),
+    queryFn: () => {
+      if (!teamId) throw new Error("useTeamChannels: fetched with no team selected");
+      return listChannels(teamId);
+    },
     enabled: !!teamId,
     staleTime: 2 * 60_000,
   });
@@ -235,11 +255,17 @@ export const useChannelMessages = (
   channelId: string | null
 ) => {
   const queryClient = useQueryClient();
-  const queryKey = queryKeys.teams.channelMessages(teamId!, channelId!);
+  const queryKey = queryKeys.teams.channelMessages(
+    teamId ?? NO_CONVERSATION,
+    channelId ?? NO_CONVERSATION,
+  );
   return useQuery({
     queryKey,
     queryFn: async () => {
-      const fetched = await getChannelMessages(teamId!, channelId!);
+      if (!teamId || !channelId) {
+        throw new Error("useChannelMessages: fetched with no channel selected");
+      }
+      const fetched = await getChannelMessages(teamId, channelId);
       // Same poll-vs-push guard as useTeamsChatMessages: don't let a
       // server-only poll response silently erase a local pending/failed row.
       return preservePendingMessages(queryClient, queryKey, fetched);
@@ -285,8 +311,11 @@ export const useSendChannelMessage = () => {
 
 export const useMeetingAttendance = (meetingId: string | null) => {
   return useQuery({
-    queryKey: queryKeys.teams.meetingAttendance(meetingId!),
-    queryFn: () => getMeetingAttendance(meetingId!),
+    queryKey: queryKeys.teams.meetingAttendance(meetingId ?? NO_CONVERSATION),
+    queryFn: () => {
+      if (!meetingId) throw new Error("useMeetingAttendance: fetched with no meeting selected");
+      return getMeetingAttendance(meetingId);
+    },
     enabled: !!meetingId,
     staleTime: 60_000,
   });

@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Skeleton } from 'antd';
 import { MessageCircle } from 'lucide-react';
 import { useTeamsChatMessages, useSendTeamsChatMessage, useTeamsChats } from '@/hooks/useTeams';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { getAzureOid, useCurrentUser } from '@/hooks/useCurrentUser';
 import { TeamsChatMessage as TChatMessage } from '@/services/teams';
 import { TeamsChatHeader } from './TeamsChatHeader';
 import { TeamsChatMessage } from './TeamsChatMessage';
@@ -41,7 +41,7 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
   const { data: chatsData } = useTeamsChats();
   const sendMessage = useSendTeamsChatMessage();
   const { user: currentUser } = useCurrentUser();
-  const currentUserAzureId = (currentUser as Record<string, unknown>)?.azure_oid as string | undefined;
+  const currentUserAzureId = getAzureOid(currentUser);
 
   // Find the current chat object for the header
   const currentChat = useMemo(() => {

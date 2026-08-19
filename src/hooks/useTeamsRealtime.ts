@@ -273,7 +273,13 @@ export function addPendingMessage(
      * formatted message in the sender's own bubble.
      */
     contentType: 'html' | 'text';
-    authorId: string;
+    /**
+     * The sender's Azure AD object id, or `null` when we do not have one —
+     * which is every user today, since no backend path writes `azure_oid`.
+     * Nullable rather than defaulted to `''` so the row says "unknown sender"
+     * instead of claiming a sender id that matches nothing.
+     */
+    authorId: string | null;
   },
 ): void {
   const key = queryKeys.teams.chatMessages(chatId);

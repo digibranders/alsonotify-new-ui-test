@@ -74,13 +74,21 @@ export interface TeamsChatMessage {
   id: string;
   messageType: "message" | "systemEventMessage";
   createdDateTime: string;
+  /**
+   * Nullable throughout, deliberately. Graph omits `from.user` entirely on
+   * system event messages, the realtime event maps a missing sender to `null`
+   * (see toTeamsEvent / toCached), and an optimistic row has no sender id at
+   * all until `azure_oid` is populated. Typing these `string` said none of
+   * that could happen while the code wrote it anyway; every render site
+   * already guards with `?.` and a fallback.
+   */
   from?: {
-    user?: { displayName: string; id: string };
-  };
+    user?: { displayName: string | null; id: string | null } | null;
+  } | null;
   body: { contentType: "html" | "text"; content: string };
   attachments?: TeamsChatMessageAttachment[];
   reactions?: TeamsChatMessageReaction[];
-  replyToId?: string;
+  replyToId?: string | null;
   /** Local-only: set while an optimistic send is in flight or has failed (see useTeamsRealtime.ts). Never present on server data. */
   __status?: "pending" | "failed";
   /** Local-only: correlates an optimistic message with its eventual server copy. Never present on server data. */
@@ -104,7 +112,8 @@ export interface ChannelMessage {
   id: string;
   messageType: string;
   createdDateTime: string;
-  from?: { user?: { displayName: string; id: string } };
+  /** Nullable for the same reasons as TeamsChatMessage.from above. */
+  from?: { user?: { displayName: string | null; id: string | null } | null } | null;
   body: { contentType: "html" | "text"; content: string };
   /** Local-only: set while an optimistic send is in flight or has failed (see useTeamsRealtime.ts). Never present on server data. */
   __status?: "pending" | "failed";
