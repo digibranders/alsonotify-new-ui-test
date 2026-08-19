@@ -1,8 +1,8 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useSendTeamsChatMessage } from './useTeams';
+import { useSendTeamsChatMessage, useChannelMessages, useTeamsChatMessages } from './useTeams';
 import { queryKeys } from '../lib/queryKeys';
 import * as TeamsService from '../services/teams';
 import type { ApiResponse } from '../types/api';
@@ -141,5 +141,62 @@ describe('useSendTeamsChatMessage — contentType', () => {
     expect(qc.getQueryData<ApiResponse<LocalRow[]>>(KEY())!.result[0].body.content).toBe(
       'will fail',
     );
+  });
+});
+
+describe('message polling cadence', () => {
+  // Channel realtime is dead code today. The backend creates exactly one
+  // subscription per user -- `/users/{azureOid}/chats/getAllMessages`, kind
+  // USER_CHATS -- and there is no channel subscription anywhere, so
+  // applyTeamsEvent's channel branch never executes and the poll is the ONLY
+  // way a channel message ever appears. Chat can afford a slow safety net
+  // because it genuinely has the socket; channels cannot.
+  const CHANNEL_STEP = 31_000;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.mocked(TeamsService.getChannelMessages).mockResolvedValue(wrap([]));
+    vi.mocked(TeamsService.getTeamsChatMessages).mockResolvedValue(wrap([]));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('re-fetches a channel within 30s, not once every two minutes', async () => {
+    const fetchChannel = vi.mocked(TeamsService.getChannelMessages);
+    renderHook(() => useChannelMessages('team-1', 'chan-1'), { wrapper });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(fetchChannel).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CHANNEL_STEP);
+    });
+    expect(fetchChannel).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CHANNEL_STEP);
+    });
+    expect(fetchChannel).toHaveBeenCalledTimes(3);
+  });
+
+  it('leaves chat on its slow safety net, since the socket is the real path there', async () => {
+    const fetchChat = vi.mocked(TeamsService.getTeamsChatMessages);
+    // A chat the outer beforeEach has not already seeded, so the hook does
+    // its initial fetch here rather than serving fresh cache.
+    renderHook(() => useTeamsChatMessages('19:polling'), { wrapper });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(fetchChat).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CHANNEL_STEP);
+    });
+    expect(fetchChat).toHaveBeenCalledTimes(1);
   });
 });

@@ -246,12 +246,15 @@ export const useChannelMessages = (
     },
     enabled: !!teamId && !!channelId,
     staleTime: 15_000,
-    // Messages now arrive over the WebSocket (see useWebSocket.ts ->
-    // applyTeamsEvent), so this is a slow safety net, not the primary
-    // update path. Keep it rather than deleting it: if the socket drops
-    // (network blip, backend restart), chat degrades to slightly-stale
-    // instead of going silent until the user reloads.
-    refetchInterval: 120_000,
+    // Channels have NO realtime path. The backend creates exactly one
+    // subscription per user -- `/users/{azureOid}/chats/getAllMessages`,
+    // kind USER_CHATS -- and no channel subscription anywhere, so
+    // applyTeamsEvent's channel branch never executes and this poll is the
+    // only way a channel message ever appears. It was dropped to 120s
+    // alongside chat, where the socket justifies it; here that just made
+    // channel messages 8x staler than before the feature. Restore it until
+    // channel subscriptions ship.
+    refetchInterval: 30_000,
     // Never poll in a hidden tab: a backgrounded dashboard otherwise hits
     // the API on this interval indefinitely, for data nobody is looking at.
     refetchIntervalInBackground: false,
