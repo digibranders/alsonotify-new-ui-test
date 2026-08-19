@@ -83,6 +83,15 @@ function toCached(message: TeamsEventMessage): CachedMessage {
 export function applyTeamsEvent(queryClient: QueryClient, event: TeamsEvent): void {
   if (event?.type !== 'TEAMS_MESSAGE' || !event.message) return;
 
+  // The backend's `toTeamsEvent` sets `id: raw.id` straight from
+  // `JSON.parse`'d Graph payload with no schema validation, so a malformed
+  // or schema-drifted webhook can reach here with a missing id. Without this
+  // guard, `id: undefined` would collide with any other `id: undefined` row
+  // already in the cache (silent overwrite) and produce a duplicate React
+  // key in TeamsChatView/TeamsChannelView. Best-effort realtime channel: a
+  // bad frame should be a silent no-op, not corrupt the cache.
+  if (typeof event.message.id !== 'string' || !event.message.id) return;
+
   const key = keyFor(event.message);
   if (!key) return;
 

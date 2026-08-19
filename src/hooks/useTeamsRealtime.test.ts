@@ -85,6 +85,31 @@ describe('applyTeamsEvent', () => {
     expect(() => applyTeamsEvent(qc, { type: 'SOMETHING_ELSE' } as never)).not.toThrow();
   });
 
+  it('ignores a message with a missing id rather than corrupting the cache', () => {
+    // Backend `toTeamsEvent` sets `id: raw.id` straight from an unvalidated
+    // Graph payload, so schema drift or a malformed webhook can arrive here
+    // with no id. Without a guard, `id: undefined` would either collide with
+    // another `id: undefined` row already cached (silent overwrite) or
+    // produce a duplicate React key when rendered.
+    const key = queryKeys.teams.chatMessages('19:abc');
+    qc.setQueryData(key, wrap([{ id: 'm0', body: { content: 'earlier', contentType: 'text' } }]));
+
+    applyTeamsEvent(qc, event({ id: undefined as unknown as string }));
+
+    const cached = qc.getQueryData<ApiResponse<TeamsChatMessage[]>>(key);
+    expect(cached?.result.map((m) => m.id)).toEqual(['m0']);
+  });
+
+  it('ignores a message with an empty-string id', () => {
+    const key = queryKeys.teams.chatMessages('19:abc');
+    qc.setQueryData(key, wrap([{ id: 'm0', body: { content: 'earlier', contentType: 'text' } }]));
+
+    applyTeamsEvent(qc, event({ id: '' }));
+
+    const cached = qc.getQueryData<ApiResponse<TeamsChatMessage[]>>(key);
+    expect(cached?.result).toHaveLength(1);
+  });
+
   it('routes a channel message to the channelMessages cache, not chatMessages', () => {
     const chanKey = queryKeys.teams.channelMessages('team-1', 'chan-1');
     qc.setQueryData(chanKey, wrap([{ id: 'c0' }]));

@@ -4,11 +4,36 @@ import { toast } from 'sonner';
 import Cookies from 'universal-cookie';
 import { NotificationToast } from '@/components/features/notifications/NotificationToast';
 import { getPriority } from '@/components/features/notifications/utils';
-import { applyTeamsEvent, type TeamsEvent } from './useTeamsRealtime';
+import { applyTeamsEvent, type TeamsEventMessage } from './useTeamsRealtime';
 
 const WS_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000')
   .replace(/^http/, 'ws')
   .replace(/\/$/, '');
+
+/**
+ * Discriminated union for inbound frames on the shared socket. Narrowing on
+ * `type === 'TEAMS_MESSAGE'` below gives `data.message` its real
+ * `TeamsEventMessage` shape with no cast — as opposed to typing the frame as
+ * `{ message?: string }` (the notification shape) and then force-casting
+ * that same value into `TeamsEvent` (`message: TeamsEventMessage`), which
+ * type-checked while asserting two contradictory shapes for the same field.
+ */
+type WSFrame =
+  | { type: 'TEAMS_MESSAGE'; changeType: string; message: TeamsEventMessage }
+  | { type?: string; title?: string; message?: string; icon?: string; changeType?: string };
+
+/**
+ * A plain `data.type === 'TEAMS_MESSAGE'` check does not split `WSFrame` on
+ * its own: the notification arm's `type` is a bare `string | undefined`, not
+ * a literal, so structural discrimination can't exclude it. An explicit type
+ * predicate forces the narrowing instead (both here and, via `else`, on the
+ * notification branch below).
+ */
+function isTeamsMessageFrame(
+  frame: WSFrame,
+): frame is Extract<WSFrame, { type: 'TEAMS_MESSAGE' }> {
+  return frame.type === 'TEAMS_MESSAGE';
+}
 
 const MIN_RETRY_DELAY = 1_000;
 const MAX_RETRY_DELAY = 30_000;
@@ -53,13 +78,7 @@ export function useWebSocket() {
 
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data as string) as {
-          type?: string;
-          title?: string;
-          message?: string;
-          icon?: string;
-          changeType?: string;
-        };
+        const data = JSON.parse(event.data as string) as WSFrame;
 
         // Ignore CONNECTED handshake
         if (data.type === 'CONNECTED') return;
@@ -68,8 +87,8 @@ export function useWebSocket() {
         // user id, so a second socket would close this one) but are NOT
         // notifications: they must not invalidate the notification queries or
         // raise a toast, only update the Teams chat/channel cache.
-        if (data.type === 'TEAMS_MESSAGE') {
-          applyTeamsEvent(queryClient, data as unknown as TeamsEvent);
+        if (isTeamsMessageFrame(data)) {
+          applyTeamsEvent(queryClient, data);
           return;
         }
 
