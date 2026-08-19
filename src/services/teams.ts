@@ -55,24 +55,38 @@ export interface TeamsChat {
   }>;
 }
 
+/**
+ * Every field is nullable because Graph makes no promise about any of them:
+ * a hero-card attachment has no `name`, a file attachment no `content`. The
+ * realtime path normalises a missing or non-string field to null rather than
+ * inventing a value (see toTeamsEvent), and TeamsAttachmentCard renders around
+ * the gaps. Declaring these `string` was a claim, not a check.
+ */
 export interface TeamsChatMessageAttachment {
-  id: string;
-  name: string;
-  contentType: string;
-  contentUrl: string;
-  content?: string;
-  thumbnailUrl?: string;
+  id: string | null;
+  name: string | null;
+  contentType: string | null;
+  contentUrl: string | null;
+  content?: string | null;
+  thumbnailUrl?: string | null;
 }
 
+/** Nullable for the same reason as TeamsChatMessageAttachment above. */
 export interface TeamsChatMessageReaction {
-  reactionType: string;
-  user: { displayName: string };
-  createdDateTime: string;
+  reactionType: string | null;
+  user: { id?: string | null; displayName: string | null };
+  createdDateTime: string | null;
 }
 
 export interface TeamsChatMessage {
   id: string;
-  messageType: "message" | "systemEventMessage";
+  /**
+   * 'message' | 'systemEventMessage' | anything Graph adds later. A plain
+   * string on purpose: the UI already renders nothing for anything that is
+   * not 'message', and narrowing here would turn an unrecognised value into a
+   * type error at the boundary rather than data to skip.
+   */
+  messageType: string;
   createdDateTime: string;
   /**
    * Nullable throughout, deliberately. Graph omits `from.user` entirely on

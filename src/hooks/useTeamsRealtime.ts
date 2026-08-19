@@ -17,6 +17,23 @@ import type { ApiResponse } from '../types/api';
  * PREPENDED to `result`, matching that ordering.
  */
 
+/** Mirrors the backend's TeamsEventAttachment (teams-event.ts). */
+export interface TeamsEventAttachment {
+  id: string | null;
+  name: string | null;
+  contentType: string | null;
+  contentUrl: string | null;
+  content: string | null;
+  thumbnailUrl: string | null;
+}
+
+/** Mirrors the backend's TeamsEventReaction (teams-event.ts). */
+export interface TeamsEventReaction {
+  reactionType: string | null;
+  createdDateTime: string | null;
+  user: { id: string | null; displayName: string | null };
+}
+
 export interface TeamsEventMessage {
   id: string;
   chatId: string | null;
@@ -24,10 +41,16 @@ export interface TeamsEventMessage {
   teamId: string | null;
   body: string;
   contentType: string;
+  /** 'message' | 'systemEventMessage' | anything Graph adds. A plain string on purpose. */
+  messageType: string;
   from: { id: string | null; displayName: string | null };
   createdDateTime: string;
   lastEditedDateTime: string | null;
+  /** Set when Graph delivers a soft delete as an update rather than as `changeType: 'deleted'`. */
+  deletedDateTime: string | null;
   replyToId: string | null;
+  attachments: TeamsEventAttachment[];
+  reactions: TeamsEventReaction[];
 }
 
 export interface TeamsEvent {
@@ -45,6 +68,8 @@ interface CachedMessage {
   createdDateTime?: string;
   lastEditedDateTime?: string | null;
   replyToId?: string | null;
+  attachments?: TeamsEventAttachment[];
+  reactions?: TeamsEventReaction[];
   /** Local-only: present while a send is in flight or has failed. Cleared once reconciled. */
   __status?: 'pending' | 'failed';
   /**
@@ -82,6 +107,41 @@ function warnContractBreak(reason: string, detail: Record<string, unknown>): voi
 const isString = (value: unknown): value is string => typeof value === 'string';
 const isNullableString = (value: unknown): value is string | null =>
   value === null || typeof value === 'string';
+
+/** A field of the frame, or null if it is anything other than a string. */
+const asString = (value: unknown): string | null =>
+  typeof value === 'string' ? value : null;
+
+/** Only plain objects; anything else in the array is dropped, not emitted as a hole. */
+function objectEntries(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (entry): entry is Record<string, unknown> =>
+      typeof entry === 'object' && entry !== null && !Array.isArray(entry),
+  );
+}
+
+function toEventAttachment(raw: Record<string, unknown>): TeamsEventAttachment {
+  return {
+    id: asString(raw.id),
+    name: asString(raw.name),
+    contentType: asString(raw.contentType),
+    contentUrl: asString(raw.contentUrl),
+    content: asString(raw.content),
+    thumbnailUrl: asString(raw.thumbnailUrl),
+  };
+}
+
+function toEventReaction(raw: Record<string, unknown>): TeamsEventReaction {
+  const user =
+    typeof raw.user === 'object' && raw.user !== null ? (raw.user as Record<string, unknown>) : {};
+
+  return {
+    reactionType: asString(raw.reactionType),
+    createdDateTime: asString(raw.createdDateTime),
+    user: { id: asString(user.id), displayName: asString(user.displayName) },
+  };
+}
 
 /**
  * Validate one inbound socket frame.
@@ -154,6 +214,16 @@ export function parseTeamsEvent(raw: unknown): TeamsEvent | null {
       createdDateTime: message.createdDateTime,
       lastEditedDateTime: message.lastEditedDateTime,
       replyToId: message.replyToId,
+      // The four fields the backend added so a message can actually be
+      // rendered (attachments, system messages, reactions, soft deletes).
+      // Normalised on absence rather than rejected: the two repos deploy
+      // separately, so a frontend that ships first must not drop every
+      // realtime message until the backend catches up. A wrong type gets the
+      // same safe default -- normalising is not the same as passing through.
+      messageType: asString(message.messageType) ?? 'message',
+      deletedDateTime: asString(message.deletedDateTime),
+      attachments: objectEntries(message.attachments).map(toEventAttachment),
+      reactions: objectEntries(message.reactions).map(toEventReaction),
     },
   };
 }
@@ -169,12 +239,21 @@ function keyFor(message: TeamsEventMessage) {
 function toCached(message: TeamsEventMessage): CachedMessage {
   return {
     id: message.id,
-    messageType: 'message',
+    // Was hardcoded 'message', which rendered "Priya added Sam to the chat" as
+    // an ordinary bubble with an empty body.
+    messageType: message.messageType,
     body: { content: message.body, contentType: message.contentType },
     from: { user: { id: message.from.id, displayName: message.from.displayName } },
     createdDateTime: message.createdDateTime,
     lastEditedDateTime: message.lastEditedDateTime,
     replyToId: message.replyToId,
+    // Both lists are authoritative for the moment the notification was raised,
+    // so they overwrite what was cached rather than merging into it -- a
+    // removed reaction has to be able to disappear. Dropping them was what
+    // made a shared file (body `<attachment id="..."></attachment>` and
+    // nothing else) render to nothing while still counting as a row.
+    attachments: message.attachments,
+    reactions: message.reactions,
   };
 }
 
@@ -215,7 +294,10 @@ export function applyTeamsEvent(queryClient: QueryClient, event: TeamsEvent): vo
   const existing = queryClient.getQueryData<MessagesResponse>(key);
   if (!existing?.result) return;
 
-  if (event.changeType === 'deleted') {
+  // Graph delivers some deletions as `changeType: 'updated'` carrying
+  // `deletedDateTime` rather than as a delete, so keying on changeType alone
+  // left the message on screen and every subsequent update re-wrote it.
+  if (event.changeType === 'deleted' || event.message.deletedDateTime) {
     queryClient.setQueryData<MessagesResponse>(key, {
       ...existing,
       result: existing.result.filter((m) => m.id !== event.message.id),

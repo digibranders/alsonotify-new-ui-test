@@ -21,10 +21,11 @@ const event = (over: Record<string, unknown> = {}): TeamsEvent => ({
   changeType: 'created',
   message: {
     id: 'm1', chatId: '19:abc', channelId: null, teamId: null,
-    body: 'hello', contentType: 'text',
+    body: 'hello', contentType: 'text', messageType: 'message',
     from: { id: 'oid-1', displayName: 'Priya' },
     createdDateTime: '2026-08-06T10:00:00Z',
-    lastEditedDateTime: null, replyToId: null,
+    lastEditedDateTime: null, deletedDateTime: null, replyToId: null,
+    attachments: [], reactions: [],
     ...over,
   },
 });
@@ -224,6 +225,116 @@ describe('applyTeamsEvent', () => {
   });
 });
 
+describe('applyTeamsEvent — the fields a message needs to be renderable', () => {
+  const key = () => queryKeys.teams.chatMessages('19:abc');
+
+  const attachment = {
+    id: 'att-1',
+    name: 'Q3 forecast.xlsx',
+    contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    contentUrl: 'https://contoso.sharepoint.com/Q3.xlsx',
+    content: null,
+    thumbnailUrl: null,
+  };
+
+  it('carries attachments through, so a shared file is not an invisible row', () => {
+    // A shared file's body is `<attachment id="..."></attachment>` and nothing
+    // else. TeamsChatMessage strips the tags, finds an empty string, finds no
+    // attachments and renders null -- while the row still counts towards
+    // messages.length, so the view scrolled to a message that was not there
+    // and stayed that way until the 120s poll replaced the cache.
+    qc.setQueryData(key(), wrap([]));
+
+    applyTeamsEvent(
+      qc,
+      event({ body: '<attachment id="att-1"></attachment>', contentType: 'html', attachments: [attachment] }),
+    );
+
+    const [row] = qc.getQueryData<ApiResponse<TeamsChatMessage[]>>(key())!.result;
+    expect(row.attachments).toEqual([attachment]);
+  });
+
+  it('carries the real messageType instead of asserting every message is a chat message', () => {
+    // Hardcoding 'message' rendered "Priya added Sam to the chat" as a normal
+    // bubble with an empty body.
+    qc.setQueryData(key(), wrap([]));
+
+    applyTeamsEvent(qc, event({ messageType: 'systemEventMessage', body: '' }));
+
+    const [row] = qc.getQueryData<ApiResponse<TeamsChatMessage[]>>(key())!.result;
+    expect(row.messageType).toBe('systemEventMessage');
+  });
+
+  it('carries reactions onto a new message', () => {
+    qc.setQueryData(key(), wrap([]));
+    const reactions = [
+      { reactionType: 'like', createdDateTime: '2026-08-06T10:01:00Z', user: { id: 'oid-2', displayName: 'Sam' } },
+    ];
+
+    applyTeamsEvent(qc, event({ reactions }));
+
+    const [row] = qc.getQueryData<ApiResponse<TeamsChatMessage[]>>(key())!.result;
+    expect(row.reactions).toEqual(reactions);
+  });
+
+  it('updates reactions on a message already in the cache', () => {
+    // Someone else reacting is delivered as changeType 'updated'. The spread
+    // used to preserve whatever was cached simply because toCached omitted the
+    // key, so a new reaction never appeared until the 120s poll.
+    qc.setQueryData(key(), wrap([{ id: 'm1', reactions: [] }]));
+    const reactions = [
+      { reactionType: 'heart', createdDateTime: '2026-08-06T10:02:00Z', user: { id: 'oid-2', displayName: 'Sam' } },
+    ];
+
+    applyTeamsEvent(qc, event({ reactions }, ));
+
+    const [row] = qc.getQueryData<ApiResponse<TeamsChatMessage[]>>(key())!.result;
+    expect(row.reactions).toEqual(reactions);
+  });
+
+  it('removes a reaction that has gone away', () => {
+    // The mirror of the test above: the event's list is authoritative, so an
+    // "updated" carrying an empty list must clear the cached one rather than
+    // being treated as "no information".
+    qc.setQueryData(
+      key(),
+      wrap([{ id: 'm1', reactions: [{ reactionType: 'like', createdDateTime: 'x', user: { id: 'oid-2', displayName: 'Sam' } }] }]),
+    );
+
+    applyTeamsEvent(qc, { ...event({ reactions: [] }), changeType: 'updated' });
+
+    const [row] = qc.getQueryData<ApiResponse<TeamsChatMessage[]>>(key())!.result;
+    expect(row.reactions).toEqual([]);
+  });
+
+  it('removes a message soft-deleted via an update rather than a delete', () => {
+    // Graph delivers some deletions as `changeType: 'updated'` with
+    // deletedDateTime set. Keying on changeType alone left the message on
+    // screen, and the next 'updated' would keep resurrecting it.
+    qc.setQueryData(key(), wrap([{ id: 'm1' }, { id: 'm2' }]));
+
+    applyTeamsEvent(
+      qc,
+      { ...event({ deletedDateTime: '2026-08-06T10:05:00Z' }), changeType: 'updated' },
+    );
+
+    expect(
+      qc.getQueryData<ApiResponse<TeamsChatMessage[]>>(key())!.result.map((m) => m.id),
+    ).toEqual(['m2']);
+  });
+
+  it('does not remove a message whose deletedDateTime is null', () => {
+    // So the branch above cannot degenerate into deleting on every update.
+    qc.setQueryData(key(), wrap([{ id: 'm1' }, { id: 'm2' }]));
+
+    applyTeamsEvent(qc, { ...event(), changeType: 'updated' });
+
+    expect(
+      qc.getQueryData<ApiResponse<TeamsChatMessage[]>>(key())!.result.map((m) => m.id),
+    ).toEqual(['m1', 'm2']);
+  });
+});
+
 describe('parseTeamsEvent', () => {
   // The socket frame arrives as `JSON.parse(event.data)` — genuinely unknown
   // data. It used to be asserted straight to the frame type and narrowed on
@@ -236,10 +347,11 @@ describe('parseTeamsEvent', () => {
     changeType: 'created',
     message: {
       id: 'm1', chatId: '19:abc', channelId: null, teamId: null,
-      body: 'hello', contentType: 'text',
+      body: 'hello', contentType: 'text', messageType: 'message',
       from: { id: 'oid-1', displayName: 'Priya' },
       createdDateTime: '2026-08-06T10:00:00Z',
-      lastEditedDateTime: null, replyToId: null,
+      lastEditedDateTime: null, deletedDateTime: null, replyToId: null,
+      attachments: [], reactions: [],
       ...over,
     },
   });
@@ -280,6 +392,66 @@ describe('parseTeamsEvent', () => {
     ['a message with a non-string, non-null replyToId', frame({ replyToId: 7 })],
   ])('rejects %s', (_label, input) => {
     expect(parseTeamsEvent(input)).toBeNull();
+  });
+
+  // The four fields the backend added to render attachments, system messages
+  // and reactions. Validated like everything else, but ABSENCE is normalised
+  // rather than rejected: the two repos deploy separately, and rejecting would
+  // mean a frontend that shipped first silently drops every realtime message
+  // until the backend catches up. A wrong TYPE is still not accepted -- it is
+  // normalised to the same safe default, never passed through.
+  describe('the renderable-message fields', () => {
+    it('passes attachments and reactions through', () => {
+      const rich = frame({
+        attachments: [{ id: 'a1', name: 'x.pdf', contentType: 'application/pdf', contentUrl: 'https://c/x.pdf', content: null, thumbnailUrl: null }],
+        reactions: [{ reactionType: 'like', createdDateTime: '2026-08-06T10:01:00Z', user: { id: 'oid-2', displayName: 'Sam' } }],
+      });
+
+      expect(parseTeamsEvent(rich)).toEqual(rich);
+    });
+
+    it('defaults a frame from a backend that predates them', () => {
+      const legacy = {
+        type: 'TEAMS_MESSAGE',
+        changeType: 'created',
+        message: {
+          id: 'm1', chatId: '19:abc', channelId: null, teamId: null,
+          body: 'hello', contentType: 'text',
+          from: { id: 'oid-1', displayName: 'Priya' },
+          createdDateTime: '2026-08-06T10:00:00Z',
+          lastEditedDateTime: null, replyToId: null,
+        },
+      };
+
+      expect(parseTeamsEvent(legacy)).toEqual(frame());
+    });
+
+    it.each([
+      ['attachments', 'not an array'],
+      ['reactions', { like: 1 }],
+      ['messageType', 42],
+      ['deletedDateTime', 7],
+    ])('normalises a malformed %s rather than passing it on', (field, value) => {
+      expect(parseTeamsEvent(frame({ [field]: value }))).toEqual(frame());
+    });
+
+    it('drops a non-object entry inside attachments instead of emitting a hole', () => {
+      expect(parseTeamsEvent(frame({ attachments: ['nope', null] }))).toEqual(frame());
+    });
+
+    it('rebuilds attachment and reaction entries field by field', () => {
+      // Same allowlist rule as the frame itself: an entry is not spread
+      // through, so an unreviewed Graph field on an attachment cannot ride
+      // into the cache either.
+      const parsed = parseTeamsEvent(
+        frame({ attachments: [{ id: 'a1', name: 'x.pdf', teamsAppId: 'should-not-survive' }] }),
+      );
+
+      expect(parsed?.message.attachments[0]).not.toHaveProperty('teamsAppId');
+      expect(parsed?.message.attachments[0]).toEqual({
+        id: 'a1', name: 'x.pdf', contentType: null, contentUrl: null, content: null, thumbnailUrl: null,
+      });
+    });
   });
 
   it('warns when a TEAMS_MESSAGE frame fails validation, instead of dropping it in silence', () => {
