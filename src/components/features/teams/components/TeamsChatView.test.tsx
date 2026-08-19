@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { App } from 'antd';
 import { TeamsChatView } from './TeamsChatView';
 import { useTeamsChatMessages, useSendTeamsChatMessage, useTeamsChats } from '@/hooks/useTeams';
@@ -162,5 +162,96 @@ describe('TeamsChatView — auto-scroll', () => {
     );
 
     expect(pane().scrollTop).toBe(1000);
+  });
+});
+
+describe('TeamsChatView — retrying a failed send', () => {
+  const failed = (tempId: string, content: string, contentType: 'html' | 'text' = 'text') =>
+    message({ id: tempId, __tempId: tempId, __status: 'failed', body: { contentType, content } });
+
+  it('retries with the contentType the message was written in', () => {
+    // retryTempId skips addPendingMessage, so the optimistic row is already
+    // right -- but the mutation still puts this on the wire, and without it a
+    // retried `a < b` is posted to Graph as HTML and arrives mangled.
+    seed([failed('t1', 'a < b')]);
+    draw();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({ retryTempId: 't1', content: 'a < b', contentType: 'text' }),
+      expect.anything(),
+    );
+  });
+
+  it('cannot be double-submitted by two fast clicks', () => {
+    // Load-bearing: a second send does not produce a rendering glitch, it
+    // creates a second real message in the user's actual Teams conversation.
+    // The guard has to be synchronous -- both clicks in one tick read the same
+    // pre-update React state, so a state-based check lets the second through.
+    seed([failed('t1', 'once')]);
+    draw();
+    const retry = screen.getByRole('button', { name: 'Retry' });
+
+    // Both dispatched inside one act() batch, so React has not re-rendered
+    // the button as disabled in between and the handler's own guard is the
+    // only thing standing there. fireEvent.click twice would not test that:
+    // React flushes discrete events one at a time, so the second click sees
+    // the updated state and even a state-based guard passes.
+    act(() => {
+      retry.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      retry.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(mutate).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves every other row\'s Retry usable while one is in flight', () => {
+    // isSending was the single shared mutation flag, so retrying one failed
+    // message greyed out Retry on every other one until the round trip
+    // finished.
+    seed([failed('t1', 'first'), failed('t2', 'second')]);
+    draw();
+    const [first, second] = screen.getAllByRole('button', { name: 'Retry' });
+
+    fireEvent.click(first);
+
+    expect(first).toBeDisabled();
+    expect(second).toBeEnabled();
+  });
+
+  it('re-enables Retry once the attempt settles, so a row is not stuck', () => {
+    // Without the onSettled cleanup the tempId never leaves the in-flight set
+    // and that message can never be retried again -- worse than the shared
+    // flag it replaced, which at least cleared itself.
+    seed([failed('t1', 'first')]);
+    draw();
+    const retry = screen.getByRole('button', { name: 'Retry' });
+
+    fireEvent.click(retry);
+    expect(retry).toBeDisabled();
+
+    const options = mutate.mock.calls[0][1] as { onSettled: () => void };
+    act(() => options.onSettled());
+
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled();
+  });
+
+  it('keeps the composer usable while a send is in flight', () => {
+    // The whole point of the optimistic row is that the message is already on
+    // screen. Disabling the composer for the round trip after that is the one
+    // part of the interaction that still waits for the server.
+    vi.mocked(useSendTeamsChatMessage).mockReturnValue({
+      mutate,
+      isPending: true,
+    } as unknown as ReturnType<typeof useSendTeamsChatMessage>);
+    seed([message({ id: 'm1' })]);
+    draw();
+
+    const editor = document.querySelector('.teams-input-editor') as HTMLElement;
+    editor.innerHTML = 'next one';
+    fireEvent.input(editor);
+
+    expect(screen.getByRole('button', { name: 'Send message' })).toBeEnabled();
   });
 });

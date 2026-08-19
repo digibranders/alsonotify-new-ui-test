@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { Skeleton } from 'antd';
 import { MessageCircle } from 'lucide-react';
 import { useTeamsChatMessages, useSendTeamsChatMessage, useTeamsChats } from '@/hooks/useTeams';
@@ -37,6 +37,24 @@ function groupMessagesByDate(messages: TChatMessage[]): MessageGroup[] {
 
 export function TeamsChatView({ chatId }: TeamsChatViewProps) {
   const [replyingTo, setReplyingTo] = useState<TChatMessage | null>(null);
+  /**
+   * Which failed rows have a retry in flight right now.
+   *
+   * `sendMessage.isPending` is one flag shared by every row, so retrying a
+   * single failed message greyed out the Retry button on all the others and
+   * disabled the composer for the whole round trip -- which is exactly what
+   * the optimistic row exists to avoid. Tracked per tempId instead.
+   *
+   * The ref is the source of truth because the guard in handleRetry must be
+   * synchronous; the state copy exists only so the buttons re-render.
+   */
+  const inFlightRetriesRef = useRef<Set<string>>(new Set());
+  const [retryingTempIds, setRetryingTempIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const publishRetries = useCallback(() => {
+    setRetryingTempIds(new Set(inFlightRetriesRef.current));
+  }, []);
   const { data: messagesData, isLoading } = useTeamsChatMessages(chatId);
   const { data: chatsData } = useTeamsChats();
   const sendMessage = useSendTeamsChatMessage();
@@ -84,22 +102,40 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
 
   const handleRetry = (message: TChatMessage) => {
     // Only failed, locally-generated rows carry a __tempId; a real server
-    // message can never be retried this way. Also guard against a second
-    // send firing while one is already in flight -- the Retry button is
-    // disabled for the same reason (isSending below), this is defense in
-    // depth so a duplicate `sendTeamsChatMessage` call can't reach Graph
-    // even if triggered some other way.
-    if (!chatId || !message.__tempId || sendMessage.isPending) return;
-    sendMessage.mutate({
-      chatId,
-      content: message.body.content,
-      // retryTempId skips addPendingMessage, so this is not needed for the
-      // optimistic row -- but it is still needed for the wire, or a retried
-      // plain-text message gets posted to Graph as HTML and `a < b` arrives
-      // mangled.
-      contentType: message.body.contentType,
-      retryTempId: message.__tempId,
-    });
+    // message can never be retried this way.
+    const tempId = message.__tempId;
+    if (!chatId || !tempId) return;
+
+    // Double-submit guard, per row. A second send is not a rendering glitch:
+    // it creates a second real message in the user's actual Teams
+    // conversation. It has to be a ref, not state -- two clicks in the same
+    // tick both read the same pre-update state value, so a state-based check
+    // lets the second one straight through, and so did the previous
+    // `sendMessage.isPending` for the same reason (mutate sets it
+    // asynchronously; only the re-rendered disabled attribute stopped a slow
+    // second click).
+    if (inFlightRetriesRef.current.has(tempId)) return;
+    inFlightRetriesRef.current.add(tempId);
+    publishRetries();
+
+    sendMessage.mutate(
+      {
+        chatId,
+        content: message.body.content,
+        // retryTempId skips addPendingMessage, so this is not needed for the
+        // optimistic row -- but it is still needed for the wire, or a retried
+        // plain-text message gets posted to Graph as HTML and `a < b` arrives
+        // mangled.
+        contentType: message.body.contentType,
+        retryTempId: tempId,
+      },
+      {
+        onSettled: () => {
+          inFlightRetriesRef.current.delete(tempId);
+          publishRetries();
+        },
+      },
+    );
   };
 
   if (!chatId) {
@@ -161,7 +197,9 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
                   allMessages={messages}
                   onReply={handleReply}
                   onRetry={handleRetry}
-                  isSending={sendMessage.isPending}
+                  isRetrying={
+                    !!group.message.__tempId && retryingTempIds.has(group.message.__tempId)
+                  }
                   currentUserAzureId={currentUserAzureId}
                 />
               );
@@ -171,9 +209,15 @@ export function TeamsChatView({ chatId }: TeamsChatViewProps) {
       </div>
 
       {/* Message input */}
+      {/*
+        No isSending: the message is already on screen as an optimistic row
+        the instant this fires, so blocking the composer until the server
+        answers is the one part of the interaction still waiting on the round
+        trip. Double-sending the composer is prevented by the editor clearing
+        itself synchronously, which makes handleSend's isEmpty check true.
+      */}
       <TeamsMessageInput
         onSend={handleSend}
-        isSending={sendMessage.isPending}
         replyingTo={replyingTo}
         onCancelReply={() => setReplyingTo(null)}
       />
